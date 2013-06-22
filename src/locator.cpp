@@ -41,10 +41,10 @@ using namespace cocaine;
 
 using namespace std::placeholders;
 
-struct locator_t::synchronize_t:
+struct locator_t::synchronize_slot_t:
     public slot_concept_t
 {
-    synchronize_t(locator_t& self):
+    synchronize_slot_t(locator_t& self):
         slot_concept_t("synchronize"),
         m_packer(m_buffer),
         m_self(self)
@@ -64,7 +64,7 @@ struct locator_t::synchronize_t:
         auto disconnected = std::partition(
             m_upstreams.begin(),
             m_upstreams.end(),
-            std::bind(&synchronize_t::dump, this, _1)
+            std::bind(&synchronize_slot_t::dump, this, _1)
         );
 
         m_upstreams.erase(disconnected, m_upstreams.end());
@@ -75,7 +75,7 @@ struct locator_t::synchronize_t:
         std::for_each(
             m_upstreams.begin(),
             m_upstreams.end(),
-            std::bind(&synchronize_t::close, _1)
+            std::bind(&synchronize_slot_t::close, _1)
         );
     }
 
@@ -385,7 +385,7 @@ locator_t::connect() {
     m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
     m_announce_timer->start(0.0f, 5.0f);
 
-    m_synchronizer = std::make_shared<synchronize_t>(*this);
+    m_synchronizer = std::make_shared<synchronize_slot_t>(*this);
 
     on<io::locator::synchronize>(m_synchronizer);
 }

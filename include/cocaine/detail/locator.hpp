@@ -141,10 +141,10 @@ class locator_t:
         std::unique_ptr<io::socket<io::udp>> m_announce;
         std::unique_ptr<ev::timer> m_announce_timer;
 
-        struct synchronize_t;
+        struct synchronize_slot_t;
 
         // Synchronizing slot.
-        std::shared_ptr<synchronize_t> m_synchronizer;
+        std::shared_ptr<synchronize_slot_t> m_synchronizer;
 
 #if defined(__clang__) || defined(HAVE_GCC46)
         mutable std::default_random_engine m_random_generator;

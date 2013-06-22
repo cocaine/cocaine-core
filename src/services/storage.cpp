@@ -26,6 +26,7 @@
 #include "cocaine/messages.hpp"
 
 using namespace cocaine::service;
+
 using namespace std::placeholders;
 
 storage_t::storage_t(context_t& context,

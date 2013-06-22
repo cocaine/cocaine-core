@@ -27,6 +27,7 @@
 #include "cocaine/traits/enum.hpp"
 
 using namespace cocaine::service;
+
 using namespace std::placeholders;
 
 logging_t::logging_t(context_t& context,
