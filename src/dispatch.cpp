@@ -89,7 +89,7 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
 }
 
 auto
-dispatch_t::describe() const -> dispatch_map_t {
+dispatch_t::map() const -> dispatch_map_t {
     std::lock_guard<std::mutex> guard(m_mutex);
 
     dispatch_map_t result;
@@ -99,4 +99,9 @@ dispatch_t::describe() const -> dispatch_map_t {
     }
 
     return result;
+}
+
+int
+dispatch_t::version() const {
+    return 1;
 }

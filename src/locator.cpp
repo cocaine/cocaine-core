@@ -266,8 +266,8 @@ locator_t::query(const std::unique_ptr<actor_t>& service) const {
 
     return resolve_result_type(
         endpoint,
-        1u,
-        service->dispatch().describe()
+        service->dispatch().version(),
+        service->dispatch().map()
     );
 }
 

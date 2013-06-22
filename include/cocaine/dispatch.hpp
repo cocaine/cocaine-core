@@ -58,7 +58,10 @@ class dispatch_t {
         typedef std::map<int, std::string> dispatch_map_t;
 
         dispatch_map_t
-        describe() const;
+        map() const;
+
+        int
+        version() const;
 
     private:
         std::unique_ptr<logging::log_t> m_log;
