@@ -24,7 +24,6 @@
 
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
-
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
 
@@ -33,6 +32,7 @@
 #include <tuple>
 
 using namespace cocaine::service;
+
 using namespace std::placeholders;
 
 namespace {
@@ -100,6 +100,11 @@ node_t::node_t(context_t& context,
 node_t::~node_t() {
     if(!m_apps.empty()) {
         COCAINE_LOG_INFO(m_log, "stopping the apps");
+
+        for(auto it = m_apps.begin(); it != m_apps.end(); ++it) {
+            it->second->stop();
+        }
+
         m_apps.clear();
     }
 }

@@ -26,7 +26,6 @@
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
-#include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/context.hpp"
 
@@ -138,15 +137,11 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
 }
 
 app_t::~app_t() {
-    stop();
+    // Empty.
 }
 
 void
 app_t::start() {
-    if(m_thread) {
-        return;
-    }
-
     COCAINE_LOG_INFO(m_log, "starting the engine");
 
     auto reactor = std::make_shared<reactor_t>();
@@ -348,10 +343,6 @@ namespace {
 
 void
 app_t::stop() {
-    if(!m_thread) {
-        return;
-    }
-
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
     if(!m_manifest->local) {
