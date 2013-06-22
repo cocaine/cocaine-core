@@ -23,6 +23,8 @@
 #include "cocaine/api/logger.hpp"
 #include "cocaine/api/service.hpp"
 
+#include "cocaine/asio/reactor.hpp"
+
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/essentials.hpp"
 #include "cocaine/detail/locator.hpp"
@@ -254,8 +256,6 @@ context_t::~context_t() {
     for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
         detach(it->first);
     }
-
-    m_locator.reset();
 }
 
 void
