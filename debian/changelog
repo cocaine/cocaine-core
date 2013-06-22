@@ -1,4 +1,4 @@
-cocaine-core (0.10.5-5) lucid; urgency=low
+cocaine-core (0.10.5-5) unstable; urgency=low
 
   * Port ranges. Instead of binding on random ports, services can now bind on
     a preconfigured list of available ports.
