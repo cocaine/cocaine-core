@@ -39,6 +39,28 @@ struct type_traits<char[N]> {
     }
 };
 
+// Specialization to pack character arrays without copying to a std::string first.
+
+struct literal {
+    operator std::string() const {
+        return std::string(blob, size);
+    }
+
+    const char * blob;
+    const size_t size;
+};
+
+template<>
+struct type_traits<literal> {
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer, const literal& source) {
+        packer.pack_raw(source.size);
+        packer.pack_raw_body(source.blob, source.size);
+    }
+};
+
 }} // namespace cocaine::io
 
 #endif

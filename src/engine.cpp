@@ -42,6 +42,7 @@
 #include "cocaine/rpc/channel.hpp"
 
 #include "cocaine/traits/json.hpp"
+#include "cocaine/traits/literal.hpp"
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/median.hpp>
@@ -83,7 +84,7 @@ namespace {
             const std::shared_ptr<session_t> ptr = m_session.lock();
 
             if(ptr) {
-                ptr->send<rpc::chunk>(std::string(chunk, size));
+                ptr->send<rpc::chunk>(literal { chunk, size });
             }
         }
 

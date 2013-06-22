@@ -33,6 +33,8 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include "cocaine/traits/literal.hpp"
+
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -53,7 +55,7 @@ namespace {
             auto ptr = m_channel.lock();
 
             if(ptr) {
-                ptr->wr->write<rpc::chunk>(m_tag, std::string(chunk, size));
+                ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
             }
         }
 
