@@ -23,8 +23,6 @@
 
 #include "cocaine/common.hpp"
 
-// TODO: Either forward or wrap libev types.
-#include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/tcp.hpp"
 
 #include <list>
@@ -67,9 +65,6 @@ class actor_t {
         void
         on_disconnect(int fd, const std::error_code& ec);
 
-        void
-        on_terminate(ev::async&, int);
-
     private:
         const std::shared_ptr<io::reactor_t> m_reactor;
 
@@ -81,10 +76,6 @@ class actor_t {
         > m_channels;
 
         const std::unique_ptr<dispatch_t> m_dispatch;
-
-        // Event loop
-
-        ev::async m_terminate;
 
         // Actor I/O connectors
 

@@ -24,6 +24,7 @@
 
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/connector.hpp"
+#include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/tcp.hpp"
 
@@ -85,12 +86,8 @@ namespace {
 actor_t::actor_t(std::shared_ptr<reactor_t> reactor,
                  std::unique_ptr<dispatch_t>&& dispatch):
     m_reactor(reactor),
-    m_dispatch(std::move(dispatch)),
-    m_terminate(reactor->native())
-{
-    m_terminate.set<actor_t, &actor_t::on_terminate>(this);
-    m_terminate.start();
-}
+    m_dispatch(std::move(dispatch))
+{ }
 
 actor_t::~actor_t() {
     // Empty.
@@ -125,7 +122,7 @@ void
 actor_t::terminate() {
     BOOST_ASSERT(m_thread);
 
-    m_terminate.send();
+    m_reactor->post(std::bind(&reactor_t::stop, m_reactor));
 
     m_thread->join();
     m_thread.reset();
@@ -186,9 +183,3 @@ void
 actor_t::on_disconnect(int fd, const std::error_code& /* ec */) {
     m_channels.erase(fd);
 }
-
-void
-actor_t::on_terminate(ev::async&, int) {
-    m_reactor->stop();
-}
-
