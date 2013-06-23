@@ -64,6 +64,12 @@ class locator_t:
        ~locator_t();
 
         void
+        connect();
+
+        void
+        disconnect();
+
+        void
         attach(const std::string& name, std::unique_ptr<actor_t>&& service);
 
         std::unique_ptr<actor_t>
@@ -82,19 +88,16 @@ class locator_t:
         // Cluster discovery
 
         void
-        connect();
-
-        void
         on_announce_event(ev::io&, int);
 
         void
         on_announce_timer(ev::timer&, int);
 
         void
-        on_response(const remote_t::key_type& key, const io::message_t& message);
+        on_message(const remote_t::key_type& key, const io::message_t& message);
 
         void
-        on_disconnect(const remote_t::key_type& key, const std::error_code& ec);
+        on_failure(const remote_t::key_type& key, const std::error_code& ec);
 
         void
         on_timeout(const remote_t::key_type& key);

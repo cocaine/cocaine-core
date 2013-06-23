@@ -80,6 +80,8 @@ struct locator_t::synchronize_slot_t:
             m_upstreams.end(),
             std::bind(&synchronize_slot_t::close, _1)
         );
+
+        m_upstreams.clear();
     }
 
 private:
@@ -130,10 +132,6 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
 
-    if(!m_context.config.network.group.empty()) {
-        connect();
-    }
-
     if(m_context.config.network.ports) {
         uint16_t min, max;
 
@@ -148,15 +146,6 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 }
 
 locator_t::~locator_t() {
-    // Disconnect all the remote nodes.
-    m_remotes.clear();
-
-    if(m_synchronizer) {
-        // Notify all the remote clients about this node shutdown.
-        m_synchronizer->shutdown();
-        m_synchronizer.reset();
-    }
-
     if(!m_services.empty()) {
         COCAINE_LOG_WARNING(
             m_log,
@@ -171,6 +160,87 @@ locator_t::~locator_t() {
 
         m_services.clear();
     }
+}
+
+void
+locator_t::connect() {
+#if defined(__clang__) || defined(HAVE_GCC46)
+    std::random_device device;
+    m_random_generator.seed(device());
+#else
+    m_random_generator.seed(static_cast<unsigned long>(::time(nullptr)));
+#endif
+
+    auto endpoint = io::udp::endpoint(m_context.config.network.group, 0);
+
+    if(m_context.config.network.aggregate) {
+        io::udp::endpoint bindpoint("0.0.0.0", 10054);
+
+        m_sink.reset(new io::socket<io::udp>());
+
+        if(::bind(m_sink->fd(), bindpoint.data(), bindpoint.size()) != 0) {
+            throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
+        }
+
+        COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), bindpoint);
+
+        group_req request;
+
+        std::memset(&request, 0, sizeof(request));
+
+        request.gr_interface = 0;
+
+        std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
+
+        if(::setsockopt(m_sink->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
+            throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
+        }
+
+        m_sink_watcher.reset(new ev::io(m_reactor.native()));
+        m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
+        m_sink_watcher->start(m_sink->fd(), ev::READ);
+    }
+
+    endpoint.port(10054);
+
+    COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
+
+    // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
+    m_announce.reset(new io::socket<io::udp>(endpoint));
+
+    const int loop = 0;
+    const int life = IP_DEFAULT_MULTICAST_TTL;
+
+    // NOTE: I don't think these calls might fail at all.
+    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
+
+    m_announce_timer.reset(new ev::timer(m_reactor.native()));
+    m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
+    m_announce_timer->start(0.0f, 5.0f);
+
+    m_synchronizer = std::make_shared<synchronize_slot_t>(*this);
+
+    on<io::locator::synchronize>(m_synchronizer);
+}
+
+void
+locator_t::disconnect() {
+    // Disconnect all the outgoing peers.
+    m_remotes.clear();
+
+    // Disable the synchronize method.
+    forget<io::locator::synchronize>();
+
+    // Disconnect all the clients.
+    m_synchronizer->shutdown();
+    m_synchronizer.reset();
+
+    m_announce_timer.reset();
+    m_announce.reset();
+
+    m_sink_watcher.reset();
+    m_sink.reset();
 }
 
 namespace {
@@ -332,68 +402,6 @@ locator_t::dump() const {
 }
 
 void
-locator_t::connect() {
-#if defined(__clang__) || defined(HAVE_GCC46)
-    std::random_device device;
-    m_random_generator.seed(device());
-#else
-    m_random_generator.seed(static_cast<unsigned long>(::time(nullptr)));
-#endif
-
-    auto endpoint = io::udp::endpoint(m_context.config.network.group, 0);
-
-    if(m_context.config.network.aggregate) {
-        io::udp::endpoint bindpoint("0.0.0.0", 10054);
-
-        m_sink.reset(new io::socket<io::udp>());
-
-        if(::bind(m_sink->fd(), bindpoint.data(), bindpoint.size()) != 0) {
-            throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
-        }
-
-        COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), bindpoint);
-
-        group_req request;
-
-        std::memset(&request, 0, sizeof(request));
-
-        request.gr_interface = 0;
-
-        std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
-
-        if(::setsockopt(m_sink->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
-            throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
-        }
-
-        m_sink_watcher.reset(new ev::io(m_reactor.native()));
-        m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
-        m_sink_watcher->start(m_sink->fd(), ev::READ);
-    }
-
-    endpoint.port(10054);
-
-    COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
-
-    // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
-    m_announce.reset(new io::socket<io::udp>(endpoint));
-
-    const int loop = 0;
-    const int life = IP_DEFAULT_MULTICAST_TTL;
-
-    // NOTE: I don't think these calls might fail at all.
-    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
-    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
-
-    m_announce_timer.reset(new ev::timer(m_reactor.native()));
-    m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
-    m_announce_timer->start(0.0f, 5.0f);
-
-    m_synchronizer = std::make_shared<synchronize_slot_t>(*this);
-
-    on<io::locator::synchronize>(m_synchronizer);
-}
-
-void
 locator_t::on_announce_event(ev::io&, int) {
     char buffer[1024];
     std::error_code ec;
@@ -443,12 +451,12 @@ locator_t::on_announce_event(ev::io&, int) {
             return;
         }
 
-        auto on_response = std::bind(&locator_t::on_response, this, key, _1);
-        auto on_disconnect = std::bind(&locator_t::on_disconnect, this, key, _1);
+        auto on_message = std::bind(&locator_t::on_message, this, key, _1);
+        auto on_failure = std::bind(&locator_t::on_failure, this, key, _1);
         auto on_timeout = std::bind(&locator_t::on_timeout, this, key);
 
-        channel->wr->bind(on_disconnect);
-        channel->rd->bind(on_response, on_disconnect);
+        channel->wr->bind(on_failure);
+        channel->rd->bind(on_message, on_failure);
 
         auto timeout = std::make_shared<io::timeout_t>(m_reactor);
 
@@ -491,7 +499,7 @@ locator_t::on_announce_timer(ev::timer&, int) {
 }
 
 void
-locator_t::on_response(const remote_t::key_type& key, const io::message_t& message) {
+locator_t::on_message(const remote_t::key_type& key, const io::message_t& message) {
     switch(message.id()) {
         case io::event_traits<io::rpc::chunk>::id: {
             std::string chunk;
@@ -540,7 +548,7 @@ locator_t::on_response(const remote_t::key_type& key, const io::message_t& messa
 }
 
 void
-locator_t::on_disconnect(const remote_t::key_type& key, const std::error_code& ec) {
+locator_t::on_failure(const remote_t::key_type& key, const std::error_code& ec) {
     COCAINE_LOG_WARNING(
         m_log,
         "node '%s' has unexpectedly disconnected - [%d] %s",

@@ -251,6 +251,10 @@ context_t::~context_t() {
 
     m_locator->terminate();
 
+    if(!config.network.group.empty()) {
+        dynamic_cast<locator_t&>(m_locator->dispatch()).disconnect();
+    }
+
     COCAINE_LOG_INFO(blog, "stopping the services");
     
     for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
@@ -277,6 +281,10 @@ context_t::bootstrap() {
     // Service locator internals.
     auto locator_reactor = std::make_shared<io::reactor_t>();
     auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
+
+    if(!config.network.group.empty()) {
+        locator->connect();
+    }
 
     m_locator.reset(new actor_t(
         locator_reactor,

@@ -10,6 +10,7 @@ cocaine-core (0.10.5-5) unstable; urgency=low
     on MacOS and probably some other OSes.
   * Bugfix: do not die when an invalid message is received by an actor.
   * Bugfix: make use of timeouts in app_t::info() method.
+  * Bugfix: don't spam remote peers about service withdrawal on shutdown.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 19 Jun 2013 23:16:21 +0400
 
