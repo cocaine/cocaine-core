@@ -21,32 +21,34 @@
 #include "cocaine/rpc/message.hpp"
 
 namespace {
-    class rpc_category_t:
-        public std::error_category
-    {
-        virtual
-        const char*
-        name() const throw() {
-            return "rpc";
+
+class rpc_category_t:
+    public std::error_category
+{
+    virtual
+    const char*
+    name() const throw() {
+        return "rpc";
+    }
+
+    virtual
+    std::string
+    message(int code) const {
+        switch(code) {
+            case cocaine::io::rpc_errc::parse_error:
+                return "invalid bytes";
+
+            case cocaine::io::rpc_errc::invalid_format:
+                return "invalid format";
+
+            default:
+                return "unknown error";
         }
+    }
+};
 
-        virtual
-        std::string
-        message(int code) const {
-            switch(code) {
-                case cocaine::io::rpc_errc::parse_error:
-                    return "invalid bytes";
+static rpc_category_t category_instance;
 
-                case cocaine::io::rpc_errc::invalid_format:
-                    return "invalid format";
-
-                default:
-                    return "unknown error";
-            }
-        }
-    };
-
-    static rpc_category_t category_instance;
 }
 
 namespace cocaine { namespace io {

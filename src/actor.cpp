@@ -132,8 +132,8 @@ actor_t::terminate() {
     m_connectors.clear();
 }
 
-std::vector<tcp::endpoint>
-actor_t::endpoints() const {
+auto
+actor_t::endpoints() const -> std::vector<tcp::endpoint> {
     BOOST_ASSERT(!m_connectors.empty());
 
     std::vector<tcp::endpoint> endpoints;
@@ -145,8 +145,8 @@ actor_t::endpoints() const {
     return endpoints;
 }
 
-dispatch_t&
-actor_t::dispatch() {
+auto
+actor_t::dispatch() -> dispatch_t& {
     return *m_dispatch;
 }
 
