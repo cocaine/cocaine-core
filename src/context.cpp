@@ -277,11 +277,11 @@ context_t::bootstrap() {
     auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
 
     // Service locator internals.
-    auto locator_reactor = std::make_shared<io::reactor_t>();
-    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
+    auto reactor = std::make_shared<io::reactor_t>();
+    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *reactor));
 
     m_locator.reset(new actor_t(
-        locator_reactor,
+        reactor,
         std::move(locator)
     ));
 
@@ -295,7 +295,7 @@ context_t::bootstrap() {
     std::unique_ptr<actor_t> service;
 
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
-        auto reactor = std::make_shared<io::reactor_t>();
+        reactor = std::make_shared<io::reactor_t>();
 
         COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
 
