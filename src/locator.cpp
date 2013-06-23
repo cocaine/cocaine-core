@@ -451,16 +451,20 @@ locator_t::on_announce_event(ev::io&, int) {
             return;
         }
 
-        auto on_message = std::bind(&locator_t::on_message, this, key, _1);
-        auto on_failure = std::bind(&locator_t::on_failure, this, key, _1);
-        auto on_timeout = std::bind(&locator_t::on_timeout, this, key);
+        channel->rd->bind(
+            std::bind(&locator_t::on_message, this, key, _1),
+            std::bind(&locator_t::on_failure, this, key, _1)
+        );
 
-        channel->wr->bind(on_failure);
-        channel->rd->bind(on_message, on_failure);
+        channel->wr->bind(
+            std::bind(&locator_t::on_failure, this, key, _1)
+        );
 
         auto timeout = std::make_shared<io::timeout_t>(m_reactor);
 
-        timeout->bind(on_timeout);
+        timeout->bind(
+            std::bind(&locator_t::on_timeout, this, key)
+        );
 
         m_remotes[key] = remote_t {
             channel,

@@ -156,12 +156,12 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
     auto channel_ = std::make_shared<channel<io::socket<tcp>>>(*m_reactor, socket_);
 
     channel_->rd->bind(
-        std::bind(&actor_t::on_message,    this, fd, _1),
-        std::bind(&actor_t::on_disconnect, this, fd, _1)
+        std::bind(&actor_t::on_message, this, fd, _1),
+        std::bind(&actor_t::on_failure, this, fd, _1)
     );
 
     channel_->wr->bind(
-        std::bind(&actor_t::on_disconnect, this, fd, _1)
+        std::bind(&actor_t::on_failure, this, fd, _1)
     );
 
     m_channels[fd] = channel_;
@@ -182,6 +182,6 @@ actor_t::on_message(int fd, const message_t& message) {
 }
 
 void
-actor_t::on_disconnect(int fd, const std::error_code& /* ec */) {
+actor_t::on_failure(int fd, const std::error_code& /* ec */) {
     m_channels.erase(fd);
 }

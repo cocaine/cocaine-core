@@ -63,7 +63,7 @@ class actor_t {
         on_message(int fd, const io::message_t& message);
 
         void
-        on_disconnect(int fd, const std::error_code& ec);
+        on_failure(int fd, const std::error_code& ec);
 
     private:
         const std::shared_ptr<io::reactor_t> m_reactor;
