@@ -252,7 +252,7 @@ context_t::~context_t() {
     m_locator->terminate();
 
     if(!config.network.group.empty()) {
-        dynamic_cast<locator_t&>(m_locator->dispatch()).disconnect();
+        static_cast<locator_t&>(m_locator->dispatch()).disconnect();
     }
 
     COCAINE_LOG_INFO(blog, "stopping the services");
@@ -264,12 +264,12 @@ context_t::~context_t() {
 
 void
 context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
-    dynamic_cast<locator_t&>(m_locator->dispatch()).attach(name, std::move(service));
+    static_cast<locator_t&>(m_locator->dispatch()).attach(name, std::move(service));
 }
 
 std::unique_ptr<actor_t>
 context_t::detach(const std::string& name) {
-    return dynamic_cast<locator_t&>(m_locator->dispatch()).detach(name);
+    return static_cast<locator_t&>(m_locator->dispatch()).detach(name);
 }
 
 void
@@ -320,7 +320,7 @@ context_t::bootstrap() {
     }
 
     if(!config.network.group.empty()) {
-        dynamic_cast<locator_t&>(m_locator->dispatch()).connect();
+        static_cast<locator_t&>(m_locator->dispatch()).connect();
     }
 
     std::vector<io::tcp::endpoint> endpoints = {
