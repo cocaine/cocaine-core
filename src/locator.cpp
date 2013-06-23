@@ -165,7 +165,7 @@ locator_t::~locator_t() {
             m_services.size() == 1 ? "service" : "services"
         );
 
-        for(auto it = m_services.begin(); it != m_services.end(); ++it) {
+        for(auto it = m_services.rbegin(); it != m_services.rend(); ++it) {
             it->second->terminate();
         }
 
