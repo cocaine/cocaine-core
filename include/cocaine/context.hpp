@@ -131,8 +131,8 @@ class context_t {
         void
         attach(const std::string& name, std::unique_ptr<actor_t>&& service);
 
-        std::unique_ptr<actor_t>
-        detach(const std::string& name);
+        auto
+        detach(const std::string& name) -> std::unique_ptr<actor_t>;
 
     public:
         const config_t config;

@@ -296,8 +296,8 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     }
 }
 
-std::unique_ptr<actor_t>
-locator_t::detach(const std::string& name) {
+auto
+locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
     std::unique_ptr<actor_t> service;
     
     {

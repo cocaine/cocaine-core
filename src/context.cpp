@@ -267,8 +267,8 @@ context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     static_cast<locator_t&>(m_locator->dispatch()).attach(name, std::move(service));
 }
 
-std::unique_ptr<actor_t>
-context_t::detach(const std::string& name) {
+auto
+context_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
     return static_cast<locator_t&>(m_locator->dispatch()).detach(name);
 }
 
