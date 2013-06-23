@@ -52,8 +52,11 @@ struct locator_t::synchronize_slot_t:
 
     virtual
     void
-    operator()(const msgpack::object& /* unpacked */, const api::stream_ptr_t& upstream) {
-        dump(upstream);
+    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
+        io::detail::invoke<io::event_traits<io::locator::synchronize>::tuple_type>::apply(
+            std::bind(&synchronize_slot_t::dump, this, upstream),
+            unpacked
+        );
 
         // Save this upstream for the future notifications.
         m_upstreams.push_back(upstream);
