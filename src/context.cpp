@@ -276,15 +276,9 @@ void
 context_t::bootstrap() {
     auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
 
-    COCAINE_LOG_INFO(blog, "starting the service locator");
-
     // Service locator internals.
     auto locator_reactor = std::make_shared<io::reactor_t>();
     auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
-
-    if(!config.network.group.empty()) {
-        locator->connect();
-    }
 
     m_locator.reset(new actor_t(
         locator_reactor,
@@ -325,9 +319,15 @@ context_t::bootstrap() {
         attach(it->first, std::move(service));
     }
 
+    if(!config.network.group.empty()) {
+        dynamic_cast<locator_t&>(m_locator->dispatch()).connect();
+    }
+
     std::vector<io::tcp::endpoint> endpoints = {
         { "0.0.0.0", config.network.locator }
     };
+
+    COCAINE_LOG_INFO(blog, "starting the service locator");
 
     m_locator->run(endpoints);
 }
