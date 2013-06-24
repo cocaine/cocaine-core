@@ -111,13 +111,22 @@ public:
 private:
     void
     process(ev::prepare&, int) {
-        std::lock_guard<std::mutex> guard(m_job_queue_mutex);
+        job_type job;
 
-        for(auto it = m_job_queue.begin(); it != m_job_queue.end(); ++it) {
-            (*it)();
+        while(!m_job_queue.empty()) {
+            std::unique_lock<std::mutex> lock(m_job_queue_mutex);
+
+            if(m_job_queue.empty()) {
+                return;
+            }
+
+            job = m_job_queue.front();
+            m_job_queue.pop_front();
+
+            lock.unlock();
+
+            job();
         }
-
-        m_job_queue.clear();
     }
 
     void
