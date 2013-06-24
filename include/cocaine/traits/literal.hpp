@@ -25,8 +25,9 @@
 
 namespace cocaine { namespace io {
 
-// This magic specialization allows to pack string literals. Unpacking is intentionally
-// prohibited as it might force us to silently drop characters if the buffer is not long enough.
+// This magic specialization allows to pack string literals. It packs only the meaningful bytes,
+// trailing zero is dropped. Unpacking is intentionally prohibited as it might force us to silently
+// drop characters if the buffer is not long enough.
 
 template<size_t N>
 struct type_traits<char[N]> {
@@ -34,8 +35,8 @@ struct type_traits<char[N]> {
     static inline
     void
     pack(msgpack::packer<Stream>& packer, const char* source) {
-        packer.pack_raw(N);
-        packer.pack_raw_body(source, N);
+        packer.pack_raw(N - 1);
+        packer.pack_raw_body(source, N - 1);
     }
 };
 
