@@ -1,3 +1,11 @@
+cocaine-core (0.10.5-6) unstable; urgency=low
+
+  * Bugfix: invoke event loop jobs unlocked.
+  * Bugfix: missing build dependencies in tuple traits.
+  * Bugfix: do not pack trailing zeroes in string literals.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 24 Jun 2013 18:58:28 +0400
+
 cocaine-core (0.10.5-5) unstable; urgency=low
 
   * Port ranges. Instead of binding on random ports, services can now bind on
