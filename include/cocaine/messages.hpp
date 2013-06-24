@@ -25,6 +25,7 @@
 
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
+#include "cocaine/rpc/types.hpp"
 
 namespace cocaine { namespace io {
 
@@ -97,7 +98,7 @@ namespace app {
 
         typedef streamed<
          /* Some other arbitrary sequence of bytes, streamed back to the client in chunks. */
-            std::string
+            raw_t
         > result_type;
     };
 }
