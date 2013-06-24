@@ -22,6 +22,7 @@
 #define COCAINE_TUPLE_TYPE_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
+#include "cocaine/traits/typelist.hpp"
 
 #include "cocaine/tuple.hpp"
 
