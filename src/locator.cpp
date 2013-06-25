@@ -195,6 +195,8 @@ locator_t::connect() {
         m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
         m_sink_watcher->start(m_sink->fd(), ev::READ);
 
+        COCAINE_LOG_INFO(m_log, "using the '%s' gateway", m_context.config.network.gateway.get().type);
+
         m_gateway = m_context.get<api::gateway_t>(
             m_context.config.network.gateway.get().type,
             m_context,
