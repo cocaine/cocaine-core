@@ -61,11 +61,15 @@ adhoc_t::resolve(const std::string& name) const {
 
     std::advance(it, distribution(m_random_generator));
 
+    auto endpoint = std::get<0>(it->second.info);
+
     COCAINE_LOG_DEBUG(
         m_log,
-        "providing '%s' using remote node '%s'",
+        "providing '%s' using remote node '%s' on %s:%d",
         name,
-        it->second.uuid
+        it->second.uuid,
+        std::get<0>(endpoint),
+        std::get<1>(endpoint)
     );
 
     return it->second.info;
