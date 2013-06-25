@@ -43,7 +43,7 @@ class gateway_t {
 
         virtual
         void
-        mixin(const std::string& uuid, synchronize_result_type dump) = 0;
+        consume(const std::string& uuid, synchronize_result_type dump) = 0;
 
         virtual
         void

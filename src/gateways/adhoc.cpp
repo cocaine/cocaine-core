@@ -45,34 +45,34 @@ adhoc_t::~adhoc_t() {
 
 resolve_result_type
 adhoc_t::resolve(const std::string& name) const {
-    remote_service_map_t::const_iterator begin, end;
+    remote_service_map_t::const_iterator it, end;
 
-    std::tie(begin, end) = m_remote_services.equal_range(name);
+    std::tie(it, end) = m_remote_services.equal_range(name);
 
-    if(begin == end) {
+    if(it == end) {
         throw cocaine::error_t("the specified service is not available in the group");
     }
 
 #if defined(__clang__) || defined(HAVE_GCC46)
-    std::uniform_int_distribution<int> distribution(0, std::distance(begin, end) - 1);
+    std::uniform_int_distribution<int> distribution(0, std::distance(it, end) - 1);
 #else
-    std::uniform_int<int> distribution(0, std::distance(begin, end) - 1);
+    std::uniform_int<int> distribution(0, std::distance(it, end) - 1);
 #endif
 
-    std::advance(begin, distribution(m_random_generator));
+    std::advance(it, distribution(m_random_generator));
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "providing service '%s' using remote node '%s'",
+        "providing '%s' using remote node '%s'",
         name,
-        std::get<0>(begin->second)
+        it->second.uuid
     );
 
-    return std::get<1>(begin->second);
+    return it->second.info;
 }
 
 void
-adhoc_t::mixin(const std::string& uuid, synchronize_result_type dump) {
+adhoc_t::consume(const std::string& uuid, synchronize_result_type dump) {
     // Clear the old remote node services.
     prune(uuid);
 
@@ -85,10 +85,12 @@ adhoc_t::mixin(const std::string& uuid, synchronize_result_type dump) {
     );
 
     for(auto it = dump.begin(); it != dump.end(); ++it) {
-        m_remote_services.insert(std::make_pair(
-            it->first,
-            std::make_tuple(uuid, it->second)
-        ));
+        remote_service_t service = {
+            uuid,
+            it->second
+        };
+
+        m_remote_services.insert(std::make_pair(it->first, service));
     }
 }
 
@@ -100,7 +102,7 @@ adhoc_t::prune(const std::string& uuid) {
     COCAINE_LOG_DEBUG(m_log, "pruning services for node '%s'", uuid);
 
     while(it != end) {
-        if(std::get<0>(it->second) == uuid) {
+        if(it->second.uuid == uuid) {
             m_remote_services.erase(it++);
         } else {
             ++it;

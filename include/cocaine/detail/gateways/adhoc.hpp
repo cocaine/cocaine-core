@@ -42,7 +42,7 @@ class adhoc_t:
 
         virtual
         void
-        mixin(const std::string& uuid, api::synchronize_result_type dump);
+        consume(const std::string& uuid, api::synchronize_result_type dump);
 
         virtual
         void
@@ -57,10 +57,12 @@ class adhoc_t:
         mutable std::minstd_rand0 m_random_generator;
 #endif
 
-        typedef std::multimap<
-            std::string,
-            std::tuple<std::string, api::resolve_result_type>
-        > remote_service_map_t;
+        struct remote_service_t {
+            std::string uuid;
+            api::resolve_result_type info;
+        };
+
+        typedef std::multimap<std::string, remote_service_t> remote_service_map_t;
 
         remote_service_map_t m_remote_services;
 };

@@ -364,7 +364,7 @@ locator_t::resolve(const std::string& name) const {
         }
     }
 
-    COCAINE_LOG_DEBUG(m_log, "providing service '%s' using local node", name);
+    COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);
 
     return query(local->second);
 }
@@ -501,7 +501,7 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
 
             unpacked.get() >> dump;
 
-            m_gateway->mixin(uuid, dump);
+            m_gateway->consume(uuid, dump);
 
             break;
         }
