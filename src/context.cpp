@@ -120,7 +120,6 @@ config_t::config_t(const std::string& config_path) {
 
     // Multicast configuration
 
-    network.aggregate = root.get("aggregate", false).asBool();
     network.group = root.get("group", "").asString();
 
     // Hostname configuration
@@ -159,7 +158,7 @@ config_t::config_t(const std::string& config_path) {
 
     freeaddrinfo(result);
 
-    // Port configuration
+    // Locator configuration
 
     network.locator = root.get("locator", defaults::locator_port).asUInt();
 
@@ -168,6 +167,13 @@ config_t::config_t(const std::string& config_path) {
         uint16_t max_port = root["port-range"].get(1u, defaults::max_port).asUInt();
 
         network.ports = std::make_tuple(min_port, max_port);
+    }
+
+    if(!root["gateway"].empty()) {
+        network.gateway = {
+            root["gateway"].get("type", "adhoc").asString(),
+            root["gateway"]["args"]
+        };
     }
 
     // Component configuration

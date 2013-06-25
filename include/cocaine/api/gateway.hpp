@@ -18,58 +18,49 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ISOLATE_API_HPP
-#define COCAINE_ISOLATE_API_HPP
+#ifndef COCAINE_GATEWAY_API_HPP
+#define COCAINE_GATEWAY_API_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/messages.hpp"
 #include "cocaine/repository.hpp"
 
 #include "json/json.h"
 
-#include <mutex>
-
 namespace cocaine { namespace api {
 
-struct handle_t {
-    virtual
-   ~handle_t() {
-        // Empty.
-    }
+typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
+typedef io::event_traits<io::locator::synchronize>::result_type synchronize_result_type;
 
-    virtual
-    void
-    terminate() = 0;
-};
-
-class isolate_t {
+class gateway_t {
     public:
-        typedef isolate_t category_type;
+        typedef gateway_t category_type;
 
     public:
         virtual
-       ~isolate_t() {
-            // Empty.
-        }
+        resolve_result_type
+        resolve(const std::string& name) const = 0;
 
         virtual
-        std::unique_ptr<handle_t>
-        spawn(const std::string& path,
-              const std::map<std::string, std::string>& args,
-              const std::map<std::string, std::string>& environment,
-              int pipe) = 0;
+        void
+        mixin(const std::string& uuid, synchronize_result_type dump) = 0;
+
+        virtual
+        void
+        prune(const std::string& uuid) = 0;
 
     protected:
-        isolate_t(context_t&,
+        gateway_t(context_t&,
                   const std::string& /* name */,
                   const Json::Value& /* args */)
         { }
 };
 
 template<>
-struct category_traits<isolate_t> {
-    typedef std::shared_ptr<isolate_t> ptr_type;
+struct category_traits<gateway_t> {
+    typedef std::unique_ptr<gateway_t> ptr_type;
 
-    struct factory_type: public basic_factory<isolate_t> {
+    struct factory_type: public basic_factory<gateway_t> {
         virtual
         ptr_type
         get(context_t& context, const std::string& name, const Json::Value& args) = 0;
@@ -80,37 +71,8 @@ struct category_traits<isolate_t> {
         virtual
         ptr_type
         get(context_t& context, const std::string& name, const Json::Value& args) {
-            std::lock_guard<std::mutex> guard(m_mutex);
-
-            typename instance_map_t::iterator it(m_instances.find(name));
-
-            ptr_type instance;
-
-            if(it != m_instances.end()) {
-                instance = it->second.lock();
-            }
-
-            if(!instance) {
-                instance = std::make_shared<T>(
-                    std::ref(context),
-                    name,
-                    args
-                );
-
-                m_instances[name] = instance;
-            }
-
-            return instance;
+            return ptr_type(new T(context, name, args));
         }
-
-    private:
-        typedef std::map<
-            std::string,
-            std::weak_ptr<isolate_t>
-        > instance_map_t;
-
-        instance_map_t m_instances;
-        std::mutex m_mutex;
     };
 };
 

@@ -141,26 +141,17 @@ template<>
 struct category_traits<storage_t> {
     typedef std::shared_ptr<storage_t> ptr_type;
 
-    struct factory_type:
-        public basic_factory<storage_t>
-    {
+    struct factory_type: public basic_factory<storage_t> {
         virtual
         ptr_type
-        get(context_t& context,
-            const std::string& name,
-            const Json::Value& args) = 0;
+        get(context_t& context, const std::string& name, const Json::Value& args) = 0;
     };
 
     template<class T>
-    struct default_factory:
-        public factory_type
-    {
+    struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(context_t& context,
-            const std::string& name,
-            const Json::Value& args)
-        {
+        get(context_t& context, const std::string& name, const Json::Value& args) {
             std::lock_guard<std::mutex> guard(m_mutex);
 
             typename instance_map_t::iterator it(m_instances.find(name));
@@ -196,8 +187,7 @@ struct category_traits<storage_t> {
 };
 
 category_traits<storage_t>::ptr_type
-storage(context_t& context,
-        const std::string& name);
+storage(context_t& context, const std::string& name);
 
 }} // namespace cocaine::api
 

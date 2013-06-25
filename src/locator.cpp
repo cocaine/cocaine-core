@@ -20,6 +20,8 @@
 
 #include "cocaine/detail/locator.hpp"
 
+#include "cocaine/api/gateway.hpp"
+
 #include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/resolver.hpp"
 #include "cocaine/asio/socket.hpp"
@@ -164,16 +166,9 @@ locator_t::~locator_t() {
 
 void
 locator_t::connect() {
-#if defined(__clang__) || defined(HAVE_GCC46)
-    std::random_device device;
-    m_random_generator.seed(device());
-#else
-    m_random_generator.seed(static_cast<unsigned long>(::time(nullptr)));
-#endif
-
     auto endpoint = io::udp::endpoint(m_context.config.network.group, 0);
 
-    if(m_context.config.network.aggregate) {
+    if(m_context.config.network.gateway) {
         io::udp::endpoint bindpoint("0.0.0.0", 10054);
 
         m_sink.reset(new io::socket<io::udp>());
@@ -199,6 +194,13 @@ locator_t::connect() {
         m_sink_watcher.reset(new ev::io(m_reactor.native()));
         m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
         m_sink_watcher->start(m_sink->fd(), ev::READ);
+
+        m_gateway = m_context.get<api::gateway_t>(
+            m_context.config.network.gateway.get().type,
+            m_context,
+            "gateway",
+            m_context.config.network.gateway.get().args
+        );
     }
 
     endpoint.port(10054);
@@ -238,6 +240,8 @@ locator_t::disconnect() {
 
     m_announce_timer.reset();
     m_announce.reset();
+
+    m_gateway.reset();
 
     m_sink_watcher.reset();
     m_sink.reset();
@@ -346,41 +350,18 @@ locator_t::query(const std::unique_ptr<actor_t>& service) const {
 
 resolve_result_type
 locator_t::resolve(const std::string& name) const {
-    std::unique_lock<std::mutex> lock(m_services_mutex);
+    std::lock_guard<std::mutex> guard(m_services_mutex);
 
     auto local = std::find_if(m_services.begin(), m_services.end(), match {
         name
     });
 
     if(local == m_services.end()) {
-        lock.unlock();
-
-        remote_service_map_t::const_iterator begin, end;
-
-        std::tie(begin, end) = m_remote_services.equal_range(name);
-
-        if(begin == end) {
+        if(m_gateway) {
+            return m_gateway->resolve(name);
+        } else {
             throw cocaine::error_t("the specified service is not available");
         }
-
-#if defined(__clang__) || defined(HAVE_GCC46)
-        std::uniform_int_distribution<int> distribution(0, std::distance(begin, end) - 1);
-#else
-        std::uniform_int<int> distribution(0, std::distance(begin, end) - 1);
-#endif
-
-        std::advance(begin, distribution(m_random_generator));
-
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "providing service '%s' using remote node '%s' on '%s:%d'",
-            name,
-            std::get<0>(std::get<0>(begin->second)),
-            std::get<1>(std::get<0>(begin->second)),
-            std::get<2>(std::get<0>(begin->second))
-        );
-
-        return std::get<1>(begin->second);
     }
 
     COCAINE_LOG_DEBUG(m_log, "providing service '%s' using local node", name);
@@ -419,10 +400,10 @@ locator_t::on_announce_event(ev::io&, int) {
     msgpack::unpacked unpacked;
     msgpack::unpack(&unpacked, buffer, size);
 
-    remote_t::key_type key;
+    key_type key;
 
     try {
-        key = unpacked.get().as<remote_t::key_type>();
+        key = unpacked.get().as<key_type>();
     } catch(const std::exception& e) {
         COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
         return;
@@ -431,7 +412,7 @@ locator_t::on_announce_event(ev::io&, int) {
     if(m_remotes.find(key) == m_remotes.end()) {
         std::string uuid;
         std::string hostname;
-        uint16_t port;
+        uint16_t    port;
 
         std::tie(uuid, hostname, port) = key;
 
@@ -485,7 +466,7 @@ locator_t::on_announce_timer(ev::timer&, int) {
     msgpack::sbuffer buffer;
     msgpack::packer<msgpack::sbuffer> packer(buffer);
 
-    packer << remote_t::key_type(
+    packer << key_type(
         m_id.string(),
         m_context.config.network.hostname,
         m_context.config.network.locator
@@ -503,7 +484,11 @@ locator_t::on_announce_timer(ev::timer&, int) {
 }
 
 void
-locator_t::on_message(const remote_t::key_type& key, const io::message_t& message) {
+locator_t::on_message(const key_type& key, const io::message_t& message) {
+    std::string uuid;
+
+    std::tie(uuid, std::ignore, std::ignore) = key;
+
     switch(message.id()) {
         case io::event_traits<io::rpc::chunk>::id: {
             std::string chunk;
@@ -516,23 +501,7 @@ locator_t::on_message(const remote_t::key_type& key, const io::message_t& messag
 
             unpacked.get() >> dump;
 
-            // Clear the old remote node services.
-            prune(key);
-
-            COCAINE_LOG_DEBUG(
-                m_log,
-                "discovered %llu %s on node '%s'",
-                dump.size(),
-                dump.size() == 1 ? "service" : "services",
-                std::get<0>(key)
-            );
-
-            for(auto it = dump.begin(); it != dump.end(); ++it) {
-                m_remote_services.insert(std::make_pair(
-                    it->first,
-                    std::make_tuple(key, it->second)
-                ));
-            }
+            m_gateway->mixin(uuid, dump);
 
             break;
         }
@@ -541,10 +510,7 @@ locator_t::on_message(const remote_t::key_type& key, const io::message_t& messag
         case io::event_traits<io::rpc::choke>::id:
             COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", std::get<0>(key));
 
-            // Drop the remote node services.
-            prune(key);
-
-            // Disconnect.
+            m_gateway->prune(uuid);
             m_remotes.erase(key);
 
             break;
@@ -552,51 +518,31 @@ locator_t::on_message(const remote_t::key_type& key, const io::message_t& messag
 }
 
 void
-locator_t::on_failure(const remote_t::key_type& key, const std::error_code& ec) {
+locator_t::on_failure(const key_type& key, const std::error_code& ec) {
+    std::string uuid;
+
+    std::tie(uuid, std::ignore, std::ignore) = key;
+
     COCAINE_LOG_WARNING(
         m_log,
         "node '%s' has unexpectedly disconnected - [%d] %s",
-        std::get<0>(key),
+        uuid,
         ec.value(),
         ec.message()
     );
 
-    // Drop the remote node services.
-    prune(key);
-
-    // Disconnect.
+    m_gateway->prune(uuid);
     m_remotes.erase(key);
 }
 
 void
-locator_t::on_timeout(const remote_t::key_type& key) {
-    COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", std::get<0>(key));
+locator_t::on_timeout(const key_type& key) {
+    std::string uuid;
 
-    // Drop the remote node services.
-    prune(key);
+    std::tie(uuid, std::ignore, std::ignore) = key;
 
-    // Disconnect.
+    COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", uuid);
+
+    m_gateway->prune(uuid);
     m_remotes.erase(key);
-}
-
-void
-locator_t::prune(const remote_t::key_type& key) {
-    auto it = m_remote_services.begin(),
-         end = m_remote_services.end();
-
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "pruning services for node '%s' on '%s:%d'",
-        std::get<0>(key),
-        std::get<1>(key),
-        std::get<2>(key)
-    );
-
-    while(it != end) {
-        if(std::get<0>(it->second) == key) {
-            m_remote_services.erase(it++);
-        } else {
-            ++it;
-        }
-    }
 }

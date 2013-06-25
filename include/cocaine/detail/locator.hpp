@@ -29,7 +29,6 @@
 #include "cocaine/messages.hpp"
 
 #include <queue>
-#include <random>
 
 namespace ev {
     struct io;
@@ -47,15 +46,11 @@ class locator_t:
     public dispatch_t
 {
     struct remote_t {
-        typedef std::tuple<
-            std::string,
-            std::string,
-            uint16_t
-        > key_type;
-
         std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
         std::shared_ptr<io::timeout_t> timeout;
     };
+
+    typedef std::tuple<std::string, std::string, uint16_t> key_type;
 
     public:
         locator_t(context_t& context, io::reactor_t& reactor);
@@ -85,7 +80,7 @@ class locator_t:
         synchronize_result_type
         dump() const;
 
-        // Cluster discovery
+        // Cluster I/O
 
         void
         on_announce_event(ev::io&, int);
@@ -94,18 +89,13 @@ class locator_t:
         on_announce_timer(ev::timer&, int);
 
         void
-        on_message(const remote_t::key_type& key, const io::message_t& message);
+        on_message(const key_type& key, const io::message_t& message);
 
         void
-        on_failure(const remote_t::key_type& key, const std::error_code& ec);
+        on_failure(const key_type& key, const std::error_code& ec);
 
         void
-        on_timeout(const remote_t::key_type& key);
-
-        // Housekeeping
-
-        void
-        prune(const remote_t::key_type& key);
+        on_timeout(const key_type& key);
 
     private:
         context_t& m_context;
@@ -116,11 +106,11 @@ class locator_t:
 
         typedef std::vector<
             std::pair<std::string, std::unique_ptr<actor_t>>
-        > local_service_list_t;
+        > service_list_t;
 
         // These are the instances of all the configured services, stored as a vector of pairs to
         // preserve the initialization order.
-        local_service_list_t m_services;
+        service_list_t m_services;
 
         // Ports available for allocation.
         std::priority_queue<uint16_t, std::vector<uint16_t>, std::greater<uint16_t>> m_ports;
@@ -136,9 +126,12 @@ class locator_t:
         std::unique_ptr<io::socket<io::udp>> m_sink;
         std::unique_ptr<ev::io> m_sink_watcher;
 
+        // Remote gateway.
+        std::unique_ptr<api::gateway_t> m_gateway;
+
         // These are remote channels indexed by endpoint and uuid. The uuid is required to easily
         // disambiguate between different runtime instances on the same host.
-        std::map<remote_t::key_type, remote_t> m_remotes;
+        std::map<key_type, remote_t> m_remotes;
 
         // Announce emitter.
         std::unique_ptr<io::socket<io::udp>> m_announce;
@@ -148,19 +141,6 @@ class locator_t:
 
         // Synchronizing slot.
         std::shared_ptr<synchronize_slot_t> m_synchronizer;
-
-#if defined(__clang__) || defined(HAVE_GCC46)
-        mutable std::default_random_engine m_random_generator;
-#else
-        mutable std::minstd_rand0 m_random_generator;
-#endif
-
-        typedef std::multimap<
-            std::string,
-            std::tuple<remote_t::key_type, resolve_result_type>
-        > remote_service_map_t;
-
-        remote_service_map_t m_remote_services;
 };
 
 } // namespace cocaine

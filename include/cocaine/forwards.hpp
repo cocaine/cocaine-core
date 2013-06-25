@@ -30,6 +30,7 @@ namespace cocaine {
 
     namespace api {
         class driver_t;
+        class gateway_t;
         class isolate_t;
         class logger_t;
         class service_t;

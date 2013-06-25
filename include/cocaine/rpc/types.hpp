@@ -27,4 +27,4 @@ struct raw_t;
 
 }} // namespace cocaine::io
 
-#endif // COCAINE_IO_TYPES_HPP
+#endif

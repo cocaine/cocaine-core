@@ -69,8 +69,12 @@ struct config_t {
         std::string spool;
     } path;
 
+    struct component_t {
+        std::string type;
+        Json::Value args;
+    };
+
     struct {
-        bool aggregate;
         std::string group;
         std::string hostname;
 
@@ -79,12 +83,10 @@ struct config_t {
 
         // Optional port range available for allocation.
         boost::optional<std::tuple<uint16_t, uint16_t>> ports;
-    } network;
 
-    struct component_t {
-        std::string type;
-        Json::Value args;
-    };
+        // Optional locator gateway.
+        boost::optional<component_t> gateway;
+    } network;
 
     typedef std::map<
         std::string,

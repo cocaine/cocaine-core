@@ -1,4 +1,4 @@
-cocaine-core (0.10.5-7) lucid; urgency=low
+cocaine-core (0.10.5-7) unstable; urgency=low
 
   * Raw result type.
 

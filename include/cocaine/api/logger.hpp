@@ -74,18 +74,14 @@ template<>
 struct category_traits<logger_t> {
     typedef std::unique_ptr<logger_t> ptr_type;
 
-    struct factory_type:
-        public basic_factory<logger_t>
-    {
+    struct factory_type: public basic_factory<logger_t> {
         virtual
         ptr_type
         get(const Json::Value& args) = 0;
     };
 
     template<class T>
-    struct default_factory:
-        public factory_type
-    {
+    struct default_factory: public factory_type {
         virtual
         ptr_type
         get(const Json::Value& args) {
