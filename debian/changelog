@@ -1,4 +1,4 @@
-cocaine-core (0.10.5-9) lucid; urgency=low
+cocaine-core (0.10.5-9) unstable; urgency=low
 
   * Updated configuration format for network stuff.
 
