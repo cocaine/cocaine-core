@@ -166,7 +166,7 @@ locator_t::~locator_t() {
 
 void
 locator_t::connect() {
-    auto endpoint = io::udp::endpoint(m_context.config.network.group, 0);
+    auto endpoint = io::udp::endpoint(m_context.config.network.group.get(), 0);
 
     if(m_context.config.network.gateway) {
         io::udp::endpoint bindpoint("0.0.0.0", 10054);

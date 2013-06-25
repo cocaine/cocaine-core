@@ -1,3 +1,9 @@
+cocaine-core (0.10.5-9) lucid; urgency=low
+
+  * Updated configuration format for network stuff.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 25 Jun 2013 19:13:04 +0400
+
 cocaine-core (0.10.5-8) unstable; urgency=low
 
   * Pluggable gateway support.

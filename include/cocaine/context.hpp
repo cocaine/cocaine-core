@@ -75,11 +75,13 @@ struct config_t {
     };
 
     struct {
-        std::string group;
         std::string hostname;
 
         // Service locator port.
         uint16_t locator;
+
+        // Optional multicast group to join to.
+        boost::optional<std::string> group;
 
         // Optional port range available for allocation.
         boost::optional<std::tuple<uint16_t, uint16_t>> ports;

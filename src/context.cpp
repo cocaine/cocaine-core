@@ -118,10 +118,6 @@ config_t::config_t(const std::string& config_path) {
     validate_path(path.runtime);
     validate_path(path.spool);
 
-    // Multicast configuration
-
-    network.group = root.get("group", "").asString();
-
     // Hostname configuration
 
     char hostname[256];
@@ -160,20 +156,30 @@ config_t::config_t(const std::string& config_path) {
 
     // Locator configuration
 
-    network.locator = root.get("locator", defaults::locator_port).asUInt();
+    if(!root["locator"].empty()) {
+        network.locator = root["locator"].get("port", defaults::locator_port).asUInt();
 
-    if(!root["port-range"].empty()) {
-        uint16_t min_port = root["port-range"].get(0u, defaults::min_port).asUInt();
-        uint16_t max_port = root["port-range"].get(1u, defaults::max_port).asUInt();
-
-        network.ports = std::make_tuple(min_port, max_port);
+        if(!root["locator"]["port-range"].empty()) {
+            network.ports = std::make_tuple(
+                root["locator"]["port-range"].get(0u, defaults::min_port).asUInt(),
+                root["locator"]["port-range"].get(1u, defaults::max_port).asUInt()
+            );
+        }
     }
 
-    if(!root["gateway"].empty()) {
-        network.gateway = {
-            root["gateway"].get("type", "adhoc").asString(),
-            root["gateway"]["args"]
-        };
+    // Cluster configuration
+
+    if(!root["network"].empty()) {
+        if(!root["network"]["group"].empty()) {
+            network.group = root["network"]["group"].asString();
+        }
+
+        if(!root["network"]["gateway"].empty()) {
+            network.gateway = {
+                root["network"]["gateway"].get("type", "adhoc").asString(),
+                root["network"]["gateway"]["args"]
+            };
+        }
     }
 
     // Component configuration
@@ -257,7 +263,7 @@ context_t::~context_t() {
 
     m_locator->terminate();
 
-    if(!config.network.group.empty()) {
+    if(config.network.group) {
         static_cast<locator_t&>(m_locator->dispatch()).disconnect();
     }
 
@@ -325,7 +331,7 @@ context_t::bootstrap() {
         attach(it->first, std::move(service));
     }
 
-    if(!config.network.group.empty()) {
+    if(config.network.group) {
         static_cast<locator_t&>(m_locator->dispatch()).connect();
     }
 
@@ -333,7 +339,7 @@ context_t::bootstrap() {
         { "0.0.0.0", config.network.locator }
     };
 
-    COCAINE_LOG_INFO(blog, "starting the service locator");
+    COCAINE_LOG_INFO(blog, "starting the service locator on port %d", config.network.locator);
 
     m_locator->run(endpoints);
 }
