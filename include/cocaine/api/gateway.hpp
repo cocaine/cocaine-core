@@ -38,6 +38,11 @@ class gateway_t {
 
     public:
         virtual
+       ~gateway_t() {
+            // Empty.
+        }
+
+        virtual
         resolve_result_type
         resolve(const std::string& name) const = 0;
 

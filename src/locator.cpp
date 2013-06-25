@@ -228,9 +228,6 @@ locator_t::connect() {
 
 void
 locator_t::disconnect() {
-    // Disconnect all the outgoing peers.
-    m_remotes.clear();
-
     // Disable the synchronize method.
     forget<io::locator::synchronize>();
 
@@ -241,7 +238,11 @@ locator_t::disconnect() {
     m_announce_timer.reset();
     m_announce.reset();
 
+    // Purge the routing tables.
     m_gateway.reset();
+
+    // Disconnect all the routed peers.
+    m_remotes.clear();
 
     m_sink_watcher.reset();
     m_sink.reset();
