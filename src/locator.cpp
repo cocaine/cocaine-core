@@ -200,7 +200,7 @@ locator_t::connect() {
         m_gateway = m_context.get<api::gateway_t>(
             m_context.config.network.gateway.get().type,
             m_context,
-            "gateway",
+            "service/locator",
             m_context.config.network.gateway.get().args
         );
     }
