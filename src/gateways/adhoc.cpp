@@ -103,7 +103,7 @@ adhoc_t::prune(const std::string& uuid) {
     auto it = m_remote_services.begin(),
          end = m_remote_services.end();
 
-    COCAINE_LOG_DEBUG(m_log, "pruning services for node '%s'", uuid);
+    COCAINE_LOG_DEBUG(m_log, "pruning node '%s'", uuid);
 
     while(it != end) {
         if(it->second.uuid == uuid) {
