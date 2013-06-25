@@ -156,15 +156,13 @@ config_t::config_t(const std::string& config_path) {
 
     // Locator configuration
 
-    if(!root["locator"].empty()) {
-        network.locator = root["locator"].get("port", defaults::locator_port).asUInt();
+    network.locator = root["locator"].get("port", defaults::locator_port).asUInt();
 
-        if(!root["locator"]["port-range"].empty()) {
-            network.ports = std::make_tuple(
-                root["locator"]["port-range"].get(0u, defaults::min_port).asUInt(),
-                root["locator"]["port-range"].get(1u, defaults::max_port).asUInt()
-            );
-        }
+    if(!root["locator"]["port-range"].empty()) {
+        network.ports = std::make_tuple(
+            root["locator"]["port-range"].get(0u, defaults::min_port).asUInt(),
+            root["locator"]["port-range"].get(1u, defaults::max_port).asUInt()
+        );
     }
 
     // Cluster configuration
