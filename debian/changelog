@@ -1,3 +1,9 @@
+cocaine-core (0.10.5-8) unstable; urgency=low
+
+  * Pluggable gateway support.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 25 Jun 2013 18:55:48 +0400
+
 cocaine-core (0.10.5-7) unstable; urgency=low
 
   * Raw result type.
