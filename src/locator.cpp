@@ -486,6 +486,21 @@ locator_t::on_announce_timer(ev::timer&, int) {
     }
 }
 
+namespace {
+    template<class Container>
+    struct deferred_erase_action {
+        typedef Container container_type;
+
+        void
+        operator()() {
+            target.erase(key);
+        }
+
+        container_type& target;
+        const typename container_type::key_type key;
+    };
+}
+
 void
 locator_t::on_message(const key_type& key, const io::message_t& message) {
     std::string uuid;
@@ -514,7 +529,13 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
             COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", std::get<0>(key));
 
             m_gateway->prune(uuid);
-            m_remotes.erase(key);
+
+            // NOTE: It is dangerous to remove the channel while the message is still being
+            // processed, so we defer it via reactor_t::post().
+            m_reactor.post(deferred_erase_action<decltype(m_remotes)> {
+                m_remotes,
+                key
+            });
 
             break;
     }

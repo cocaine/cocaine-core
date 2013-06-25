@@ -121,12 +121,10 @@ private:
 
         if(received <= 0) {
             if(received == 0) {
+                m_socket_watcher.stop();
+
                 // NOTE: This means that the remote peer has closed the connection.
                 m_handle_error(ec);
-
-                // NOTE: Stop only the socket watcher, so that the remaining bytes could still be
-                // parsed, if any messages are stuck in the ring.
-                m_socket_watcher.stop();
             }
 
             return;

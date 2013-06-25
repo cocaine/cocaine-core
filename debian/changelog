@@ -1,3 +1,9 @@
+cocaine-core (0.10.5-10) unstable; urgency=low
+
+  * Bugfix: do not crash on node pruning in Locator.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 25 Jun 2013 23:01:26 +0400
+
 cocaine-core (0.10.5-9) unstable; urgency=low
 
   * Updated configuration format for network stuff.
