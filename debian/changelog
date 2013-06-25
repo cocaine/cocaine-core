@@ -1,3 +1,10 @@
+cocaine-core (0.10.5-11) lucid; urgency=low
+
+  * Bugfix: update to the latest backward-cpp version to fix building issues
+    on i386 architectures.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 26 Jun 2013 01:06:09 +0400
+
 cocaine-core (0.10.5-10) unstable; urgency=low
 
   * Bugfix: do not crash on node pruning in Locator.
