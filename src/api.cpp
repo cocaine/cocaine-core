@@ -29,7 +29,7 @@ storage(context_t& context, const std::string& name) {
     auto it = context.config.storages.find(name);
 
     if(it == context.config.storages.end()) {
-        throw configuration_error_t("the '%s' storage is not configured", name);
+        throw repository_error_t("the '%s' storage is not configured", name);
     }
 
     return context.get<storage_t>(
