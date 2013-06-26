@@ -1,4 +1,10 @@
-cocaine-core (0.10.5-11) lucid; urgency=low
+cocaine-core (0.10.5-12) unstable; urgency=low
+
+  * Bugfix: do not die if failed to accept a connection.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 26 Jun 2013 19:23:07 +0400
+
+cocaine-core (0.10.5-11) unstable; urgency=low
 
   * Bugfix: update to the latest backward-cpp version to fix building issues
     on i386 architectures.
