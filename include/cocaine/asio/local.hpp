@@ -58,8 +58,7 @@ struct local {
 
             if(address.size() >= UNIX_PATH_MAX) {
                 throw std::system_error(
-                    make_error_code(std::errc::invalid_argument),
-                    cocaine::format("socket path '%s' is too long", address)
+                    make_error_code(std::errc::filename_too_long)
                 );
             }
 
