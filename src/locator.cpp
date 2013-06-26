@@ -148,11 +148,10 @@ locator_t::~locator_t() {
             m_services.size() == 1 ? "service" : "services"
         );
 
-        for(auto it = m_services.rbegin(); it != m_services.rend(); ++it) {
-            it->second->terminate();
+        while(!m_services.empty()) {
+            m_services.back().second->terminate();
+            m_services.pop_back();
         }
-
-        m_services.clear();
     }
 }
 
