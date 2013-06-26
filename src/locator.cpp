@@ -399,15 +399,20 @@ locator_t::on_announce_event(ev::io&, int) {
     }
 
     msgpack::unpacked unpacked;
-    msgpack::unpack(&unpacked, buffer, size);
+
+    try {
+        msgpack::unpack(&unpacked, buffer, size);
+    } catch(const msgpack::unpack_error& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
+        return;
+    }
 
     key_type key;
 
     try {
         key = unpacked.get().as<key_type>();
-    } catch(const std::system_error& e) {
-        std::error_code ec = e.code();
-        COCAINE_LOG_ERROR(m_log, "unable to decode an announce - [%d] %s", ec.value(), ec.message());
+    } catch(const msgpack::type_error& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
         return;
     }
 
