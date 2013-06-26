@@ -69,9 +69,7 @@ namespace {
     };
 }
 
-process_t::process_t(context_t& context,
-                     const std::string& name,
-                     const Json::Value& args):
+process_t::process_t(context_t& context, const std::string& name, const Json::Value& args):
     category_type(context, name, args),
     m_log(new logging::log_t(context, name)),
 #if BOOST_VERSION >= 104600
@@ -86,11 +84,7 @@ process_t::~process_t() {
 }
 
 std::unique_ptr<api::handle_t>
-process_t::spawn(const std::string& path,
-                 const std::map<std::string, std::string>& args,
-                 const std::map<std::string, std::string>& environment,
-                 int pipe)
-{
+process_t::spawn(const std::string& path, const api::string_map_t& args, const api::string_map_t& environment, int pipe) {
     pid_t pid = ::fork();
 
     if(pid < 0) {

@@ -131,7 +131,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     }
 
     if(!fs::exists(m_manifest->slave)) {
-        throw configuration_error_t("executable '%s' does not exist", m_manifest->slave);
+        throw cocaine::error_t("executable '%s' does not exist", m_manifest->slave);
     }
 
     m_reactor.reset(new reactor_t());
@@ -177,9 +177,9 @@ app_t::start() {
                     it->second.args
                 );
             } catch(const cocaine::error_t& e) {
-                throw configuration_error_t("unable to initialize the '%s' driver - %s", name, e.what());
+                throw cocaine::error_t("unable to initialize the '%s' driver - %s", name, e.what());
             } catch(...) {
-                throw configuration_error_t("unable to initialize the '%s' driver - unknown exception");
+                throw cocaine::error_t("unable to initialize the '%s' driver - unknown exception");
             }
 
             drivers[it->first] = std::move(driver);
@@ -436,7 +436,7 @@ app_t::deploy(const std::string& name, const std::string& path) {
         blob = storage->get<std::string>("apps", name);
     } catch(const storage_error_t& e) {
         COCAINE_LOG_ERROR(m_log, "unable to fetch the app from the storage - %s", e.what());
-        throw configuration_error_t("the '%s' app is not available", name);
+        throw cocaine::error_t("the '%s' app is not available", name);
     }
 
     try {
@@ -444,6 +444,6 @@ app_t::deploy(const std::string& name, const std::string& path) {
         archive.deploy(path);
     } catch(const archive_error_t& e) {
         COCAINE_LOG_ERROR(m_log, "unable to extract the app files - %s", e.what());
-        throw configuration_error_t("the '%s' app is not available", name);
+        throw cocaine::error_t("the '%s' app is not available", name);
     }
 }

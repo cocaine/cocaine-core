@@ -96,11 +96,7 @@ private:
             m_self.dump()
         );
 
-        try {
-            upstream->write(m_buffer.data(), m_buffer.size());
-        } catch(...) {
-            return false;
-        }
+        upstream->write(m_buffer.data(), m_buffer.size());
 
         return true;
     }
@@ -108,11 +104,7 @@ private:
     static
     void
     close(const api::stream_ptr_t& upstream) {
-        try {
-            upstream->close();
-        } catch(...) {
-            // Ignore.
-        }
+        upstream->close();
     }
 
 private:
@@ -438,9 +430,7 @@ locator_t::on_announce_event(ev::io&, int) {
             std::error_code ec = e.code();
 
             COCAINE_LOG_ERROR(
-                m_log,
-                "unable to connect to node '%s' - %s - [%d] %s",
-                hostname, e.what(), ec.value(), ec.message()
+                m_log, "unable to connect to node '%s' - %s - [%d] %s", hostname, e.what(), ec.value(), ec.message()
             );
 
             return;
@@ -492,7 +482,7 @@ locator_t::on_announce_timer(ev::timer&, int) {
         if(ec) {
             COCAINE_LOG_ERROR(m_log, "unable to announce the node - [%d] %s", ec.value(), ec.message());
         } else {
-            COCAINE_LOG_ERROR(m_log, "unable to announce the node - unexpected exception");
+            COCAINE_LOG_ERROR(m_log, "unable to announce the node - unknown error");
         }
     }
 }

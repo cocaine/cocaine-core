@@ -29,7 +29,7 @@ syslog_t::syslog_t(const Json::Value& args):
     m_identity(args["identity"].asString())
 {
     if(m_identity.empty()) {
-        throw configuration_error_t("no syslog identity has been specified");
+        throw cocaine::error_t("no syslog identity has been specified");
     }
 
     openlog(m_identity.c_str(), LOG_PID, LOG_USER);

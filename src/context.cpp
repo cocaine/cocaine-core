@@ -71,9 +71,9 @@ namespace {
         const auto status = fs::status(path);
 
         if(!fs::exists(status)) {
-            throw configuration_error_t("the %s directory does not exist", path);
+            throw cocaine::error_t("the %s directory does not exist", path);
         } else if(!fs::is_directory(status)) {
-            throw configuration_error_t("the %s path is not a directory", path);
+            throw cocaine::error_t("the %s path is not a directory", path);
         }
     }
 
@@ -107,20 +107,20 @@ config_t::config_t(const std::string& config_path) {
     const auto status = fs::status(path.config);
 
     if(!fs::exists(status) || !fs::is_regular_file(status)) {
-        throw configuration_error_t("the configuration file path is invalid");
+        throw cocaine::error_t("the configuration file path is invalid");
     }
 
     fs::ifstream stream(path.config);
 
     if(!stream) {
-        throw configuration_error_t("unable to read the configuration file");
+        throw cocaine::error_t("unable to read the configuration file");
     }
 
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 
     if(!reader.parse(stream, root)) {
-        throw configuration_error_t(
+        throw cocaine::error_t(
             "the configuration file is corrupted - %s",
             reader.getFormattedErrorMessages()
         );
@@ -129,7 +129,7 @@ config_t::config_t(const std::string& config_path) {
     // Validation
 
     if(root.get("version", 0).asUInt() != 2) {
-        throw configuration_error_t("the configuration file version is invalid");
+        throw cocaine::error_t("the configuration file version is invalid");
     }
 
     // Paths
@@ -238,7 +238,7 @@ context_t::context_t(config_t config_, const std::string& logger):
     auto it = config.loggers.find(logger);
 
     if(it == config.loggers.end()) {
-        throw configuration_error_t("the '%s' logger is not configured", logger);
+        throw cocaine::error_t("the '%s' logger is not configured", logger);
     }
 
     // Try to initialize the logger. If this fails, there's no way to report the failure,

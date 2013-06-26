@@ -42,10 +42,7 @@ namespace {
     > runlist_t;
 }
 
-node_t::node_t(context_t& context,
-               io::reactor_t& reactor,
-               const std::string& name,
-               const Json::Value& args):
+node_t::node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
     category_type(context, reactor, name, args),
     m_context(context),
     m_log(new logging::log_t(context, name)),

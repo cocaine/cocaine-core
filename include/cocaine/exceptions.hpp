@@ -59,15 +59,6 @@ private:
     const std::string m_message;
 };
 
-struct configuration_error_t:
-    public error_t
-{
-    template<typename... Args>
-    configuration_error_t(const std::string& format, const Args&... args):
-        error_t(format, args...)
-    { }
-};
-
 } // namespace cocaine
 
 #endif

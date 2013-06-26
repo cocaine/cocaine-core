@@ -30,11 +30,7 @@
 using namespace cocaine;
 using namespace cocaine::driver;
 
-recurring_timer_t::recurring_timer_t(context_t& context,
-                                     io::reactor_t& reactor,
-                                     app_t& app,
-                                     const std::string& name,
-                                     const Json::Value& args):
+recurring_timer_t::recurring_timer_t(context_t& context, io::reactor_t& reactor, app_t& app, const std::string& name, const Json::Value& args):
     category_type(context, reactor, app, name, args),
     m_log(new logging::log_t(context, cocaine::format("app/%s", name))),
     m_app(app),
@@ -43,7 +39,7 @@ recurring_timer_t::recurring_timer_t(context_t& context,
     m_watcher(reactor.native())
 {
     if(m_interval <= 0.0f) {
-        throw configuration_error_t("no interval has been specified");
+        throw cocaine::error_t("no interval has been specified");
     }
 
     m_watcher.set<recurring_timer_t, &recurring_timer_t::on_event>(this);

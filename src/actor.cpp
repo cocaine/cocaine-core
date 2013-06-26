@@ -108,9 +108,8 @@ actor_t::run(std::vector<tcp::endpoint> endpoints) {
         } catch(const std::system_error& e) {
             std::error_code ec = e.code();
 
-            throw configuration_error_t(
-                "unable to bind at '%s' - %s - [%d] %s",
-                *it, e.what(), ec.value(), ec.message()
+            throw cocaine::error_t(
+                "unable to bind at '%s' - %s - [%d] %s", *it, e.what(), ec.value(), ec.message()
             );
         }
 

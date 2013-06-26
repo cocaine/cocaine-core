@@ -29,10 +29,7 @@ using namespace cocaine::service;
 
 using namespace std::placeholders;
 
-storage_t::storage_t(context_t& context,
-                     io::reactor_t& reactor,
-                     const std::string& name,
-                     const Json::Value& args):
+storage_t::storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
     category_type(context, reactor, name, args)
 {
     auto storage = api::storage(context, args.get("backend", "core").asString());

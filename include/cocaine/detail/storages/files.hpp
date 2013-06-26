@@ -31,34 +31,26 @@ class files_t:
     public api::storage_t
 {
     public:
-        files_t(context_t& context,
-                const std::string& name,
-                const Json::Value& args);
+        files_t(context_t& context, const std::string& name, const Json::Value& args);
 
         virtual
        ~files_t();
 
         virtual
         std::string
-        read(const std::string& collection,
-             const std::string& key);
+        read(const std::string& collection, const std::string& key);
 
         virtual
         void
-        write(const std::string& collection,
-              const std::string& key,
-              const std::string& blob,
-              const std::vector<std::string>& tags);
+        write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags);
 
         virtual
         void
-        remove(const std::string& collection,
-               const std::string& key);
+        remove(const std::string& collection, const std::string& key);
 
         virtual
         std::vector<std::string>
-        find(const std::string& collection,
-             const std::vector<std::string>& tags);
+        find(const std::string& collection, const std::vector<std::string>& tags);
 
     private:
         std::unique_ptr<logging::log_t> m_log;

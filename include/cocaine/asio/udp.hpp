@@ -83,11 +83,7 @@ struct udp {
             char result[INET_ADDRSTRLEN];
 
             if(::inet_ntop(udp::family(), &m_data.udp4.sin_addr, result, INET_ADDRSTRLEN) == nullptr) {
-                throw std::system_error(
-                    errno,
-                    std::system_category(),
-                    "unable to format the endpoint address"
-                );
+                return "<unable to format the address>";
             }
 
             return result;

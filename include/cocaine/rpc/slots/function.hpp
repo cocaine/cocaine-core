@@ -63,7 +63,6 @@ namespace detail {
             BOOST_VERIFY(it != end);
 
             try {
-                // NOTE: This is the only place where the argument tuple iterator is advanced.
                 type_traits<T>::unpack(*it++, argument);
             } catch(const msgpack::type_error& e) {
                 throw cocaine::error_t("argument type mismatch");

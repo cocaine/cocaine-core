@@ -74,18 +74,8 @@ struct slave_t::pipe_t {
     read(char* buffer, size_t size, std::error_code& ec) {
         ssize_t length = ::read(m_pipe, buffer, size);
 
-        if(length == -1) {
-            switch(errno) {
-                case EAGAIN:
-#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
-                case EWOULDBLOCK:
-#endif
-                case EINTR:
-                    break;
-
-                default:
-                    ec = std::error_code(errno, std::system_category());
-            }
+        if(length == -1 && (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
+            ec = std::error_code(errno, std::system_category());
         }
 
         return length;
@@ -217,12 +207,12 @@ slave_t::bind(const std::shared_ptr<channel<io::socket<local>>>& channel_) {
     m_channel = channel_;
 
     m_channel->rd->bind(
-        std::bind(&slave_t::on_message,    this, _1),
-        std::bind(&slave_t::on_disconnect, this, _1)
+        std::bind(&slave_t::on_message, this, _1),
+        std::bind(&slave_t::on_failure, this, _1)
     );
 
     m_channel->wr->bind(
-        std::bind(&slave_t::on_disconnect, this, _1)
+        std::bind(&slave_t::on_failure, this, _1)
     );
 }
 
@@ -347,7 +337,7 @@ namespace {
 }
 
 void
-slave_t::on_disconnect(const std::error_code& ec) {
+slave_t::on_failure(const std::error_code& ec) {
     switch(m_state) {
         case states::unknown:
         case states::active:

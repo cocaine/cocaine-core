@@ -29,10 +29,7 @@ class storage_t:
     public api::service_t
 {
     public:
-        storage_t(context_t& context,
-                  io::reactor_t& reactor,
-                  const std::string& name,
-                  const Json::Value& args);
+        storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
 };
 
 }} // namespace cocaine::service

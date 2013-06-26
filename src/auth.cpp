@@ -141,10 +141,9 @@ auth_t::verify(const std::string& message,
         it->second
     );
 
+    EVP_MD_CTX_cleanup(m_evp_md_context);
+
     if(!success) {
-        EVP_MD_CTX_cleanup(m_evp_md_context);
         throw authorization_error_t("invalid signature");
     }
-
-    EVP_MD_CTX_cleanup(m_evp_md_context);
 }

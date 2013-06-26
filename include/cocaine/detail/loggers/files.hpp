@@ -36,9 +36,7 @@ class files_t:
 
         virtual
         void
-        emit(logging::priorities level,
-             const std::string& source,
-             const std::string& message);
+        emit(logging::priorities level, const std::string& source, const std::string& message);
 
     private:
         FILE* m_file;

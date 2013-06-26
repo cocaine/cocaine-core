@@ -47,7 +47,7 @@ class rpc_category_t:
     }
 };
 
-static rpc_category_t category_instance;
+rpc_category_t category_instance;
 
 }
 

@@ -87,11 +87,7 @@ struct tcp {
             char result[INET_ADDRSTRLEN];
 
             if(::inet_ntop(tcp::family(), &m_data.tcp4.sin_addr, result, INET_ADDRSTRLEN) == nullptr) {
-                throw std::system_error(
-                    errno,
-                    std::system_category(),
-                    "unable to format the endpoint address"
-                );
+                return "<unable to format the address>";
             }
 
             return result;

@@ -32,6 +32,15 @@
 
 namespace cocaine { namespace tuple {
 
+template<size_t N>
+struct nth_element {
+    template<class Tuple>
+    typename std::tuple_element<N, Tuple>::type
+    operator()(const Tuple& tuple) const {
+        return std::get<N>(tuple);
+    }
+};
+
 namespace detail {
     template<class It, class End, typename... Args>
     struct fold_impl {
@@ -79,15 +88,6 @@ struct unfold {
         boost::mpl::deque<>,
         Args...
     >::type type;
-};
-
-template<size_t N>
-struct element_getter {
-    template<class Tuple>
-    typename std::tuple_element<N, Tuple>::type
-    operator()(const Tuple& tuple) const {
-        return std::get<N>(tuple);
-    }
 };
 
 }} // namespace cocaine::tuple

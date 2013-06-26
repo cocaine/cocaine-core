@@ -31,10 +31,7 @@ class node_t:
     public api::service_t
 {
     public:
-        node_t(context_t& context,
-               io::reactor_t& reactor,
-               const std::string& name,
-               const Json::Value& args);
+        node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
 
         virtual
        ~node_t();

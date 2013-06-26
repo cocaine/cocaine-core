@@ -33,9 +33,7 @@ class stdout_t:
 
         virtual
         void
-        emit(logging::priorities level,
-             const std::string& source,
-             const std::string& message);
+        emit(logging::priorities level, const std::string& source, const std::string& message);
 };
 
 }} // namespace cocaine::logger
