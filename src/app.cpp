@@ -192,7 +192,17 @@ app_t::start() {
     std::tie(lhs, rhs) = io::link<local>();
 
     m_engine_control.reset(new channel<io::socket<local>>(*m_reactor, lhs));
-    m_engine.reset(new engine_t(m_context, reactor, *m_manifest, *m_profile, rhs));
+
+    try {
+        m_engine.reset(new engine_t(m_context, reactor, *m_manifest, *m_profile, rhs));
+    } catch(const std::system_error& e) {
+        throw cocaine::error_t(
+            "unable to initialize the engine - %s - [%d] %s",
+            e.what(),
+            e.code().value(),
+            e.code().message()
+        );
+    }
 
     // We can safely swap the current driver set now.
     m_drivers.swap(drivers);

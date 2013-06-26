@@ -74,7 +74,7 @@ node_t::node_t(context_t& context,
 
     try {
         runlist = storage->get<runlist_t>("runlists", runlist_id);
-    } catch(const cocaine::error_t& e) {
+    } catch(const storage_error_t& e) {
         COCAINE_LOG_WARNING(
             m_log,
             "unable to read the '%s' runlist - %s",
