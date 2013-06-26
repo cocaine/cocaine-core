@@ -322,7 +322,7 @@ engine_t::on_handshake(int fd, const message_t& message) {
 
     try {
         message.as<rpc::handshake>(id);
-    } catch(const cocaine::error_t& e) {
+    } catch(const std::system_error& e) {
         COCAINE_LOG_WARNING(m_log, "disconnecting an incompatible slave on fd %d", fd);
         return;
     }
@@ -583,7 +583,7 @@ engine_t::balance() {
                 id,
                 std::make_shared<slave_t>(m_context, *m_reactor, m_manifest, m_profile, id, *this)
             ));
-        } catch(const cocaine::error_t& e) {
+        } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - %s", e.what());
             break;
         }

@@ -154,7 +154,7 @@ process_t::spawn(const std::string& path,
         } catch(const fs::filesystem_error& e) {
             COCAINE_LOG_ERROR(
                 m_log,
-                "unable to change working directory to '%s' - %s",
+                "unable to change the working directory to '%s' - %s",
                 path,
                 e.what()
             );

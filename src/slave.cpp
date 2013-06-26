@@ -669,7 +669,7 @@ slave_t::dump() {
         api::storage(m_context, "core")->put("crashlogs", key, dump, std::vector<std::string> {
             m_manifest.name
         });
-    } catch(const std::exception& e) {
+    } catch(const storage_error_t& e) {
         COCAINE_LOG_ERROR(m_log, "slave %s is unable to save the crashlog - %s", m_id, e.what());
     }
 }

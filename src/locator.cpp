@@ -405,8 +405,9 @@ locator_t::on_announce_event(ev::io&, int) {
 
     try {
         key = unpacked.get().as<key_type>();
-    } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
+    } catch(const std::system_error& e) {
+        std::error_code ec = e.code();
+        COCAINE_LOG_ERROR(m_log, "unable to decode an announce - [%d] %s", ec.value(), ec.message());
         return;
     }
 
@@ -428,8 +429,15 @@ locator_t::on_announce_event(ev::io&, int) {
                     io::resolver<io::tcp>::query(hostname, port)
                 )
             );
-        } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to connect to node '%s' - %s", hostname, e.what());
+        } catch(const std::system_error& e) {
+            std::error_code ec = e.code();
+
+            COCAINE_LOG_ERROR(
+                m_log,
+                "unable to connect to node '%s' - %s - [%d] %s",
+                hostname, e.what(), ec.value(), ec.message()
+            );
+
             return;
         }
 
