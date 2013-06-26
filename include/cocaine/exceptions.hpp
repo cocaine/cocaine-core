@@ -68,24 +68,6 @@ struct configuration_error_t:
     { }
 };
 
-struct io_error_t:
-    public cocaine::error_t
-{
-    template<typename... Args>
-    io_error_t(const std::string& format, Args&&... args):
-        cocaine::error_t(format, std::forward<Args>(args)...),
-        m_errno(errno)
-    { }
-
-    std::string
-    describe() const throw() {
-        return std::error_code(m_errno, std::system_category()).message();
-    }
-
-private:
-    const int m_errno;
-};
-
 } // namespace cocaine
 
 #endif

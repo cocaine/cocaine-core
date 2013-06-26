@@ -24,6 +24,7 @@
 #include "cocaine/common.hpp"
 
 #include <cstring>
+#include <system_error>
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -56,7 +57,10 @@ struct local {
             m_data.local.sun_family = local::family();
 
             if(address.size() >= UNIX_PATH_MAX) {
-                throw cocaine::io_error_t("stream address '%s' exceeds the maximum allowed length");
+                throw std::system_error(
+                    make_error_code(std::errc::invalid_argument),
+                    cocaine::format("socket path '%s' is too long", address)
+                );
             }
 
             std::memcpy(m_data.local.sun_path, address.c_str(), address.size());

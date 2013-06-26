@@ -195,8 +195,6 @@ locator_t::connect() {
         m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
         m_sink_watcher->start(m_sink->fd(), ev::READ);
 
-        COCAINE_LOG_INFO(m_log, "using the '%s' gateway", m_context.config.network.gateway.get().type);
-
         m_gateway = m_context.get<api::gateway_t>(
             m_context.config.network.gateway.get().type,
             m_context,
@@ -209,7 +207,7 @@ locator_t::connect() {
 
     COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
 
-    // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
+    // NOTE: Connect this UDP socket so that we could send announces via write() instead of sendto().
     m_announce.reset(new io::socket<io::udp>(endpoint));
 
     const int loop = 0;

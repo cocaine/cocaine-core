@@ -213,11 +213,11 @@ main(int argc, char* argv[]) {
     try {
         config.reset(new config_t(vm["configuration"].as<std::string>()));
     } catch(const cocaine::error_t& e) {
-        std::cerr << cocaine::format(
-            "ERROR: unable to initialize the configuration - %s.",
-            e.what()
-        ) << std::endl;
-
+        std::cerr << cocaine::format("ERROR: unable to initialize the configuration - %s.", e.what()) << std::endl;
+        return EXIT_FAILURE;
+    } catch(const std::system_error& e) {
+        std::error_code ec = e.code();
+        std::cerr << cocaine::format("ERROR: unable to initialize the configuration - %s - [%d] %s.", e.what(), ec.value(), ec.message()) << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -241,18 +241,14 @@ main(int argc, char* argv[]) {
         try {
             pidfile.reset(new pid_file_t(pid_path));
         } catch(const cocaine::error_t& e) {
-            std::cerr << cocaine::format(
-                "ERROR: unable to create the pidfile - %s.",
-                e.what()
-            ) << std::endl;
-
+            std::cerr << cocaine::format("ERROR: unable to create the pidfile - %s.", e.what()) << std::endl;
             return EXIT_FAILURE;
         }
     }
 #endif
 
     // NOTE: The default event loop have to initialized first, otherwise
-    // signals wouldn't be properly handled. Probably, a bug.
+    // signals wouldn't be properly handled. Probably a bug.
     runtime_t runtime;
 
     std::unique_ptr<context_t> context;

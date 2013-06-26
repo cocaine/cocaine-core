@@ -44,7 +44,7 @@ struct socket {
         m_fd = ::socket(medium.family(), medium.type(), medium.protocol());
 
         if(m_fd == -1) {
-            throw io_error_t("unable to create a socket");
+            throw std::system_error(errno, std::system_category(), "unable to create a socket");
         }
 
         medium_type::configure(m_fd);
@@ -60,13 +60,17 @@ struct socket {
         m_fd = ::socket(medium.family(), medium.type(), medium.protocol());
 
         if(m_fd == -1) {
-            throw io_error_t("unable to create a socket");
+            throw std::system_error(errno, std::system_category(), "unable to create a socket");
         }
 
         medium_type::configure(m_fd);
 
         if(::connect(m_fd, endpoint.data(), endpoint.size()) != 0) {
-            throw io_error_t("unable to connect a socket to '%s'", endpoint);
+            throw std::system_error(
+                errno,
+                std::system_category(),
+                cocaine::format("unable to connect a socket to '%s'", endpoint)
+            );
         }
 
         ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
@@ -102,18 +106,8 @@ struct socket {
     write(const char* buffer, size_t size, std::error_code& ec) {
         ssize_t length = ::write(m_fd, buffer, size);
 
-        if(length == -1) {
-            switch(errno) {
-                case EAGAIN:
-#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
-                case EWOULDBLOCK:
-#endif
-                case EINTR:
-                    break;
-
-                default:
-                    ec = std::error_code(errno, std::system_category());
-            }
+        if(length == -1 && (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
+            ec = std::error_code(errno, std::system_category());
         }
 
         return length;
@@ -123,18 +117,8 @@ struct socket {
     read(char* buffer, size_t size, std::error_code& ec) {
         ssize_t length = ::read(m_fd, buffer, size);
 
-        if(length == -1) {
-            switch(errno) {
-                case EAGAIN:
-#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
-                case EWOULDBLOCK:
-#endif
-                case EINTR:
-                    break;
-
-                default:
-                    ec = std::error_code(errno, std::system_category());
-            }
+        if(length == -1 && (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
+            ec = std::error_code(errno, std::system_category());
         }
 
         return length;
@@ -152,7 +136,7 @@ public:
         size_type size = endpoint.size();
 
         if(::getsockname(m_fd, endpoint.data(), &size) != 0) {
-            throw io_error_t("unable to determine the local socket address");
+            throw std::system_error(errno, std::system_category(), "unable to detect the address");
         }
 
         return endpoint;
@@ -164,7 +148,7 @@ public:
         size_type size = endpoint.size();
 
         if(::getpeername(m_fd, endpoint.data(), &size) != 0) {
-            throw io_error_t("unable to determine the remote socket address");
+            throw std::system_error(errno, std::system_category(), "unable to detect the address");
         }
 
         return endpoint;

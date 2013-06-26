@@ -76,6 +76,29 @@ namespace {
             throw configuration_error_t("the %s path is not a directory", path);
         }
     }
+
+    class gai_category_t:
+        public std::error_category
+    {
+        virtual
+        const char*
+        name() const throw() {
+            return "getaddrinfo";
+        }
+
+        virtual
+        std::string
+        message(int code) const {
+            return gai_strerror(code);
+        }
+    };
+
+    gai_category_t category_instance;
+
+    const std::error_category&
+    gai_category() {
+        return category_instance;
+    }
 }
 
 config_t::config_t(const std::string& config_path) {
@@ -123,11 +146,7 @@ config_t::config_t(const std::string& config_path) {
     char hostname[256];
 
     if(gethostname(hostname, 256) != 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            "unable to determine the hostname"
-        );
+        throw std::system_error(errno, std::system_category(), "unable to determine the hostname");
     }
 
     addrinfo hints,
@@ -140,14 +159,7 @@ config_t::config_t(const std::string& config_path) {
     int rv = getaddrinfo(hostname, nullptr, &hints, &result);
 
     if(rv != 0) {
-        throw configuration_error_t(
-            "unable to determine the hostname - %s",
-            gai_strerror(rv)
-        );
-    }
-
-    if(result == nullptr) {
-        throw configuration_error_t("unable to determine the hostname");
+        throw std::system_error(rv, gai_category(), "unable to determine the hostname");
     }
 
     network.hostname = result->ai_canonname;
@@ -302,15 +314,13 @@ context_t::bootstrap() {
         config.services.size() == 1 ? "service" : "services"
     );
 
-    std::unique_ptr<actor_t> service;
-
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         reactor = std::make_shared<io::reactor_t>();
 
         COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
 
         try {
-            service.reset(new actor_t(
+            attach(it->first, std::unique_ptr<actor_t>(new actor_t(
                 reactor,
                 get<api::service_t>(
                     it->second.type,
@@ -319,14 +329,12 @@ context_t::bootstrap() {
                     cocaine::format("service/%s", it->first),
                     it->second.args
                 )
-            ));
+            )));
         } catch(const std::exception& e) {
             throw cocaine::error_t("unable to initialize service '%s' - %s", it->first, e.what());
         } catch(...) {
             throw cocaine::error_t("unable to initialize service '%s' - unknown exception", it->first);
         }
-
-        attach(it->first, std::move(service));
     }
 
     if(config.network.group) {

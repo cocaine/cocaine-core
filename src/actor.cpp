@@ -105,8 +105,13 @@ actor_t::run(std::vector<tcp::endpoint> endpoints) {
                 *m_reactor,
                 std::unique_ptr<acceptor<tcp>>(new acceptor<tcp>(*it))
             );
-        } catch(const cocaine::io_error_t& e) {
-            throw configuration_error_t("unable to bind at '%s' - %s - %s", *it, e.what(), e.describe());
+        } catch(const std::system_error& e) {
+            std::error_code ec = e.code();
+
+            throw configuration_error_t(
+                "unable to bind at '%s' - %s - [%d] %s",
+                *it, e.what(), ec.value(), ec.message()
+            );
         }
 
         m_connectors.back().bind(std::bind(&actor_t::on_connection, this, _1));

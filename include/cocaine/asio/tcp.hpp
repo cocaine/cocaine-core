@@ -24,6 +24,7 @@
 #include "cocaine/common.hpp"
 
 #include <cstring>
+#include <system_error>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -58,7 +59,11 @@ struct tcp {
             m_data.tcp4.sin_port = htons(port);
 
             if(::inet_pton(tcp::family(), address.c_str(), &m_data.tcp4.sin_addr) == 0) {
-                throw cocaine::io_error_t("unable to parse '%s' as an endpoint address", address);
+                throw std::system_error(
+                    errno,
+                    std::system_category(),
+                    cocaine::format("unable to parse '%s' as an endpoint address", address)
+                );
             }
         }
 
@@ -82,7 +87,11 @@ struct tcp {
             char result[INET_ADDRSTRLEN];
 
             if(::inet_ntop(tcp::family(), &m_data.tcp4.sin_addr, result, INET_ADDRSTRLEN) == nullptr) {
-                throw cocaine::io_error_t("unable to parse the endpoint address");
+                throw std::system_error(
+                    errno,
+                    std::system_category(),
+                    "unable to format the endpoint address"
+                );
             }
 
             return result;
