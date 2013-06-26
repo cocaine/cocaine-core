@@ -81,6 +81,15 @@ struct unfold {
     >::type type;
 };
 
+template<size_t N>
+struct element_getter {
+    template<class Tuple>
+    typename std::tuple_element<N, Tuple>::type
+    operator()(const Tuple& tuple) const {
+        return std::get<N>(tuple);
+    }
+};
+
 }} // namespace cocaine::tuple
 
 #endif
