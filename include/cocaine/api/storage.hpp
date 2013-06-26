@@ -99,9 +99,7 @@ class storage_t {
 
 template<class T>
 T
-storage_t::get(const std::string& collection,
-               const std::string& key)
-{
+storage_t::get(const std::string& collection, const std::string& key) {
     T result;
     msgpack::unpacked unpacked;
 
@@ -124,11 +122,7 @@ storage_t::get(const std::string& collection,
 
 template<class T>
 void
-storage_t::put(const std::string& collection,
-               const std::string& key,
-               const T& object,
-               const std::vector<std::string>& tags)
-{
+storage_t::put(const std::string& collection, const std::string& key, const T& object, const std::vector<std::string>& tags) {
     std::ostringstream buffer;
     msgpack::packer<std::ostringstream> packer(buffer);
 
