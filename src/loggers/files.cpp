@@ -38,7 +38,7 @@ files_t::files_t(const Json::Value& args):
     m_file = std::fopen(path.c_str(), "a");
 
     if(m_file == nullptr) {
-        throw std::system_error(errno, std::system_category(), cocaine::format("unable to open the '%s' file", path));
+        throw std::system_error(errno, std::system_category(), cocaine::format("unable to open '%s'", path));
     }
 }
 
