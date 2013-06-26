@@ -74,7 +74,9 @@ struct connector {
 private:
     void
     on_event(ev::io& /* io */, int /* revents */) {
-        const std::shared_ptr<socket_type>& socket = m_acceptor->accept();
+        std::error_code ec;
+
+        const std::shared_ptr<socket_type>& socket = m_acceptor->accept(ec);
 
         if(!socket) {
             return;

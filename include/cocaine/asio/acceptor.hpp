@@ -92,18 +92,18 @@ struct acceptor {
     // Operations
 
     std::shared_ptr<socket_type>
-    accept() {
+    accept(std::error_code& ec) {
         endpoint_type endpoint;
         size_type size = endpoint.size();
 
         int fd = ::accept(m_fd, endpoint.data(), &size);
 
         if(fd == -1) {
-            if(errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
-                return std::shared_ptr<socket_type>();
+            if(errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+                ec = std::error_code(errno, std::system_category());
             }
 
-            throw std::system_error(errno, std::system_category(), "unable to accept a connection");
+            return std::shared_ptr<socket_type>();
         }
 
         medium_type::configure(fd);
