@@ -67,8 +67,8 @@ struct message_t {
                 args(),
                 std::forward<Args>(targets)...
             );
-        } catch(const msgpack::type_error&) {
-            throw cocaine::error_t("invalid message type");
+        } catch(const msgpack::type_error& e) {
+            throw std::system_error(make_error_code(rpc_errc::invalid_format));
         }
     }
 
