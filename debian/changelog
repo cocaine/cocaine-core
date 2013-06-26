@@ -1,3 +1,9 @@
+cocaine-core (0.10.5-13) unstable; urgency=low
+
+  * Bugfix: do not die on emergency Locator shutdown.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 26 Jun 2013 20:37:43 +0400
+
 cocaine-core (0.10.5-12) unstable; urgency=low
 
   * Bugfix: do not die if failed to accept a connection.
