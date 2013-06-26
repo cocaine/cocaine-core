@@ -31,9 +31,22 @@ namespace cocaine { namespace io {
 
 template<class Socket>
 struct channel {
+    channel():
+        rd(new decoder<readable_stream<Socket>>()),
+        wr(new encoder<writable_stream<Socket>>())
+    {
+        // pass
+    }
+
     channel(reactor_t& reactor, const std::shared_ptr<Socket>& socket):
         rd(new decoder<readable_stream<Socket>>()),
         wr(new encoder<writable_stream<Socket>>())
+    {
+        attach(reactor, socket);
+    }
+
+    void
+    attach(reactor_t& reactor, const std::shared_ptr<Socket>& socket)
     {
         rd->attach(std::make_shared<readable_stream<Socket>>(reactor, socket));
         wr->attach(std::make_shared<writable_stream<Socket>>(reactor, socket));
