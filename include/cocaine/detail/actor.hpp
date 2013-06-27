@@ -26,7 +26,6 @@
 #include "cocaine/asio/tcp.hpp"
 
 #include <list>
-#include <set>
 #include <thread>
 
 namespace cocaine {

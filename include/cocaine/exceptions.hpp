@@ -25,7 +25,6 @@
 #include "cocaine/format.hpp"
 
 #include <exception>
-#include <system_error>
 
 namespace cocaine {
 

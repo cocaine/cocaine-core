@@ -28,6 +28,7 @@
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
+#include <mutex>
 #include <queue>
 
 namespace ev {

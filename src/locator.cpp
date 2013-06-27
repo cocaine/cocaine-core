@@ -131,7 +131,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 
         std::tie(min, max) = m_context.config.network.ports.get();
 
-        COCAINE_LOG_INFO(m_log, "%u ports available, port numbers %u through %u", max - min, min, max);
+        COCAINE_LOG_INFO(m_log, "%u locator ports available, %u through %u", max - min, min, max);
 
         while(min != max) {
             m_ports.push(--max);
@@ -140,18 +140,20 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
 }
 
 locator_t::~locator_t() {
-    if(!m_services.empty()) {
-        COCAINE_LOG_WARNING(
-            m_log,
-            "disposing of %llu orphan %s",
-            m_services.size(),
-            m_services.size() == 1 ? "service" : "services"
-        );
+    if(m_services.empty()) {
+        return;
+    }
 
-        while(!m_services.empty()) {
-            m_services.back().second->terminate();
-            m_services.pop_back();
-        }
+    COCAINE_LOG_WARNING(
+        m_log,
+        "disposing of %llu orphan %s",
+        m_services.size(),
+        m_services.size() == 1 ? "service" : "services"
+    );
+
+    while(!m_services.empty()) {
+        m_services.back().second->terminate();
+        m_services.pop_back();
     }
 }
 
@@ -229,14 +231,16 @@ locator_t::disconnect() {
     m_announce_timer.reset();
     m_announce.reset();
 
-    // Purge the routing tables.
-    m_gateway.reset();
+    if(m_context.config.network.gateway) {
+        // Purge the routing tables.
+        m_gateway.reset();
 
-    // Disconnect all the routed peers.
-    m_remotes.clear();
+        // Disconnect all the routed peers.
+        m_remotes.clear();
 
-    m_sink_watcher.reset();
-    m_sink.reset();
+        m_sink_watcher.reset();
+        m_sink.reset();
+    }
 }
 
 namespace {
@@ -401,7 +405,7 @@ locator_t::on_announce_event(ev::io&, int) {
     key_type key;
 
     try {
-        key = unpacked.get().as<key_type>();
+        unpacked.get() >> key;
     } catch(const msgpack::type_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
         return;

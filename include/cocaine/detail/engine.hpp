@@ -34,7 +34,6 @@
 #include "json/json.h"
 
 #include <mutex>
-#include <set>
 
 #include <boost/mpl/list.hpp>
 

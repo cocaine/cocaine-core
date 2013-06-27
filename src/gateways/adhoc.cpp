@@ -100,7 +100,7 @@ adhoc_t::consume(const std::string& uuid, synchronize_result_type dump) {
 
 void
 adhoc_t::prune(const std::string& uuid) {
-    auto it = m_remote_services.begin(),
+    auto it  = m_remote_services.begin(),
          end = m_remote_services.end();
 
     COCAINE_LOG_DEBUG(m_log, "pruning node '%s'", uuid);

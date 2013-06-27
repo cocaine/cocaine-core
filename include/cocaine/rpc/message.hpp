@@ -25,6 +25,8 @@
 
 #include "cocaine/traits/typelist.hpp"
 
+#include <system_error>
+
 namespace cocaine { namespace io {
 
 enum rpc_errc {
