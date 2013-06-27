@@ -331,14 +331,12 @@ context_t::bootstrap() {
                 )
             )));
         } catch(const std::exception& e) {
-            throw cocaine::error_t("unable to initialize service '%s' - %s", it->first, e.what());
+            COCAINE_LOG_ERROR(blog, "unable to initialize service '%s' - %s", it->first, e.what());
+            throw;
         } catch(...) {
-            throw cocaine::error_t("unable to initialize service '%s' - unknown exception", it->first);
+            COCAINE_LOG_ERROR(blog, "unable to initialize service '%s' - unknown exception", it->first);
+            throw;
         }
-    }
-
-    if(config.network.group) {
-        static_cast<locator_t&>(m_locator->dispatch()).connect();
     }
 
     std::vector<io::tcp::endpoint> endpoints = {
@@ -347,5 +345,22 @@ context_t::bootstrap() {
 
     COCAINE_LOG_INFO(blog, "starting the service locator on port %d", config.network.locator);
 
-    m_locator->run(endpoints);
+    try {
+        if(config.network.group) {
+            static_cast<locator_t&>(m_locator->dispatch()).connect();
+        }
+
+        // NOTE: Start the locator thread last, so that we won't needlessly send node updates to
+        // the peers which managed to connect during the bootstrap.
+        m_locator->run(endpoints);
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_ERROR(blog, "unable to initialize the locator - %s - [%d] %s", e.what(), e.code().value(), e.code().message());
+        throw;
+    } catch(const std::exception& e) {
+        COCAINE_LOG_ERROR(blog, "unable to initialize the locator - %s", e.what());
+        throw;
+    } catch(...) {
+        COCAINE_LOG_ERROR(blog, "unable to initialize the locator - unknown exception");
+        throw;
+    }
 }

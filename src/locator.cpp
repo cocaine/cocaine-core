@@ -430,10 +430,13 @@ locator_t::on_announce_event(ev::io&, int) {
                 )
             );
         } catch(const std::system_error& e) {
-            std::error_code ec = e.code();
-
             COCAINE_LOG_ERROR(
-                m_log, "unable to connect to node '%s' - %s - [%d] %s", hostname, e.what(), ec.value(), ec.message()
+                m_log,
+                "unable to connect to node '%s' - %s - [%d] %s",
+                hostname,
+                e.what(),
+                e.code().value(),
+                e.code().message()
             );
 
             return;
