@@ -42,31 +42,33 @@ using namespace cocaine::isolate;
 namespace fs = boost::filesystem;
 
 namespace {
-    struct process_handle_t:
-        public api::handle_t
-    {
-        process_handle_t(pid_t pid):
-            m_pid(pid)
-        { }
 
-        virtual
-       ~process_handle_t() {
-            terminate();
+struct process_handle_t:
+    public api::handle_t
+{
+    process_handle_t(pid_t pid):
+        m_pid(pid)
+    { }
+
+    virtual
+   ~process_handle_t() {
+        terminate();
+    }
+
+    virtual
+    void
+    terminate() {
+        int status = 0;
+
+        if(::waitpid(m_pid, &status, WNOHANG) == 0) {
+            ::kill(m_pid, SIGTERM);
         }
+    }
 
-        virtual
-        void
-        terminate() {
-            int status = 0;
+private:
+    const pid_t m_pid;
+};
 
-            if(::waitpid(m_pid, &status, WNOHANG) == 0) {
-                ::kill(m_pid, SIGTERM);
-            }
-        }
-
-    private:
-        const pid_t m_pid;
-    };
 }
 
 process_t::process_t(context_t& context, const std::string& name, const Json::Value& args):

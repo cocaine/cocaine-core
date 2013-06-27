@@ -46,114 +46,116 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 namespace {
-    void stacktrace(int signum, siginfo_t* info, void* context) {
-        using namespace backward;
 
-        (void)context;
+void stacktrace(int signum, siginfo_t* info, void* context) {
+    using namespace backward;
 
-        StackTrace trace;
-        Printer printer;
+    (void)context;
 
-        if(signum == SIGSEGV || signum == SIGBUS) {
-            trace.load_from(info->si_addr, 32);
-        } else {
-            trace.load_here(32);
-        }
+    StackTrace trace;
+    Printer printer;
 
-        printer.print(trace);
-
-        // Re-raise so that a core dump is generated.
-        std::raise(signum);
-
-        // Just in case, if the default handler returns for some weird reason.
-        std::exit(EXIT_FAILURE);
+    if(signum == SIGSEGV || signum == SIGBUS) {
+        trace.load_from(info->si_addr, 32);
+    } else {
+        trace.load_here(32);
     }
 
-    struct runtime_t {
-        runtime_t()
+    printer.print(trace);
+
+    // Re-raise so that a core dump is generated.
+    std::raise(signum);
+
+    // Just in case, if the default handler returns for some weird reason.
+    std::exit(EXIT_FAILURE);
+}
+
+struct runtime_t {
+    runtime_t()
 #if defined(EVFLAG_SIGNALFD)
-            : m_loop(EVFLAG_SIGNALFD)
+        : m_loop(EVFLAG_SIGNALFD)
 #endif
-        {
-            m_sigint.set<runtime_t, &runtime_t::terminate>(this);
-            m_sigint.start(SIGINT);
+    {
+        m_sigint.set<runtime_t, &runtime_t::terminate>(this);
+        m_sigint.start(SIGINT);
 
-            m_sigterm.set<runtime_t, &runtime_t::terminate>(this);
-            m_sigterm.start(SIGTERM);
+        m_sigterm.set<runtime_t, &runtime_t::terminate>(this);
+        m_sigterm.start(SIGTERM);
 
-            m_sigquit.set<runtime_t, &runtime_t::terminate>(this);
-            m_sigquit.start(SIGQUIT);
+        m_sigquit.set<runtime_t, &runtime_t::terminate>(this);
+        m_sigquit.start(SIGQUIT);
 
-            // Establish an alternative signal stack
+        // Establish an alternative signal stack
 
-            size_t alt_stack_size = 8 * 1024 * 1024;
+        size_t alt_stack_size = 8 * 1024 * 1024;
 
-            m_alt_stack.ss_sp = new char[alt_stack_size];
-            m_alt_stack.ss_size = alt_stack_size;
-            m_alt_stack.ss_flags = 0;
+        m_alt_stack.ss_sp = new char[alt_stack_size];
+        m_alt_stack.ss_size = alt_stack_size;
+        m_alt_stack.ss_flags = 0;
 
-            if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
-                std::cerr << "ERROR: Unable to activate an alternative signal stack" << std::endl;
-            }
-
-            // Reroute the core-generating signals.
-
-            struct sigaction action;
-
-            std::memset(&action, 0, sizeof(action));
-
-            action.sa_sigaction = &stacktrace;
-            action.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND | SA_SIGINFO;
-
-            ::sigaction(SIGABRT, &action, nullptr);
-            ::sigaction(SIGBUS,  &action, nullptr);
-            ::sigaction(SIGSEGV, &action, nullptr);
-
-            // Block the deprecated signals.
-
-            sigset_t signals;
-
-            sigemptyset(&signals);
-            sigaddset(&signals, SIGPIPE);
-
-            ::sigprocmask(SIG_BLOCK, &signals, nullptr);
+        if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
+            std::cerr << "ERROR: Unable to activate an alternative signal stack" << std::endl;
         }
 
-       ~runtime_t() {
-            m_alt_stack.ss_flags = SS_DISABLE;
+        // Reroute the core-generating signals.
 
-            if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
-                std::cerr << "ERROR: Unable to deactivate an alternative signal stack" << std::endl;
-            }
+        struct sigaction action;
 
-            auto ptr = static_cast<char*>(m_alt_stack.ss_sp);
+        std::memset(&action, 0, sizeof(action));
 
-            delete[] ptr;
+        action.sa_sigaction = &stacktrace;
+        action.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND | SA_SIGINFO;
+
+        ::sigaction(SIGABRT, &action, nullptr);
+        ::sigaction(SIGBUS,  &action, nullptr);
+        ::sigaction(SIGSEGV, &action, nullptr);
+
+        // Block the deprecated signals.
+
+        sigset_t signals;
+
+        sigemptyset(&signals);
+        sigaddset(&signals, SIGPIPE);
+
+        ::sigprocmask(SIG_BLOCK, &signals, nullptr);
+    }
+
+   ~runtime_t() {
+        m_alt_stack.ss_flags = SS_DISABLE;
+
+        if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
+            std::cerr << "ERROR: Unable to deactivate an alternative signal stack" << std::endl;
         }
 
-        void
-        run() {
-            m_loop.loop();
-        }
+        auto ptr = static_cast<char*>(m_alt_stack.ss_sp);
 
-    private:
-        void
-        terminate(ev::sig&, int) {
-            m_loop.unloop(ev::ALL);
-        }
+        delete[] ptr;
+    }
 
-    private:
-        // Main event loop, able to handle signals.
-        ev::default_loop m_loop;
+    void
+    run() {
+        m_loop.loop();
+    }
 
-        // Signal watchers.
-        ev::sig m_sigint;
-        ev::sig m_sigterm;
-        ev::sig m_sigquit;
+private:
+    void
+    terminate(ev::sig&, int) {
+        m_loop.unloop(ev::ALL);
+    }
 
-        // An alternative signal stack for SIGSEGV handling.
-        stack_t m_alt_stack;
-    };
+private:
+    // Main event loop, able to handle signals.
+    ev::default_loop m_loop;
+
+    // Signal watchers.
+    ev::sig m_sigint;
+    ev::sig m_sigterm;
+    ev::sig m_sigquit;
+
+    // An alternative signal stack for SIGSEGV handling.
+    stack_t m_alt_stack;
+};
+
 }
 
 int

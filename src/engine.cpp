@@ -59,85 +59,87 @@ using namespace std::placeholders;
 // Downstream
 
 namespace {
-    struct downstream_t:
-        public api::stream_t
-    {
-        downstream_t(const std::shared_ptr<session_t>& session):
-            m_session(session),
-            m_state(states::open)
-        { }
 
-        virtual
-       ~downstream_t() {
-            if(m_state != states::closed) {
-                close();
-            }
+struct downstream_t:
+    public api::stream_t
+{
+    downstream_t(const std::shared_ptr<session_t>& session):
+        m_session(session),
+        m_state(states::open)
+    { }
+
+    virtual
+   ~downstream_t() {
+        if(m_state != states::closed) {
+            close();
+        }
+    }
+
+    virtual
+    void
+    write(const char* chunk, size_t size) {
+        if(m_state == states::closed) {
+            throw cocaine::error_t("the stream has been closed");
         }
 
-        virtual
-        void
-        write(const char* chunk, size_t size) {
-            if(m_state == states::closed) {
-                throw cocaine::error_t("the stream has been closed");
-            }
+        const std::shared_ptr<session_t> ptr = m_session.lock();
 
-            const std::shared_ptr<session_t> ptr = m_session.lock();
+        if(ptr) {
+            ptr->send<rpc::chunk>(literal { chunk, size });
+        }
+    }
 
-            if(ptr) {
-                ptr->send<rpc::chunk>(literal { chunk, size });
-            }
+    virtual
+    void
+    error(int code, const std::string& message) {
+        if(m_state == states::closed) {
+            throw cocaine::error_t("the stream has been closed");
         }
 
-        virtual
-        void
-        error(int code, const std::string& message) {
-            if(m_state == states::closed) {
-                throw cocaine::error_t("the stream has been closed");
-            }
+        m_state = states::closed;
 
-            m_state = states::closed;
+        const std::shared_ptr<session_t> ptr = m_session.lock();
 
-            const std::shared_ptr<session_t> ptr = m_session.lock();
+        if(ptr) {
+            ptr->send<rpc::error>(code, message);
+            ptr->send<rpc::choke>();
+        }
+    }
 
-            if(ptr) {
-                ptr->send<rpc::error>(code, message);
-                ptr->send<rpc::choke>();
-            }
+    virtual
+    void
+    close() {
+        if(m_state == states::closed) {
+            throw cocaine::error_t("the stream has been closed");
         }
 
-        virtual
-        void
-        close() {
-            if(m_state == states::closed) {
-                throw cocaine::error_t("the stream has been closed");
-            }
+        m_state = states::closed;
 
-            m_state = states::closed;
+        const std::shared_ptr<session_t> ptr = m_session.lock();
 
-            const std::shared_ptr<session_t> ptr = m_session.lock();
-
-            if(ptr) {
-                ptr->send<rpc::choke>();
-            }
+        if(ptr) {
+            ptr->send<rpc::choke>();
         }
+    }
 
-    private:
-        const std::weak_ptr<session_t> m_session;
+private:
+    const std::weak_ptr<session_t> m_session;
 
-        enum class states {
-            open,
-            closed
-        };
-
-        states m_state;
+    enum class states {
+        open,
+        closed
     };
 
-    struct ignore {
-        void
-        operator()(const std::error_code& /* ec */) const {
-            // Do nothing.
-        }
-    };
+    states m_state;
+};
+
+struct ignore {
+    void
+    operator()(const std::error_code& /* ec */) const {
+        // Do nothing.
+    }
+};
+
 }
 
 engine_t::engine_t(context_t& context,
@@ -359,49 +361,50 @@ engine_t::on_disconnect(int fd, const std::error_code& ec) {
 }
 
 namespace {
-    static
-    const char* describe[] = {
-        "running",
-        "broken",
-        "stopping",
-        "stopped"
+
+const char* describe[] = {
+    "running",
+    "broken",
+    "stopping",
+    "stopped"
+};
+
+struct collector_t {
+    template<class>
+    struct result {
+        typedef bool type;
     };
 
-    struct collector_t {
-        template<class>
-        struct result {
-            typedef bool type;
-        };
+    template<class T>
+    bool
+    operator()(const T& slave) {
+        size_t load = slave.second->load();
 
-        template<class T>
-        bool
-        operator()(const T& slave) {
-            size_t load = slave.second->load();
+        m_accumulator(load);
 
-            m_accumulator(load);
+        return slave.second->active() && load;
+    }
 
-            return slave.second->active() && load;
-        }
+    size_t
+    median() const {
+        return boost::accumulators::median(m_accumulator);
+    }
 
-        size_t
-        median() const {
-            return boost::accumulators::median(m_accumulator);
-        }
+    size_t
+    sum() const {
+        return boost::accumulators::sum(m_accumulator);
+    }
 
-        size_t
-        sum() const {
-            return boost::accumulators::sum(m_accumulator);
-        }
+private:
+    boost::accumulators::accumulator_set<
+        size_t,
+        boost::accumulators::features<
+            boost::accumulators::tag::median,
+            boost::accumulators::tag::sum
+        >
+    > m_accumulator;
+};
 
-    private:
-        boost::accumulators::accumulator_set<
-            size_t,
-            boost::accumulators::features<
-                boost::accumulators::tag::median,
-                boost::accumulators::tag::sum
-            >
-        > m_accumulator;
-    };
 }
 
 void
@@ -468,46 +471,48 @@ engine_t::on_termination(ev::timer&, int) {
 }
 
 namespace {
-    struct load {
-        template<class T>
-        bool
-        operator()(const T& lhs, const T& rhs) const {
-            return lhs.second->load() < rhs.second->load();
-        }
-    };
 
-    struct available {
-        template<class T>
-        bool
-        operator()(const T& slave) const {
-            return slave.second->active() && slave.second->load() < max;
-        }
-
-        const size_t max;
-    };
-
-    template<class It, class Compare, class Predicate>
-    inline
-    It
-    min_element_if(It first, It last, Compare compare, Predicate predicate) {
-        while(first != last && !predicate(*first)) {
-            ++first;
-        }
-
-        if(first == last) {
-            return first;
-        }
-
-        It result = first;
-
-        while(++first != last) {
-            if(predicate(*first) && compare(*first, *result)) {
-                result = first;
-            }
-        }
-
-        return result;
+struct load {
+    template<class T>
+    bool
+    operator()(const T& lhs, const T& rhs) const {
+        return lhs.second->load() < rhs.second->load();
     }
+};
+
+struct available {
+    template<class T>
+    bool
+    operator()(const T& slave) const {
+        return slave.second->active() && slave.second->load() < max;
+    }
+
+    const size_t max;
+};
+
+template<class It, class Compare, class Predicate>
+inline
+It
+min_element_if(It first, It last, Compare compare, Predicate predicate) {
+    while(first != last && !predicate(*first)) {
+        ++first;
+    }
+
+    if(first == last) {
+        return first;
+    }
+
+    It result = first;
+
+    while(++first != last) {
+        if(predicate(*first) && compare(*first, *result)) {
+            result = first;
+        }
+    }
+
+    return result;
+}
+
 }
 
 void

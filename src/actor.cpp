@@ -41,48 +41,50 @@ using namespace cocaine::io;
 using namespace std::placeholders;
 
 namespace {
-    struct upstream_t:
-        public api::stream_t
-    {
-        upstream_t(const std::shared_ptr<channel<io::socket<tcp>>>& channel, uint64_t tag):
-            m_channel(channel),
-            m_tag(tag)
-        { }
 
-        virtual
-        void
-        write(const char* chunk, size_t size) {
-            auto ptr = m_channel.lock();
+struct upstream_t:
+    public api::stream_t
+{
+    upstream_t(const std::shared_ptr<channel<io::socket<tcp>>>& channel, uint64_t tag):
+        m_channel(channel),
+        m_tag(tag)
+    { }
 
-            if(ptr) {
-                ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
-            }
+    virtual
+    void
+    write(const char* chunk, size_t size) {
+        auto ptr = m_channel.lock();
+
+        if(ptr) {
+            ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
         }
+    }
 
-        virtual
-        void
-        error(int code, const std::string& reason) {
-            auto ptr = m_channel.lock();
+    virtual
+    void
+    error(int code, const std::string& reason) {
+        auto ptr = m_channel.lock();
 
-            if(ptr) {
-                ptr->wr->write<rpc::error>(m_tag, code, reason);
-            }
+        if(ptr) {
+            ptr->wr->write<rpc::error>(m_tag, code, reason);
         }
+    }
 
-        virtual
-        void
-        close() {
-            auto ptr = m_channel.lock();
+    virtual
+    void
+    close() {
+        auto ptr = m_channel.lock();
 
-            if(ptr) {
-                ptr->wr->write<rpc::choke>(m_tag);
-            }
+        if(ptr) {
+            ptr->wr->write<rpc::choke>(m_tag);
         }
+    }
 
-    private:
-        const std::weak_ptr<channel<io::socket<tcp>>> m_channel;
-        const uint64_t m_tag;
-    };
+private:
+    const std::weak_ptr<channel<io::socket<tcp>>> m_channel;
+    const uint64_t m_tag;
+};
+
 }
 
 actor_t::actor_t(std::shared_ptr<reactor_t> reactor,

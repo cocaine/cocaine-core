@@ -83,13 +83,15 @@ auth_t::auth_t(context_t& context):
 }
 
 namespace {
-    struct dispose_t {
-        template<class T>
-        void
-        operator()(T& key) const {
-            EVP_PKEY_free(key.second);
-        }
-    };
+
+struct dispose_t {
+    template<class T>
+    void
+    operator()(T& key) const {
+        EVP_PKEY_free(key.second);
+    }
+};
+
 }
 
 auth_t::~auth_t() {

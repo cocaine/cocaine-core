@@ -36,10 +36,9 @@ using namespace cocaine::service;
 using namespace std::placeholders;
 
 namespace {
-    typedef std::map<
-        std::string,
-        std::string
-    > runlist_t;
+
+typedef std::map<std::string, std::string> runlist_t;
+
 }
 
 node_t::node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):

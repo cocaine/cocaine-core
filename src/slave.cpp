@@ -86,12 +86,14 @@ private:
 };
 
 namespace {
-    struct ignore {
-        void
-        operator()(const std::error_code& /* ec */) {
-            // Do nothing.
-        }
-    };
+
+struct ignore {
+    void
+    operator()(const std::error_code& /* ec */) {
+        // Do nothing.
+    }
+};
+
 }
 
 slave_t::slave_t(context_t& context,
@@ -323,17 +325,19 @@ slave_t::on_message(const message_t& message) {
 }
 
 namespace {
-    struct detach_with {
-        template<class T>
-        void
-        operator()(const T& session) const {
-            session.second->upstream->error(code, message);
-            session.second->detach();
-        }
 
-        const int code;
-        const std::string message;
-    };
+struct detach_with {
+    template<class T>
+    void
+    operator()(const T& session) const {
+        session.second->upstream->error(code, message);
+        session.second->detach();
+    }
+
+    const int code;
+    const std::string message;
+};
+
 }
 
 void

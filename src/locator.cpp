@@ -244,15 +244,17 @@ locator_t::disconnect() {
 }
 
 namespace {
-    struct match {
-        template<class T>
-        bool
-        operator()(const T& service) const {
-            return name == service.first;
-        }
 
-        const std::string name;
-    };
+struct match {
+    template<class T>
+    bool
+    operator()(const T& service) const {
+        return name == service.first;
+    }
+
+    const std::string name;
+};
+
 }
 
 void
@@ -494,18 +496,20 @@ locator_t::on_announce_timer(ev::timer&, int) {
 }
 
 namespace {
-    template<class Container>
-    struct deferred_erase_action {
-        typedef Container container_type;
 
-        void
-        operator()() {
-            target.erase(key);
-        }
+template<class Container>
+struct deferred_erase_action {
+    typedef Container container_type;
 
-        container_type& target;
-        const typename container_type::key_type key;
-    };
+    void
+    operator()() {
+        target.erase(key);
+    }
+
+    container_type& target;
+    const typename container_type::key_type key;
+};
+
 }
 
 void

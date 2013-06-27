@@ -66,39 +66,41 @@ const uint16_t defaults::max_port            = 61000;
 // Config
 
 namespace {
-    void
-    validate_path(const fs::path& path) {
-        const auto status = fs::status(path);
 
-        if(!fs::exists(status)) {
-            throw cocaine::error_t("the %s directory does not exist", path);
-        } else if(!fs::is_directory(status)) {
-            throw cocaine::error_t("the %s path is not a directory", path);
-        }
+void
+validate_path(const fs::path& path) {
+    const auto status = fs::status(path);
+
+    if(!fs::exists(status)) {
+        throw cocaine::error_t("the %s directory does not exist", path);
+    } else if(!fs::is_directory(status)) {
+        throw cocaine::error_t("the %s path is not a directory", path);
+    }
+}
+
+class gai_category_t:
+    public std::error_category
+{
+    virtual
+    const char*
+    name() const throw() {
+        return "getaddrinfo";
     }
 
-    class gai_category_t:
-        public std::error_category
-    {
-        virtual
-        const char*
-        name() const throw() {
-            return "getaddrinfo";
-        }
-
-        virtual
-        std::string
-        message(int code) const {
-            return gai_strerror(code);
-        }
-    };
-
-    gai_category_t category_instance;
-
-    const std::error_category&
-    gai_category() {
-        return category_instance;
+    virtual
+    std::string
+    message(int code) const {
+        return gai_strerror(code);
     }
+};
+
+gai_category_t category_instance;
+
+const std::error_category&
+gai_category() {
+    return category_instance;
+}
+
 }
 
 config_t::config_t(const std::string& config_path) {

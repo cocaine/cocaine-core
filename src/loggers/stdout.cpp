@@ -30,14 +30,15 @@ stdout_t::stdout_t(const Json::Value& args):
 { }
 
 namespace {
-    static
-    const char* describe[] = {
-        nullptr,
-        "ERROR",
-        "WARNING",
-        "INFO",
-        "DEBUG"
-    };
+
+const char* describe[] = {
+    nullptr,
+    "ERROR",
+    "WARNING",
+    "INFO",
+    "DEBUG"
+};
+
 }
 
 void
