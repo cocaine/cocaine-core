@@ -160,6 +160,10 @@ repository_t::insert(const std::string& type) {
     factories[type] = std::make_shared<factory_type>();
 }
 
+struct preconditions_t {
+    unsigned version;
+};
+
 typedef void (*initialize_fn_t)(repository_t&);
 
 }} // namespace cocaine::api

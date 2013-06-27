@@ -36,13 +36,18 @@ repository_t::repository_t() {
 }
 
 namespace {
-    struct dispose_t {
-        template<class T>
-        void
-        operator()(T& plugin) const {
-            lt_dlclose(plugin);
-        }
-    };
+
+typedef std::remove_pointer<
+    lt_dlhandle
+>::type handle_type;
+
+struct lt_dlclose_type {
+    void
+    operator()(handle_type* plugin) const {
+        lt_dlclose(plugin);
+    }
+};
+
 }
 
 repository_t::~repository_t() {
@@ -50,20 +55,22 @@ repository_t::~repository_t() {
     m_categories.clear();
 
     // Dispose of the plugins.
-    std::for_each(m_plugins.begin(), m_plugins.end(), dispose_t());
+    std::for_each(m_plugins.begin(), m_plugins.end(), lt_dlclose_type());
 
     // Terminate the dynamic loader.
     lt_dlexit();
 }
 
 namespace {
-    struct validate_t {
-        template<typename T>
-        bool
-        operator()(const T& entry) const {
-            return fs::is_regular_file(entry) && entry.path().extension() == ".cocaine-plugin";
-        }
-    };
+
+struct validate_t {
+    template<typename T>
+    bool
+    operator()(const T& entry) const {
+        return fs::is_regular_file(entry) && entry.path().extension() == ".cocaine-plugin";
+    }
+};
+
 }
 
 void
@@ -90,7 +97,7 @@ repository_t::load(const std::string& path_) {
             ++it;
         }
     } else {
-        // NOTE: Just try to open the file.
+        // Just try to open the file.
         open(path.string());
     }
 }
@@ -101,7 +108,11 @@ repository_t::open(const std::string& target) {
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
 
-    lt_dlhandle plugin = lt_dlopenadvise(target.c_str(), advice);
+    std::unique_ptr<handle_type, lt_dlclose_type> plugin(
+        lt_dlopenadvise(target.c_str(), advice),
+        lt_dlclose_type()
+    );
+
     lt_dladvise_destroy(&advice);
 
     if(!plugin) {
@@ -112,26 +123,29 @@ repository_t::open(const std::string& target) {
     // a non-active member of a union. But GCC explicitly defines this to be
     // okay, so we do it to avoid warnings about type-punned pointer aliasing.
 
-    union {
-        void* ptr;
-        initialize_fn_t call;
-    } initialize;
+    union { void* ptr; preconditions_t info; } validation;
+    union { void* ptr; initialize_fn_t call; } initialize;
 
-    initialize.ptr = lt_dlsym(plugin, "initialize");
+    validation.ptr = lt_dlsym(plugin.get(), "validation");
+    initialize.ptr = lt_dlsym(plugin.get(), "initialize");
+
+    if(validation.ptr) {
+        if(validation.info.version > COCAINE_VERSION) {
+            throw repository_error_t("'%s' version requirements are not met", target);
+        }
+    }
 
     if(initialize.ptr) {
         try {
             initialize.call(*this);
-            m_plugins.emplace_back(plugin);
         } catch(const std::exception& e) {
-            lt_dlclose(plugin);
             throw repository_error_t("unable to initialize '%s' - %s", target, e.what());
         } catch(...) {
-            lt_dlclose(plugin);
             throw repository_error_t("unable to initialize '%s' - unexpected exception", target);
         }
     } else {
         throw repository_error_t("unable to initialize '%s' - initialize() is missing", target);
     }
-}
 
+    m_plugins.emplace_back(plugin.release());
+}
