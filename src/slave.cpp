@@ -262,7 +262,7 @@ slave_t::stop() {
 
     m_state = states::inactive;
 
-    m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "engine shutdown");
+    m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "the engine is shutting down");
 }
 
 void
@@ -324,57 +324,27 @@ slave_t::on_message(const message_t& message) {
     }
 }
 
-namespace {
-
-struct detach_with {
-    template<class T>
-    void
-    operator()(const T& session) const {
-        session.second->upstream->error(code, message);
-        session.second->detach();
-    }
-
-    const int code;
-    const std::string message;
-};
-
-}
-
 void
 slave_t::on_failure(const std::error_code& ec) {
     switch(m_state) {
-        case states::unknown:
-        case states::active:
-            COCAINE_LOG_ERROR(
-                m_log,
-                "slave %s has unexpectedly disconnected - [%d] %s",
-                m_id,
-                ec.value(),
-                ec.message()
-            );
+    case states::unknown:
+    case states::active:
+        COCAINE_LOG_ERROR(
+            m_log,
+            "slave %s has unexpectedly disconnected - [%d] %s",
+            m_id,
+            ec.value(),
+            ec.message()
+        );
 
-            m_state = states::inactive;
+        dump();
+        terminate(rpc::terminate::code::normal, "slave has unexpectedly disconnected");
+        break;
 
-            dump();
-            terminate(rpc::terminate::code::abnormal, "slave has unexpectedly disconnected");
-
-            break;
-
-        case states::inactive:
-            terminate(rpc::terminate::code::normal, "on request");
-            break;
+    case states::inactive:
+        terminate(rpc::terminate::code::normal, "slave has shut itself down");
+        break;
     }
-
-    std::unique_lock<std::mutex> lock(m_mutex);
-
-    COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
-
-    std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-        resource_error,
-        "the session has been aborted"
-    });
-
-    m_sessions.clear();
 }
 
 void
@@ -429,21 +399,8 @@ slave_t::on_death(int code, const std::string& reason) {
         reason
     );
 
-    m_state = states::inactive;
-
-    {
-        std::unique_lock<std::mutex> lock(m_mutex);
-
-        COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
-
-        std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-            resource_error,
-            "the session has been aborted"
-        });
-
-        m_sessions.clear();
-    }
-
+    // NOTE: This is the only case where code could be abnormal, triggering
+    // the engine shutdown. Socket errors are not considered abnormal.
     terminate(code, reason);
 }
 
@@ -542,40 +499,21 @@ slave_t::on_choke(uint64_t session_id) {
 void
 slave_t::on_timeout(ev::timer&, int) {
     switch(m_state) {
-        case states::unknown:
-            COCAINE_LOG_ERROR(m_log, "slave %s has failed to activate", m_id);
+    case states::unknown:
+        COCAINE_LOG_ERROR(m_log, "slave %s has failed to activate", m_id);
+        break;
 
-            m_state = states::inactive;
+    case states::active:
+        COCAINE_LOG_ERROR(m_log, "slave %s has timed out", m_id);
+        break;
 
-            break;
-
-        case states::active:
-            COCAINE_LOG_ERROR(m_log, "slave %s has timed out", m_id);
-
-            m_state = states::inactive;
-
-            {
-                std::unique_lock<std::mutex> lock(m_mutex);
-
-                COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
-
-                std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-                    timeout_error,
-                    "the session had timed out"
-                });
-
-                m_sessions.clear();
-            }
-
-            break;
-
-        case states::inactive:
-            COCAINE_LOG_ERROR(m_log, "slave %s has failed to deactivate", m_id);
-            break;
+    case states::inactive:
+        COCAINE_LOG_ERROR(m_log, "slave %s has failed to deactivate", m_id);
+        break;
     }
 
     dump();
-    terminate(rpc::terminate::code::normal, "timed out");
+    terminate(rpc::terminate::code::normal, "slave has timed out");
 }
 
 void
@@ -587,7 +525,7 @@ slave_t::on_idle(ev::timer&, int) {
 
     m_state = states::inactive;
 
-    m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "idle");
+    m_channel->wr->write<rpc::terminate>(0UL, rpc::terminate::normal, "slave is idle");
 }
 
 size_t
@@ -668,7 +606,38 @@ slave_t::dump() {
     }
 }
 
+namespace {
+
+struct detach_with {
+    template<class T>
+    void
+    operator()(const T& session) const {
+        session.second->upstream->error(code, message);
+        session.second->detach();
+    }
+
+    const int code;
+    const std::string message;
+};
+
+}
+
 void
 slave_t::terminate(int code, const std::string& reason) {
+    m_state = states::inactive;
+
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+
+        std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+            resource_error,
+            reason
+        });
+
+        m_sessions.clear();
+    }
+
     m_reactor.post(std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason));
 }
