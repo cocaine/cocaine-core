@@ -629,14 +629,16 @@ slave_t::terminate(int code, const std::string& reason) {
     {
         std::unique_lock<std::mutex> lock(m_mutex);
 
-        COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+        if(!m_sessions.empty()) {
+            COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
 
-        std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
-            resource_error,
-            reason
-        });
+            std::for_each(m_sessions.begin(), m_sessions.end(), detach_with {
+                resource_error,
+                reason
+            });
 
-        m_sessions.clear();
+            m_sessions.clear();
+        }
     }
 
     m_reactor.post(std::bind(&engine_t::erase, std::ref(m_engine), m_id, code, reason));
