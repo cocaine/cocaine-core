@@ -1,6 +1,10 @@
 cocaine-core (0.10.5-14) unstable; urgency=low
 
+  * Plugin preconditions support. Now plugins should specify their minimum
+    required runtime version during compilation, so that plugins with
+    different ABI requiremenets won't be loaded at all.
   * Bugfix: break an infinite loop in slave_t::pump() with named queues.
+  * Bugfix: updated to a recent backward-cpp version to fix building on i386.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 28 Jun 2013 14:46:38 +0400
 
