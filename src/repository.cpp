@@ -102,6 +102,12 @@ repository_t::load(const std::string& path_) {
     }
 }
 
+// Plugin preconditions validation function type.
+typedef preconditions_t (*validation_fn_t)();
+
+// Plugin initialization function type.
+typedef void (*initialize_fn_t)(repository_t&);
+
 void
 repository_t::open(const std::string& target) {
     lt_dladvise advice;
@@ -123,14 +129,16 @@ repository_t::open(const std::string& target) {
     // a non-active member of a union. But GCC explicitly defines this to be
     // okay, so we do it to avoid warnings about type-punned pointer aliasing.
 
-    union { void* ptr; preconditions_t info; } validation;
+    union { void* ptr; validation_fn_t call; } validation;
     union { void* ptr; initialize_fn_t call; } initialize;
 
     validation.ptr = lt_dlsym(plugin.get(), "validation");
     initialize.ptr = lt_dlsym(plugin.get(), "initialize");
 
     if(validation.ptr) {
-        if(validation.info.version > COCAINE_VERSION) {
+        auto preconditions = validation.call();
+
+        if(preconditions.version > COCAINE_VERSION) {
             throw repository_error_t("'%s' version requirements are not met", target);
         }
     }

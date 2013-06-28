@@ -164,8 +164,6 @@ struct preconditions_t {
     unsigned version;
 };
 
-typedef void (*initialize_fn_t)(repository_t&);
-
 }} // namespace cocaine::api
 
 #endif
