@@ -621,7 +621,7 @@ slave_t::pump() {
     while(!m_queue.empty()) {
         std::unique_lock<std::mutex> lock(m_mutex);
 
-        if(m_queue.empty()) {
+        if(m_queue.empty() || m_sessions.size() >= m_profile.concurrency) {
             break;
         }
 
