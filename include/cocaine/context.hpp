@@ -77,16 +77,12 @@ struct config_t {
     struct {
         std::string hostname;
 
-        // Service locator port.
+        // NOTE: Service locator port is configurable to allow multiple runtimes to run on a single
+        // machine. This port will be forwarded to the slaves via a command-line argument.
         uint16_t locator;
 
-        // Optional multicast group to join to.
         boost::optional<std::string> group;
-
-        // Optional port range available for allocation.
         boost::optional<std::tuple<uint16_t, uint16_t>> ports;
-
-        // Optional locator gateway.
         boost::optional<component_t> gateway;
     } network;
 
