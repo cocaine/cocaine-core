@@ -4,69 +4,68 @@ __Your personal app engine.__ Technically speaking, it's an open-source cloud pl
 
 Notable features:
 
-* You are not restricted by a language or a framework. Language support is plugin-based, and we already support several common languages, so your needs are probably covered. Of course, if you want to write your apps in Whitespace, you'll need to write the language support plugin first, but it's easier to write the actual Whitespace code, we bet.
-* Your apps are driven by events, which is fancy. In order for events to actually appear from somewhere, your app defines a set of event drivers. We got lots of predefined event drivers, so unless you need to handle clients via a PS/2 port, you're good.
-* We got dynamic self-managing slave pools for each app with a rich but simple configuration and resource usage control to scale with the app needs. Yeah, it's scales automatically, you don't need to think about it.
-* Even more, it scales automatically across your server cluser via automatic node discovery and smart peer-to-peer balancing.
-* If your startup idea is about processing terabytes of pirated video, we got data streaming and pipelining for you, enjoy.
+* You are not restricted by a language or a framework. Similiar to Heroku model, Cocaine simply spawns whatever you tell it to spawn. The only requirement is that these newly spawned apps must connect to their app controller for request load balancing. But we plan to get rid of this last requiremenet as well.
+* Your apps are driven by events, which is fancy. There are two sources of events for every app, and we got lots of predefined plugins providing those sources, so unless you need to handle clients via a PS/2 port, you're good.
+  * First, there are services: this concept is similiar to Google App Engine's services. Simply speaking, services are other apps running in the same cloud. These apps can be anything ranging from a distributed storage access service or a publish-subscribe notification service to specially-crafted service for your own personal needs.
+  * Second, there are event drivers: these are simple statically configurable objects attached to your app generating events from some predefined source, for example a recurring timer or a watched file on the filesystem.
+* We got dynamic self-managing worker pools for each app with a rich but simple configuration and resource usage control to scale with the app needs. Yeah, it's scales automatically, you don't need to think about it. As of now, we got support for CGroups and LXC support via [Docker](http://docker.io) is on its way.
+* Even more, it scales automatically across your server cluser via automatic node discovery and smart peer-to-peer balancing. You can use a simple adhoc round-robin balancing for simple setups or a hardcore IPVS-based realtime balancer.
+* If your startup idea is about processing terabytes of pirated video, we got data streaming and pipelining for you as well, enjoy.
 
 At the moment, Cocaine Core supports the following languages and specifications:
 
 * C++
 * Python
-* Perl
-* [In Development] JavaScript
+* Javascript
+* [In development] Java
+* [In development] Racket
 
-Also, we have the following event drivers built-in:
+We have the following services:
 
-* Recurring Timer (multiple jobs can be run if they are not finished in the timer intervals)
-* Drifting Timer (only one job can be run, hence the drift)
-* [In Development] Cron
-* [In Development] Manual Scheduler
-* Filesystem Monitor
-* ZeroMQ Server (Request-Response)
-* Native Server (Request-Response + Smart Balancing)
-* ZeroMQ Sink (Push-Pull)
-* Native Sink (Push-Pull + Smart Balancing)
-* [In Development] Raw Socket Server
+* Logging
+* Node-local file storage
+* MongoDB storage
+* [Elliptics](https://github.com/reverbrain/elliptics) storage
+* Node-local in-memory cache
+* Distributed in-memory cache
+* URL Fetch
+* Jabber
+* [In development] Notifications
+* [In development] Distributed time service
+
+And the following event drivers built-in:
+
+* Simple timer
+* Filesystem monitor
+* ZeroMQ
 
 A motivating example
 ====================
 
-```python
-{
-    "type": "python",
-    "engine": {
-        "heartbeat-timeout": 60,
-        "pool-limit": 20,
-        "queue-limit": 5,
-        "resource-limits": {
-            "cpuset": {
-                "cpuset.cpus": "0-3",
-                "cpuset.mems": "1",
-            }
-        }
-    },
-    "drivers": {
-        "ultimate-aggregator": {
-            "emit": "aggregte",
-            "type": "recurring-timer",
-            "interval": 60000
-        },
-        "event": {
-            "emit": "event",
-            "type" : "native-server"
-        },
-        "spool": {
-            "emit": "on_spool_changed",
-            "type": "filesystem-monitor",
-            "path": "/var/spool/my-app-data"
-        }
-    }
-}
-```
+Here's some extremely useful Cocaine app written in Python.
 
-The JSON above is an app manifest, a description of the application you feed into Cocaine Core for it to be able to host it. In a distributed setup, this manifest will be sent to all the other nodes of the cluster automatically. Apart from this manifest, there is __no other configuration needed to start serving the application__.
+```python
+#!/usr/bin/env python
+
+from cocaine.services import Service
+from cocaine.worker import Worker
+
+storage = Service("storage")
+
+def process(value):
+    return len(value)
+
+def handle(request, response):
+    key = yield request
+    value = yield storage.read("collection", key)
+
+    response.write(process(value))
+    response.close()
+
+Worker().run({
+    'calculate_length': handle
+})
+```
 
 Okay, I want to try it!
 =======================
