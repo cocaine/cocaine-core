@@ -39,7 +39,7 @@ auth_t::auth_t(context_t& context):
 
     auto storage = api::storage(context, "core");
 
-    std::vector<std::string> keys;
+    std::vector<std::string> keys,
     std::vector<std::string> tags = { "rsa-key" };
 
     try {
@@ -49,10 +49,7 @@ auth_t::auth_t(context_t& context):
         return;
     }
 
-    for(std::vector<std::string>::const_iterator it = keys.begin();
-        it != keys.end();
-        ++it)
-    {
+    for(auto it = keys.cbegin(); it != keys.cend(); ++it) {
         const std::string identity = *it;
         const std::string object = storage->get<std::string>("keys", identity);
 
@@ -123,10 +120,7 @@ std::string auth_t::sign(const std::string& message,
 */
 
 void
-auth_t::verify(const std::string& message,
-               const std::string& signature,
-               const std::string& username) const
-{
+auth_t::verify(const std::string& message, const std::string& signature, const std::string& username) const {
     key_map_t::const_iterator it(m_keys.find(username));
 
     if(it == m_keys.end()) {
@@ -136,7 +130,7 @@ auth_t::verify(const std::string& message,
     EVP_VerifyInit(m_evp_md_context, EVP_sha1());
     EVP_VerifyUpdate(m_evp_md_context, message.data(), message.size());
 
-    bool success = EVP_VerifyFinal(
+    const bool success = EVP_VerifyFinal(
         m_evp_md_context,
         reinterpret_cast<const unsigned char*>(signature.data()),
         signature.size(),

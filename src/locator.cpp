@@ -264,7 +264,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
-        const auto existing = std::find_if(m_services.begin(), m_services.end(), match {
+        const auto existing = std::find_if(m_services.cbegin(), m_services.cend(), match {
             name
         });
 

@@ -211,10 +211,7 @@ config_t::parse(const Json::Value& config) {
 
     const Json::Value::Members names(config.getMemberNames());
 
-    for(Json::Value::Members::const_iterator it = names.begin();
-        it != names.end();
-        ++it)
-    {
+    for(auto it = names.begin(); it != names.end(); ++it) {
         components[*it] = {
             config[*it].get("type", "unspecified").asString(),
             config[*it]["args"]

@@ -407,7 +407,7 @@ app_t::info() const {
 
     info["profile"] = m_profile->name;
 
-    for(auto it = m_drivers.begin(); it != m_drivers.end(); ++it) {
+    for(auto it = m_drivers.cbegin(); it != m_drivers.cend(); ++it) {
         info["drivers"][it->first] = it->second->info();
     }
 

@@ -115,10 +115,10 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
         std::map<std::string, std::string>::const_iterator it;
         int n;
 
-        it = args.begin();
+        it = args.cbegin();
         n = 1;
 
-        while(it != args.end()) {
+        while(it != args.cend()) {
             argv[n++] = ::strdup(it->first.c_str());
             argv[n++] = ::strdup(it->second.c_str());
             ++it;
@@ -131,10 +131,10 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
         /*
         boost::format format("%s=%s");
 
-        it = environment.begin();
+        it = environment.cbegin();
         n = 0;
 
-        while(it != environment.end()) {
+        while(it != environment.cend()) {
             format % it->first % it->second;
 
             envp[n++] = ::strdup(format.str().c_str());

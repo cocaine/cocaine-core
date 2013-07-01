@@ -88,7 +88,7 @@ adhoc_t::consume(const std::string& uuid, synchronize_result_type dump) {
         uuid
     );
 
-    for(auto it = dump.begin(); it != dump.end(); ++it) {
+    for(auto it = dump.cbegin(); it != dump.cend(); ++it) {
         remote_service_t service = {
             uuid,
             it->second

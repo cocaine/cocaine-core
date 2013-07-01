@@ -418,8 +418,8 @@ engine_t::on_control(const message_t& message) {
             std::unique_lock<std::mutex> lock(m_pool_mutex);
 
             size_t active = std::count_if(
-                m_pool.begin(),
-                m_pool.end(),
+                m_pool.cbegin(),
+                m_pool.cend(),
                 std::bind<bool>(std::ref(collector), _1)
             );
 
