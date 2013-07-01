@@ -37,12 +37,9 @@ struct type_traits<Json::Value> {
             case Json::objectValue: {
                 packer.pack_map(source.size());
 
-                Json::Value::Members keys(source.getMemberNames());
+                const Json::Value::Members keys(source.getMemberNames());
 
-                for(Json::Value::Members::const_iterator it = keys.begin();
-                    it != keys.end();
-                    ++it)
-                {
+                for(auto it = keys.begin(); it != keys.end(); ++it) {
                     packer << *it;
                     pack(packer, source[*it]);
                 }
@@ -53,10 +50,7 @@ struct type_traits<Json::Value> {
             case Json::arrayValue:
                 packer.pack_array(source.size());
 
-                for(Json::Value::const_iterator it = source.begin();
-                    it != source.end();
-                    ++it)
-                {
+                for(auto it = source.begin(); it != source.end(); ++it) {
                     pack(packer, *it);
                 }
 
@@ -104,10 +98,7 @@ struct type_traits<Json::Value> {
                         throw msgpack::type_error();
                     }
 
-                    unpack(
-                        ptr->val,
-                        target[ptr->key.as<std::string>()]
-                    );
+                    unpack(ptr->val, target[ptr->key.as<std::string>()]);
                 }
 
                 break;
