@@ -131,20 +131,15 @@ template<class T>
 void
 repository_t::insert(const std::string& type) {
     typedef typename T::category_type category_type;
+    typedef typename plugin_traits<T>::factory_type factory_type;
 
     static_assert(
-        std::is_base_of<
-            category_type,
-            T
-        >::value,
+        std::is_base_of<category_type, T>::value,
         "component is not derived from its category"
     );
 
     static_assert(
-        std::is_base_of<
-            typename category_traits<category_type>::factory_type,
-            typename plugin_traits<T>::factory_type
-        >::value,
+        std::is_base_of<typename category_traits<category_type>::factory_type, factory_type>::value,
         "component factory is not derived from its category"
     );
 
@@ -154,8 +149,6 @@ repository_t::insert(const std::string& type) {
     if(factories.find(type) != factories.end()) {
         throw repository_error_t("the '%s' component is a duplicate", type);
     }
-
-    typedef typename plugin_traits<T>::factory_type factory_type;
 
     factories[type] = std::make_shared<factory_type>();
 }
