@@ -74,12 +74,7 @@ cached<T>::cached(context_t& context, const std::string& collection, const std::
         try {
             cache->put(collection, name, object, std::vector<std::string>());
         } catch(const storage_error_t& e) {
-            throw storage_error_t(
-                "unable to cache the '%s/%s' object - %s",
-                collection,
-                name,
-                e.what()
-            );
+            throw storage_error_t("unable to cache object '%s' in '%s' - %s", name, collection, e.what());
         }
 
         return;
@@ -91,16 +86,10 @@ cached<T>::cached(context_t& context, const std::string& collection, const std::
 template<class T>
 void
 cached<T>::download(context_t& context, const std::string& collection, const std::string& name) {
-    try {
-        static_cast<T&>(*this) = api::storage(context, "core")->get<T>(collection, name);
-    } catch(const storage_error_t& e) {
-        throw storage_error_t(
-            "unable to fetch the '%s/%s' object from the storage - %s",
-            collection,
-            name,
-            e.what()
-        );
-    }
+    T& object = static_cast<T&>(*this);
+
+    // Intentionally propagate storage exceptions from this call.
+    object = api::storage(context, "core")->get<T>(collection, name);
 
     m_source = sources::storage;
 }
