@@ -23,6 +23,8 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
+#include <numeric>
+
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/convenience.hpp>
@@ -177,21 +179,43 @@ files_t::remove(const std::string& collection, const std::string& key) {
     }
 }
 
+namespace {
+
+struct intersect {
+    template<class T>
+    T
+    operator()(const T& accumulator, T& keys) const {
+        T result;
+
+        // NOTE: The accumulator is already sorted, so only have to sort the key vectors.
+
+        std::sort(keys.begin(), keys.end());
+        std::set_intersection(accumulator.begin(), accumulator.end(), keys.begin(), keys.end(), std::back_inserter(result));
+
+        return result;
+    }
+};
+
+}
+
 std::vector<std::string>
 files_t::find(const std::string& collection, const std::vector<std::string>& tags) {
     std::lock_guard<std::mutex> guard(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
 
-    std::vector<std::string> result;
-
     if(!fs::exists(store_path)) {
-        return result;
+        return std::vector<std::string>();
     }
 
+    std::vector<std::vector<std::string>> result;
+
     for(auto tag = tags.begin(); tag != tags.end(); ++tag) {
+        auto tagged = result.insert(result.end(), std::vector<std::string>());
+
         if(!fs::exists(store_path / *tag)) {
-            continue;
+            // If one of the tags doesn't exist, the intersection is evidently empty.
+            return std::vector<std::string>();
         }
 
         fs::directory_iterator it(store_path / *tag), end;
@@ -212,16 +236,11 @@ files_t::find(const std::string& collection, const std::vector<std::string>& tag
                 continue;
             }
 
-            result.emplace_back(object);
+            tagged->push_back(object);
 
             ++it;
         }
     }
 
-    std::sort(result.begin(), result.end());
-
-    // Remove the duplicates, if any.
-    result.erase(std::unique(result.begin(), result.end()), result.end());
-
-    return result;
+    return std::accumulate(result.begin(), result.end(), std::vector<std::string>(), intersect());
 }
