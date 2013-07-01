@@ -39,7 +39,7 @@ auth_t::auth_t(context_t& context):
 
     auto storage = api::storage(context, "core");
 
-    std::vector<std::string> keys,
+    std::vector<std::string> keys;
     std::vector<std::string> tags = { "rsa-key" };
 
     try {
