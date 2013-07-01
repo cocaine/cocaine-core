@@ -48,8 +48,8 @@ namespace po = boost::program_options;
 namespace {
 
 void stacktrace(int signum, siginfo_t* /* info */, void* context) {
-    ucontext_t* uctx = (ucontext_t*)context;
-
+    ucontext_t* uctx = static_cast<ucontext_t*>(context);
+    
     using namespace backward;
 
     StackTrace trace;
@@ -60,7 +60,7 @@ void stacktrace(int signum, siginfo_t* /* info */, void* context) {
 #elif defined(REG_EIP)
     void* error_address = reinterpret_cast<void*>(uctx->uc_mcontext.gregs[REG_EIP]);
 #else
-    void* error_address = nullptr;
+    void* error_address = uctx = nullptr;
 #endif
 
     if(error_address) {
