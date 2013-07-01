@@ -595,7 +595,7 @@ slave_t::dump() {
     COCAINE_LOG_INFO(m_log, "slave %s is dumping output to 'crashlogs/%s'", m_id, key);
 
     std::vector<std::string> dump;
-    std::copy(m_output_ring.begin(), m_output_ring.end(), std::back_inserter(dump));
+    std::copy(m_output_ring.begin(), m_output_ring.end(), dump.begin());
 
     try {
         api::storage(m_context, "core")->put("crashlogs", key, dump, std::vector<std::string> {
