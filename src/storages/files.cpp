@@ -187,8 +187,6 @@ struct intersect {
     operator()(const T& accumulator, T& keys) const {
         T result;
 
-        // NOTE: The accumulator is already sorted, so only have to sort the key vectors.
-
         std::sort(keys.begin(), keys.end());
         std::set_intersection(accumulator.begin(), accumulator.end(), keys.begin(), keys.end(), std::back_inserter(result));
 
@@ -204,7 +202,7 @@ files_t::find(const std::string& collection, const std::vector<std::string>& tag
 
     const fs::path store_path(m_storage_path / collection);
 
-    if(!fs::exists(store_path)) {
+    if(!fs::exists(store_path) || tags.empty()) {
         return std::vector<std::string>();
     }
 
@@ -242,5 +240,15 @@ files_t::find(const std::string& collection, const std::vector<std::string>& tag
         }
     }
 
-    return std::accumulate(result.begin(), result.end(), std::vector<std::string>(), intersect());
+    std::vector<std::string> initial = std::move(result.back());
+
+    // NOTE: Pop the initial accumulator value from the result queue, so that it
+    // won't be intersected with itself later.
+    result.pop_back();
+
+    // NOTE: Sort the initial accumulator value here once, because it will always
+    // be kept sorted inside the functor by std::set_intersection().
+    std::sort(initial.begin(), initial.end());
+
+    return std::accumulate(result.begin(), result.end(), initial, intersect());
 }
