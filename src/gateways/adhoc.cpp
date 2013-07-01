@@ -61,7 +61,7 @@ adhoc_t::resolve(const std::string& name) const {
 
     std::advance(it, distribution(m_random_generator));
 
-    auto endpoint = std::get<0>(it->second.info);
+    const auto endpoint = std::get<0>(it->second.info);
 
     COCAINE_LOG_DEBUG(
         m_log,

@@ -118,7 +118,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     m_manifest(new manifest_t(context, name)),
     m_profile(new profile_t(context, profile))
 {
-    fs::path path = fs::path(m_context.config.path.spool) / name;
+    const fs::path path = fs::path(m_context.config.path.spool) / name;
 
     if(!fs::exists(path) || m_manifest->source() != sources::cache) {
         try {

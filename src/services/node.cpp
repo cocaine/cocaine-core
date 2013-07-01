@@ -110,10 +110,7 @@ node_t::on_start_app(const runlist_t& runlist) {
     Json::Value result(Json::objectValue);
     app_map_t::iterator app;
 
-    for(runlist_t::const_iterator it = runlist.begin();
-        it != runlist.end();
-        ++it)
-    {
+    for(auto it = runlist.begin(); it != runlist.end(); ++it) {
         if(m_apps.find(it->first) != m_apps.end()) {
             result[it->first] = "the app is already running";
             continue;
@@ -124,11 +121,7 @@ node_t::on_start_app(const runlist_t& runlist) {
         try {
             std::tie(app, std::ignore) = m_apps.insert(std::make_pair(
                 it->first,
-                std::make_shared<app_t>(
-                    m_context,
-                    it->first,
-                    it->second
-                )
+                std::make_shared<app_t>(m_context, it->first, it->second)
             ));
         } catch(const cocaine::error_t& e) {
             COCAINE_LOG_ERROR(
@@ -170,10 +163,7 @@ Json::Value
 node_t::on_pause_app(const std::vector<std::string>& applist) {
     Json::Value result(Json::objectValue);
 
-    for(std::vector<std::string>::const_iterator it = applist.begin();
-        it != applist.end();
-        ++it)
-    {
+    for(auto it = applist.begin(); it != applist.end(); ++it) {
         app_map_t::iterator app(m_apps.find(*it));
 
         if(app == m_apps.end()) {
@@ -196,10 +186,7 @@ Json::Value
 node_t::on_info() const {
     Json::Value result(Json::objectValue);
 
-    for(app_map_t::const_iterator it = m_apps.begin();
-        it != m_apps.end();
-        ++it)
-    {
+    for(auto it = m_apps.begin(); it != m_apps.end(); ++it) {
         result["apps"][it->first] = it->second->info();
     }
 
@@ -207,7 +194,7 @@ node_t::on_info() const {
 
     using namespace std::chrono;
 
-    auto uptime = duration_cast<seconds>(
+    const auto uptime = duration_cast<seconds>(
 #if defined(__clang__) || defined(HAVE_GCC47)
         steady_clock::now() - m_birthstamp
 #else

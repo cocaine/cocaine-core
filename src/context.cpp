@@ -209,7 +209,7 @@ config_t::parse(const Json::Value& config) {
         return components;
     }
 
-    Json::Value::Members names(config.getMemberNames());
+    const Json::Value::Members names(config.getMemberNames());
 
     for(Json::Value::Members::const_iterator it = names.begin();
         it != names.end();
@@ -237,7 +237,7 @@ context_t::context_t(config_t config_, const std::string& logger):
     // Load the plugins.
     m_repository->load(config.path.plugins);
 
-    auto it = config.loggers.find(logger);
+    const auto it = config.loggers.find(logger);
 
     if(it == config.loggers.end()) {
         throw cocaine::error_t("the '%s' logger is not configured", logger);
@@ -341,7 +341,7 @@ context_t::bootstrap() {
         }
     }
 
-    std::vector<io::tcp::endpoint> endpoints = {
+    const std::vector<io::tcp::endpoint> endpoints = {
         { "0.0.0.0", config.network.locator }
     };
 

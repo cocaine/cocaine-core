@@ -35,14 +35,14 @@ class rpc_category_t:
     std::string
     message(int code) const {
         switch(code) {
-            case cocaine::io::rpc_errc::parse_error:
-                return "invalid bytes";
+        case cocaine::io::rpc_errc::parse_error:
+            return "invalid bytes";
 
-            case cocaine::io::rpc_errc::invalid_format:
-                return "invalid format";
+        case cocaine::io::rpc_errc::invalid_format:
+            return "invalid format";
 
-            default:
-                return "unknown error";
+        default:
+            return "unknown error";
         }
     }
 };

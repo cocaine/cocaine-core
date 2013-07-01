@@ -41,23 +41,23 @@ syslog_t::emit(logging::priorities priority,
                const std::string& message)
 {
     switch(priority) {
-        case logging::debug:
-            syslog(LOG_DEBUG, "%s: %s", source.c_str(), message.c_str());
-            break;
+    case logging::debug:
+        syslog(LOG_DEBUG, "%s: %s", source.c_str(), message.c_str());
+        break;
 
-        case logging::info:
-            syslog(LOG_INFO, "%s: %s", source.c_str(), message.c_str());
-            break;
+    case logging::info:
+        syslog(LOG_INFO, "%s: %s", source.c_str(), message.c_str());
+        break;
 
-        case logging::warning:
-            syslog(LOG_WARNING, "%s: %s", source.c_str(), message.c_str());
-            break;
+    case logging::warning:
+        syslog(LOG_WARNING, "%s: %s", source.c_str(), message.c_str());
+        break;
 
-        case logging::error:
-            syslog(LOG_ERR, "%s: %s", source.c_str(), message.c_str());
-            break;
+    case logging::error:
+        syslog(LOG_ERR, "%s: %s", source.c_str(), message.c_str());
+        break;
 
-        default:
-            break;
+    default:
+        break;
     }
 }
