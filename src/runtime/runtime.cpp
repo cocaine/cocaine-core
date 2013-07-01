@@ -47,20 +47,29 @@ namespace po = boost::program_options;
 
 namespace {
 
-void stacktrace(int signum, siginfo_t* info, void* context) {
-    using namespace backward;
+void stacktrace(int signum, siginfo_t* /* info */, void* context) {
+    ucontext_t* uctx = (ucontext_t*)context;
 
-    (void)context;
+    using namespace backward;
 
     StackTrace trace;
     Printer printer;
 
-    if(signum == SIGSEGV || signum == SIGBUS) {
-        trace.load_from(info->si_addr, 32);
+#ifdef REG_RIP
+    void* error_address = reinterpret_cast<void*>(uctx->uc_mcontext.gregs[REG_RIP]);
+#elif defined(REG_EIP)
+    void* error_address = reinterpret_cast<void*>(uctx->uc_mcontext.gregs[REG_EIP]);
+#else
+    void* error_address = nullptr;
+#endif
+
+    if(error_address) {
+        trace.load_from(error_address, 32);
     } else {
         trace.load_here(32);
     }
 
+    printer.address = true;
     printer.print(trace);
 
     // Re-raise so that a core dump is generated.
