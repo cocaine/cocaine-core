@@ -38,7 +38,9 @@ struct decoder {
     }
 
    ~decoder() {
-        unbind();
+       if (m_stream) {
+           unbind();
+       }
     }
 
     void
