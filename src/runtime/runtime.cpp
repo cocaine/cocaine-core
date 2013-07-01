@@ -76,7 +76,7 @@ void stacktrace(int signum, siginfo_t* /* info */, void* context) {
     std::raise(signum);
 
     // Just in case, if the default handler returns for some weird reason.
-    std::exit(EXIT_FAILURE);
+    std::_Exit(EXIT_FAILURE);
 }
 
 struct runtime_t {
