@@ -74,8 +74,8 @@ files_t::read(const std::string& collection, const std::string& key) {
     }
 
     return std::string(
-        std::istream_iterator<char>(stream),
-        std::istream_iterator<char>()
+        std::istreambuf_iterator<char>(stream),
+        std::istreambuf_iterator<char>()
     );
 }
 
