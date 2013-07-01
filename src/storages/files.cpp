@@ -71,10 +71,10 @@ files_t::read(const std::string& collection, const std::string& key) {
         throw storage_error_t("unable to access object '%s' in '%s' - unknown error", key, collection);
     }
 
-    std::stringstream buffer;
-    buffer << stream.rdbuf();
-
-    return buffer.str();
+    return std::string(
+        std::istream_iterator<char>(stream),
+        std::istream_iterator<char>()
+    );
 }
 
 void
