@@ -29,7 +29,7 @@ unique_id_t::unique_id_t() {
 }
 
 unique_id_t::unique_id_t(const std::string& other) {
-    int rv = uuid_parse(
+    const int rv = uuid_parse(
         other.c_str(),
         reinterpret_cast<unsigned char*>(uuid.data())
     );

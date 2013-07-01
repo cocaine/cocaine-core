@@ -118,7 +118,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     m_manifest(new manifest_t(context, name)),
     m_profile(new profile_t(context, profile))
 {
-    fs::path path = fs::path(m_context.config.path.spool) / name;
+    const fs::path path = fs::path(m_context.config.path.spool) / name;
 
     if(!fs::exists(path) || m_manifest->source() != sources::cache) {
         try {
@@ -407,7 +407,7 @@ app_t::info() const {
 
     info["profile"] = m_profile->name;
 
-    for(auto it = m_drivers.begin(); it != m_drivers.end(); ++it) {
+    for(auto it = m_drivers.cbegin(); it != m_drivers.cend(); ++it) {
         info["drivers"][it->first] = it->second->info();
     }
 

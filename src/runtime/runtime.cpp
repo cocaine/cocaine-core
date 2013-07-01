@@ -87,7 +87,7 @@ struct runtime_t {
 
         // Establish an alternative signal stack
 
-        size_t alt_stack_size = 8 * 1024 * 1024;
+        const size_t alt_stack_size = 8 * 1024 * 1024;
 
         m_alt_stack.ss_sp = new char[alt_stack_size];
         m_alt_stack.ss_size = alt_stack_size;

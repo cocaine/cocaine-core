@@ -33,7 +33,7 @@ files_t::files_t(const Json::Value& args):
     category_type(args),
     m_file(nullptr)
 {
-    std::string path = args["path"].asString();
+    const std::string path = args["path"].asString();
 
     m_file = std::fopen(path.c_str(), "a");
 
@@ -79,7 +79,7 @@ files_t::emit(logging::priorities priority,
         return;
     }
 
-    std::string out = cocaine::format(
+    const std::string out = cocaine::format(
         "[%s] [%s] %s: %s\n",
         timestamp,
         describe[priority],

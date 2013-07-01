@@ -87,7 +87,7 @@ process_t::~process_t() {
 
 std::unique_ptr<api::handle_t>
 process_t::spawn(const std::string& path, const api::string_map_t& args, const api::string_map_t& environment, int pipe) {
-    pid_t pid = ::fork();
+    const pid_t pid = ::fork();
 
     if(pid < 0) {
         throw std::system_error(errno, std::system_category(), "unable to fork");
@@ -99,8 +99,8 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
 
         // Prepare the arguments and environment
 
-        size_t argc = args.size() * 2 + 2;
-        // size_t envc = environment.size() + 1;
+        const size_t argc = args.size() * 2 + 2;
+        // const size_t envc = environment.size() + 1;
 
         char** argv = new char* [argc];
         // char** envp[] = new char* [envc];
@@ -115,13 +115,12 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
         std::map<std::string, std::string>::const_iterator it;
         int n;
 
-        it = args.begin();
+        it = args.cbegin();
         n = 1;
 
-        while(it != args.end()) {
+        while(it != args.cend()) {
             argv[n++] = ::strdup(it->first.c_str());
             argv[n++] = ::strdup(it->second.c_str());
-
             ++it;
         }
 
@@ -132,10 +131,10 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
         /*
         boost::format format("%s=%s");
 
-        it = environment.begin();
+        it = environment.cbegin();
         n = 0;
 
-        while(it != environment.end()) {
+        while(it != environment.cend()) {
             format % it->first % it->second;
 
             envp[n++] = ::strdup(format.str().c_str());
@@ -169,7 +168,7 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
         // Spawn the slave
 
         if(::execv(argv[0], argv) != 0) {
-            std::error_code ec(errno, std::system_category());
+            const std::error_code ec(errno, std::system_category());
 
             COCAINE_LOG_ERROR(
                 m_log,

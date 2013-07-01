@@ -94,7 +94,7 @@ dispatch_t::map() const -> dispatch_map_t {
 
     dispatch_map_t result;
 
-    for(auto it = m_slots.cbegin(); it != m_slots.cend(); ++it) {
+    for(auto it = m_slots.begin(); it != m_slots.end(); ++it) {
         result[it->first] = it->second->name();
     }
 

@@ -160,7 +160,7 @@ engine_t::engine_t(context_t& context,
     m_notification.set<engine_t, &engine_t::on_notification>(this);
     m_notification.start();
 
-    auto endpoint = local::endpoint(m_manifest.endpoint);
+    const auto endpoint = local::endpoint(m_manifest.endpoint);
 
     m_connector.reset(new connector<acceptor<local>>(
         *m_reactor,
@@ -217,7 +217,7 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
     session->send<rpc::invoke>(event.name);
 
     {
-        std::unique_lock<session_queue_t> lock(m_queue);
+        std::lock_guard<session_queue_t> guard(m_queue);
 
         if(m_profile.queue_limit > 0 &&
            m_queue.size() >= m_profile.queue_limit)
@@ -250,7 +250,7 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
     pool_map_t::iterator it;
 
     {
-        std::unique_lock<std::mutex> lock(m_pool_mutex);
+        std::lock_guard<std::mutex> guard(m_pool_mutex);
 
         it = m_pool.find(tag);
 
@@ -418,8 +418,8 @@ engine_t::on_control(const message_t& message) {
             std::unique_lock<std::mutex> lock(m_pool_mutex);
 
             size_t active = std::count_if(
-                m_pool.begin(),
-                m_pool.end(),
+                m_pool.cbegin(),
+                m_pool.cend(),
                 std::bind<bool>(std::ref(collector), _1)
             );
 
@@ -520,9 +520,9 @@ engine_t::pump() {
     session_queue_t::value_type session;
 
     while(!m_queue.empty()) {
-        std::unique_lock<std::mutex> pool_lock(m_pool_mutex);
+        std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
 
-        auto it = min_element_if(m_pool.begin(), m_pool.end(), load(), available {
+        const auto it = min_element_if(m_pool.begin(), m_pool.end(), load(), available {
             m_profile.concurrency
         });
 
@@ -553,7 +553,7 @@ engine_t::pump() {
 
 void
 engine_t::balance() {
-    std::unique_lock<std::mutex> lock(m_pool_mutex);
+    std::lock_guard<std::mutex> guard(m_pool_mutex);
 
     if(m_pool.size() >= m_profile.pool_limit ||
        m_pool.size() * m_profile.grow_threshold >= m_queue.size())
@@ -561,7 +561,7 @@ engine_t::balance() {
         return;
     }
 
-    unsigned int target = std::min(
+    const unsigned int target = std::min(
         m_profile.pool_limit,
         std::max(
             1UL,
@@ -581,7 +581,7 @@ engine_t::balance() {
     );
 
     while(m_pool.size() != target) {
-        auto id = unique_id_t().string();
+        const auto id = unique_id_t().string();
 
         try {
             m_pool.insert(std::make_pair(

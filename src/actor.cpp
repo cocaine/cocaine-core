@@ -53,7 +53,7 @@ struct upstream_t:
     virtual
     void
     write(const char* chunk, size_t size) {
-        auto ptr = m_channel.lock();
+        const auto ptr = m_channel.lock();
 
         if(ptr) {
             ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
@@ -63,7 +63,7 @@ struct upstream_t:
     virtual
     void
     error(int code, const std::string& reason) {
-        auto ptr = m_channel.lock();
+        const auto ptr = m_channel.lock();
 
         if(ptr) {
             ptr->wr->write<rpc::error>(m_tag, code, reason);
@@ -73,7 +73,7 @@ struct upstream_t:
     virtual
     void
     close() {
-        auto ptr = m_channel.lock();
+        const auto ptr = m_channel.lock();
 
         if(ptr) {
             ptr->wr->write<rpc::choke>(m_tag);
@@ -167,7 +167,7 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
 
 void
 actor_t::on_message(int fd, const message_t& message) {
-    auto it = m_channels.find(fd);
+    const auto it = m_channels.find(fd);
 
     if(it == m_channels.end()) {
         return;

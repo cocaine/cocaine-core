@@ -61,7 +61,7 @@ adhoc_t::resolve(const std::string& name) const {
 
     std::advance(it, distribution(m_random_generator));
 
-    auto endpoint = std::get<0>(it->second.info);
+    const auto endpoint = std::get<0>(it->second.info);
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -88,7 +88,7 @@ adhoc_t::consume(const std::string& uuid, synchronize_result_type dump) {
         uuid
     );
 
-    for(auto it = dump.begin(); it != dump.end(); ++it) {
+    for(auto it = dump.cbegin(); it != dump.cend(); ++it) {
         remote_service_t service = {
             uuid,
             it->second

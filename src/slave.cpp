@@ -82,7 +82,7 @@ struct slave_t::pipe_t {
     }
 
 private:
-    int m_pipe;
+    const endpoint_type m_pipe;
 };
 
 namespace {
@@ -364,7 +364,7 @@ slave_t::on_ping() {
     if(m_state == states::unknown) {
         using namespace std::chrono;
 
-        auto uptime = duration_cast<duration<float>>(
+        const auto uptime = duration_cast<duration<float>>(
 #if defined(__clang__) || defined(HAVE_GCC47)
             steady_clock::now() - m_birthstamp
 #else
@@ -419,7 +419,7 @@ slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
     session_map_t::iterator it;
 
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> guard(m_mutex);
 
         it = m_sessions.find(session_id);
 
@@ -446,7 +446,7 @@ slave_t::on_error(uint64_t session_id, int code, const std::string& reason) {
     session_map_t::iterator it;
 
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> guard(m_mutex);
 
         it = m_sessions.find(session_id);
 
@@ -471,7 +471,7 @@ slave_t::on_choke(uint64_t session_id) {
     session_map_t::mapped_type session;
 
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> guard(m_mutex);
 
         session_map_t::iterator it = m_sessions.find(session_id);
 
@@ -589,13 +589,13 @@ slave_t::dump() {
         return;
     }
 
-    auto now = std::chrono::system_clock::now().time_since_epoch().count();
-    auto key = cocaine::format("%lld:%s", now, m_id);
+    const auto now = std::chrono::system_clock::now().time_since_epoch().count();
+    const auto key = cocaine::format("%lld:%s", now, m_id);
 
     COCAINE_LOG_INFO(m_log, "slave %s is dumping output to 'crashlogs/%s'", m_id, key);
 
     std::vector<std::string> dump;
-    std::copy(m_output_ring.begin(), m_output_ring.end(), dump.begin());
+    std::copy(m_output_ring.begin(), m_output_ring.end(), std::back_inserter(dump));
 
     try {
         api::storage(m_context, "core")->put("crashlogs", key, dump, std::vector<std::string> {

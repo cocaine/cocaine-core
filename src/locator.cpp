@@ -66,7 +66,7 @@ struct locator_t::synchronize_slot_t:
 
     void
     update() {
-        auto disconnected = std::partition(
+        const auto disconnected = std::partition(
             m_upstreams.begin(),
             m_upstreams.end(),
             std::bind(&synchronize_slot_t::dump, this, _1)
@@ -162,7 +162,7 @@ locator_t::connect() {
     auto endpoint = io::udp::endpoint(m_context.config.network.group.get(), 0);
 
     if(m_context.config.network.gateway) {
-        io::udp::endpoint bindpoint("0.0.0.0", 10054);
+        const auto bindpoint = io::udp::endpoint("0.0.0.0", 10054);
 
         m_sink.reset(new io::socket<io::udp>());
 
@@ -264,7 +264,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
-        auto existing = std::find_if(m_services.begin(), m_services.end(), match {
+        const auto existing = std::find_if(m_services.cbegin(), m_services.cend(), match {
             name
         });
 
@@ -305,7 +305,7 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
-        auto it = std::find_if(m_services.begin(), m_services.end(), match {
+        const auto it = std::find_if(m_services.begin(), m_services.end(), match {
             name
         });
 
@@ -336,8 +336,8 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
 
 resolve_result_type
 locator_t::query(const std::unique_ptr<actor_t>& service) const {
-    auto port = service->endpoints().front().port();
-    auto endpoint = std::make_tuple(m_context.config.network.hostname, port);
+    const auto port = service->endpoints().front().port();
+    const auto endpoint = std::make_tuple(m_context.config.network.hostname, port);
 
     return resolve_result_type(
         endpoint,
@@ -350,7 +350,7 @@ resolve_result_type
 locator_t::resolve(const std::string& name) const {
     std::lock_guard<std::mutex> guard(m_services_mutex);
 
-    auto local = std::find_if(m_services.begin(), m_services.end(), match {
+    const auto local = std::find_if(m_services.begin(), m_services.end(), match {
         name
     });
 
