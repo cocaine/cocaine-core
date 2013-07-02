@@ -1,6 +1,6 @@
-Summary:	Cocaine - Core Libraries
+Summary:	Cocaine - Core
 Name:		libcocaine-core2
-Version:	0.10.3
+Version:	0.10.5-15
 Release:	1%{?dist}
 
 License:	GPLv2+
@@ -10,12 +10,11 @@ Source0:	%{name}-%{version}.tar.bz2
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 %if 0%{?rhel} < 6
-BuildRequires:	gcc44 gcc44-c++
+BuildRequires: gcc44 gcc44-c++
 %endif
-BuildRequires:	boost-python, boost-devel, boost-iostreams, boost-thread, boost-python, boost-system
-BuildRequires:	zeromq-devel libev-devel
-BuildRequires:  openssl-devel libtool-ltdl-devel libuuid-devel
-BuildRequires:	cmake28 msgpack-devel libarchive-devel binutils-devel
+BuildRequires: boost-python, boost-devel, boost-iostreams, boost-thread, boost-python, boost-system
+BuildRequires: libev-devel, openssl-devel, libtool-ltdl-devel, libuuid-devel
+BuildRequires: cmake28, msgpack-devel, libarchive-devel, binutils-devel
 
 Obsoletes: srw
 

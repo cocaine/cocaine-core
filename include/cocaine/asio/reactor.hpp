@@ -27,6 +27,11 @@
 #include <functional>
 #include <mutex>
 
+#if EV_VERSION_MAJOR == 4 && EV_VERSION_MINOR == 3
+    #pragma GCC diagnostic ignored "-Wunused-parameter"
+    #pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#endif
+
 #include <ev++.h>
 
 namespace cocaine { namespace io {
