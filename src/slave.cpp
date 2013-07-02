@@ -142,12 +142,9 @@ slave_t::slave_t(context_t& context,
         m_profile.isolate.args
     );
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s is spawning '%s'", m_id, m_manifest.slave);
+    COCAINE_LOG_DEBUG(m_log, "slave %s is spawning '%s'", m_id, m_manifest.executable);
 
-    typedef std::map<std::string, std::string> string_map_t;
-
-    string_map_t args;
-    string_map_t environment;
+    api::string_map_t args;
 
     args["--app"] = m_manifest.name;
     args["--endpoint"] = m_manifest.endpoint;
@@ -162,13 +159,12 @@ slave_t::slave_t(context_t& context,
         throw std::system_error(errno, std::system_category(), "unable to create an output pipe");
     }
 
-    // Mark both ends of the pipe as close-on-exec.
     for(auto it = pipes.begin(); it != pipes.end(); ++it) {
         ::fcntl(*it, F_SETFD, FD_CLOEXEC);
     }
 
     try {
-        m_handle = isolate->spawn(m_manifest.slave, args, environment, pipes[1]);
+        m_handle = isolate->spawn(m_manifest.executable, args, m_manifest.environment, pipes[1]);
     } catch(...) {
         std::for_each(pipes.begin(), pipes.end(), ::close);
         throw;

@@ -50,8 +50,14 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     }
 #endif
 
-    // TODO: Check if it is a valid slave argument.
-    slave = target.string();
+    executable = target.string();
+
+    auto vars = get("environment", Json::Value(Json::objectValue));
+    auto keys = vars.getMemberNames();
+
+    for(auto it = keys.begin(); it != keys.end(); ++it) {
+        environment[*it] = vars[*it].asString();
+    }
 
     // TODO: Validate driver availability.
     drivers = config_t::parse((*this)["drivers"]);
