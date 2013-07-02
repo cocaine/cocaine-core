@@ -1,3 +1,12 @@
+cocaine-core (0.10.5-15) unstable; urgency=low
+
+  * File storage find() method now uses tag intersections instead of unions.
+  * Bugfix: do not stop the engine if a slave disconnects unexpectedly.
+  * Bugfix: do not complain about dropping zero sessions on successful stop.
+  * Bugfix: use quick exit path in runtime signal handler.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 02 Jul 2013 15:59:56 +0400
+
 cocaine-core (0.10.5-14) unstable; urgency=low
 
   * Plugin preconditions support. Now plugins should specify their minimum
