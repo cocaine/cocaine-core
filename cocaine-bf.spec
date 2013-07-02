@@ -52,7 +52,9 @@ make %{?_smp_mflags}
 
 %install
 rm -rf %{buildroot}
+
 make install DESTDIR=%{buildroot}
+
 rm -f %{buildroot}%{_libdir}/*.a
 rm -f %{buildroot}%{_libdir}/*.la
 
@@ -76,9 +78,11 @@ rm -rf %{buildroot}
 %files devel
 %defattr(-,root,root,-)
 %{_includedir}/*
+%{_libdir}/libcocaine-core.so
+%{_libdir}/libjson.so
 
 %files -n cocaine-runtime
 %defattr(-,root,root,-)
+%{_bindir}/cocaine-runtime
 %{_sysconfdir}/init.d/*
 %{_sysconfdir}/cocaine/cocaine-default.conf
-%{_bindir}/cocaine-runtime
