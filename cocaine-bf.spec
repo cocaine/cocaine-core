@@ -1,6 +1,6 @@
 Summary:	Cocaine - Core
 Name:		libcocaine-core2
-Version:	0.10.5-15
+Version:	0.10.5.15
 Release:	1%{?dist}
 
 License:	GPLv2+
