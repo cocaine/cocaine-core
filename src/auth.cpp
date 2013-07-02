@@ -39,8 +39,8 @@ auth_t::auth_t(context_t& context):
 
     auto storage = api::storage(context, "core");
 
-    std::vector<std::string> keys;
-    std::vector<std::string> tags = { "rsa-key" };
+    std::vector<std::string> tags = { "rsa-key" },
+                             keys;
 
     try {
         keys = storage->find("keys", tags);
@@ -121,7 +121,7 @@ std::string auth_t::sign(const std::string& message,
 
 void
 auth_t::verify(const std::string& message, const std::string& signature, const std::string& username) const {
-    key_map_t::const_iterator it(m_keys.find(username));
+    const auto it = m_keys.find(username);
 
     if(it == m_keys.end()) {
         throw authorization_error_t("unauthorized user");

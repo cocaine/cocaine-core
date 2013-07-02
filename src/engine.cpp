@@ -37,6 +37,7 @@
 #include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/logging.hpp"
+#include "cocaine/memory.hpp"
 #include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
@@ -164,7 +165,7 @@ engine_t::engine_t(context_t& context,
 
     m_connector.reset(new connector<acceptor<local>>(
         *m_reactor,
-        std::unique_ptr<acceptor<local>>(new acceptor<local>(endpoint))
+        std::make_unique<acceptor<local>>(endpoint)
     ));
 
     m_connector->bind(
@@ -297,8 +298,10 @@ engine_t::wake() {
 
 void
 engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
-    auto fd = socket_->fd();
     auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
+
+    // Shortcut, disposable.
+    const int fd = socket_->fd();
 
     channel_->rd->bind(
         std::bind(&engine_t::on_handshake,  this, fd, _1),
@@ -309,7 +312,7 @@ engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
         std::bind(&engine_t::on_disconnect, this, fd, _1)
     );
 
-    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd %d", socket_->fd());
+    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd %d", fd);
 
     m_backlog[fd] = channel_;
 }
@@ -378,7 +381,7 @@ struct collector_t {
     template<class T>
     bool
     operator()(const T& slave) {
-        size_t load = slave.second->load();
+        const size_t load = slave.second->load();
 
         m_accumulator(load);
 

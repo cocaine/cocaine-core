@@ -36,9 +36,7 @@ class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
 
     public:
-        actor_t(std::shared_ptr<io::reactor_t> reactor,
-                std::unique_ptr<dispatch_t>&& dispatch);
-
+        actor_t(std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<dispatch_t>&& dispatch);
        ~actor_t();
 
         void

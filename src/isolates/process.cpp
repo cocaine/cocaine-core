@@ -22,6 +22,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/memory.hpp"
 
 #include <cerrno>
 #include <csignal>
@@ -181,5 +182,5 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
         }
     }
 
-    return std::unique_ptr<api::handle_t>(new process_handle_t(pid));
+    return std::make_unique<process_handle_t>(pid);
 }

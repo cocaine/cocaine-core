@@ -42,7 +42,7 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
     {
         std::unique_lock<std::mutex> lock(m_mutex);
 
-        slot_map_t::const_iterator it = m_slots.find(message.id());
+        const auto it = m_slots.find(message.id());
 
         if(it == m_slots.end()) {
             COCAINE_LOG_WARNING(

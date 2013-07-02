@@ -29,6 +29,8 @@
 #include "cocaine/detail/essentials.hpp"
 #include "cocaine/detail/locator.hpp"
 
+#include "cocaine/memory.hpp"
+
 #include <cstring>
 #include <system_error>
 
@@ -158,7 +160,7 @@ config_t::config_t(const std::string& config_path) {
 
     hints.ai_flags = AI_CANONNAME;
 
-    int rv = getaddrinfo(hostname, nullptr, &hints, &result);
+    const int rv = getaddrinfo(hostname, nullptr, &hints, &result);
 
     if(rv != 0) {
         throw std::system_error(rv, gai_category(), "unable to determine the hostname");
@@ -266,7 +268,7 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t
 }
 
 context_t::~context_t() {
-    auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
+    auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
 
     COCAINE_LOG_INFO(blog, "stopping the service locator");
 
@@ -295,11 +297,11 @@ context_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
 
 void
 context_t::bootstrap() {
-    auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
+    auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
 
     // Service locator internals.
     auto reactor = std::make_shared<io::reactor_t>();
-    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *reactor));
+    auto locator = std::make_unique<locator_t>(*this, *reactor);
 
     m_locator.reset(new actor_t(
         reactor,
@@ -319,7 +321,7 @@ context_t::bootstrap() {
         COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
 
         try {
-            attach(it->first, std::unique_ptr<actor_t>(new actor_t(
+            attach(it->first, std::make_unique<actor_t>(
                 reactor,
                 get<api::service_t>(
                     it->second.type,
@@ -328,7 +330,7 @@ context_t::bootstrap() {
                     cocaine::format("service/%s", it->first),
                     it->second.args
                 )
-            )));
+            ));
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(blog, "unable to initialize service '%s' - %s", it->first, e.what());
             throw;

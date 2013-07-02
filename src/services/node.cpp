@@ -61,12 +61,12 @@ node_t::node_t(context_t& context, io::reactor_t& reactor, const std::string& na
 
     // Runlist
 
-    runlist_t runlist;
-
     COCAINE_LOG_INFO(m_log, "reading the '%s' runlist", runlist_id);
 
     // It's here to keep the reference alive.
     auto storage = api::storage(m_context, "core");
+
+    runlist_t runlist;
 
     try {
         runlist = storage->get<runlist_t>("runlists", runlist_id);
@@ -108,8 +108,6 @@ node_t::~node_t() {
 Json::Value
 node_t::on_start_app(const runlist_t& runlist) {
     Json::Value result(Json::objectValue);
-    app_map_t::iterator app;
-
     for(auto it = runlist.begin(); it != runlist.end(); ++it) {
         if(m_apps.find(it->first) != m_apps.end()) {
             result[it->first] = "the app is already running";
@@ -117,6 +115,8 @@ node_t::on_start_app(const runlist_t& runlist) {
         }
 
         COCAINE_LOG_INFO(m_log, "starting the '%s' app", it->first);
+
+        app_map_t::iterator app;
 
         try {
             std::tie(app, std::ignore) = m_apps.insert(std::make_pair(
@@ -164,7 +164,7 @@ node_t::on_pause_app(const std::vector<std::string>& applist) {
     Json::Value result(Json::objectValue);
 
     for(auto it = applist.begin(); it != applist.end(); ++it) {
-        app_map_t::iterator app(m_apps.find(*it));
+        auto app = m_apps.find(*it);
 
         if(app == m_apps.end()) {
             result[*it] = "the app is not running";

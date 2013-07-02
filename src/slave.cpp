@@ -72,7 +72,7 @@ struct slave_t::pipe_t {
 
     ssize_t
     read(char* buffer, size_t size, std::error_code& ec) {
-        ssize_t length = ::read(m_pipe, buffer, size);
+        const ssize_t length = ::read(m_pipe, buffer, size);
 
         if(length == -1 && (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR)) {
             ec = std::error_code(errno, std::system_category());
@@ -478,7 +478,7 @@ slave_t::on_choke(uint64_t session_id) {
         // TEST: Ensure that this slave is responsible for the session.
         BOOST_ASSERT(it != m_sessions.end());
 
-        session = it->second;
+        session = std::move(it->second);
 
         m_sessions.erase(it);
     }

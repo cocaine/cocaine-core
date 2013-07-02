@@ -220,9 +220,9 @@ files_t::find(const std::string& collection, const std::vector<std::string>& tag
 
         while(it != end) {
 #if BOOST_VERSION >= 104600
-            auto object = it->path().filename().string();
+            const std::string object = it->path().filename().string();
 #else
-            auto object = it->path().filename();
+            const std::string object = it->path().filename();
 #endif
 
             if(!fs::exists(*it)) {

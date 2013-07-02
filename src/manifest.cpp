@@ -39,15 +39,14 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     );
 
     auto target = fs::path(get("slave", "unspecified").asString());
-    auto prefix = fs::path(context.config.path.spool) / name;
 
 #if BOOST_VERSION >= 104400
     if(!target.is_absolute()) {
-        target = fs::absolute(target, prefix);
+        target = fs::absolute(target, fs::path(context.config.path.spool) / name);
     }
 #else
     if(!target.is_complete()) {
-        target = fs::complete(target, prefix);
+        target = fs::complete(target, fs::path(context.config.path.spool) / name);
     }
 #endif
 

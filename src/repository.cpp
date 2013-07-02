@@ -136,7 +136,7 @@ repository_t::open(const std::string& target) {
     initialize.ptr = lt_dlsym(plugin.get(), "initialize");
 
     if(validation.ptr) {
-        auto preconditions = validation.call();
+        const auto preconditions = validation.call();
 
         if(preconditions.version > COCAINE_VERSION) {
             throw repository_error_t("'%s' version requirements are not met", target);

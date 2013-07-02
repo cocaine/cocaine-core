@@ -37,6 +37,7 @@
 
 #include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/memory.hpp"
 #include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
@@ -213,16 +214,11 @@ app_t::start() {
     if(!m_manifest->local) {
         COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
 
-        // Initialize the app service.
-        auto service = std::unique_ptr<actor_t>(new actor_t(
+        // Publish the app service.
+        m_context.attach(m_manifest->name, std::make_unique<actor_t>(
             std::make_shared<reactor_t>(),
-            std::unique_ptr<app_t::service_t>(
-                new app_t::service_t(m_context, m_manifest->name, *this)
-            )
+            std::make_unique<app_t::service_t>(m_context, m_manifest->name, *this)
         ));
-
-        // Publish it in the cluster.
-        m_context.attach(m_manifest->name, std::move(service));
     }
 
     COCAINE_LOG_INFO(m_log, "the engine has started");
@@ -407,7 +403,7 @@ app_t::info() const {
 
     info["profile"] = m_profile->name;
 
-    for(auto it = m_drivers.cbegin(); it != m_drivers.cend(); ++it) {
+    for(auto it = m_drivers.begin(); it != m_drivers.end(); ++it) {
         info["drivers"][it->first] = it->second->info();
     }
 

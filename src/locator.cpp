@@ -305,7 +305,7 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
-        const auto it = std::find_if(m_services.begin(), m_services.end(), match {
+        auto it = std::find_if(m_services.begin(), m_services.end(), match {
             name
         });
 
@@ -382,10 +382,10 @@ locator_t::dump() const {
 
 void
 locator_t::on_announce_event(ev::io&, int) {
-    char buffer[1024];
+    char buffers[1024];
     std::error_code ec;
 
-    ssize_t size = m_sink->read(buffer, sizeof(buffer), ec);
+    const ssize_t size = m_sink->read(buffers, sizeof(buffers), ec);
 
     if(size <= 0) {
         if(ec) {
@@ -398,7 +398,7 @@ locator_t::on_announce_event(ev::io&, int) {
     msgpack::unpacked unpacked;
 
     try {
-        msgpack::unpack(&unpacked, buffer, size);
+        msgpack::unpack(&unpacked, buffers, size);
     } catch(const msgpack::unpack_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
         return;
@@ -500,6 +500,7 @@ namespace {
 template<class Container>
 struct deferred_erase_action {
     typedef Container container_type;
+    typedef typename container_type::key_type key_type;
 
     void
     operator()() {
@@ -507,7 +508,7 @@ struct deferred_erase_action {
     }
 
     container_type& target;
-    const typename container_type::key_type key;
+    const key_type  key;
 };
 
 }

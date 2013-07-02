@@ -29,6 +29,7 @@
 #include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/dispatch.hpp"
+#include "cocaine/memory.hpp"
 #include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
@@ -87,8 +88,7 @@ private:
 
 }
 
-actor_t::actor_t(std::shared_ptr<reactor_t> reactor,
-                 std::unique_ptr<dispatch_t>&& dispatch):
+actor_t::actor_t(std::shared_ptr<reactor_t> reactor, std::unique_ptr<dispatch_t>&& dispatch):
     m_reactor(reactor),
     m_dispatch(std::move(dispatch))
 { }
@@ -104,7 +104,7 @@ actor_t::run(std::vector<tcp::endpoint> endpoints) {
     for(auto it = endpoints.cbegin(); it != endpoints.cend(); ++it) {
         m_connectors.emplace_back(
             *m_reactor,
-            std::unique_ptr<acceptor<tcp>>(new acceptor<tcp>(*it))
+            std::make_unique<acceptor<tcp>>(*it)
         );
 
         m_connectors.back().bind(std::bind(&actor_t::on_connection, this, _1));
@@ -150,8 +150,10 @@ actor_t::dispatch() -> dispatch_t& {
 
 void
 actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
-    auto fd = socket_->fd();
     auto channel_ = std::make_shared<channel<io::socket<tcp>>>(*m_reactor, socket_);
+
+    // Shortcut, disposable.
+    const int fd = socket_->fd();
 
     channel_->rd->bind(
         std::bind(&actor_t::on_message, this, fd, _1),
@@ -167,7 +169,7 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
 
 void
 actor_t::on_message(int fd, const message_t& message) {
-    const auto it = m_channels.find(fd);
+    auto it = m_channels.find(fd);
 
     if(it == m_channels.end()) {
         return;
