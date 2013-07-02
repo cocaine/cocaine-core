@@ -1,7 +1,7 @@
-Summary:	Cocaine - Core
+Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core2
-Version:	0.10.5.15
-Release:	1%{?dist}
+Version:	0.10.5
+Release:	15%{?dist}
 
 License:	GPLv2+
 Group:		System Environment/Libraries
@@ -43,9 +43,9 @@ Cocaine runtime components package.
 %if 0%{?rhel} < 6
 export CC=gcc44
 export CXX=g++44
-CXXFLAGS="-pthread -I/usr/include/boost141" LDFLAGS="-L/usr/lib64/boost141" %{cmake28} -DBoost_DIR=/usr/lib64/boost141 -DBOOST_INCLUDEDIR=/usr/include/boost141 -DCMAKE_CXX_COMPILER=g++44 -DCMAKE_C_COMPILER=gcc44 .
+CXXFLAGS="-pthread -I/usr/include/boost141" LDFLAGS="-L/usr/lib64/boost141" %{cmake28} -DBoost_DIR=/usr/lib64/boost141 -DBOOST_INCLUDEDIR=/usr/include/boost141 -DCMAKE_CXX_COMPILER=g++44 -DCMAKE_C_COMPILER=gcc44 -DCOCAINE_LIBDIR=%{_libdir} .
 %else
-%{cmake28} .
+%{cmake28} -DCOCAINE_LIBDIR=%{_libdir} .
 %endif
 
 make %{?_smp_mflags}

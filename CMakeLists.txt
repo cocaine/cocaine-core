@@ -128,14 +128,18 @@ TARGET_LINK_LIBRARIES(cocaine-runtime
 SET_TARGET_PROPERTIES(cocaine-core cocaine-runtime PROPERTIES
     COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
 
+IF(NOT COCAINE_LIBDIR)
+    SET(COCAINE_LIBDIR lib)
+ENDIF()
+
 INSTALL(
     TARGETS
         cocaine-core
         cocaine-runtime
         json
     RUNTIME DESTINATION bin COMPONENT runtime
-    LIBRARY DESTINATION lib COMPONENT runtime
-    ARCHIVE DESTINATION lib COMPONENT developement)
+    LIBRARY DESTINATION ${COCAINE_LIBDIR} COMPONENT runtime
+    ARCHIVE DESTINATION ${COCAINE_LIBDIR} COMPONENT developement)
 
 INSTALL(
     DIRECTORY
