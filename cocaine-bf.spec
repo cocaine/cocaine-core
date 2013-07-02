@@ -70,7 +70,7 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%doc README
+%doc README.md
 %{_libdir}/*.so.*
 
 %files devel
