@@ -22,6 +22,9 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
+    // Runtime configuration.
+    struct config_t;
+
     // Runtime context.
     class context_t;
 

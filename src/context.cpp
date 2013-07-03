@@ -244,7 +244,7 @@ context_t::context_t(config_t config_, const std::string& logger):
 
     // Try to initialize the logger. If this fails, there's no way to report the failure,
     // unfortunately, except printing it to the standart output.
-    m_logger = get<api::logger_t>(it->second.type, it->second.args);
+    m_logger = get<api::logger_t>(it->second.type, config, it->second.args);
 
     bootstrap();
 }

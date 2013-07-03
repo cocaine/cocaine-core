@@ -43,7 +43,7 @@ class logger_t:
         }
 
     protected:
-        logger_t(const Json::Value& args):
+        logger_t(const config_t&, const Json::Value& args):
             m_verbosity(resolve(args))
         { }
 
@@ -77,15 +77,15 @@ struct category_traits<logger_t> {
     struct factory_type: public basic_factory<logger_t> {
         virtual
         ptr_type
-        get(const Json::Value& args) = 0;
+        get(const config_t& config, const Json::Value& args) = 0;
     };
 
     template<class T>
     struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(const Json::Value& args) {
-            return ptr_type(new T(args));
+        get(const config_t& config, const Json::Value& args) {
+            return ptr_type(new T(config, args));
         }
     };
 };

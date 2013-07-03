@@ -25,8 +25,8 @@
 
 using namespace cocaine::logger;
 
-stdout_t::stdout_t(const Json::Value& args):
-    category_type(args)
+stdout_t::stdout_t(const config_t& config, const Json::Value& args):
+    category_type(config, args)
 { }
 
 namespace {

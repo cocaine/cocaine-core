@@ -24,8 +24,8 @@
 
 using namespace cocaine::logger;
 
-syslog_t::syslog_t(const Json::Value& args):
-    category_type(args),
+syslog_t::syslog_t(const config_t& config, const Json::Value& args):
+    category_type(config, args),
     m_identity(args["identity"].asString())
 {
     if(m_identity.empty()) {
