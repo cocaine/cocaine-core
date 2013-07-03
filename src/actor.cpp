@@ -77,12 +77,17 @@ struct upstream_t:
         const auto ptr = m_channel.lock();
 
         if(ptr) {
+            m_channel.reset();
+
+            // Due to reset() above, further messages would be discarded.
             ptr->wr->write<rpc::choke>(m_tag);
         }
     }
 
 private:
-    const std::weak_ptr<channel<io::socket<tcp>>> m_channel;
+    // Non-const because this pointer will be reset in close().
+    std::weak_ptr<channel<io::socket<tcp>>> m_channel;
+
     const uint64_t m_tag;
 };
 
