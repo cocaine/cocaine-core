@@ -4,6 +4,8 @@ cocaine-core (0.10.5-16) unstable; urgency=low
     via the 'environment' parameter in the manifest.
   * App endpoints are randomized using runtime's pid to ensure correct restart
     behaviour if stopped gracelessly.
+  * Bugfix: close actor's channel on close(), eliminating outstanding messages
+    in the client frameworks.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 03 Jul 2013 17:50:53 +0400
 
