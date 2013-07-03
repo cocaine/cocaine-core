@@ -63,6 +63,9 @@ class dispatch_t {
         int
         version() const;
 
+        std::string
+        name() const;
+
     private:
         std::unique_ptr<logging::log_t> m_log;
 
@@ -75,6 +78,9 @@ class dispatch_t {
 
         // It's mutable to enable invoke() and describe() to be const.
         mutable std::mutex m_mutex;
+
+        // For actor's named threads feature.
+        const std::string m_name;
 };
 
 namespace detail {

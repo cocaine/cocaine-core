@@ -24,7 +24,7 @@
 
 #include "cocaine/context.hpp"
 
-#ifndef __APPLE__
+#if !defined(__APPLE__)
     #include "cocaine/detail/runtime/pid_file.hpp"
 #endif
 
@@ -34,7 +34,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
-#ifdef __linux__
+#if defined(__linux__)
     #define BACKWARD_HAS_BFD 1
 #endif
 
@@ -55,7 +55,7 @@ void stacktrace(int signum, siginfo_t* /* info */, void* context) {
     StackTrace trace;
     Printer printer;
 
-#ifdef REG_RIP
+#if defined(REG_RIP)
     void* error_address = reinterpret_cast<void*>(uctx->uc_mcontext.gregs[REG_RIP]);
 #elif defined(REG_EIP)
     void* error_address = reinterpret_cast<void*>(uctx->uc_mcontext.gregs[REG_EIP]);
@@ -175,7 +175,7 @@ main(int argc, char* argv[]) {
     general_options.add_options()
         ("help,h", "show this message")
         ("configuration,c", po::value<std::string>(), "location of the configuration file")
-#ifndef __APPLE__
+#if !defined(__APPLE__)
         ("daemonize,d", "daemonize on start")
         ("pidfile,p", po::value<std::string>(), "location of a pid file")
 #endif
@@ -237,7 +237,7 @@ main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-#ifndef __APPLE__
+#if !defined(__APPLE__)
     std::unique_ptr<pid_file_t> pidfile;
 
     if(vm.count("daemonize")) {

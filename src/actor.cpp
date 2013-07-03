@@ -36,6 +36,10 @@
 
 #include "cocaine/traits/literal.hpp"
 
+#if defined(__linux__)
+    #include <sys/prctl.h>
+#endif
+
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -102,6 +106,28 @@ actor_t::~actor_t() {
     // Empty.
 }
 
+namespace {
+
+struct named_runnable {
+    void
+    operator()() const {
+#if defined(__linux__)
+        if(name.size() < 16) {
+            ::prctl(PR_SET_NAME, name.c_str());
+        } else {
+            ::prctl(PR_SET_NAME, name.substr(0, 16).data());
+        }
+#endif
+
+        reactor->run();
+    }
+
+    const std::string name;
+    const std::shared_ptr<reactor_t>& reactor;
+};
+
+}
+
 void
 actor_t::run(std::vector<tcp::endpoint> endpoints) {
     BOOST_ASSERT(!m_thread);
@@ -115,12 +141,10 @@ actor_t::run(std::vector<tcp::endpoint> endpoints) {
         m_connectors.back().bind(std::bind(&actor_t::on_connection, this, _1));
     }
 
-    auto runnable = std::bind(
-        &reactor_t::run,
+    m_thread.reset(new std::thread(named_runnable {
+        m_dispatch->name(),
         m_reactor
-    );
-
-    m_thread.reset(new std::thread(runnable));
+    }));
 }
 
 void

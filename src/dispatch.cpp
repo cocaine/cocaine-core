@@ -28,7 +28,8 @@
 using namespace cocaine;
 
 dispatch_t::dispatch_t(context_t& context, const std::string& name):
-    m_log(new logging::log_t(context, name))
+    m_log(new logging::log_t(context, name)),
+    m_name(name)
 { }
 
 dispatch_t::~dispatch_t() {
@@ -104,4 +105,9 @@ dispatch_t::map() const -> dispatch_map_t {
 int
 dispatch_t::version() const {
     return 1;
+}
+
+std::string
+dispatch_t::name() const {
+    return m_name;
 }

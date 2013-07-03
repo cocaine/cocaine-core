@@ -4,6 +4,7 @@ cocaine-core (0.10.5-16) unstable; urgency=low
     via the 'environment' parameter in the manifest.
   * App endpoints are randomized using runtime's pid to ensure correct restart
     behaviour if stopped gracelessly.
+  * On Linux, use prctl(2) to set thread names for service threads.
   * Bugfix: close actor's channel on close(), eliminating outstanding messages
     in the client frameworks.
 
