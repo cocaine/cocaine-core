@@ -1,3 +1,12 @@
+cocaine-core (0.10.5-16) unstable; urgency=low
+
+  * App authors can now specify custom environment for their app executables
+    via the 'environment' parameter in the manifest.
+  * App endpoints are randomized using runtime's pid to ensure correct restart
+    behaviour if stopped gracelessly.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 03 Jul 2013 17:50:53 +0400
+
 cocaine-core (0.10.5-15) unstable; urgency=low
 
   * File storage find() method now uses tag intersections instead of unions.
