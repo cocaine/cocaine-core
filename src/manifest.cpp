@@ -24,6 +24,8 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
+#include <unistd.h>
+
 using namespace cocaine::engine;
 
 namespace fs = boost::filesystem;
@@ -32,10 +34,13 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     cached<Json::Value>(context, "manifests", name_),
     name(name_)
 {
+    const pid_t runtime_pid = ::getpid();
+
     endpoint = cocaine::format(
-        "%s/%s",
+        "%s/%s.%d",
         context.config.path.runtime,
-        name
+        name,
+        runtime_pid
     );
 
     auto target = fs::path(get("slave", "unspecified").asString());
@@ -55,7 +60,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     auto vars = get("environment", Json::Value(Json::objectValue));
     auto keys = vars.getMemberNames();
 
-    for(auto it = keys.begin(); it != keys.end(); ++it) {
+    for(auto it = keys.cbegin(); it != keys.cend(); ++it) {
         environment[*it] = vars[*it].asString();
     }
 
