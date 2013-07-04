@@ -76,6 +76,7 @@ struct config_t {
 
     struct {
         std::string hostname;
+        std::string uuid;
 
         // NOTE: Service locator port is configurable to allow multiple runtimes to run on a single
         // machine. This port will be forwarded to the slaves via a command-line argument.

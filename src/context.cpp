@@ -28,6 +28,7 @@
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/essentials.hpp"
 #include "cocaine/detail/locator.hpp"
+#include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/memory.hpp"
 
@@ -167,6 +168,7 @@ config_t::config_t(const std::string& config_path) {
     }
 
     network.hostname = result->ai_canonname;
+    network.uuid     = unique_id_t().string();
 
     freeaddrinfo(result);
 

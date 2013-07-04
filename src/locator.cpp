@@ -122,7 +122,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor)
 {
-    COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_id);
+    COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
 
@@ -479,7 +479,7 @@ locator_t::on_announce_timer(ev::timer&, int) {
     msgpack::packer<msgpack::sbuffer> packer(buffer);
 
     packer << key_type(
-        m_id.string(),
+        m_context.config.network.uuid,
         m_context.config.network.hostname,
         m_context.config.network.locator
     );

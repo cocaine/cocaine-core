@@ -23,8 +23,6 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/detail/unique_id.hpp"
-
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
@@ -119,9 +117,6 @@ class locator_t:
         // As, for example, the Node Service can manipulate service list from its actor thread, the
         // service list access should be synchronized.
         mutable std::mutex m_services_mutex;
-
-        // Node's UUID in the cluster.
-        unique_id_t m_id;
 
         // Announce receiver.
         std::unique_ptr<io::socket<io::udp>> m_sink;
