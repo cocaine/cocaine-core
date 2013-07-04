@@ -61,10 +61,7 @@ const char* describe[] = {
 }
 
 void
-files_t::emit(logging::priorities priority,
-              const std::string& source,
-              const std::string& message)
-{
+files_t::emit(logging::priorities priority, const std::string& source, const std::string& message) {
     time_t time = 0;
     tm timeinfo;
 

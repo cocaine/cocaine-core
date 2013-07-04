@@ -36,10 +36,7 @@ syslog_t::syslog_t(const config_t& config, const Json::Value& args):
 }
 
 void
-syslog_t::emit(logging::priorities priority,
-               const std::string& source,
-               const std::string& message)
-{
+syslog_t::emit(logging::priorities priority, const std::string& source, const std::string& message) {
     switch(priority) {
     case logging::debug:
         syslog(LOG_DEBUG, "%s: %s", source.c_str(), message.c_str());
