@@ -23,7 +23,6 @@
 #include "cocaine/detail/isolates/process.hpp"
 #include "cocaine/detail/gateways/adhoc.hpp"
 #include "cocaine/detail/loggers/files.hpp"
-#include "cocaine/detail/loggers/stdout.hpp"
 #include "cocaine/detail/loggers/syslog.hpp"
 #include "cocaine/detail/services/logging.hpp"
 #include "cocaine/detail/services/node.hpp"
@@ -34,13 +33,11 @@
 
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
-    repository.insert<driver::fs_t>("filesystem-monitor");
     repository.insert<driver::fs_t>("fs");
     repository.insert<driver::recurring_timer_t>("time");
     repository.insert<isolate::process_t>("process");
     repository.insert<gateway::adhoc_t>("adhoc");
     repository.insert<logger::files_t>("files");
-    repository.insert<logger::stdout_t>("stdout");
     repository.insert<logger::syslog_t>("syslog");
     repository.insert<service::logging_t>("logging");
     repository.insert<service::node_t>("node");

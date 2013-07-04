@@ -85,7 +85,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/isolates/process
     src/locator
     src/loggers/files
-    src/loggers/stdout
     src/loggers/syslog
     src/logging
     src/manifest
