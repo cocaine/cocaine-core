@@ -24,6 +24,7 @@
 #include "cocaine/common.hpp"
 
 #include "cocaine/api/event.hpp"
+#include "cocaine/api/stream.hpp"
 
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
@@ -38,19 +39,37 @@ namespace cocaine { namespace engine {
 struct session_t {
     COCAINE_DECLARE_NONCOPYABLE(session_t)
 
-    session_t(uint64_t id,
-              const api::event_t& event,
-              const std::shared_ptr<api::stream_t>& upstream);
+    struct downstream_t:
+        public api::stream_t
+    {
+        downstream_t(const std::shared_ptr<session_t>& parent);
+
+        virtual
+       ~downstream_t();
+
+        virtual
+        void
+        write(const char* chunk, size_t size);
+
+        virtual
+        void
+        error(int code, const std::string& reason);
+
+        virtual
+        void
+        close();
+
+    private:
+        const std::weak_ptr<session_t> parent;
+    };
+
+    session_t(uint64_t id, const api::event_t& event, const api::stream_ptr_t& upstream);
 
     void
-    attach(const std::shared_ptr<io::writable_stream<io::socket<io::local>>>& stream);
+    attach(const std::shared_ptr<io::writable_stream<io::socket<io::local>>>& downstream);
 
     void
     detach();
-
-    template<class Event, typename... Args>
-    void
-    send(Args&&... args);
 
 public:
     // Session ID.
@@ -59,8 +78,13 @@ public:
     // Session event type and execution policy.
     const api::event_t event;
 
-    // Client's upstream for result delivery.
+    // Client's upstream for response delivery.
     const std::shared_ptr<api::stream_t> upstream;
+
+private:
+    template<class Event, typename... Args>
+    void
+    send(Args&&... args);
 
 private:
     std::unique_ptr<
@@ -79,7 +103,7 @@ session_t::send(Args&&... args) {
     if(m_encoder) {
         m_encoder->write<Event>(id, std::forward<Args>(args)...);
     } else {
-        throw cocaine::error_t("the stream is no longer valid");
+        throw cocaine::error_t("the session is no longer valid");
     }
 }
 

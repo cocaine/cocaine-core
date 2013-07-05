@@ -20,31 +20,76 @@
 
 #include "cocaine/detail/session.hpp"
 
+#include "cocaine/messages.hpp"
+
+#include "cocaine/traits/literal.hpp"
+
 using namespace cocaine::engine;
 using namespace cocaine::io;
 
-session_t::session_t(uint64_t id_,
-                     const api::event_t& event_,
-                     const std::shared_ptr<api::stream_t>& upstream_):
+session_t::session_t(uint64_t id_, const api::event_t& event_, const api::stream_ptr_t& upstream_):
     id(id_),
     event(event_),
     upstream(upstream_)
 {
     m_encoder.reset(new encoder<writable_stream<io::socket<local>>>());
+
+    // Cache the invocation command right away.
+    send<rpc::invoke>(event.name);
 }
 
 void
-session_t::attach(const std::shared_ptr<writable_stream<io::socket<local>>>& stream) {
+session_t::attach(const std::shared_ptr<writable_stream<io::socket<local>>>& downstream) {
     std::unique_lock<std::mutex> lock(m_mutex);
 
-    // Flush all the cached messages into the stream.
-    m_encoder->attach(stream);
+    // Flush all the cached messages into the downstream.
+    m_encoder->attach(downstream);
 }
 
 void
 session_t::detach() {
     std::unique_lock<std::mutex> lock(m_mutex);
 
+    if(m_encoder) {
+        // There shouldn't be any other chunks after that.
+        m_encoder->write<rpc::choke>(id);
+    }
+
     // Disable the session.
     m_encoder.reset();
+}
+
+session_t::downstream_t::downstream_t(const std::shared_ptr<session_t>& parent_):
+    parent(parent_)
+{ }
+
+session_t::downstream_t::~downstream_t() {
+    close();
+}
+
+void
+session_t::downstream_t::write(const char* chunk, size_t size) {
+    const auto ptr = parent.lock();
+
+    if(ptr) {
+        ptr->send<rpc::chunk>(literal { chunk, size });
+    }
+}
+
+void
+session_t::downstream_t::error(int code, const std::string& reason) {
+    const auto ptr = parent.lock();
+
+    if(ptr) {
+        ptr->send<rpc::error>(code, reason);
+    }
+}
+
+void
+session_t::downstream_t::close() {
+    const auto ptr = parent.lock();
+
+    if(ptr) {
+        ptr->detach();
+    }
 }

@@ -485,10 +485,6 @@ slave_t::on_choke(uint64_t session_id) {
     // Destroy the session before calling the potentially heavy queue pumps.
     session.reset();
 
-    // NOTE: As we're destroying the session here, we have to close the
-    // downstream, otherwise the client wouldn't be able to close it later.
-    // it->second->send<rpc::choke>();
-
     pump();
 }
 

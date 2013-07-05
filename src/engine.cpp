@@ -57,82 +57,7 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-// Downstream
-
 namespace {
-
-struct downstream_t:
-    public api::stream_t
-{
-    downstream_t(const std::shared_ptr<session_t>& session):
-        m_session(session),
-        m_state(states::open)
-    { }
-
-    virtual
-   ~downstream_t() {
-        if(m_state != states::closed) {
-            close();
-        }
-    }
-
-    virtual
-    void
-    write(const char* chunk, size_t size) {
-        if(m_state == states::closed) {
-            throw cocaine::error_t("the stream has been closed");
-        }
-
-        const std::shared_ptr<session_t> ptr = m_session.lock();
-
-        if(ptr) {
-            ptr->send<rpc::chunk>(literal { chunk, size });
-        }
-    }
-
-    virtual
-    void
-    error(int code, const std::string& message) {
-        if(m_state == states::closed) {
-            throw cocaine::error_t("the stream has been closed");
-        }
-
-        m_state = states::closed;
-
-        const std::shared_ptr<session_t> ptr = m_session.lock();
-
-        if(ptr) {
-            ptr->send<rpc::error>(code, message);
-            ptr->send<rpc::choke>();
-        }
-    }
-
-    virtual
-    void
-    close() {
-        if(m_state == states::closed) {
-            throw cocaine::error_t("the stream has been closed");
-        }
-
-        m_state = states::closed;
-
-        const std::shared_ptr<session_t> ptr = m_session.lock();
-
-        if(ptr) {
-            ptr->send<rpc::choke>();
-        }
-    }
-
-private:
-    const std::weak_ptr<session_t> m_session;
-
-    enum class states {
-        open,
-        closed
-    };
-
-    states m_state;
-};
 
 struct ignore {
     void
@@ -215,8 +140,6 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
         upstream
     );
 
-    session->send<rpc::invoke>(event.name);
-
     {
         std::lock_guard<session_queue_t> guard(m_queue);
 
@@ -231,7 +154,7 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
 
     wake();
 
-    return std::make_shared<downstream_t>(session);
+    return std::make_shared<session_t::downstream_t>(session);
 }
 
 std::shared_ptr<api::stream_t>
@@ -245,8 +168,6 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
         event,
         upstream
     );
-
-    session->send<rpc::invoke>(event.name);
 
     pool_map_t::iterator it;
 
@@ -269,7 +190,7 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
 
     it->second->assign(session);
 
-    return std::make_shared<downstream_t>(session);
+    return std::make_shared<session_t::downstream_t>(session);
 }
 
 void
