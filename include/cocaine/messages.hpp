@@ -101,6 +101,10 @@ namespace app {
             raw_t
         > result_type;
     };
+
+    struct info {
+        typedef app_tag tag;
+    };
 }
 
 template<>
@@ -110,7 +114,8 @@ struct protocol<app_tag> {
     >::type version;
 
     typedef boost::mpl::list<
-        app::enqueue
+        app::enqueue,
+        app::info
     > type;
 };
 

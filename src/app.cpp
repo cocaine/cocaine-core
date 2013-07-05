@@ -85,6 +85,7 @@ struct app_t::service_t:
         m_app(app)
     {
         on<app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
+        on<app::info>("info", std::bind(&app_t::info, std::ref(m_app)));
     }
 
 private:
