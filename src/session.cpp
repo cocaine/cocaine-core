@@ -30,7 +30,8 @@ using namespace cocaine::io;
 session_t::session_t(uint64_t id_, const api::event_t& event_, const api::stream_ptr_t& upstream_):
     id(id_),
     event(event_),
-    upstream(upstream_)
+    upstream(upstream_),
+    m_closed(false)
 {
     m_encoder.reset(new encoder<writable_stream<io::socket<local>>>());
 
@@ -50,13 +51,24 @@ void
 session_t::detach() {
     std::unique_lock<std::mutex> lock(m_mutex);
 
-    if(m_encoder) {
-        // There shouldn't be any other chunks after that.
+    if(!m_closed) {
         m_encoder->write<rpc::choke>(id);
     }
 
     // Disable the session.
     m_encoder.reset();
+}
+
+void
+session_t::close() {
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    if(!m_closed) {
+        m_encoder->write<rpc::choke>(id);
+
+        // There shouldn't be any other chunks after that.
+        m_closed = true;
+    }
 }
 
 session_t::downstream_t::downstream_t(const std::shared_ptr<session_t>& parent_):
@@ -90,6 +102,9 @@ session_t::downstream_t::close() {
     const auto ptr = parent.lock();
 
     if(ptr) {
-        ptr->detach();
+        ptr->close();
+
+        // This was the last possible message, so reset the parent pointer.
+        parent.reset();
     }
 }

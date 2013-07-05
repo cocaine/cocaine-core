@@ -60,7 +60,7 @@ struct session_t {
         close();
 
     private:
-        const std::weak_ptr<session_t> parent;
+        std::weak_ptr<session_t> parent;
     };
 
     session_t(uint64_t id, const api::event_t& event, const api::stream_ptr_t& upstream);
@@ -70,6 +70,9 @@ struct session_t {
 
     void
     detach();
+
+    void
+    close();
 
 public:
     // Session ID.
@@ -93,6 +96,9 @@ private:
 
     // Session interlocking.
     std::mutex m_mutex;
+
+    // Means that the session is closed.
+    bool m_closed;
 };
 
 template<class Event, typename... Args>
