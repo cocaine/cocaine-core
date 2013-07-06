@@ -31,7 +31,7 @@ session_t::session_t(uint64_t id_, const api::event_t& event_, const api::stream
     id(id_),
     event(event_),
     upstream(upstream_),
-    m_closed(false)
+    m_state(state::open)
 {
     m_encoder.reset(new encoder<writable_stream<io::socket<local>>>());
 
@@ -41,19 +41,13 @@ session_t::session_t(uint64_t id_, const api::event_t& event_, const api::stream
 
 void
 session_t::attach(const std::shared_ptr<writable_stream<io::socket<local>>>& downstream) {
-    std::unique_lock<std::mutex> lock(m_mutex);
-
     // Flush all the cached messages into the downstream.
     m_encoder->attach(downstream);
 }
 
 void
 session_t::detach() {
-    std::unique_lock<std::mutex> lock(m_mutex);
-
-    if(!m_closed) {
-        m_encoder->write<rpc::choke>(id);
-    }
+    close();
 
     // Disable the session.
     m_encoder.reset();
@@ -61,13 +55,11 @@ session_t::detach() {
 
 void
 session_t::close() {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    state::value expected = state::open;
 
-    if(!m_closed) {
-        m_encoder->write<rpc::choke>(id);
-
+    if(m_state.compare_exchange_strong(expected, state::closed)) {
         // There shouldn't be any other chunks after that.
-        m_closed = true;
+        m_encoder->write<rpc::choke>(id);
     }
 }
 
@@ -81,30 +73,15 @@ session_t::downstream_t::~downstream_t() {
 
 void
 session_t::downstream_t::write(const char* chunk, size_t size) {
-    const auto ptr = parent.lock();
-
-    if(ptr) {
-        ptr->send<rpc::chunk>(literal { chunk, size });
-    }
+    parent->send<rpc::chunk>(literal { chunk, size });
 }
 
 void
 session_t::downstream_t::error(int code, const std::string& reason) {
-    const auto ptr = parent.lock();
-
-    if(ptr) {
-        ptr->send<rpc::error>(code, reason);
-    }
+    parent->send<rpc::error>(code, reason);
 }
 
 void
 session_t::downstream_t::close() {
-    const auto ptr = parent.lock();
-
-    if(ptr) {
-        ptr->close();
-
-        // This was the last possible message, so reset the parent pointer.
-        parent.reset();
-    }
+    parent->close();
 }

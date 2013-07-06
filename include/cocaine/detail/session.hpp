@@ -30,6 +30,8 @@
 #include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/writable_stream.hpp"
 
+#include "cocaine/detail/atomic.hpp"
+
 #include "cocaine/rpc/encoder.hpp"
 
 #include <mutex>
@@ -38,6 +40,8 @@ namespace cocaine { namespace engine {
 
 struct session_t {
     COCAINE_DECLARE_NONCOPYABLE(session_t)
+
+    session_t(uint64_t id, const api::event_t& event, const api::stream_ptr_t& upstream);
 
     struct downstream_t:
         public api::stream_t
@@ -60,10 +64,8 @@ struct session_t {
         close();
 
     private:
-        std::weak_ptr<session_t> parent;
+        std::shared_ptr<session_t> parent;
     };
-
-    session_t(uint64_t id, const api::event_t& event, const api::stream_ptr_t& upstream);
 
     void
     attach(const std::shared_ptr<io::writable_stream<io::socket<io::local>>>& downstream);
@@ -94,19 +96,18 @@ private:
         io::encoder<io::writable_stream<io::socket<io::local>>>
     > m_encoder;
 
-    // Session interlocking.
-    std::mutex m_mutex;
+    struct state {
+        enum value { open, closed };
+    };
 
-    // Means that the session is closed.
-    bool m_closed;
+    // Session state.
+    std::atomic<state::value> m_state;
 };
 
 template<class Event, typename... Args>
 void
 session_t::send(Args&&... args) {
-    std::unique_lock<std::mutex> lock(m_mutex);
-
-    if(m_encoder) {
+    if(m_state == state::open) {
         m_encoder->write<Event>(id, std::forward<Args>(args)...);
     } else {
         throw cocaine::error_t("the session is no longer valid");
