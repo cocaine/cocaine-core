@@ -348,23 +348,24 @@ locator_t::query(const std::unique_ptr<actor_t>& service) const {
 
 resolve_result_type
 locator_t::resolve(const std::string& name) const {
-    std::lock_guard<std::mutex> guard(m_services_mutex);
+    {
+        std::lock_guard<std::mutex> guard(m_services_mutex);
 
-    const auto local = std::find_if(m_services.begin(), m_services.end(), match {
-        name
-    });
+        const auto local = std::find_if(m_services.begin(), m_services.end(), match {
+            name
+        });
 
-    if(local == m_services.end()) {
-        if(m_gateway) {
-            return m_gateway->resolve(name);
-        } else {
-            throw cocaine::error_t("the specified service is not available");
+        if(local != m_services.end()) {
+            COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);
+            return query(local->second);
         }
     }
 
-    COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);
-
-    return query(local->second);
+    if(m_gateway) {
+        return m_gateway->resolve(name);
+    } else {
+        throw cocaine::error_t("the specified service is not available");
+    }
 }
 
 synchronize_result_type
