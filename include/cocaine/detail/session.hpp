@@ -97,11 +97,11 @@ private:
     > m_encoder;
 
     struct state {
-        enum value { open, closed };
+        enum value: int { open, closed };
     };
 
     // Session state.
-    std::atomic<state::value> m_state;
+    std::atomic<int> m_state;
 };
 
 template<class Event, typename... Args>

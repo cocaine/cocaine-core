@@ -55,7 +55,7 @@ session_t::detach() {
 
 void
 session_t::close() {
-    state::value expected = state::open;
+    int expected = state::open;
 
     if(m_state.compare_exchange_strong(expected, state::closed)) {
         // There shouldn't be any other chunks after that.
