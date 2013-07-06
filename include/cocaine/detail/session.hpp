@@ -34,8 +34,6 @@
 
 #include "cocaine/rpc/encoder.hpp"
 
-#include <mutex>
-
 namespace cocaine { namespace engine {
 
 struct session_t {
