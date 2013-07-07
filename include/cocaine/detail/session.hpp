@@ -105,7 +105,9 @@ private:
 template<class Event, typename... Args>
 void
 session_t::send(Args&&... args) {
-    if(m_state.load(std::memory_order_relaxed) == state::open) {
+    const int expected = m_state.load(std::memory_order_relaxed);
+
+    if(expected == state::open) {
         m_encoder->write<Event>(id, std::forward<Args>(args)...);
     } else {
         throw cocaine::error_t("the session is no longer valid");
