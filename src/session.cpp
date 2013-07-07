@@ -57,7 +57,7 @@ void
 session_t::close() {
     int expected = state::open;
 
-    if(m_state.compare_exchange_strong(expected, state::closed)) {
+    if(m_state.compare_exchange_strong(expected, state::closed, std::memory_order_relaxed)) {
         // There shouldn't be any other chunks after that.
         m_encoder->write<rpc::choke>(id);
     }
