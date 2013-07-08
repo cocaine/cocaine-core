@@ -94,20 +94,23 @@ private:
         io::encoder<io::writable_stream<io::socket<io::local>>>
     > m_encoder;
 
+    // Session interlocking.
+    std::mutex m_mutex;
+
     struct state {
         enum value: int { open, closed };
     };
 
     // Session state.
-    std::atomic<int> m_state;
+    state::value m_state;
 };
 
 template<class Event, typename... Args>
 void
 session_t::send(Args&&... args) {
-    const int expected = m_state.load(std::memory_order_relaxed);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
-    if(expected == state::open) {
+    if(m_state == state::open) {
         m_encoder->write<Event>(id, std::forward<Args>(args)...);
     } else {
         throw cocaine::error_t("the session is no longer valid");

@@ -55,11 +55,13 @@ session_t::detach() {
 
 void
 session_t::close() {
-    int expected = state::open;
+    std::lock_guard<std::mutex> lock(m_mutex);
 
-    if(m_state.compare_exchange_strong(expected, state::closed, std::memory_order_relaxed)) {
-        // There shouldn't be any other chunks after that.
+    if(m_state == state::open) {
         m_encoder->write<rpc::choke>(id);
+
+        // There shouldn't be any other chunks after that.
+        m_state = state::closed;
     }
 }
 
