@@ -1,3 +1,11 @@
+cocaine-core (0.10.5-17) unstable; urgency=low
+
+  * App Service now exposes the app_t::info() method.
+  * Bugfix: properly close sessions in case a slave managed to close its half
+    of the channel before the client.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 08 Jul 2013 23:32:50 +0400
+
 cocaine-core (0.10.5-16) unstable; urgency=low
 
   * App authors can now specify custom environment for their app executables
