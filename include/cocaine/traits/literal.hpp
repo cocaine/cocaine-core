@@ -43,12 +43,12 @@ struct type_traits<char[N]> {
 // Specialization to pack character arrays without copying to a std::string first.
 
 struct literal {
-    operator std::string() const {
-        return std::string(blob, size);
-    }
-
     const char * blob;
     const size_t size;
+
+    // This is needed to mark this struct as implicitly convertible to std::string, although this
+    // conversion never takes place, only statically checked in the typelist traits.
+    operator std::string() const;
 };
 
 template<>
