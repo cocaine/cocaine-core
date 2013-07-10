@@ -141,7 +141,7 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
     );
 
     {
-        std::lock_guard<session_queue_t> guard(m_queue);
+        std::lock_guard<session_queue_t> queue_guard(m_queue);
 
         if(m_profile.queue_limit > 0 &&
            m_queue.size() >= m_profile.queue_limit)
@@ -172,7 +172,7 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
     pool_map_t::iterator it;
 
     {
-        std::lock_guard<std::mutex> guard(m_pool_mutex);
+        std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
 
         it = m_pool.find(tag);
 
@@ -195,7 +195,7 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
 
 void
 engine_t::erase(const std::string& id, int code, const std::string& reason) {
-    std::unique_lock<std::mutex> lock(m_pool_mutex);
+    std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
 
     m_pool.erase(id);
 
@@ -256,7 +256,7 @@ engine_t::on_handshake(int fd, const message_t& message) {
     pool_map_t::iterator it;
 
     {
-        std::unique_lock<std::mutex> lock(m_pool_mutex);
+        std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
 
         it = m_pool.find(id);
 
@@ -333,13 +333,12 @@ private:
 
 void
 engine_t::on_control(const message_t& message) {
+    std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
+
     switch(message.id()) {
     case event_traits<control::report>::id: {
-        Json::Value info(Json::objectValue);
-
         collector_t collector;
-
-        std::unique_lock<std::mutex> lock(m_pool_mutex);
+        Json::Value info(Json::objectValue);
 
         size_t active = std::count_if(
             m_pool.cbegin(),
@@ -360,8 +359,6 @@ engine_t::on_control(const message_t& message) {
     } break;
 
     case event_traits<control::terminate>::id: {
-        std::unique_lock<std::mutex> lock(m_pool_mutex);
-
         // Prepare for the shutdown.
         migrate(states::stopping);
 
@@ -383,7 +380,7 @@ engine_t::on_notification(ev::async&, int) {
 
 void
 engine_t::on_termination(ev::timer&, int) {
-    std::unique_lock<session_queue_t> lock(m_queue);
+    std::lock_guard<session_queue_t> queue_guard(m_queue);
 
     COCAINE_LOG_WARNING(m_log, "forcing the engine termination");
 
@@ -419,7 +416,7 @@ min_element_if(It first, It last, Compare compare, Predicate predicate) {
     }
 
     if(first == last) {
-        return first;
+        return last;
     }
 
     It result = first;
@@ -450,30 +447,29 @@ engine_t::pump() {
             return;
         }
 
-        std::unique_lock<session_queue_t> queue_lock(m_queue);
+        {
+            std::lock_guard<session_queue_t> queue_guard(m_queue);
 
-        if(m_queue.empty()) {
-            return;
+            if(m_queue.empty()) {
+                return;
+            }
+
+            // Move out a new session from the queue.
+            session = std::move(m_queue.front());
+
+            // Destroy an empty session husk.
+            m_queue.pop_front();
         }
-
-        // Move out a new session from the queue.
-        session = std::move(m_queue.front());
-
-        // Destroy an empty session husk.
-        m_queue.pop_front();
 
         // Process the queue head outside the lock, because it might take some considerable amount
         // of time if the session has expired and there's some heavy-lifting in the error handler.
-        queue_lock.unlock();
-
-        // Attach the session to the slave.
         it->second->assign(session);
     }
 }
 
 void
 engine_t::balance() {
-    std::lock_guard<std::mutex> guard(m_pool_mutex);
+    std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
 
     if(m_pool.size() >= m_profile.pool_limit ||
        m_pool.size() * m_profile.grow_threshold >= m_queue.size())
@@ -517,7 +513,7 @@ engine_t::balance() {
 
 void
 engine_t::migrate(states target) {
-    std::unique_lock<session_queue_t> lock(m_queue);
+    std::lock_guard<session_queue_t> queue_guard(m_queue);
 
     m_state = target;
 
@@ -555,7 +551,7 @@ engine_t::migrate(states target) {
     }
 
     if(!pending) {
-        return stop();
+        stop();
     }
 
     COCAINE_LOG_INFO(
