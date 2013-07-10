@@ -542,20 +542,19 @@ slave_t::pump() {
     session_queue_t::value_type session;
 
     while(!m_queue.empty()) {
-        std::unique_lock<std::mutex> lock(m_mutex);
+        {
+            std::lock_guard<std::mutex> guard(m_mutex);
 
-        if(m_queue.empty() || m_sessions.size() >= m_profile.concurrency) {
-            break;
+            if(m_queue.empty() || m_sessions.size() >= m_profile.concurrency) {
+                break;
+            }
+
+            // Move out a new session from the queue.
+            session = std::move(m_queue.front());
+
+            // Destroy an empty session husk.
+            m_queue.pop_front();
         }
-
-        // Move out a new session from the queue.
-        session = std::move(m_queue.front());
-
-        // Destroy an empty session husk.
-        m_queue.pop_front();
-
-        // This lock is reacquired inside the assign() method.
-        lock.unlock();
 
         assign(session);
     }
