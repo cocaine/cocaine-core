@@ -91,27 +91,26 @@ private:
             rv = msgpack::unpack(data, size, &offset, &zone, &object);
 
             switch(rv) {
-                case msgpack::UNPACK_EXTRA_BYTES:
-                case msgpack::UNPACK_SUCCESS:
-                    checkpoint = offset;
+            case msgpack::UNPACK_EXTRA_BYTES:
+            case msgpack::UNPACK_SUCCESS: {
+                checkpoint = offset;
 
-                    m_handle_message(message_t(object));
+                m_handle_message(message_t(object));
 
-                    if(rv == msgpack::UNPACK_SUCCESS) {
-                        return size;
-                    }
+                if(rv == msgpack::UNPACK_SUCCESS) {
+                    return size;
+                }
 
-                    if(++bulk == 256) {
-                        return checkpoint;
-                    }
-
-                    break;
-
-                case msgpack::UNPACK_CONTINUE:
+                if(++bulk == 256) {
                     return checkpoint;
+                }
+            } break;
 
-                case msgpack::UNPACK_PARSE_ERROR:
-                    throw std::system_error(make_error_code(rpc_errc::parse_error));
+            case msgpack::UNPACK_CONTINUE:
+                return checkpoint;
+
+            case msgpack::UNPACK_PARSE_ERROR:
+                throw std::system_error(make_error_code(rpc_errc::parse_error));
             }
         } while(true);
     }

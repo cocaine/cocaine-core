@@ -272,51 +272,45 @@ slave_t::on_message(const message_t& message) {
     );
 
     switch(message.id()) {
-        case event_traits<rpc::heartbeat>::id:
-            on_ping();
-            break;
+    case event_traits<rpc::heartbeat>::id: {
+        on_ping();
+    } break;
 
-        case event_traits<rpc::terminate>::id: {
-            rpc::terminate::code code;
-            std::string reason;
+    case event_traits<rpc::terminate>::id: {
+        rpc::terminate::code code;
+        std::string reason;
 
-            message.as<rpc::terminate>(code, reason);
-            on_death(code, reason);
+        message.as<rpc::terminate>(code, reason);
+        on_death(code, reason);
+    } break;
 
-            break;
-        }
+    case event_traits<rpc::chunk>::id: {
+        std::string chunk;
 
-        case event_traits<rpc::chunk>::id: {
-            std::string chunk;
+        message.as<rpc::chunk>(chunk);
+        on_chunk(message.band(), chunk);
+    } break;
 
-            message.as<rpc::chunk>(chunk);
-            on_chunk(message.band(), chunk);
+    case event_traits<rpc::error>::id: {
+        int code;
+        std::string reason;
 
-            break;
-        }
+        message.as<rpc::error>(code, reason);
+        on_error(message.band(), code, reason);
+    } break;
 
-        case event_traits<rpc::error>::id: {
-            int code;
-            std::string reason;
+    case event_traits<rpc::choke>::id: {
+        on_choke(message.band());
+    } break;
 
-            message.as<rpc::error>(code, reason);
-            on_error(message.band(), code, reason);
-
-            break;
-        }
-
-        case event_traits<rpc::choke>::id:
-            on_choke(message.band());
-            break;
-
-        default:
-            COCAINE_LOG_WARNING(
-                m_log,
-                "slave %s dropped unknown type %d message in session %d",
-                m_id,
-                message.id(),
-                message.band()
-            );
+    default:
+        COCAINE_LOG_WARNING(
+            m_log,
+            "slave %s dropped unknown type %d message in session %d",
+            m_id,
+            message.id(),
+            message.band()
+        );
     }
 }
 
@@ -324,7 +318,7 @@ void
 slave_t::on_failure(const std::error_code& ec) {
     switch(m_state) {
     case states::unknown:
-    case states::active:
+    case states::active: {
         COCAINE_LOG_ERROR(
             m_log,
             "slave %s has unexpectedly disconnected - [%d] %s",
@@ -335,12 +329,11 @@ slave_t::on_failure(const std::error_code& ec) {
 
         dump();
         terminate(rpc::terminate::code::normal, "slave has unexpectedly disconnected");
-        break;
+    } break;
 
-    case states::inactive:
+    case states::inactive: {
         terminate(rpc::terminate::code::normal, "slave has shut itself down");
-        break;
-    }
+    }}
 }
 
 void

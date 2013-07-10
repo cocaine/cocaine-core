@@ -34,110 +34,102 @@ struct type_traits<Json::Value> {
     void
     pack(msgpack::packer<Stream>& packer, const Json::Value& source) {
         switch(source.type()) {
-            case Json::objectValue: {
-                packer.pack_map(source.size());
+        case Json::objectValue: {
+            packer.pack_map(source.size());
 
-                const Json::Value::Members keys(source.getMemberNames());
+            const Json::Value::Members keys(source.getMemberNames());
 
-                for(auto it = keys.begin(); it != keys.end(); ++it) {
-                    packer << *it;
-                    pack(packer, source[*it]);
-                }
-
-                break;
+            for(auto it = keys.begin(); it != keys.end(); ++it) {
+                packer << *it;
+                pack(packer, source[*it]);
             }
+        } break;
 
-            case Json::arrayValue:
-                packer.pack_array(source.size());
+        case Json::arrayValue: {
+            packer.pack_array(source.size());
 
-                for(auto it = source.begin(); it != source.end(); ++it) {
-                    pack(packer, *it);
-                }
+            for(auto it = source.begin(); it != source.end(); ++it) {
+                pack(packer, *it);
+            }
+        } break;
 
-                break;
+        case Json::booleanValue: {
+            packer << source.asBool();
+        } break;
 
-            case Json::booleanValue:
-                packer << source.asBool();
-                break;
+        case Json::stringValue: {
+            packer << source.asString();
+        } break;
 
-            case Json::stringValue:
-                packer << source.asString();
-                break;
+        case Json::realValue: {
+            packer << source.asDouble();
+        } break;
 
-            case Json::realValue:
-                packer << source.asDouble();
-                break;
+        case Json::intValue: {
+            packer << source.asLargestInt();
+        } break;
 
-            case Json::intValue:
-                packer << source.asLargestInt();
-                break;
+        case Json::uintValue: {
+            packer << source.asLargestUInt();
+        } break;
 
-            case Json::uintValue:
-                packer << source.asLargestUInt();
-                break;
-
-            case Json::nullValue:
-                packer << msgpack::type::nil();
-                break;
-        }
+        case Json::nullValue: {
+            packer << msgpack::type::nil();
+        }}
     }
 
     static inline
     void
     unpack(const msgpack::object& object, Json::Value& target) {
         switch(object.type) {
-            case msgpack::type::MAP: {
-                msgpack::object_kv *ptr = object.via.map.ptr,
-                                   *const end = ptr + object.via.map.size;
+        case msgpack::type::MAP: {
+            msgpack::object_kv *ptr = object.via.map.ptr,
+                               *const end = ptr + object.via.map.size;
 
-                for(; ptr < end; ++ptr) {
-                    if(ptr->key.type != msgpack::type::RAW) {
-                        // NOTE: The keys should be strings, as the object
-                        // representation of the property maps is still a
-                        // JSON object.
-                        throw msgpack::type_error();
-                    }
-
-                    unpack(ptr->val, target[ptr->key.as<std::string>()]);
+            for(; ptr < end; ++ptr) {
+                if(ptr->key.type != msgpack::type::RAW) {
+                    // NOTE: The keys should be strings, as the object
+                    // representation of the property maps is still a
+                    // JSON object.
+                    throw msgpack::type_error();
                 }
 
-                break;
+                unpack(ptr->val, target[ptr->key.as<std::string>()]);
             }
+        } break;
 
-            case msgpack::type::ARRAY: {
-                msgpack::object *ptr = object.via.array.ptr,
-                                *const end = ptr + object.via.array.size;
+        case msgpack::type::ARRAY: {
+            msgpack::object *ptr = object.via.array.ptr,
+                            *const end = ptr + object.via.array.size;
 
-                for(unsigned int index = 0; ptr < end; ++ptr, ++index) {
-                    unpack(*ptr, target[index]);
-                }
-
-                break;
+            for(unsigned int index = 0; ptr < end; ++ptr, ++index) {
+                unpack(*ptr, target[index]);
             }
+        } break;
 
-            case msgpack::type::RAW:
-                target = object.as<std::string>();
-                break;
+        case msgpack::type::RAW: {
+            target = object.as<std::string>();
+        } break;
 
-            case msgpack::type::DOUBLE:
-                target = object.as<double>();
-                break;
+        case msgpack::type::DOUBLE: {
+            target = object.as<double>();
+        } break;
 
-            case msgpack::type::POSITIVE_INTEGER:
-                target = static_cast<Json::UInt64>(object.as<uint64_t>());
-                break;
+        case msgpack::type::POSITIVE_INTEGER: {
+            target = static_cast<Json::UInt64>(object.as<uint64_t>());
+        } break;
 
-            case msgpack::type::NEGATIVE_INTEGER:
-                target = static_cast<Json::Int64>(object.as<int64_t>());
-                break;
+        case msgpack::type::NEGATIVE_INTEGER: {
+            target = static_cast<Json::Int64>(object.as<int64_t>());
+        } break;
 
-            case msgpack::type::BOOLEAN:
-                target = object.as<bool>();
-                break;
+        case msgpack::type::BOOLEAN: {
+            target = object.as<bool>();
+        } break;
 
-            case msgpack::type::NIL:
-                break;
-        }
+        case msgpack::type::NIL: {
+            target = Json::Value(Json::nullValue);
+        }}
     }
 };
 

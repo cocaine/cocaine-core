@@ -521,36 +521,36 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
     std::tie(uuid, std::ignore, std::ignore) = key;
 
     switch(message.id()) {
-        case io::event_traits<io::rpc::chunk>::id: {
-            std::string chunk;
-            synchronize_result_type dump;
+    case io::event_traits<io::rpc::chunk>::id: {
+        std::string chunk;
+        synchronize_result_type dump;
 
-            message.as<io::rpc::chunk>(chunk);
+        message.as<io::rpc::chunk>(chunk);
 
-            msgpack::unpacked unpacked;
-            msgpack::unpack(&unpacked, chunk.data(), chunk.size());
+        msgpack::unpacked unpacked;
+        msgpack::unpack(&unpacked, chunk.data(), chunk.size());
 
-            unpacked.get() >> dump;
+        unpacked.get() >> dump;
 
-            m_gateway->consume(uuid, dump);
+        m_gateway->consume(uuid, dump);
+    } break;
 
-            break;
-        }
+    case io::event_traits<io::rpc::error>::id:
+    case io::event_traits<io::rpc::choke>::id: {
+        COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", std::get<0>(key));
 
-        case io::event_traits<io::rpc::error>::id:
-        case io::event_traits<io::rpc::choke>::id:
-            COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", std::get<0>(key));
+        m_gateway->prune(uuid);
 
-            m_gateway->prune(uuid);
+        // NOTE: It is dangerous to remove the channel while the message is still being
+        // processed, so we defer it via reactor_t::post().
+        m_reactor.post(deferred_erase_action<decltype(m_remotes)> {
+            m_remotes,
+            key
+        });
+    } break;
 
-            // NOTE: It is dangerous to remove the channel while the message is still being
-            // processed, so we defer it via reactor_t::post().
-            m_reactor.post(deferred_erase_action<decltype(m_remotes)> {
-                m_remotes,
-                key
-            });
-
-            break;
+    default:
+        COCAINE_LOG_ERROR(m_log, "dropped unknown type %d synchronization message", message.id());
     }
 }
 

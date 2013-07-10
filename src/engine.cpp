@@ -334,48 +334,44 @@ private:
 void
 engine_t::on_control(const message_t& message) {
     switch(message.id()) {
-        case event_traits<control::report>::id: {
-            Json::Value info(Json::objectValue);
+    case event_traits<control::report>::id: {
+        Json::Value info(Json::objectValue);
 
-            collector_t collector;
+        collector_t collector;
 
-            std::unique_lock<std::mutex> lock(m_pool_mutex);
+        std::unique_lock<std::mutex> lock(m_pool_mutex);
 
-            size_t active = std::count_if(
-                m_pool.cbegin(),
-                m_pool.cend(),
-                std::bind<bool>(std::ref(collector), _1)
-            );
+        size_t active = std::count_if(
+            m_pool.cbegin(),
+            m_pool.cend(),
+            std::bind<bool>(std::ref(collector), _1)
+        );
 
-            info["load-median"] = static_cast<Json::LargestUInt>(collector.median());
-            info["queue"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.queue_limit);
-            info["queue"]["depth"] = static_cast<Json::LargestUInt>(m_queue.size());
-            info["sessions"]["pending"] = static_cast<Json::LargestUInt>(collector.sum());
-            info["slaves"]["active"] = static_cast<Json::LargestUInt>(active);
-            info["slaves"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.pool_limit);
-            info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active);
-            info["state"] = describe[static_cast<int>(m_state)];
+        info["load-median"] = static_cast<Json::LargestUInt>(collector.median());
+        info["queue"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.queue_limit);
+        info["queue"]["depth"] = static_cast<Json::LargestUInt>(m_queue.size());
+        info["sessions"]["pending"] = static_cast<Json::LargestUInt>(collector.sum());
+        info["slaves"]["active"] = static_cast<Json::LargestUInt>(active);
+        info["slaves"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.pool_limit);
+        info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active);
+        info["state"] = describe[static_cast<int>(m_state)];
 
-            m_channel->wr->write<control::info>(0UL, info);
+        m_channel->wr->write<control::info>(0UL, info);
+    } break;
 
-            break;
-        }
+    case event_traits<control::terminate>::id: {
+        std::unique_lock<std::mutex> lock(m_pool_mutex);
 
-        case event_traits<control::terminate>::id: {
-            std::unique_lock<std::mutex> lock(m_pool_mutex);
+        // Prepare for the shutdown.
+        migrate(states::stopping);
 
-            // Prepare for the shutdown.
-            migrate(states::stopping);
+        // NOTE: This message is needed to wake up the app's event loop, which is blocked
+        // in order to allow the stream to flush the message queue.
+        m_channel->wr->write<control::terminate>(0UL);
+    } break;
 
-            // NOTE: This message is needed to wake up the app's event loop, which is blocked
-            // in order to allow the stream to flush the message queue.
-            m_channel->wr->write<control::terminate>(0UL);
-
-            break;
-        }
-
-        default:
-            COCAINE_LOG_ERROR(m_log, "dropping unknown type %d control message", message.id());
+    default:
+        COCAINE_LOG_ERROR(m_log, "dropping unknown type %d control message", message.id());
     }
 }
 
