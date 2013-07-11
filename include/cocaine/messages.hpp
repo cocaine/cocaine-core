@@ -57,11 +57,11 @@ namespace locator {
     struct synchronize {
         typedef locator_tag tag;
 
-        typedef streamed<
+        typedef
          /* A full dump of all available services on this node. Used by metalocator to aggregate
             node information from the cluster. */
             std::map<std::string, tuple::fold<resolve::result_type>::type>
-        > result_type;
+        result_type;
     };
 }
 
@@ -96,10 +96,10 @@ namespace app {
             optional<std::string>
         > tuple_type;
 
-        typedef streamed<
+        typedef
          /* Some other arbitrary sequence of bytes, streamed back to the client in chunks. */
             raw_t
-        > result_type;
+        result_type;
     };
 
     struct info {

@@ -46,12 +46,7 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
         const auto it = m_slots.find(message.id());
 
         if(it == m_slots.end()) {
-            COCAINE_LOG_WARNING(
-                m_log,
-                "dropping an unknown type %d: %s message",
-                message.id(),
-                message.args()
-            );
+            COCAINE_LOG_WARNING(m_log, "dropping an unknown type %d: %s message", message.id(), message.args());
 
             lock.unlock();
 
@@ -64,22 +59,15 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
         slot = it->second;
     }
 
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "processing type %d: %s message using slot '%s'",
-        message.id(),
-        message.args(),
-        slot->name()
-    );
+    COCAINE_LOG_DEBUG(m_log, "processing type %d message using slot '%s'", message.id(), slot->name());
 
     try {
         (*slot)(message.args(), upstream);
     } catch(const std::exception& e) {
         COCAINE_LOG_ERROR(
             m_log,
-            "unable to process type %d: %s message using slot '%s' - %s",
+            "unable to process type %d message using slot '%s' - %s",
             message.id(),
-            message.args(),
             slot->name(),
             e.what()
         );

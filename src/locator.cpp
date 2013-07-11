@@ -537,7 +537,7 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
 
     case io::event_traits<io::rpc::error>::id:
     case io::event_traits<io::rpc::choke>::id: {
-        COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", std::get<0>(key));
+        COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
 
         m_gateway->prune(uuid);
 
@@ -560,13 +560,7 @@ locator_t::on_failure(const key_type& key, const std::error_code& ec) {
 
     std::tie(uuid, std::ignore, std::ignore) = key;
 
-    COCAINE_LOG_WARNING(
-        m_log,
-        "node '%s' has unexpectedly disconnected - [%d] %s",
-        uuid,
-        ec.value(),
-        ec.message()
-    );
+    COCAINE_LOG_WARNING(m_log, "node '%s' has unexpectedly disconnected - [%d] %s", uuid, ec.value(), ec.message());
 
     m_gateway->prune(uuid);
     m_remotes.erase(key);

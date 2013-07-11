@@ -31,9 +31,6 @@ struct optional;
 template<class T, T Default>
 struct optional_with_default;
 
-template<class T>
-struct streamed;
-
 namespace detail {
     template<class T>
     struct is_required<optional<T>>:
@@ -46,22 +43,12 @@ namespace detail {
     { };
 
     template<class T>
-    struct is_streamed<streamed<T>>:
-        public std::true_type
-    { };
-
-    template<class T>
     struct unwrap_type<optional<T>> {
         typedef T type;
     };
 
     template<class T, T Default>
     struct unwrap_type<optional_with_default<T, Default>> {
-        typedef T type;
-    };
-
-    template<class T>
-    struct unwrap_type<streamed<T>> {
         typedef T type;
     };
 }

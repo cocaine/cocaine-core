@@ -92,11 +92,6 @@ namespace detail {
     { };
 
     template<class T>
-    struct is_streamed:
-        public std::false_type
-    { };
-
-    template<class T>
     struct unwrap_type {
         typedef T type;
     };
@@ -120,7 +115,6 @@ namespace detail {
     template<class Event, class = void>
     struct result_type {
         typedef void type;
-        typedef std::false_type streamed;
     };
 
     template<class Event>
@@ -131,7 +125,7 @@ namespace detail {
     {
         template<class Result, class = void>
         struct fold {
-            typedef typename unwrap_type<Result>::type type;
+            typedef Result type;
         };
 
         template<class Result>
@@ -144,16 +138,12 @@ namespace detail {
         };
 
         typedef typename fold<typename Event::result_type>::type type;
-        typedef typename is_streamed<typename Event::result_type>::type streamed;
     };
 }
 
 template<class Event>
 struct event_traits {
-    enum constants {
-        id = detail::enumerate<Event>::type::value,
-        streamed = detail::result_type<Event>::streamed::value
-    };
+    enum constants { id = detail::enumerate<Event>::type::value };
 
     typedef typename detail::tuple_type<Event>::type tuple_type;
     typedef typename detail::result_type<Event>::type result_type;
