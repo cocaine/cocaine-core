@@ -56,8 +56,7 @@ struct logger_concept_t {
 };
 
 struct log_t {
-    log_t(context_t& context,
-          const std::string& source);
+    log_t(context_t& context, const std::string& source);
 
     priorities
     verbosity() const {
