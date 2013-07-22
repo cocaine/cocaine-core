@@ -76,7 +76,7 @@ struct writable_stream {
             // and enqueue only the remaining part, if any. Ignore any errors here.
             ssize_t sent = m_socket->write(data, size, ec);
 
-            if(sent >= 0) {
+            if(sent > 0) {
                 if(static_cast<size_t>(sent) == size) {
                     return;
                 }
@@ -89,7 +89,7 @@ struct writable_stream {
         while(m_ring.size() - m_wr_offset < size) {
             size_t pending = m_wr_offset - m_tx_offset;
 
-            if(pending > m_ring.size() / 2) {
+            if(pending + size > m_ring.size() / 2) {
                 m_ring.resize(m_ring.size() * 2);
                 continue;
             }
@@ -116,11 +116,6 @@ private:
     on_event(ev::io& /* io */, int /* revents */) {
         std::unique_lock<std::mutex> lock(m_ring_mutex);
 
-        if(m_tx_offset == m_wr_offset) {
-            m_socket_watcher.stop();
-            return;
-        }
-
         // Keep the error code if the write() operation fails.
         std::error_code ec;
 
@@ -138,6 +133,10 @@ private:
 
         if(sent > 0) {
             m_tx_offset += sent;
+        }
+
+        if(m_tx_offset == m_wr_offset) {
+            m_socket_watcher.stop();
         }
     }
 

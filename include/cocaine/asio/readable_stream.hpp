@@ -146,16 +146,15 @@ private:
 
     void
     on_idle(ev::idle&, int) {
-        if(m_rd_offset == m_rx_offset) {
-            m_idle_watcher.stop();
-            return;
-        }
-
         try {
             m_rx_offset += m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
         } catch(const std::system_error& e) {
             m_handle_error(e.code());
             return;
+        }
+
+        if(m_rd_offset == m_rx_offset) {
+            m_idle_watcher.stop();
         }
     }
 
