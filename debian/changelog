@@ -1,3 +1,10 @@
+cocaine-core (0.10.5-18) unstable; urgency=low
+
+  * Bugfix: properly handle response chunks larger than the output ring buffer
+    capacity by expanding it instead of endlessly moving chunks around.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 22 Jul 2013 21:44:21 +0400
+
 cocaine-core (0.10.5-17) unstable; urgency=low
 
   * App Service now exposes the app_t::info() method.
