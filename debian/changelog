@@ -6,6 +6,8 @@ cocaine-core (0.10.5-18) unstable; urgency=low
     because libev is not thread-safe or epoll is broken or whatever.
   * Bugfix: fixed intense decoder loops when there's no complete message in
     the buffer, but still some bytes are not yet parsed.
+  * Bugfix: gracefully close sockets when their respective initialization,
+    like connect(2) or bind(2), cannot be completed.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 23 Jul 2013 20:56:56 +0400
 
