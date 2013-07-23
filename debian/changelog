@@ -2,8 +2,12 @@ cocaine-core (0.10.5-18) unstable; urgency=low
 
   * Bugfix: properly handle response chunks larger than the output ring buffer
     capacity by expanding it instead of endlessly moving chunks around.
+  * Bugfix: fixed adding POLLOUT to existing socket watchers being ignored
+    because libev is not thread-safe or epoll is broken or whatever.
+  * Bugfix: fixed intense decoder loops when there's no complete message in
+    the buffer, but still some bytes are not yet parsed.
 
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 22 Jul 2013 21:44:21 +0400
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 23 Jul 2013 20:56:56 +0400
 
 cocaine-core (0.10.5-17) unstable; urgency=low
 
