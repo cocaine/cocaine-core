@@ -37,6 +37,7 @@ struct writable_stream {
     writable_stream(reactor_t& reactor, endpoint_type endpoint):
         m_socket(std::make_shared<socket_type>(endpoint)),
         m_socket_watcher(reactor.native()),
+        m_reactor(reactor),
         m_tx_offset(0),
         m_wr_offset(0)
     {
@@ -47,6 +48,7 @@ struct writable_stream {
     writable_stream(reactor_t& reactor, const std::shared_ptr<socket_type>& socket):
         m_socket(socket),
         m_socket_watcher(reactor.native()),
+        m_reactor(reactor),
         m_tx_offset(0),
         m_wr_offset(0)
     {
@@ -64,6 +66,19 @@ struct writable_stream {
     unbind() {
         m_handle_error = nullptr;
     }
+
+
+    struct deferred_watch_action {
+        void
+        operator()() {
+            watcher.start(fd, events);
+        }
+
+        ev::io& watcher;
+
+        const int fd;
+        const int events;
+    };
 
     void
     write(const char* data, size_t size) {
@@ -107,7 +122,11 @@ struct writable_stream {
         m_wr_offset += size;
 
         if(!m_socket_watcher.is_active()) {
-            m_socket_watcher.start(m_socket->fd(), ev::WRITE);
+            m_reactor.post(deferred_watch_action {
+                m_socket_watcher,
+                m_socket->fd(),
+                ev::WRITE
+            });
         }
     }
 
@@ -145,6 +164,9 @@ private:
 
     // Socket poll object.
     ev::io m_socket_watcher;
+
+    // Needed for asynchronous watcher control.
+    reactor_t& m_reactor;
 
     // Ring buffer.
     std::vector<char> m_ring;
