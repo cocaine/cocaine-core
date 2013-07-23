@@ -139,23 +139,27 @@ private:
             return;
         }
 
-        if(m_rd_offset != m_rx_offset) {
+        if(m_rd_offset != m_rx_offset && !m_idle_watcher.is_active()) {
             m_idle_watcher.start();
         }
     }
 
     void
     on_idle(ev::idle&, int) {
+        size_t parsed = 0;
+
         try {
-            m_rx_offset += m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
+            parsed = m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
         } catch(const std::system_error& e) {
             m_handle_error(e.code());
             return;
         }
 
-        if(m_rd_offset == m_rx_offset) {
+        if(!parsed || m_rd_offset == m_rx_offset) {
             m_idle_watcher.stop();
         }
+
+        m_rx_offset += parsed;
     }
 
 private:
