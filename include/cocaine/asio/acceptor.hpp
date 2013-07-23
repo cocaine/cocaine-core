@@ -53,6 +53,8 @@ struct acceptor {
         ::setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
 
         if(::bind(m_fd, endpoint.data(), endpoint.size()) != 0) {
+            ::close(m_fd);
+
             throw std::system_error(
                 errno,
                 std::system_category(),
@@ -61,6 +63,8 @@ struct acceptor {
         }
 
         if(::listen(m_fd, backlog) != 0) {
+            ::close(m_fd);
+
             throw std::system_error(
                 errno,
                 std::system_category(),

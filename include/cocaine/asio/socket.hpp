@@ -66,6 +66,8 @@ struct socket {
         medium_type::configure(m_fd);
 
         if(::connect(m_fd, endpoint.data(), endpoint.size()) != 0) {
+            ::close(m_fd);
+
             throw std::system_error(
                 errno,
                 std::system_category(),
