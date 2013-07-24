@@ -27,6 +27,7 @@ namespace cocaine { namespace io {
 
 struct tcp {
     typedef boost::asio::ip::tcp::endpoint endpoint;
+    typedef boost::asio::ip::tcp::resolver resolver;
 
     static
     void

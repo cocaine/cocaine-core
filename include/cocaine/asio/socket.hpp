@@ -134,7 +134,7 @@ public:
     endpoint_type
     local_endpoint() const {
         endpoint_type endpoint;
-        size_t size = endpoint.size();
+        socklen_t size = endpoint.size();
 
         if(::getsockname(m_fd, endpoint.data(), &size) != 0) {
             throw std::system_error(errno, std::system_category(), "unable to detect the address");
@@ -146,7 +146,7 @@ public:
     endpoint_type
     remote_endpoint() const {
         endpoint_type endpoint;
-        size_t size = endpoint.size();
+        socklen_t size = endpoint.size();
 
         if(::getpeername(m_fd, endpoint.data(), &size) != 0) {
             throw std::system_error(errno, std::system_category(), "unable to detect the address");

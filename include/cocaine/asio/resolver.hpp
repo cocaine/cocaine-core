@@ -23,10 +23,8 @@
 
 #include "cocaine/common.hpp"
 
-#include <cstring>
-
-#include <netdb.h>
-#include <netinet/in.h>
+#include <boost/asio/io_service.hpp>
+#include <boost/lexical_cast.hpp>
 
 namespace cocaine { namespace io {
 
@@ -34,37 +32,24 @@ template<class Medium>
 struct resolver {
     typedef Medium medium_type;
     typedef typename medium_type::endpoint endpoint_type;
+    typedef typename medium_type::resolver resolver_type;
 
     static inline
     endpoint_type
     query(const std::string& name, uint16_t port) {
-        endpoint_type endpoint;
-        addrinfo hints, *result = nullptr;
+        boost::asio::io_service service;
+        resolver_type resolver(service);
 
-        std::memset(&hints, 0, sizeof(addrinfo));
+        auto it = resolver.resolve(typename resolver_type::query(
+            name,
+            boost::lexical_cast<std::string>(port)
+        ));
 
-        hints.ai_socktype = endpoint.protocol().type();
-        hints.ai_protocol = endpoint.protocol().protocol();
-
-        int rv = ::getaddrinfo(name.c_str(), nullptr, &hints, &result);
-
-        if(rv != 0) {
-            throw cocaine::error_t("unable to resolve the name - %s", gai_strerror(rv));
+        if(it == typename resolver_type::iterator()) {
+            throw cocaine::error_t("unable to resolve '%s'", name);
         }
 
-        if(result == nullptr) {
-            throw cocaine::error_t("unable to resolve the name");
-        }
-
-        BOOST_ASSERT(endpoint.size() == result->ai_addrlen);
-
-        std::memcpy(endpoint.data(), result->ai_addr, result->ai_addrlen);
-
-        ::freeaddrinfo(result);
-
-        endpoint.port(port);
-
-        return endpoint;
+        return *it;
     }
 };
 
