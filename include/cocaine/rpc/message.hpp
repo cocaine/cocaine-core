@@ -22,18 +22,44 @@
 #define COCAINE_IO_MESSAGE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/traits.hpp"
 
-#include "cocaine/rpc/protocol.hpp"
+#include "cocaine/traits/typelist.hpp"
+
+#include <system_error>
 
 namespace cocaine { namespace io {
+
+enum rpc_errc {
+    parse_error,
+    invalid_format
+};
+
+const std::error_category&
+rpc_category();
+
+std::error_code
+make_error_code(rpc_errc e);
+
+std::error_condition
+make_error_condition(rpc_errc e);
 
 struct message_t {
     COCAINE_DECLARE_NONCOPYABLE(message_t)
 
-    message_t(msgpack::object object):
+    message_t(const msgpack::object& object):
         m_object(object)
-    { }
+    {
+        if(object.type != msgpack::type::ARRAY || object.via.array.size != 3) {
+            throw std::system_error(make_error_code(rpc_errc::invalid_format));
+        }
+
+        if(object.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER ||
+           object.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER ||
+           object.via.array.ptr[2].type != msgpack::type::ARRAY)
+        {
+            throw std::system_error(make_error_code(rpc_errc::invalid_format));
+        }
+    }
 
     template<class Event, typename... Args>
     void
@@ -43,8 +69,8 @@ struct message_t {
                 args(),
                 std::forward<Args>(targets)...
             );
-        } catch(const msgpack::type_error&) {
-            throw cocaine::error_t("invalid message type");
+        } catch(const msgpack::type_error& e) {
+            throw std::system_error(make_error_code(rpc_errc::invalid_format));
         }
     }
 
@@ -65,9 +91,16 @@ public:
     }
 
 private:
-    msgpack::object m_object;
+    const msgpack::object& m_object;
 };
 
-}}
+}} // namespace cocaine::io
+
+namespace std {
+    template<>
+    struct is_error_code_enum<cocaine::io::rpc_errc>:
+        public true_type
+    { };
+}
 
 #endif

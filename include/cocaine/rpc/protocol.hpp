@@ -21,6 +21,8 @@
 #ifndef COCAINE_IO_PROTOCOL_HPP
 #define COCAINE_IO_PROTOCOL_HPP
 
+#include "cocaine/tuple.hpp"
+
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>
 #include <boost/mpl/distance.hpp>
@@ -28,8 +30,6 @@
 #include <boost/mpl/is_sequence.hpp>
 #include <boost/mpl/joint_view.hpp>
 #include <boost/mpl/list.hpp>
-
-#include "cocaine/tuples.hpp"
 
 namespace cocaine { namespace io {
 
@@ -48,6 +48,8 @@ namespace detail {
     struct depend {
         typedef void type;
     };
+
+    // Type enumeration
 
     template<class Protocol, class = void>
     struct flatten {
@@ -81,6 +83,20 @@ namespace detail {
             typename mpl::find<hierarchy_type, Event>::type
         >::type type;
     };
+
+    // Argument traits
+
+    template<class T>
+    struct is_required:
+        public std::true_type
+    { };
+
+    template<class T>
+    struct unwrap_type {
+        typedef T type;
+    };
+
+    // Argument typelist extraction
 
     template<class Event, class = void>
     struct tuple_type {
@@ -127,10 +143,10 @@ namespace detail {
 
 template<class Event>
 struct event_traits {
+    enum constants { id = detail::enumerate<Event>::type::value };
+
     typedef typename detail::tuple_type<Event>::type tuple_type;
     typedef typename detail::result_type<Event>::type result_type;
-
-    enum constants { id = detail::enumerate<Event>::type::value };
 };
 
 }}

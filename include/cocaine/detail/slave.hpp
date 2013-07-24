@@ -89,7 +89,7 @@ class slave_t {
         on_message(const io::message_t& message);
 
         void
-        on_disconnect(const std::error_code& ec);
+        on_failure(const std::error_code& ec);
 
         // Streaming RPC
 

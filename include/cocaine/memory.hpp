@@ -18,26 +18,19 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_STDOUT_LOGGER_HPP
-#define COCAINE_STDOUT_LOGGER_HPP
+#ifndef COCAINE_MEMORY_HPP
+#define COCAINE_MEMORY_HPP
 
-#include "cocaine/api/logger.hpp"
+#include <memory>
 
-namespace cocaine { namespace logger {
+namespace std {
 
-class stdout_t:
-    public api::logger_t
-{
-    public:
-        stdout_t(const Json::Value& args);
+template<class T, typename... Args>
+unique_ptr<T>
+make_unique(Args&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
 
-        virtual
-        void
-        emit(logging::priorities level,
-             const std::string& source,
-             const std::string& message);
-};
-
-}} // namespace cocaine::logger
+}
 
 #endif

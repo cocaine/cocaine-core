@@ -19,7 +19,7 @@
 */
 
 #include "cocaine/detail/profile.hpp"
-#include "cocaine/detail/traits/json.hpp"
+#include "cocaine/traits/json.hpp"
 
 using namespace cocaine::engine;
 
@@ -38,7 +38,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     ).asDouble();
 
     if(heartbeat_timeout <= 0.0f) {
-        throw configuration_error_t("slave heartbeat timeout must be positive");
+        throw cocaine::error_t("slave heartbeat timeout must be positive");
     }
 
     idle_timeout = get(
@@ -47,7 +47,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     ).asDouble();
 
     if(idle_timeout < 0.0f) {
-        throw configuration_error_t("slave idle timeout must non-negative");
+        throw cocaine::error_t("slave idle timeout must non-negative");
     }
 
     startup_timeout = get(
@@ -56,7 +56,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     ).asDouble();
 
     if(startup_timeout <= 0.0f) {
-        throw configuration_error_t("slave startup timeout must be positive");
+        throw cocaine::error_t("slave startup timeout must be positive");
     }
 
     termination_timeout = get(
@@ -65,7 +65,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     ).asDouble();
 
     if(termination_timeout <= 0.0f) {
-        throw configuration_error_t("engine termination timeout must be non-negative");
+        throw cocaine::error_t("engine termination timeout must be non-negative");
     }
 
     concurrency = get(
@@ -84,7 +84,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     ).asUInt();
 
     if(pool_limit == 0) {
-        throw configuration_error_t("engine pool limit must be positive");
+        throw cocaine::error_t("engine pool limit must be positive");
     }
 
     queue_limit = get(
@@ -93,7 +93,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     ).asUInt();
 
     if(concurrency == 0) {
-        throw configuration_error_t("engine concurrency must be positive");
+        throw cocaine::error_t("engine concurrency must be positive");
     }
 
     grow_threshold = get(

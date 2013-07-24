@@ -24,7 +24,6 @@
 #include "cocaine/rpc/message.hpp"
 
 #include <functional>
-#include <memory>
 
 namespace cocaine { namespace io {
 
@@ -39,7 +38,9 @@ struct decoder {
     }
 
    ~decoder() {
-        unbind();
+        if(m_stream) {
+            unbind();
+        }
     }
 
     void
@@ -64,8 +65,8 @@ struct decoder {
 
     void
     unbind() {
-        m_handle_message = nullptr;
         m_stream->unbind();
+        m_handle_message = nullptr;
     }
 
 public:
@@ -78,7 +79,8 @@ private:
     size_t
     on_event(const char* data, size_t size) {
         size_t offset = 0,
-               checkpoint = 0;
+               checkpoint = 0,
+               bulk = 0;
 
         msgpack::unpack_return rv;
         msgpack::zone zone;
@@ -89,23 +91,26 @@ private:
             rv = msgpack::unpack(data, size, &offset, &zone, &object);
 
             switch(rv) {
-                case msgpack::UNPACK_EXTRA_BYTES:
-                case msgpack::UNPACK_SUCCESS:
-                    m_handle_message(message_t(object));
+            case msgpack::UNPACK_EXTRA_BYTES:
+            case msgpack::UNPACK_SUCCESS: {
+                checkpoint = offset;
 
-                    if(rv == msgpack::UNPACK_SUCCESS) {
-                        return size;
-                    }
+                m_handle_message(message_t(object));
 
-                    checkpoint = offset;
+                if(rv == msgpack::UNPACK_SUCCESS) {
+                    return size;
+                }
 
-                    break;
-
-                case msgpack::UNPACK_CONTINUE:
+                if(++bulk == 256) {
                     return checkpoint;
+                }
+            } break;
 
-                case msgpack::UNPACK_PARSE_ERROR:
-                    throw cocaine::error_t("corrupted message");
+            case msgpack::UNPACK_CONTINUE:
+                return checkpoint;
+
+            case msgpack::UNPACK_PARSE_ERROR:
+                throw std::system_error(make_error_code(rpc_errc::parse_error));
             }
         } while(true);
     }

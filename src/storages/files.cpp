@@ -23,6 +23,8 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
+#include <numeric>
+
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/convenience.hpp>
@@ -43,7 +45,7 @@ files_t::~files_t() {
 
 std::string
 files_t::read(const std::string& collection, const std::string& key) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     const fs::path file_path(m_storage_path / collection / key);
 
@@ -65,37 +67,21 @@ files_t::read(const std::string& collection, const std::string& key) {
         try {
             stream.exceptions(fs::ifstream::failbit);
         } catch(const fs::ifstream::failure& e) {
-            throw storage_error_t(
-#if defined(__clang__)
-                "unable to access object '%s' in '%s' - [%d] %s",
-#else
-                "unable to access object '%s' in '%s' - %s",
-#endif
-                key,
-                collection,
-#if defined(__clang__)
-                e.code(),
-#endif
-                e.what()
-            );
+            throw storage_error_t("unable to access object '%s' in '%s' - %s", key, collection, e.what());
         }
 
         throw storage_error_t("unable to access object '%s' in '%s' - unknown error", key, collection);
     }
 
-    std::stringstream buffer;
-    buffer << stream.rdbuf();
-
-    return buffer.str();
+    return std::string(
+        std::istreambuf_iterator<char>(stream),
+        std::istreambuf_iterator<char>()
+    );
 }
 
 void
-files_t::write(const std::string& collection,
-               const std::string& key,
-               const std::string& blob,
-               const std::vector<std::string>& tags)
-{
-    std::unique_lock<std::mutex> lock(m_mutex);
+files_t::write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags) {
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
     const auto store_status = fs::status(store_path);
@@ -131,19 +117,7 @@ files_t::write(const std::string& collection,
         try {
             stream.exceptions(fs::ofstream::failbit);
         } catch(const fs::ofstream::failure& e) {
-            throw storage_error_t(
-#if defined(__clang__)
-                "unable to access object '%s' in '%s' - [%d] %s",
-#else
-                "unable to access object '%s' in '%s' - %s",
-#endif
-                key,
-                collection,
-#if defined(__clang__)
-                e.code(),
-#endif
-                e.what()
-            );
+            throw storage_error_t("unable to access object '%s' in '%s' - %s", key, collection, e.what());
         }
 
         throw storage_error_t("unable to access object '%s' in '%s' - unknown error", key, collection);
@@ -183,7 +157,7 @@ files_t::write(const std::string& collection,
 
 void
 files_t::remove(const std::string& collection, const std::string& key) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     const auto store_path(m_storage_path / collection);
     const auto file_path(store_path / key);
@@ -205,30 +179,50 @@ files_t::remove(const std::string& collection, const std::string& key) {
     }
 }
 
+namespace {
+
+struct intersect {
+    template<class T>
+    T
+    operator()(const T& accumulator, T& keys) const {
+        T result;
+
+        std::sort(keys.begin(), keys.end());
+        std::set_intersection(accumulator.begin(), accumulator.end(), keys.begin(), keys.end(), std::back_inserter(result));
+
+        return result;
+    }
+};
+
+}
+
 std::vector<std::string>
 files_t::find(const std::string& collection, const std::vector<std::string>& tags) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
 
-    std::vector<std::string> result;
-
-    if(!fs::exists(store_path)) {
-        return result;
+    if(!fs::exists(store_path) || tags.empty()) {
+        return std::vector<std::string>();
     }
 
+    std::vector<std::vector<std::string>> result;
+
     for(auto tag = tags.begin(); tag != tags.end(); ++tag) {
+        auto tagged = result.insert(result.end(), std::vector<std::string>());
+
         if(!fs::exists(store_path / *tag)) {
-            continue;
+            // If one of the tags doesn't exist, the intersection is evidently empty.
+            return std::vector<std::string>();
         }
 
         fs::directory_iterator it(store_path / *tag), end;
 
         while(it != end) {
 #if BOOST_VERSION >= 104600
-            auto object = it->path().filename().string();
+            const std::string object = it->path().filename().string();
 #else
-            auto object = it->path().filename();
+            const std::string object = it->path().filename();
 #endif
 
             if(!fs::exists(*it)) {
@@ -240,16 +234,21 @@ files_t::find(const std::string& collection, const std::vector<std::string>& tag
                 continue;
             }
 
-            result.emplace_back(object);
+            tagged->push_back(object);
 
             ++it;
         }
     }
 
-    std::sort(result.begin(), result.end());
+    std::vector<std::string> initial = std::move(result.back());
 
-    // Remove the duplicates, if any.
-    result.erase(std::unique(result.begin(), result.end()), result.end());
+    // NOTE: Pop the initial accumulator value from the result queue, so that it
+    // won't be intersected with itself later.
+    result.pop_back();
 
-    return result;
+    // NOTE: Sort the initial accumulator value here once, because it will always
+    // be kept sorted inside the functor by std::set_intersection().
+    std::sort(initial.begin(), initial.end());
+
+    return std::accumulate(result.begin(), result.end(), initial, intersect());
 }

@@ -23,12 +23,11 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/detail/unique_id.hpp"
-
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
-#include <random>
+#include <mutex>
+#include <queue>
 
 namespace ev {
     struct io;
@@ -46,15 +45,11 @@ class locator_t:
     public dispatch_t
 {
     struct remote_t {
-        typedef std::tuple<
-            std::string,
-            std::string,
-            uint16_t
-        > key_type;
-
         std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
         std::shared_ptr<io::timeout_t> timeout;
     };
+
+    typedef std::tuple<std::string, std::string, uint16_t> key_type;
 
     public:
         locator_t(context_t& context, io::reactor_t& reactor);
@@ -63,22 +58,28 @@ class locator_t:
        ~locator_t();
 
         void
+        connect();
+
+        void
+        disconnect();
+
+        void
         attach(const std::string& name, std::unique_ptr<actor_t>&& service);
 
-        std::unique_ptr<actor_t>
-        detach(const std::string& name);
+        auto
+        detach(const std::string& name) -> std::unique_ptr<actor_t>;
 
     private:
+        resolve_result_type
+        query(const std::unique_ptr<actor_t>& service) const;
+
         resolve_result_type
         resolve(const std::string& name) const;
 
         synchronize_result_type
         dump() const;
 
-        // Cluster discovery
-
-        void
-        connect();
+        // Cluster I/O
 
         void
         on_announce_event(ev::io&, int);
@@ -87,18 +88,13 @@ class locator_t:
         on_announce_timer(ev::timer&, int);
 
         void
-        on_response(const remote_t::key_type& key, const io::message_t& message);
+        on_message(const key_type& key, const io::message_t& message);
 
         void
-        on_disconnect(const remote_t::key_type& key, const std::error_code& ec);
+        on_failure(const key_type& key, const std::error_code& ec);
 
         void
-        on_timeout(const remote_t::key_type& key);
-
-        // Housekeeping
-
-        void
-        prune(const remote_t::key_type& key);
+        on_timeout(const key_type& key);
 
     private:
         context_t& m_context;
@@ -107,50 +103,40 @@ class locator_t:
         // For future cluster locator interconnections.
         io::reactor_t& m_reactor;
 
+        // Ports available for allocation.
+        std::priority_queue<uint16_t, std::vector<uint16_t>, std::greater<uint16_t>> m_ports;
+
         typedef std::vector<
             std::pair<std::string, std::unique_ptr<actor_t>>
-        > local_service_list_t;
+        > service_list_t;
 
         // These are the instances of all the configured services, stored as a vector of pairs to
         // preserve the initialization order.
-        local_service_list_t m_services;
+        service_list_t m_services;
 
-        // As, for example, the Node Service can manipulate services from its actor thread,
-        // the service list should be interlocked.
+        // As, for example, the Node Service can manipulate service list from its actor thread, the
+        // service list access should be synchronized.
         mutable std::mutex m_services_mutex;
-
-        // Node's UUID in the cluster.
-        unique_id_t m_id;
 
         // Announce receiver.
         std::unique_ptr<io::socket<io::udp>> m_sink;
         std::unique_ptr<ev::io> m_sink_watcher;
 
-        // These are remote channels indexed by (endpoint, id) tuples. The unique id is required to
-        // distinguish between different runtime instances on the same host.
-        std::map<remote_t::key_type, remote_t> m_remotes;
+        // Remote gateway.
+        std::unique_ptr<api::gateway_t> m_gateway;
+
+        // These are remote channels indexed by endpoint and uuid. The uuid is required to easily
+        // disambiguate between different runtime instances on the same host.
+        std::map<key_type, remote_t> m_remotes;
 
         // Announce emitter.
         std::unique_ptr<io::socket<io::udp>> m_announce;
         std::unique_ptr<ev::timer> m_announce_timer;
 
-        struct synchronize_t;
+        struct synchronize_slot_t;
 
         // Synchronizing slot.
-        std::shared_ptr<synchronize_t> m_synchronizer;
-
-#if defined(__clang__) || defined(HAVE_GCC46)
-        mutable std::default_random_engine m_random_generator;
-#else
-        mutable std::minstd_rand0 m_random_generator;
-#endif
-
-        typedef std::multimap<
-            std::string,
-            std::tuple<remote_t::key_type, resolve_result_type>
-        > remote_service_map_t;
-
-        remote_service_map_t m_remote_services;
+        std::shared_ptr<synchronize_slot_t> m_synchronizer;
 };
 
 } // namespace cocaine

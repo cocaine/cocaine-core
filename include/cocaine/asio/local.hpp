@@ -27,6 +27,12 @@ namespace cocaine { namespace io {
 
 struct local {
     typedef boost::asio::local::stream_protocol::endpoint endpoint;
+
+    static
+    void
+    configure(int /* fd */) {
+        // Do nothing.
+    }
 };
 
 }} // namespace cocaine::io

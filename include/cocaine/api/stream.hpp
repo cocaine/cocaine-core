@@ -51,7 +51,7 @@ struct null_stream_t:
 {
     virtual
     void
-    write(const char *, size_t) { }
+    write(const char*, size_t) { }
 
     virtual
     void

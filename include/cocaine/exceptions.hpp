@@ -21,14 +21,14 @@
 #ifndef COCAINE_EXCEPTIONS_HPP
 #define COCAINE_EXCEPTIONS_HPP
 
+#include "cocaine/common.hpp"
 #include "cocaine/format.hpp"
 
 #include <exception>
-#include <system_error>
 
 namespace cocaine {
 
-enum error_code: int {
+enum error_code {
     invocation_error = 1,
     resource_error,
     timeout_error,
@@ -56,33 +56,6 @@ struct error_t:
 
 private:
     const std::string m_message;
-};
-
-struct configuration_error_t:
-    public error_t
-{
-    template<typename... Args>
-    configuration_error_t(const std::string& format, const Args&... args):
-        error_t(format, args...)
-    { }
-};
-
-struct io_error_t:
-    public cocaine::error_t
-{
-    template<typename... Args>
-    io_error_t(const std::string& format, Args&&... args):
-        cocaine::error_t(format, std::forward<Args>(args)...),
-        m_errno(errno)
-    { }
-
-    std::string
-    describe() const throw() {
-        return std::error_code(m_errno, std::system_category()).message();
-    }
-
-private:
-    const int m_errno;
 };
 
 } // namespace cocaine

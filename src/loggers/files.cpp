@@ -29,20 +29,16 @@
 
 using namespace cocaine::logger;
 
-files_t::files_t(const Json::Value& args):
-    category_type(args),
+files_t::files_t(const config_t& config, const Json::Value& args):
+    category_type(config, args),
     m_file(nullptr)
 {
-    std::string path = args["path"].asString();
+    const std::string path = args["path"].asString();
 
     m_file = std::fopen(path.c_str(), "a");
 
     if(m_file == nullptr) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            cocaine::format("unable to open the '%s' file", path)
-        );
+        throw std::system_error(errno, std::system_category(), cocaine::format("unable to open '%s'", path));
     }
 }
 
@@ -53,21 +49,19 @@ files_t::~files_t() {
 }
 
 namespace {
-    static
-    const char* describe[] = {
-        nullptr,
-        "ERROR",
-        "WARNING",
-        "INFO",
-        "DEBUG"
-    };
+
+const char* describe[] = {
+    nullptr,
+    "ERROR",
+    "WARNING",
+    "INFO",
+    "DEBUG"
+};
+
 }
 
 void
-files_t::emit(logging::priorities priority,
-              const std::string& source,
-              const std::string& message)
-{
+files_t::emit(logging::priorities priority, const std::string& source, const std::string& message) {
     time_t time = 0;
     tm timeinfo;
 
@@ -82,7 +76,7 @@ files_t::emit(logging::priorities priority,
         return;
     }
 
-    std::string out = cocaine::format(
+    const std::string out = cocaine::format(
         "[%s] [%s] %s: %s\n",
         timestamp,
         describe[priority],

@@ -23,12 +23,17 @@
 #include "cocaine/api/logger.hpp"
 #include "cocaine/api/service.hpp"
 
+#include "cocaine/asio/reactor.hpp"
+
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/essentials.hpp"
 #include "cocaine/detail/locator.hpp"
+#include "cocaine/detail/unique_id.hpp"
 
-#include <cerrno>
+#include "cocaine/memory.hpp"
+
 #include <cstring>
+#include <system_error>
 
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -51,26 +56,54 @@ const unsigned long defaults::pool_limit     = 10L;
 const unsigned long defaults::queue_limit    = 100L;
 
 const float defaults::control_timeout        = 5.0f;
+const unsigned defaults::decoder_granularity = 256;
 
 const char defaults::plugins_path[]          = "/usr/lib/cocaine";
 const char defaults::runtime_path[]          = "/var/run/cocaine";
 const char defaults::spool_path[]            = "/var/spool/cocaine";
 
 const uint16_t defaults::locator_port        = 10053;
+const uint16_t defaults::min_port            = 32768;
+const uint16_t defaults::max_port            = 61000;
 
 // Config
 
 namespace {
-    void
-    validate_path(const fs::path& path) {
-        const auto status = fs::status(path);
 
-        if(!fs::exists(status)) {
-            throw configuration_error_t("the %s directory does not exist", path);
-        } else if(!fs::is_directory(status)) {
-            throw configuration_error_t("the %s path is not a directory", path);
-        }
+void
+validate_path(const fs::path& path) {
+    const auto status = fs::status(path);
+
+    if(!fs::exists(status)) {
+        throw cocaine::error_t("the %s directory does not exist", path);
+    } else if(!fs::is_directory(status)) {
+        throw cocaine::error_t("the %s path is not a directory", path);
     }
+}
+
+class gai_category_t:
+    public std::error_category
+{
+    virtual
+    const char*
+    name() const throw() {
+        return "getaddrinfo";
+    }
+
+    virtual
+    std::string
+    message(int code) const {
+        return gai_strerror(code);
+    }
+};
+
+gai_category_t category_instance;
+
+const std::error_category&
+gai_category() {
+    return category_instance;
+}
+
 }
 
 config_t::config_t(const std::string& config_path) {
@@ -79,20 +112,20 @@ config_t::config_t(const std::string& config_path) {
     const auto status = fs::status(path.config);
 
     if(!fs::exists(status) || !fs::is_regular_file(status)) {
-        throw configuration_error_t("the configuration file path is invalid");
+        throw cocaine::error_t("the configuration file path is invalid");
     }
 
     fs::ifstream stream(path.config);
 
     if(!stream) {
-        throw configuration_error_t("unable to read the configuration file");
+        throw cocaine::error_t("unable to read the configuration file");
     }
 
     Json::Reader reader(Json::Features::strictMode());
     Json::Value root;
 
     if(!reader.parse(stream, root)) {
-        throw configuration_error_t(
+        throw cocaine::error_t(
             "the configuration file is corrupted - %s",
             reader.getFormattedErrorMessages()
         );
@@ -101,7 +134,7 @@ config_t::config_t(const std::string& config_path) {
     // Validation
 
     if(root.get("version", 0).asUInt() != 2) {
-        throw configuration_error_t("the configuration file version is invalid");
+        throw cocaine::error_t("the configuration file version is invalid");
     }
 
     // Paths
@@ -113,19 +146,12 @@ config_t::config_t(const std::string& config_path) {
     validate_path(path.runtime);
     validate_path(path.spool);
 
-    // I/O configuration
-
-    network.aggregate = root.get("aggregate", false).asBool();
-    network.group = root.get("group", "").asString();
+    // Hostname configuration
 
     char hostname[256];
 
     if(gethostname(hostname, 256) != 0) {
-        throw std::system_error(
-            errno,
-            std::system_category(),
-            "unable to determine the hostname"
-        );
+        throw std::system_error(errno, std::system_category(), "unable to determine the hostname");
     }
 
     addrinfo hints,
@@ -135,24 +161,42 @@ config_t::config_t(const std::string& config_path) {
 
     hints.ai_flags = AI_CANONNAME;
 
-    int rv = getaddrinfo(hostname, nullptr, &hints, &result);
+    const int rv = getaddrinfo(hostname, nullptr, &hints, &result);
 
     if(rv != 0) {
-        throw configuration_error_t(
-            "unable to determine the hostname - %s",
-            gai_strerror(rv)
-        );
-    }
-
-    if(result == nullptr) {
-        throw configuration_error_t("unable to determine the hostname");
+        throw std::system_error(rv, gai_category(), "unable to determine the hostname");
     }
 
     network.hostname = result->ai_canonname;
+    network.uuid     = unique_id_t().string();
 
     freeaddrinfo(result);
 
-    network.locator = root.get("locator", defaults::locator_port).asUInt();
+    // Locator configuration
+
+    network.locator = root["locator"].get("port", defaults::locator_port).asUInt();
+
+    if(!root["locator"]["port-range"].empty()) {
+        network.ports = std::make_tuple(
+            root["locator"]["port-range"].get(0u, defaults::min_port).asUInt(),
+            root["locator"]["port-range"].get(1u, defaults::max_port).asUInt()
+        );
+    }
+
+    // Cluster configuration
+
+    if(!root["network"].empty()) {
+        if(!root["network"]["group"].empty()) {
+            network.group = root["network"]["group"].asString();
+        }
+
+        if(!root["network"]["gateway"].empty()) {
+            network.gateway = {
+                root["network"]["gateway"].get("type", "adhoc").asString(),
+                root["network"]["gateway"]["args"]
+            };
+        }
+    }
 
     // Component configuration
 
@@ -169,12 +213,9 @@ config_t::parse(const Json::Value& config) {
         return components;
     }
 
-    Json::Value::Members names(config.getMemberNames());
+    const Json::Value::Members names(config.getMemberNames());
 
-    for(Json::Value::Members::const_iterator it = names.begin();
-        it != names.end();
-        ++it)
-    {
+    for(auto it = names.begin(); it != names.end(); ++it) {
         components[*it] = {
             config[*it].get("type", "unspecified").asString(),
             config[*it]["args"]
@@ -197,15 +238,15 @@ context_t::context_t(config_t config_, const std::string& logger):
     // Load the plugins.
     m_repository->load(config.path.plugins);
 
-    auto it = config.loggers.find(logger);
+    const auto it = config.loggers.find(logger);
 
     if(it == config.loggers.end()) {
-        throw configuration_error_t("the '%s' logger is not configured", logger);
+        throw cocaine::error_t("the '%s' logger is not configured", logger);
     }
 
     // Try to initialize the logger. If this fails, there's no way to report the failure,
     // unfortunately, except printing it to the standart output.
-    m_logger = get<api::logger_t>(it->second.type, it->second.args);
+    m_logger = get<api::logger_t>(it->second.type, config, it->second.args);
 
     bootstrap();
 }
@@ -229,47 +270,44 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t
 }
 
 context_t::~context_t() {
-    auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
+    auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
 
     COCAINE_LOG_INFO(blog, "stopping the service locator");
 
     m_locator->terminate();
 
+    if(config.network.group) {
+        static_cast<locator_t&>(m_locator->dispatch()).disconnect();
+    }
+
     COCAINE_LOG_INFO(blog, "stopping the services");
     
     for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
-        detach(it->first)->terminate();
+        detach(it->first);
     }
-
-    m_locator.reset();
 }
 
 void
-context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& actor) {
-    dynamic_cast<locator_t&>(m_locator->dispatch()).attach(name, std::move(actor));
+context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
+    static_cast<locator_t&>(m_locator->dispatch()).attach(name, std::move(service));
 }
 
-std::unique_ptr<actor_t>
-context_t::detach(const std::string& name) {
-    return dynamic_cast<locator_t&>(m_locator->dispatch()).detach(name);
+auto
+context_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
+    return static_cast<locator_t&>(m_locator->dispatch()).detach(name);
 }
 
 void
 context_t::bootstrap() {
-    auto blog = std::unique_ptr<logging::log_t>(new logging::log_t(*this, "bootstrap"));
+    auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
 
-    auto locator_reactor = std::make_shared<io::reactor_t>();
-    auto locator = std::unique_ptr<locator_t>(new locator_t(*this, *locator_reactor));
-
-    std::vector<io::tcp::endpoint> endpoints = {
-        { boost::asio::ip::address::from_string("::"), config.network.locator }
-    };
+    // Service locator internals.
+    auto reactor = std::make_shared<io::reactor_t>();
+    auto locator = std::make_unique<locator_t>(*this, *reactor);
 
     m_locator.reset(new actor_t(
-        *this,
-        locator_reactor,
-        std::move(locator),
-        endpoints
+        reactor,
+        std::move(locator)
     ));
 
     COCAINE_LOG_INFO(
@@ -279,18 +317,13 @@ context_t::bootstrap() {
         config.services.size() == 1 ? "service" : "services"
     );
 
-    std::unique_ptr<actor_t> service;
-
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
-        auto reactor = std::make_shared<io::reactor_t>();
+        reactor = std::make_shared<io::reactor_t>();
 
-        std::vector<io::tcp::endpoint> endpoints = {
-            { boost::asio::ip::address::from_string("::"), 0 }
-        };
+        COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
 
         try {
-            service.reset(new actor_t(
-                *this,
+            attach(it->first, std::make_unique<actor_t>(
                 reactor,
                 get<api::service_t>(
                     it->second.type,
@@ -298,23 +331,39 @@ context_t::bootstrap() {
                     *reactor,
                     cocaine::format("service/%s", it->first),
                     it->second.args
-                ),
-                endpoints
+                )
             ));
         } catch(const std::exception& e) {
-            throw cocaine::error_t("unable to initialize service '%s' - %s", it->first, e.what());
+            COCAINE_LOG_ERROR(blog, "unable to initialize service '%s' - %s", it->first, e.what());
+            throw;
         } catch(...) {
-            throw cocaine::error_t("unable to initialize service '%s' - unknown exception", it->first);
+            COCAINE_LOG_ERROR(blog, "unable to initialize service '%s' - unknown exception", it->first);
+            throw;
         }
-
-        COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
-
-        service->run();
-
-        attach(it->first, std::move(service));
     }
 
-    COCAINE_LOG_INFO(blog, "starting the service locator");
+    const std::vector<io::tcp::endpoint> endpoints = {
+        { boost::asio::ip::address::from_string("::"), config.network.locator }
+    };
 
-    m_locator->run();
+    COCAINE_LOG_INFO(blog, "starting the service locator on port %d", config.network.locator);
+
+    try {
+        if(config.network.group) {
+            static_cast<locator_t&>(m_locator->dispatch()).connect();
+        }
+
+        // NOTE: Start the locator thread last, so that we won't needlessly send node updates to
+        // the peers which managed to connect during the bootstrap.
+        m_locator->run(endpoints);
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_ERROR(blog, "unable to initialize the locator - %s - [%d] %s", e.what(), e.code().value(), e.code().message());
+        throw;
+    } catch(const std::exception& e) {
+        COCAINE_LOG_ERROR(blog, "unable to initialize the locator - %s", e.what());
+        throw;
+    } catch(...) {
+        COCAINE_LOG_ERROR(blog, "unable to initialize the locator - unknown exception");
+        throw;
+    }
 }

@@ -48,31 +48,18 @@ template<>
 struct category_traits<service_t> {
     typedef std::unique_ptr<service_t> ptr_type;
 
-    struct factory_type:
-        public basic_factory<service_t>
-    {
+    struct factory_type: public basic_factory<service_t> {
         virtual
         ptr_type
-        get(context_t& context,
-            io::reactor_t& reactor,
-            const std::string& name,
-            const Json::Value& args) = 0;
+        get(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args) = 0;
     };
 
     template<class T>
-    struct default_factory:
-        public factory_type
-    {
+    struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(context_t& context,
-            io::reactor_t& reactor,
-            const std::string& name,
-            const Json::Value& args)
-        {
-            return ptr_type(
-                new T(context, reactor, name, args)
-            );
+        get(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args) {
+            return ptr_type(new T(context, reactor, name, args));
         }
     };
 };

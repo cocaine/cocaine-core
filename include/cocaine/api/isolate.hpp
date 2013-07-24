@@ -41,6 +41,8 @@ struct handle_t {
     terminate() = 0;
 };
 
+typedef std::map<std::string, std::string> string_map_t;
+
 class isolate_t {
     public:
         typedef isolate_t category_type;
@@ -53,10 +55,7 @@ class isolate_t {
 
         virtual
         std::unique_ptr<handle_t>
-        spawn(const std::string& path,
-              const std::map<std::string, std::string>& args,
-              const std::map<std::string, std::string>& environment,
-              int pipe) = 0;
+        spawn(const std::string& path, const string_map_t& args, const string_map_t& environment, int pipe) = 0;
 
     protected:
         isolate_t(context_t&,
@@ -69,27 +68,18 @@ template<>
 struct category_traits<isolate_t> {
     typedef std::shared_ptr<isolate_t> ptr_type;
 
-    struct factory_type:
-        public basic_factory<isolate_t>
-    {
+    struct factory_type: public basic_factory<isolate_t> {
         virtual
         ptr_type
-        get(context_t& context,
-            const std::string& name,
-            const Json::Value& args) = 0;
+        get(context_t& context, const std::string& name, const Json::Value& args) = 0;
     };
 
     template<class T>
-    struct default_factory:
-        public factory_type
-    {
+    struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(context_t& context,
-            const std::string& name,
-            const Json::Value& args)
-        {
-            std::unique_lock<std::mutex> lock(m_mutex);
+        get(context_t& context, const std::string& name, const Json::Value& args) {
+            std::lock_guard<std::mutex> guard(m_mutex);
 
             typename instance_map_t::iterator it(m_instances.find(name));
 

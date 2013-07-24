@@ -27,15 +27,8 @@
 
 namespace cocaine {
 
-struct uninitialized_t { };
-
-extern const uninitialized_t uninitialized;
-
 struct unique_id_t {
     unique_id_t();
-
-    explicit
-    unique_id_t(uninitialized_t);
 
     explicit
     unique_id_t(const std::string& other);
@@ -54,9 +47,6 @@ public:
     // NOTE: Store 128-bit UUIDs as two 64-bit unsigned integers.
     std::array<uint64_t, 2> uuid;
 };
-
-size_t
-hash_value(const unique_id_t& id);
 
 } // namespace cocaine
 

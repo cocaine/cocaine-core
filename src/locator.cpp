@@ -20,6 +20,8 @@
 
 #include "cocaine/detail/locator.hpp"
 
+#include "cocaine/api/gateway.hpp"
+
 #include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/resolver.hpp"
 #include "cocaine/asio/socket.hpp"
@@ -32,17 +34,19 @@
 #include "cocaine/detail/actor.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 
+#include "cocaine/traits/tuple.hpp"
+
 using namespace cocaine;
+
 using namespace std::placeholders;
 
-struct locator_t::synchronize_t:
+struct locator_t::synchronize_slot_t:
     public slot_concept_t
 {
-    synchronize_t(locator_t& self):
+    synchronize_slot_t(locator_t& self):
         slot_concept_t("synchronize"),
         m_packer(m_buffer),
         m_self(self)
@@ -50,8 +54,11 @@ struct locator_t::synchronize_t:
 
     virtual
     void
-    operator()(const msgpack::object& /* unpacked */, const api::stream_ptr_t& upstream) {
-        dump(upstream);
+    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
+        io::detail::invoke<io::event_traits<io::locator::synchronize>::tuple_type>::apply(
+            std::bind(&synchronize_slot_t::dump, this, upstream),
+            unpacked
+        );
 
         // Save this upstream for the future notifications.
         m_upstreams.push_back(upstream);
@@ -59,10 +66,10 @@ struct locator_t::synchronize_t:
 
     void
     update() {
-        auto disconnected = std::partition(
+        const auto disconnected = std::partition(
             m_upstreams.begin(),
             m_upstreams.end(),
-            std::bind(&synchronize_t::dump, this, _1)
+            std::bind(&synchronize_slot_t::dump, this, _1)
         );
 
         m_upstreams.erase(disconnected, m_upstreams.end());
@@ -73,8 +80,10 @@ struct locator_t::synchronize_t:
         std::for_each(
             m_upstreams.begin(),
             m_upstreams.end(),
-            std::bind(&synchronize_t::close, _1)
+            std::bind(&synchronize_slot_t::close, _1)
         );
+
+        m_upstreams.clear();
     }
 
 private:
@@ -87,11 +96,7 @@ private:
             m_self.dump()
         );
 
-        try {
-            upstream->write(m_buffer.data(), m_buffer.size());
-        } catch(...) {
-            return false;
-        }
+        upstream->write(m_buffer.data(), m_buffer.size());
 
         return true;
     }
@@ -99,11 +104,7 @@ private:
     static
     void
     close(const api::stream_ptr_t& upstream) {
-        try {
-            upstream->close();
-        } catch(...) {
-            // Ignore.
-        }
+        upstream->close();
     }
 
 private:
@@ -121,202 +122,52 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor)
 {
-    COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_id);
+    COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
 
-    if(!context.config.network.group.empty()) {
-        connect();
+    if(m_context.config.network.ports) {
+        uint16_t min, max;
+
+        std::tie(min, max) = m_context.config.network.ports.get();
+
+        COCAINE_LOG_INFO(m_log, "%u locator ports available, %u through %u", max - min, min, max);
+
+        while(min != max) {
+            m_ports.push(--max);
+        }
     }
 }
 
 locator_t::~locator_t() {
-    // Disconnect all the remote nodes.
-    m_remotes.clear();
-
-    if(m_synchronizer) {
-        // Notify all the remote clients about this node shutdown.
-        m_synchronizer->shutdown();
-        m_synchronizer.reset();
+    if(m_services.empty()) {
+        return;
     }
 
-    if(!m_services.empty()) {
-        COCAINE_LOG_WARNING(
-            m_log,
-            "disposing of %llu orphan %s",
-            m_services.size(),
-            m_services.size() == 1 ? "service" : "services"
-        );
-
-        for(auto it = m_services.begin(); it != m_services.end(); ++it) {
-            it->second->terminate();
-        }
-
-        m_services.clear();
-    }
-}
-
-namespace {
-    struct match {
-        template<class T>
-        bool
-        operator()(const T& service) const {
-            return name == service.first;
-        }
-
-        const std::string name;
-    };
-}
-
-void
-locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
-    std::lock_guard<std::mutex> guard(m_services_mutex);
-
-    auto existing = std::find_if(m_services.begin(), m_services.end(), match {
-        name
-    });
-
-    BOOST_VERIFY(existing == m_services.end());
-
-    COCAINE_LOG_INFO(
+    COCAINE_LOG_WARNING(
         m_log,
-        "publishing service '%s' on port %d",
-        name,
-        std::get<1>(service->endpoint())
+        "disposing of %llu orphan %s",
+        m_services.size(),
+        m_services.size() == 1 ? "service" : "services"
     );
 
-    // Get the service's actor ownership.
-    m_services.emplace_back(name, std::move(service));
-
-    if(m_synchronizer) {
-        // Notify the peers.
-        m_synchronizer->update();
+    while(!m_services.empty()) {
+        m_services.back().second->terminate();
+        m_services.pop_back();
     }
-}
-
-std::unique_ptr<actor_t>
-locator_t::detach(const std::string& name) {
-    std::lock_guard<std::mutex> guard(m_services_mutex);
-
-    auto service = std::find_if(m_services.begin(), m_services.end(), match {
-        name
-    });
-
-    BOOST_VERIFY(service != m_services.end());
-
-    COCAINE_LOG_INFO(m_log, "withdrawing service '%s'", name);
-
-    // Release the service's actor ownership.
-    std::unique_ptr<actor_t> actor = std::move(service->second);
-
-    // Drop the service's record.
-    m_services.erase(service);
-
-    if(m_synchronizer) {
-        // Notify the peers.
-        m_synchronizer->update();
-    }
-
-    return actor;
-}
-
-namespace {
-    inline
-    resolve_result_type
-    query(const std::unique_ptr<actor_t>& actor) {
-        return resolve_result_type(
-            actor->endpoint(),
-            1u,
-            actor->dispatch().describe()
-        );
-    }
-}
-
-resolve_result_type
-locator_t::resolve(const std::string& name) const {
-    std::unique_lock<std::mutex> lock(m_services_mutex);
-
-    auto local = std::find_if(m_services.begin(), m_services.end(), match {
-        name
-    });
-
-    if(local == m_services.end()) {
-        lock.unlock();
-
-        remote_service_map_t::const_iterator begin, end;
-
-        std::tie(begin, end) = m_remote_services.equal_range(name);
-
-        if(begin == end) {
-            throw cocaine::error_t("the specified service is not available");
-        }
-
-#if defined(__clang__) || defined(HAVE_GCC46)
-        std::uniform_int_distribution<int> distribution(0, std::distance(begin, end) - 1);
-#else
-        std::uniform_int<int> distribution(0, std::distance(begin, end) - 1);
-#endif
-
-        std::advance(begin, distribution(m_random_generator));
-
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "providing service '%s' using remote node '%s' on '%s:%d'",
-            name,
-            std::get<0>(std::get<0>(begin->second)),
-            std::get<1>(std::get<0>(begin->second)),
-            std::get<2>(std::get<0>(begin->second))
-        );
-
-        return std::get<1>(begin->second);
-    }
-
-    COCAINE_LOG_DEBUG(m_log, "providing service '%s' using local node", name);
-
-    return query(local->second);
-}
-
-namespace {
-    struct dump_to {
-        template<class T>
-        void
-        operator()(const T& service) {
-            target[service.first] = query(service.second);
-        }
-
-        synchronize_result_type& target;
-    };
-}
-
-synchronize_result_type
-locator_t::dump() const {
-    synchronize_result_type result;
-
-    std::for_each(m_services.begin(), m_services.end(), dump_to {
-        result
-    });
-
-    return result;
 }
 
 void
 locator_t::connect() {
     using namespace boost::asio::ip;
 
-#if defined(__clang__) || defined(HAVE_GCC46)
-    std::random_device device;
-    m_random_generator.seed(device());
-#else
-    m_random_generator.seed(static_cast<unsigned long>(::time(nullptr)));
-#endif
-
     io::udp::endpoint endpoint = {
-        address::from_string(m_context.config.network.group),
+        address::from_string(m_context.config.network.group.get()),
         0
     };
 
-    if(m_context.config.network.aggregate) {
-        io::udp::endpoint bindpoint = { address::from_string("0.0.0.0"), 10054 };
+    if(m_context.config.network.gateway) {
+        const io::udp::endpoint bindpoint = { address::from_string("0.0.0.0"), 10054 };
 
         m_sink.reset(new io::socket<io::udp>());
 
@@ -341,13 +192,20 @@ locator_t::connect() {
         m_sink_watcher.reset(new ev::io(m_reactor.native()));
         m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
         m_sink_watcher->start(m_sink->fd(), ev::READ);
+
+        m_gateway = m_context.get<api::gateway_t>(
+            m_context.config.network.gateway.get().type,
+            m_context,
+            "service/locator",
+            m_context.config.network.gateway.get().args
+        );
     }
 
     endpoint.port(10054);
 
     COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
 
-    // NOTE: Connect an UDP socket so that we could send announces via write() instead of sendto().
+    // NOTE: Connect this UDP socket so that we could send announces via write() instead of sendto().
     m_announce.reset(new io::socket<io::udp>(endpoint));
 
     const int loop = 0;
@@ -361,17 +219,179 @@ locator_t::connect() {
     m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
     m_announce_timer->start(0.0f, 5.0f);
 
-    m_synchronizer = std::make_shared<synchronize_t>(*this);
+    m_synchronizer = std::make_shared<synchronize_slot_t>(*this);
 
     on<io::locator::synchronize>(m_synchronizer);
 }
 
 void
+locator_t::disconnect() {
+    // Disable the synchronize method.
+    forget<io::locator::synchronize>();
+
+    // Disconnect all the clients.
+    m_synchronizer->shutdown();
+    m_synchronizer.reset();
+
+    m_announce_timer.reset();
+    m_announce.reset();
+
+    if(m_context.config.network.gateway) {
+        // Purge the routing tables.
+        m_gateway.reset();
+
+        // Disconnect all the routed peers.
+        m_remotes.clear();
+
+        m_sink_watcher.reset();
+        m_sink.reset();
+    }
+}
+
+namespace {
+
+struct match {
+    template<class T>
+    bool
+    operator()(const T& service) const {
+        return name == service.first;
+    }
+
+    const std::string name;
+};
+
+}
+
+void
+locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
+    uint16_t port = 0;
+
+    {
+        std::lock_guard<std::mutex> guard(m_services_mutex);
+
+        const auto existing = std::find_if(m_services.cbegin(), m_services.cend(), match {
+            name
+        });
+
+        BOOST_VERIFY(existing == m_services.end());
+
+        if(m_context.config.network.ports) {
+            if(m_ports.empty()) {
+                throw cocaine::error_t("no ports left for allocation");
+            }
+
+            port = m_ports.top();
+
+            // NOTE: Remove the taken port from the free pool. If, for any reason, this port is
+            // unavailable for binding, it's okay to keep it removed forever.
+            m_ports.pop();
+        }
+
+        const std::vector<io::tcp::endpoint> endpoints = {
+            { boost::asio::ip::address::from_string("::"), port }
+        };
+
+        service->run(endpoints);
+
+        COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, service->endpoints().front().port());
+
+        m_services.emplace_back(name, std::move(service));
+    }
+
+    if(m_synchronizer) {
+        m_synchronizer->update();
+    }
+}
+
+auto
+locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
+    std::unique_ptr<actor_t> service;
+    
+    {
+        std::lock_guard<std::mutex> guard(m_services_mutex);
+
+        auto it = std::find_if(m_services.begin(), m_services.end(), match {
+            name
+        });
+
+        BOOST_VERIFY(it != m_services.end());
+
+        const std::vector<io::tcp::endpoint> endpoints = it->second->endpoints();
+
+        it->second->terminate();
+
+        if(m_context.config.network.ports) {
+            m_ports.push(endpoints.front().port());
+        }
+
+        COCAINE_LOG_INFO(m_log, "service '%s' withdrawn from port %d", name, endpoints.front().port());
+
+        // Release the service's actor ownership.
+        service = std::move(it->second);
+
+        m_services.erase(it);
+    }
+
+    if(m_synchronizer) {
+        m_synchronizer->update();
+    }
+
+    return service;
+}
+
+resolve_result_type
+locator_t::query(const std::unique_ptr<actor_t>& service) const {
+    const auto port = service->endpoints().front().port();
+    const auto endpoint = std::make_tuple(m_context.config.network.hostname, port);
+
+    return resolve_result_type(
+        endpoint,
+        service->dispatch().version(),
+        service->dispatch().map()
+    );
+}
+
+resolve_result_type
+locator_t::resolve(const std::string& name) const {
+    {
+        std::lock_guard<std::mutex> guard(m_services_mutex);
+
+        const auto local = std::find_if(m_services.begin(), m_services.end(), match {
+            name
+        });
+
+        if(local != m_services.end()) {
+            COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);
+            return query(local->second);
+        }
+    }
+
+    if(m_gateway) {
+        return m_gateway->resolve(name);
+    } else {
+        throw cocaine::error_t("the specified service is not available");
+    }
+}
+
+synchronize_result_type
+locator_t::dump() const {
+    std::lock_guard<std::mutex> guard(m_services_mutex);
+
+    synchronize_result_type result;
+
+    for(auto it = m_services.begin(); it != m_services.end(); ++it) {
+        result[it->first] = query(it->second);
+    }
+
+    return result;
+}
+
+void
 locator_t::on_announce_event(ev::io&, int) {
-    char buffer[1024];
+    char buffers[1024];
     std::error_code ec;
 
-    ssize_t size = m_sink->read(buffer, sizeof(buffer), ec);
+    const ssize_t size = m_sink->read(buffers, sizeof(buffers), ec);
 
     if(size <= 0) {
         if(ec) {
@@ -382,13 +402,19 @@ locator_t::on_announce_event(ev::io&, int) {
     }
 
     msgpack::unpacked unpacked;
-    msgpack::unpack(&unpacked, buffer, size);
-
-    remote_t::key_type key;
 
     try {
-        key = unpacked.get().as<remote_t::key_type>();
-    } catch(const std::exception& e) {
+        msgpack::unpack(&unpacked, buffers, size);
+    } catch(const msgpack::unpack_error& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
+        return;
+    }
+
+    key_type key;
+
+    try {
+        unpacked.get() >> key;
+    } catch(const msgpack::type_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
         return;
     }
@@ -396,7 +422,7 @@ locator_t::on_announce_event(ev::io&, int) {
     if(m_remotes.find(key) == m_remotes.end()) {
         std::string uuid;
         std::string hostname;
-        uint16_t port;
+        uint16_t    port;
 
         std::tie(uuid, hostname, port) = key;
 
@@ -411,21 +437,33 @@ locator_t::on_announce_event(ev::io&, int) {
                     io::resolver<io::tcp>::query(hostname, port)
                 )
             );
-        } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to connect to node '%s' - %s", hostname, e.what());
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(
+                m_log,
+                "unable to connect to node '%s' - %s - [%d] %s",
+                hostname,
+                e.what(),
+                e.code().value(),
+                e.code().message()
+            );
+
             return;
         }
 
-        auto on_response = std::bind(&locator_t::on_response, this, key, _1);
-        auto on_disconnect = std::bind(&locator_t::on_disconnect, this, key, _1);
-        auto on_timeout = std::bind(&locator_t::on_timeout, this, key);
+        channel->rd->bind(
+            std::bind(&locator_t::on_message, this, key, _1),
+            std::bind(&locator_t::on_failure, this, key, _1)
+        );
 
-        channel->wr->bind(on_disconnect);
-        channel->rd->bind(on_response, on_disconnect);
+        channel->wr->bind(
+            std::bind(&locator_t::on_failure, this, key, _1)
+        );
 
         auto timeout = std::make_shared<io::timeout_t>(m_reactor);
 
-        timeout->bind(on_timeout);
+        timeout->bind(
+            std::bind(&locator_t::on_timeout, this, key)
+        );
 
         m_remotes[key] = remote_t {
             channel,
@@ -446,8 +484,8 @@ locator_t::on_announce_timer(ev::timer&, int) {
     msgpack::sbuffer buffer;
     msgpack::packer<msgpack::sbuffer> packer(buffer);
 
-    packer << remote_t::key_type(
-        m_id.string(),
+    packer << key_type(
+        m_context.config.network.uuid,
         m_context.config.network.hostname,
         m_context.config.network.locator
     );
@@ -458,106 +496,89 @@ locator_t::on_announce_timer(ev::timer&, int) {
         if(ec) {
             COCAINE_LOG_ERROR(m_log, "unable to announce the node - [%d] %s", ec.value(), ec.message());
         } else {
-            COCAINE_LOG_ERROR(m_log, "unable to announce the node - unexpected exception");
+            COCAINE_LOG_ERROR(m_log, "unable to announce the node - unknown error");
         }
     }
 }
 
+namespace {
+
+template<class Container>
+struct deferred_erase_action {
+    typedef Container container_type;
+    typedef typename container_type::key_type key_type;
+
+    void
+    operator()() {
+        target.erase(key);
+    }
+
+    container_type& target;
+    const key_type  key;
+};
+
+}
+
 void
-locator_t::on_response(const remote_t::key_type& key, const io::message_t& message) {
+locator_t::on_message(const key_type& key, const io::message_t& message) {
+    std::string uuid;
+
+    std::tie(uuid, std::ignore, std::ignore) = key;
+
     switch(message.id()) {
-        case io::event_traits<io::rpc::chunk>::id: {
-            std::string chunk;
-            synchronize_result_type dump;
+    case io::event_traits<io::rpc::chunk>::id: {
+        std::string chunk;
+        synchronize_result_type dump;
 
-            message.as<io::rpc::chunk>(chunk);
+        message.as<io::rpc::chunk>(chunk);
 
-            msgpack::unpacked unpacked;
-            msgpack::unpack(&unpacked, chunk.data(), chunk.size());
+        msgpack::unpacked unpacked;
+        msgpack::unpack(&unpacked, chunk.data(), chunk.size());
 
-            unpacked.get() >> dump;
+        unpacked.get() >> dump;
 
-            // Clear the old remote node services.
-            prune(key);
+        m_gateway->consume(uuid, dump);
+    } break;
 
-            COCAINE_LOG_DEBUG(
-                m_log,
-                "discovered %llu %s on node '%s'",
-                dump.size(),
-                dump.size() == 1 ? "service" : "services",
-                std::get<0>(key)
-            );
+    case io::event_traits<io::rpc::error>::id:
+    case io::event_traits<io::rpc::choke>::id: {
+        COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
 
-            for(auto it = dump.begin(); it != dump.end(); ++it) {
-                m_remote_services.insert(std::make_pair(
-                    it->first,
-                    std::make_tuple(key, it->second)
-                ));
-            }
+        m_gateway->prune(uuid);
 
-            break;
-        }
+        // NOTE: It is dangerous to remove the channel while the message is still being
+        // processed, so we defer it via reactor_t::post().
+        m_reactor.post(deferred_erase_action<decltype(m_remotes)> {
+            m_remotes,
+            key
+        });
+    } break;
 
-        case io::event_traits<io::rpc::error>::id:
-        case io::event_traits<io::rpc::choke>::id:
-            COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", std::get<0>(key));
-
-            // Drop the remote node services.
-            prune(key);
-
-            // Disconnect.
-            m_remotes.erase(key);
-
-            break;
+    default:
+        COCAINE_LOG_ERROR(m_log, "dropped unknown type %d synchronization message", message.id());
     }
 }
 
 void
-locator_t::on_disconnect(const remote_t::key_type& key, const std::error_code& ec) {
-    COCAINE_LOG_WARNING(
-        m_log,
-        "node '%s' has unexpectedly disconnected - [%d] %s",
-        std::get<0>(key),
-        ec.value(),
-        ec.message()
-    );
+locator_t::on_failure(const key_type& key, const std::error_code& ec) {
+    std::string uuid;
 
-    // Drop the remote node services.
-    prune(key);
+    std::tie(uuid, std::ignore, std::ignore) = key;
 
-    // Disconnect.
+    COCAINE_LOG_WARNING(m_log, "node '%s' has unexpectedly disconnected - [%d] %s", uuid, ec.value(), ec.message());
+
+    m_gateway->prune(uuid);
     m_remotes.erase(key);
 }
 
 void
-locator_t::on_timeout(const remote_t::key_type& key) {
-    COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", std::get<0>(key));
+locator_t::on_timeout(const key_type& key) {
+    std::string uuid;
 
-    // Drop the remote node services.
-    prune(key);
+    std::tie(uuid, std::ignore, std::ignore) = key;
 
-    // Disconnect.
+    COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", uuid);
+
+    m_gateway->prune(uuid);
     m_remotes.erase(key);
-}
-
-void
-locator_t::prune(const remote_t::key_type& key) {
-    auto it = m_remote_services.begin(),
-         end = m_remote_services.end();
-
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "pruning services for node '%s' on '%s:%d'",
-        std::get<0>(key),
-        std::get<1>(key),
-        std::get<2>(key)
-    );
-
-    while(it != end) {
-        if(std::get<0>(it->second) == key) {
-            m_remote_services.erase(it++);
-        } else {
-            ++it;
-        }
-    }
 }

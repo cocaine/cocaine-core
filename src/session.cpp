@@ -20,31 +20,70 @@
 
 #include "cocaine/detail/session.hpp"
 
+#include "cocaine/messages.hpp"
+
+#include "cocaine/traits/literal.hpp"
+
 using namespace cocaine::engine;
 using namespace cocaine::io;
 
-session_t::session_t(uint64_t id_,
-                     const api::event_t& event_,
-                     const std::shared_ptr<api::stream_t>& upstream_):
+session_t::session_t(uint64_t id_, const api::event_t& event_, const api::stream_ptr_t& upstream_):
     id(id_),
     event(event_),
-    upstream(upstream_)
+    upstream(upstream_),
+    m_state(state::open)
 {
     m_encoder.reset(new encoder<writable_stream<io::socket<local>>>());
+
+    // Cache the invocation command right away.
+    send<rpc::invoke>(event.name);
 }
 
 void
-session_t::attach(const std::shared_ptr<writable_stream<io::socket<local>>>& stream) {
-    std::unique_lock<std::mutex> lock(m_mutex);
-
-    // Flush all the cached messages into the stream.
-    m_encoder->attach(stream);
+session_t::attach(const std::shared_ptr<writable_stream<io::socket<local>>>& downstream) {
+    // Flush all the cached messages into the downstream.
+    m_encoder->attach(downstream);
 }
 
 void
 session_t::detach() {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    close();
 
     // Disable the session.
     m_encoder.reset();
+}
+
+void
+session_t::close() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if(m_state == state::open) {
+        m_encoder->write<rpc::choke>(id);
+
+        // There shouldn't be any other chunks after that.
+        m_state = state::closed;
+    }
+}
+
+session_t::downstream_t::downstream_t(const std::shared_ptr<session_t>& parent_):
+    parent(parent_)
+{ }
+
+session_t::downstream_t::~downstream_t() {
+    close();
+}
+
+void
+session_t::downstream_t::write(const char* chunk, size_t size) {
+    parent->send<rpc::chunk>(literal { chunk, size });
+}
+
+void
+session_t::downstream_t::error(int code, const std::string& reason) {
+    parent->send<rpc::error>(code, reason);
+}
+
+void
+session_t::downstream_t::close() {
+    parent->close();
 }

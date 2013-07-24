@@ -48,7 +48,7 @@ archive_t::archive_t(context_t& context, const std::string& archive):
 
     archive_read_support_format_all(m_archive);
 
-    int rv = archive_read_open_memory(
+    const int rv = archive_read_open_memory(
         m_archive,
         const_cast<char*>(archive.data()),
         archive.size()
@@ -73,7 +73,7 @@ archive_t::~archive_t() {
 
 void
 archive_t::deploy(const std::string& prefix_) {
-    fs::path prefix = prefix_;
+    const fs::path prefix = prefix_;
 
     archive* target = archive_write_disk_new();
     archive_entry* entry = nullptr;
@@ -96,14 +96,14 @@ archive_t::deploy(const std::string& prefix_) {
             throw archive_error_t(m_archive);
         }
 
-        fs::path pathname = prefix / archive_entry_pathname(entry);
+        const fs::path pathname = prefix / archive_entry_pathname(entry);
 
         // NOTE: Prepend the target path to the stored file path
         // in order to unpack it into the right place.
         archive_entry_set_pathname(entry, pathname.string().c_str());
 
         if(archive_entry_hardlink(entry)) {
-            fs::path hardlink = prefix / archive_entry_hardlink(entry);
+            const fs::path hardlink = prefix / archive_entry_hardlink(entry);
 
             // NOTE: This entry might be a hardlink to some other file, for example
             // due to tar file deduplication mechanics. We need to update this path as well.
@@ -135,7 +135,7 @@ archive_t::deploy(const std::string& prefix_) {
     archive_write_free(target);
 #endif
 
-    size_t count = archive_file_count(m_archive);
+    const size_t count = archive_file_count(m_archive);
 
     COCAINE_LOG_INFO(m_log, "extracted %d %s", count, count == 1 ? "file" : "files");
 }

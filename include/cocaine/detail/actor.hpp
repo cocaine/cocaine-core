@@ -23,12 +23,9 @@
 
 #include "cocaine/common.hpp"
 
-// TODO: Either forward or wrap libev types.
-#include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/tcp.hpp"
 
 #include <list>
-#include <set>
 #include <thread>
 
 namespace cocaine {
@@ -39,27 +36,18 @@ class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
 
     public:
-        actor_t(context_t& context,
-                std::shared_ptr<io::reactor_t> reactor,
-                std::unique_ptr<dispatch_t>&& dispatch,
-                std::vector<io::tcp::endpoint> endpoints);
-
+        actor_t(std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<dispatch_t>&& dispatch);
        ~actor_t();
 
         void
-        run();
+        run(std::vector<io::tcp::endpoint> endpoints);
 
         void
         terminate();
 
     public:
-        typedef std::tuple<
-            std::string,
-            uint16_t
-        > endpoint_type;
-
-        endpoint_type
-        endpoint() const;
+        std::vector<io::tcp::endpoint>
+        endpoints() const;
 
         dispatch_t&
         dispatch();
@@ -72,14 +60,9 @@ class actor_t {
         on_message(int fd, const io::message_t& message);
 
         void
-        on_disconnect(int fd, const std::error_code& ec);
-
-        void
-        on_terminate(ev::async&, int);
+        on_failure(int fd, const std::error_code& ec);
 
     private:
-        context_t& m_context;
-
         const std::shared_ptr<io::reactor_t> m_reactor;
 
         // Actor I/O channels
@@ -90,10 +73,6 @@ class actor_t {
         > m_channels;
 
         const std::unique_ptr<dispatch_t> m_dispatch;
-
-        // Event loop
-
-        ev::async m_terminate;
 
         // Actor I/O connectors
 

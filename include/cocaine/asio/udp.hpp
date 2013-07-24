@@ -27,6 +27,12 @@ namespace cocaine { namespace io {
 
 struct udp {
     typedef boost::asio::ip::udp::endpoint endpoint;
+
+    static
+    void
+    configure(int /* fd */) {
+        // Do nothing.
+    }
 };
 
 }} // namespace cocaine::io

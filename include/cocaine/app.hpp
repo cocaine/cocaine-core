@@ -85,9 +85,9 @@ class app_t {
 
         driver_map_t m_drivers;
 
-        // App dispatching
+        // App service
 
-        struct invocation_service_t;
+        struct service_t;
 };
 
 } // namespace cocaine

@@ -26,6 +26,8 @@
 
 #include "json/json.h"
 
+#include <boost/optional.hpp>
+
 namespace cocaine {
 
 struct defaults {
@@ -42,6 +44,7 @@ struct defaults {
 
     // Default I/O policy.
     static const float control_timeout;
+    static const unsigned decoder_granularity;
 
     // Default paths.
     static const char plugins_path[];
@@ -50,6 +53,8 @@ struct defaults {
 
     // Defaults for service locator.
     static const uint16_t locator_port;
+    static const uint16_t min_port;
+    static const uint16_t max_port;
 };
 
 // Configuration
@@ -64,17 +69,23 @@ struct config_t {
         std::string spool;
     } path;
 
-    struct {
-        bool aggregate;
-        std::string group;
-        std::string hostname;
-        uint16_t locator;
-    } network;
-
     struct component_t {
         std::string type;
         Json::Value args;
     };
+
+    struct {
+        std::string hostname;
+        std::string uuid;
+
+        // NOTE: Service locator port is configurable to allow multiple runtimes to run on a single
+        // machine. This port will be forwarded to the slaves via a command-line argument.
+        uint16_t locator;
+
+        boost::optional<std::string> group;
+        boost::optional<std::tuple<uint16_t, uint16_t>> ports;
+        boost::optional<component_t> gateway;
+    } network;
 
     typedef std::map<
         std::string,
@@ -119,10 +130,10 @@ class context_t {
         // Locator
 
         void
-        attach(const std::string& name, std::unique_ptr<actor_t>&& actor);
+        attach(const std::string& name, std::unique_ptr<actor_t>&& service);
 
-        std::unique_ptr<actor_t>
-        detach(const std::string& name);
+        auto
+        detach(const std::string& name) -> std::unique_ptr<actor_t>;
 
     public:
         const config_t config;

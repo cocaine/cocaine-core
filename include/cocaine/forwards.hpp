@@ -22,6 +22,9 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
+    // Runtime configuration.
+    struct config_t;
+
     // Runtime context.
     class context_t;
 
@@ -30,9 +33,9 @@ namespace cocaine {
 
     namespace api {
         class driver_t;
+        class gateway_t;
         class isolate_t;
         class logger_t;
-        class sandbox_t;
         class service_t;
         class storage_t;
 

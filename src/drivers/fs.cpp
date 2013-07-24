@@ -31,11 +31,7 @@
 using namespace cocaine;
 using namespace cocaine::driver;
 
-fs_t::fs_t(context_t& context,
-           io::reactor_t& reactor,
-           app_t& app,
-           const std::string& name,
-           const Json::Value& args):
+fs_t::fs_t(context_t& context, io::reactor_t& reactor, app_t& app, const std::string& name, const Json::Value& args):
     category_type(context, reactor, app, name, args),
     m_log(new logging::log_t(context, cocaine::format("app/%s", name))),
     m_app(app),
@@ -44,7 +40,7 @@ fs_t::fs_t(context_t& context,
     m_watcher(reactor.native())
 {
     if(m_path.empty()) {
-        throw configuration_error_t("no path has been specified");
+        throw cocaine::error_t("no path has been specified");
     }
 
     m_watcher.set<fs_t, &fs_t::on_event>(this);

@@ -1,7 +1,7 @@
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core2
-Version:	0.10.3
-Release:	1%{?dist}
+Version:	0.10.5
+Release:	17%{?dist}
 
 License:	GPLv2+
 Group:		System Environment/Libraries
@@ -10,12 +10,11 @@ Source0:	%{name}-%{version}.tar.bz2
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 %if 0%{?rhel} < 6
-BuildRequires:	gcc44 gcc44-c++
+BuildRequires: gcc44 gcc44-c++
 %endif
-BuildRequires:	boost-python, boost-devel, boost-iostreams, boost-thread, boost-python, boost-system
-BuildRequires:	zeromq-devel libev-devel
-BuildRequires:  openssl-devel libtool-ltdl-devel libuuid-devel
-BuildRequires:	cmake28 msgpack-devel libarchive-devel binutils-devel
+BuildRequires: boost-python, boost-devel, boost-iostreams, boost-thread, boost-python, boost-system
+BuildRequires: libev-devel, openssl-devel, libtool-ltdl-devel, libuuid-devel
+BuildRequires: cmake28, msgpack-devel, libarchive-devel, binutils-devel
 
 Obsoletes: srw
 
@@ -44,16 +43,18 @@ Cocaine runtime components package.
 %if 0%{?rhel} < 6
 export CC=gcc44
 export CXX=g++44
-CXXFLAGS="-pthread -I/usr/include/boost141" LDFLAGS="-L/usr/lib64/boost141" %{cmake28} -DBoost_DIR=/usr/lib64/boost141 -DBOOST_INCLUDEDIR=/usr/include/boost141 -DCMAKE_CXX_COMPILER=g++44 -DCMAKE_C_COMPILER=gcc44 .
+CXXFLAGS="-pthread -I/usr/include/boost141" LDFLAGS="-L/usr/lib64/boost141" %{cmake28} -DBoost_DIR=/usr/lib64/boost141 -DBOOST_INCLUDEDIR=/usr/include/boost141 -DCMAKE_CXX_COMPILER=g++44 -DCMAKE_C_COMPILER=gcc44 -DCOCAINE_LIBDIR=%{_libdir} .
 %else
-%{cmake28} .
+%{cmake28} -DCOCAINE_LIBDIR=%{_libdir} .
 %endif
 
 make %{?_smp_mflags}
 
 %install
 rm -rf %{buildroot}
+
 make install DESTDIR=%{buildroot}
+
 rm -f %{buildroot}%{_libdir}/*.a
 rm -f %{buildroot}%{_libdir}/*.la
 
@@ -71,15 +72,17 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%doc README
+%doc README.md
 %{_libdir}/*.so.*
 
 %files devel
 %defattr(-,root,root,-)
 %{_includedir}/*
+%{_libdir}/libcocaine-core.so
+%{_libdir}/libjson.so
 
 %files -n cocaine-runtime
 %defattr(-,root,root,-)
+%{_bindir}/cocaine-runtime
 %{_sysconfdir}/init.d/*
 %{_sysconfdir}/cocaine/cocaine-default.conf
-%{_bindir}/cocaine-runtime

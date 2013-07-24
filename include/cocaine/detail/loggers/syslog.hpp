@@ -29,13 +29,11 @@ class syslog_t:
     public api::logger_t
 {
     public:
-        syslog_t(const Json::Value& args);
+        syslog_t(const config_t& config, const Json::Value& args);
 
         virtual
         void
-        emit(logging::priorities level,
-             const std::string& source,
-             const std::string& message);
+        emit(logging::priorities level, const std::string& source, const std::string& message);
 
     private:
         const std::string m_identity;

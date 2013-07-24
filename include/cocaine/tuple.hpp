@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_TUPLES_HPP
-#define COCAINE_TUPLES_HPP
+#ifndef COCAINE_TUPLE_HPP
+#define COCAINE_TUPLE_HPP
 
 #include <tuple>
 
@@ -31,6 +31,15 @@
 #include <boost/mpl/push_back.hpp>
 
 namespace cocaine { namespace tuple {
+
+template<size_t N>
+struct nth_element {
+    template<class Tuple>
+    typename std::tuple_element<N, Tuple>::type
+    operator()(const Tuple& tuple) const {
+        return std::get<N>(tuple);
+    }
+};
 
 namespace detail {
     template<class It, class End, typename... Args>

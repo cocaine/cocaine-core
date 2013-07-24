@@ -28,7 +28,6 @@
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
-#include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/context.hpp"
 
@@ -36,16 +35,19 @@
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/manifest.hpp"
 #include "cocaine/detail/profile.hpp"
-#include "cocaine/detail/traits/json.hpp"
 
 #include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/memory.hpp"
 #include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 
+#include "cocaine/traits/json.hpp"
+
 #include <tuple>
 
+#include <boost/bind.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
@@ -55,51 +57,58 @@ using namespace cocaine::io;
 
 namespace fs = boost::filesystem;
 
-struct app_t::invocation_service_t:
+struct app_t::service_t:
     public dispatch_t
 {
-    struct invocation_t:
+    struct enqueue_slot_t:
         public slot_concept_t
     {
-        invocation_t(invocation_service_t& self):
-            slot_concept_t("invoke"),
+        enqueue_slot_t(app_t::service_t& self):
+            slot_concept_t("enqueue"),
             m_self(self)
         { }
 
         virtual
         void
         operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-            typedef event_traits<app::invoke>::tuple_type tuple_type;
-
-            std::string event;
-            std::string blob;
-
-            // NOTE: No try-block here, as the enclosing dispatch is handling all exceptions.
-            type_traits<tuple_type>::unpack(unpacked, event, blob);
-
-            try {
-                m_self.enqueue(api::event_t(event), upstream)->write(blob.data(), blob.size());
-            } catch(const cocaine::error_t& e) {
-                upstream->error(resource_error, e.what());
-                upstream->close();
-            }
+            io::detail::invoke<event_traits<app::enqueue>::tuple_type>::apply(
+                boost::bind(&service_t::enqueue, &m_self, upstream, _1, _2, _3),
+                unpacked
+            );
         }
 
     private:
-        invocation_service_t& m_self;
+        app_t::service_t& m_self;
     };
 
-    invocation_service_t(context_t& context, const std::string& name, app_t& app):
+    service_t(context_t& context, const std::string& name, app_t& app):
         dispatch_t(context, cocaine::format("service/%1%", name)),
         m_app(app)
     {
-        on<app::invoke>(std::make_shared<invocation_t>(*this));
+        on<app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
+        on<app::info>("info", std::bind(&app_t::info, std::ref(m_app)));
     }
 
 private:
-    std::shared_ptr<api::stream_t>
-    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
-        return m_app.enqueue(event, upstream);
+    void
+    enqueue(const api::stream_ptr_t& upstream, const std::string& event, const std::string& blob, const std::string& tag) {
+        api::stream_ptr_t downstream;
+
+        try {
+            if(tag.empty()) {
+                downstream = m_app.enqueue(api::event_t(event), upstream);
+            } else {
+                downstream = m_app.enqueue(api::event_t(event), upstream, tag);
+            }
+        } catch(const cocaine::error_t& e) {
+            upstream->error(resource_error, e.what());
+            upstream->close();
+
+            return;
+        }
+
+        downstream->write(blob.data(), blob.size());
+        downstream->close();
     }
 
 private:
@@ -112,7 +121,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     m_manifest(new manifest_t(context, name)),
     m_profile(new profile_t(context, profile))
 {
-    fs::path path = fs::path(m_context.config.path.spool) / name;
+    const fs::path path = fs::path(m_context.config.path.spool) / name;
 
     if(!fs::exists(path) || m_manifest->source() != sources::cache) {
         try {
@@ -124,23 +133,19 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
         deploy(name, path.string());
     }
 
-    if(!fs::exists(m_manifest->slave)) {
-        throw configuration_error_t("executable '%s' does not exist", m_manifest->slave);
+    if(!fs::exists(m_manifest->executable)) {
+        throw cocaine::error_t("executable '%s' does not exist", m_manifest->executable);
     }
 
     m_reactor.reset(new reactor_t());
 }
 
 app_t::~app_t() {
-    stop();
+    // Empty.
 }
 
 void
 app_t::start() {
-    if(m_thread) {
-        return;
-    }
-
     COCAINE_LOG_INFO(m_log, "starting the engine");
 
     auto reactor = std::make_shared<reactor_t>();
@@ -175,9 +180,9 @@ app_t::start() {
                     it->second.args
                 );
             } catch(const cocaine::error_t& e) {
-                throw configuration_error_t("unable to initialize the '%s' driver - %s", name, e.what());
+                throw cocaine::error_t("unable to initialize the '%s' driver - %s", name, e.what());
             } catch(...) {
-                throw configuration_error_t("unable to initialize the '%s' driver - unknown exception");
+                throw cocaine::error_t("unable to initialize the '%s' driver - unknown exception");
             }
 
             drivers[it->first] = std::move(driver);
@@ -190,7 +195,17 @@ app_t::start() {
     std::tie(lhs, rhs) = io::link<local>();
 
     m_engine_control.reset(new channel<io::socket<local>>(*m_reactor, lhs));
-    m_engine.reset(new engine_t(m_context, reactor, *m_manifest, *m_profile, rhs));
+
+    try {
+        m_engine.reset(new engine_t(m_context, reactor, *m_manifest, *m_profile, rhs));
+    } catch(const std::system_error& e) {
+        throw cocaine::error_t(
+            "unable to initialize the engine - %s - [%d] %s",
+            e.what(),
+            e.code().value(),
+            e.code().message()
+        );
+    }
 
     // We can safely swap the current driver set now.
     m_drivers.swap(drivers);
@@ -199,26 +214,13 @@ app_t::start() {
     m_thread.reset(new std::thread(std::bind(&engine_t::run, m_engine)));
 
     if(!m_manifest->local) {
-        std::vector<io::tcp::endpoint> endpoints = {
-            { boost::asio::ip::address::from_string("::"), 0 },
-        };
-
         COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
 
-        // Initialize the app invocation service.
-        auto service = std::unique_ptr<actor_t>(new actor_t(
-            m_context,
+        // Publish the app service.
+        m_context.attach(m_manifest->name, std::make_unique<actor_t>(
             std::make_shared<reactor_t>(),
-            std::unique_ptr<invocation_service_t>(
-                new invocation_service_t(m_context, m_manifest->name, *this)
-            ),
-            endpoints
+            std::make_unique<app_t::service_t>(m_context, m_manifest->name, *this)
         ));
-
-        service->run();
-
-        // Publish it in the cluster.
-        m_context.attach(m_manifest->name, std::move(service));
     }
 
     COCAINE_LOG_INFO(m_log, "the engine has started");
@@ -350,15 +352,11 @@ namespace {
 
 void
 app_t::stop() {
-    if(!m_thread) {
-        return;
-    }
-
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
     if(!m_manifest->local) {
-        // Stop the app invocation service.
-        m_context.detach(m_manifest->name)->terminate();
+        // Stop the app service.
+        m_context.detach(m_manifest->name);
     }
 
     auto callback = expect<control::terminate>(*m_reactor);
@@ -366,12 +364,8 @@ app_t::stop() {
     m_engine_control->rd->bind(std::ref(callback), std::ref(callback));
     m_engine_control->wr->write<control::terminate>(0UL);
 
-    try {
-        // Blocks until either the response or timeout happens.
-        m_reactor->run(/* defaults::control_timeout */);
-    } catch(const cocaine::error_t& e) {
-        throw cocaine::error_t("the engine is unresponsive - %s", e.what());
-    }
+    // Blocks until the engine is stopped.
+    m_reactor->run();
 
     m_thread->join();
     m_thread.reset();
@@ -403,7 +397,7 @@ app_t::info() const {
 
     try {
         // Blocks until either the response or timeout happens.
-        m_reactor->run(/* defaults::control_timeout */);
+        m_reactor->run_with_timeout(defaults::control_timeout);
     } catch(const cocaine::error_t& e) {
         info["error"] = "the engine is unresponsive";
         return info;
@@ -440,7 +434,7 @@ app_t::deploy(const std::string& name, const std::string& path) {
         blob = storage->get<std::string>("apps", name);
     } catch(const storage_error_t& e) {
         COCAINE_LOG_ERROR(m_log, "unable to fetch the app from the storage - %s", e.what());
-        throw configuration_error_t("the '%s' app is not available", name);
+        throw cocaine::error_t("the '%s' app is not available", name);
     }
 
     try {
@@ -448,6 +442,6 @@ app_t::deploy(const std::string& name, const std::string& path) {
         archive.deploy(path);
     } catch(const archive_error_t& e) {
         COCAINE_LOG_ERROR(m_log, "unable to extract the app files - %s", e.what());
-        throw configuration_error_t("the '%s' app is not available", name);
+        throw cocaine::error_t("the '%s' app is not available", name);
     }
 }

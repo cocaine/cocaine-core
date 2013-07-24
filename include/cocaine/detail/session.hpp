@@ -24,33 +24,55 @@
 #include "cocaine/common.hpp"
 
 #include "cocaine/api/event.hpp"
+#include "cocaine/api/stream.hpp"
 
 #include "cocaine/asio/writable_stream.hpp"
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
 
-#include "cocaine/rpc/encoder.hpp"
+#include "cocaine/detail/atomic.hpp"
 
-#include <mutex>
+#include "cocaine/rpc/encoder.hpp"
 
 namespace cocaine { namespace engine {
 
 struct session_t {
     COCAINE_DECLARE_NONCOPYABLE(session_t)
 
-    session_t(uint64_t id,
-              const api::event_t& event,
-              const std::shared_ptr<api::stream_t>& upstream);
+    session_t(uint64_t id, const api::event_t& event, const api::stream_ptr_t& upstream);
+
+    struct downstream_t:
+        public api::stream_t
+    {
+        downstream_t(const std::shared_ptr<session_t>& parent);
+
+        virtual
+       ~downstream_t();
+
+        virtual
+        void
+        write(const char* chunk, size_t size);
+
+        virtual
+        void
+        error(int code, const std::string& reason);
+
+        virtual
+        void
+        close();
+
+    private:
+        std::shared_ptr<session_t> parent;
+    };
 
     void
-    attach(const std::shared_ptr<io::writable_stream<io::socket<io::local>>>& stream);
+    attach(const std::shared_ptr<io::writable_stream<io::socket<io::local>>>& downstream);
 
     void
     detach();
 
-    template<class Event, typename... Args>
     void
-    send(Args&&... args);
+    close();
 
 public:
     // Session ID.
@@ -59,8 +81,13 @@ public:
     // Session event type and execution policy.
     const api::event_t event;
 
-    // Client's upstream for result delivery.
+    // Client's upstream for response delivery.
     const std::shared_ptr<api::stream_t> upstream;
+
+private:
+    template<class Event, typename... Args>
+    void
+    send(Args&&... args);
 
 private:
     std::unique_ptr<
@@ -69,17 +96,24 @@ private:
 
     // Session interlocking.
     std::mutex m_mutex;
+
+    struct state {
+        enum value: int { open, closed };
+    };
+
+    // Session state.
+    state::value m_state;
 };
 
 template<class Event, typename... Args>
 void
 session_t::send(Args&&... args) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
 
-    if(m_encoder) {
+    if(m_state == state::open) {
         m_encoder->write<Event>(id, std::forward<Args>(args)...);
     } else {
-        throw cocaine::error_t("the stream is no longer valid");
+        throw cocaine::error_t("the session is no longer valid");
     }
 }
 

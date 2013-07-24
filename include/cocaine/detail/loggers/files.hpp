@@ -29,16 +29,14 @@ class files_t:
     public api::logger_t
 {
     public:
-        files_t(const Json::Value& args);
+        files_t(const config_t& config, const Json::Value& args);
 
         virtual
        ~files_t();
 
         virtual
         void
-        emit(logging::priorities level,
-             const std::string& source,
-             const std::string& message);
+        emit(logging::priorities level, const std::string& source, const std::string& message);
 
     private:
         FILE* m_file;

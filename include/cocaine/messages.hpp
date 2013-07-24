@@ -23,8 +23,9 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/rpc/optional.hpp"
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/rpc/tags.hpp"
+#include "cocaine/rpc/types.hpp"
 
 namespace cocaine { namespace io {
 
@@ -76,23 +77,33 @@ struct protocol<locator_tag> {
     > type;
 };
 
+// App service interface
+
 struct app_tag;
 
 namespace app {
-    struct invoke {
+    struct enqueue {
         typedef app_tag tag;
 
         typedef boost::mpl::list<
-         /* Event name. */
+         /* Event name. This name is intentionally dynamic so that the underlying application can
+            do whatever it wants using these event names, for example handle every possible one. */
             std::string,
-         /* Data. */
-            std::string
+         /* Data. Some arbitrary sequence of bytes. By convention, this is usually an object packed
+            with MessagePack, but that's not some rule of thumb, do whatever you want. */
+            std::string,
+         /* Tag. Event can be enqueued to a specific worker with some user-defined name. */
+            optional<std::string>
         > tuple_type;
 
         typedef
-         /* Result. */
-            std::string
+         /* Some other arbitrary sequence of bytes, streamed back to the client in chunks. */
+            raw_t
         result_type;
+    };
+
+    struct info {
+        typedef app_tag tag;
     };
 }
 
@@ -103,7 +114,8 @@ struct protocol<app_tag> {
     >::type version;
 
     typedef boost::mpl::list<
-        app::invoke
+        app::enqueue,
+        app::info
     > type;
 };
 

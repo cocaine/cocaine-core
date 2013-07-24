@@ -43,6 +43,11 @@ class logger_t:
         }
 
     protected:
+        logger_t(const config_t&, const Json::Value& args):
+            m_verbosity(resolve(args))
+        { }
+
+    private:
         static
         logging::priorities
         resolve(const Json::Value& args) {
@@ -61,10 +66,6 @@ class logger_t:
             }
         }
 
-        logger_t(const Json::Value& args):
-            m_verbosity(resolve(args))
-        { }
-
     private:
         const logging::priorities m_verbosity;
 };
@@ -73,22 +74,18 @@ template<>
 struct category_traits<logger_t> {
     typedef std::unique_ptr<logger_t> ptr_type;
 
-    struct factory_type:
-        public basic_factory<logger_t>
-    {
+    struct factory_type: public basic_factory<logger_t> {
         virtual
         ptr_type
-        get(const Json::Value& args) = 0;
+        get(const config_t& config, const Json::Value& args) = 0;
     };
 
     template<class T>
-    struct default_factory:
-        public factory_type
-    {
+    struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(const Json::Value& args) {
-            return ptr_type(new T(args));
+        get(const config_t& config, const Json::Value& args) {
+            return ptr_type(new T(config, args));
         }
     };
 };

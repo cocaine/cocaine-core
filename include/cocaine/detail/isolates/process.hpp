@@ -29,19 +29,14 @@ class process_t:
     public api::isolate_t
 {
     public:
-        process_t(context_t& context,
-                  const std::string& name,
-                  const Json::Value& args);
+        process_t(context_t& context, const std::string& name, const Json::Value& args);
 
         virtual
        ~process_t();
 
         virtual
         std::unique_ptr<api::handle_t>
-        spawn(const std::string& path,
-              const std::map<std::string, std::string>& args,
-              const std::map<std::string, std::string>& environment,
-              int pipe);
+        spawn(const std::string& path, const api::string_map_t& args, const api::string_map_t& environment, int pipe);
 
     private:
         std::unique_ptr<logging::log_t> m_log;

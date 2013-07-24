@@ -20,26 +20,16 @@
 
 #include "cocaine/detail/unique_id.hpp"
 
-#include <boost/functional/hash.hpp>
-
 #include <uuid/uuid.h>
 
 using namespace cocaine;
-
-const uninitialized_t
-uninitialized = uninitialized_t();
 
 unique_id_t::unique_id_t() {
     uuid_generate(reinterpret_cast<unsigned char*>(uuid.data()));
 }
 
-unique_id_t::unique_id_t(uninitialized_t) {
-    // NOTE: If this UUID is going to be a target for a message, there's no
-    // need to generate it, which saves a couple of ticks.
-}
-
 unique_id_t::unique_id_t(const std::string& other) {
-    int rv = uuid_parse(
+    const int rv = uuid_parse(
         other.c_str(),
         reinterpret_cast<unsigned char*>(uuid.data())
     );
@@ -73,11 +63,6 @@ namespace cocaine {
 std::ostream&
 operator<<(std::ostream& stream, const unique_id_t& id) {
     return stream << id.string();
-}
-
-size_t
-hash_value(const unique_id_t& id) {
-    return boost::hash_range(id.uuid.begin(), id.uuid.end());
 }
 
 } // namespace cocaine

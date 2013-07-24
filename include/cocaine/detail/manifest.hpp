@@ -40,8 +40,11 @@ struct manifest_t:
     // The application engine's endpoint name.
     std::string endpoint;
 
-    // TODO: Make it an alias instead of an executable file path.
-    std::string slave;
+    // What to execute.
+    std::string executable;
+
+    // Optional environment.
+    std::map<std::string, std::string> environment;
 
     // A configuration map for drivers, similar to the generic one found
     // in the config_t structure.

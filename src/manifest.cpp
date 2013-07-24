@@ -19,10 +19,12 @@
 */
 
 #include "cocaine/detail/manifest.hpp"
-#include "cocaine/detail/traits/json.hpp"
+#include "cocaine/traits/json.hpp"
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+
+#include <unistd.h>
 
 using namespace cocaine::engine;
 
@@ -32,27 +34,35 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     cached<Json::Value>(context, "manifests", name_),
     name(name_)
 {
+    const pid_t runtime_pid = ::getpid();
+
     endpoint = cocaine::format(
-        "%s/%s",
+        "%s/%s.%d",
         context.config.path.runtime,
-        name
+        name,
+        runtime_pid
     );
 
     auto target = fs::path(get("slave", "unspecified").asString());
-    auto prefix = fs::path(context.config.path.spool) / name;
 
 #if BOOST_VERSION >= 104400
     if(!target.is_absolute()) {
-        target = fs::absolute(target, prefix);
+        target = fs::absolute(target, fs::path(context.config.path.spool) / name);
     }
 #else
     if(!target.is_complete()) {
-        target = fs::complete(target, prefix);
+        target = fs::complete(target, fs::path(context.config.path.spool) / name);
     }
 #endif
 
-    // TODO: Check if it is a valid slave argument.
-    slave = target.string();
+    executable = target.string();
+
+    auto vars = get("environment", Json::Value(Json::objectValue));
+    auto keys = vars.getMemberNames();
+
+    for(auto it = keys.cbegin(); it != keys.cend(); ++it) {
+        environment[*it] = vars[*it].asString();
+    }
 
     // TODO: Validate driver availability.
     drivers = config_t::parse((*this)["drivers"]);

@@ -24,40 +24,37 @@
 
 using namespace cocaine::logger;
 
-syslog_t::syslog_t(const Json::Value& args):
-    category_type(args),
+syslog_t::syslog_t(const config_t& config, const Json::Value& args):
+    category_type(config, args),
     m_identity(args["identity"].asString())
 {
     if(m_identity.empty()) {
-        throw configuration_error_t("no syslog identity has been specified");
+        throw cocaine::error_t("no syslog identity has been specified");
     }
 
     openlog(m_identity.c_str(), LOG_PID, LOG_USER);
 }
 
 void
-syslog_t::emit(logging::priorities priority,
-               const std::string& source,
-               const std::string& message)
-{
+syslog_t::emit(logging::priorities priority, const std::string& source, const std::string& message) {
     switch(priority) {
-        case logging::debug:
-            syslog(LOG_DEBUG, "%s: %s", source.c_str(), message.c_str());
-            break;
+    case logging::debug:
+        syslog(LOG_DEBUG, "%s: %s", source.c_str(), message.c_str());
+        break;
 
-        case logging::info:
-            syslog(LOG_INFO, "%s: %s", source.c_str(), message.c_str());
-            break;
+    case logging::info:
+        syslog(LOG_INFO, "%s: %s", source.c_str(), message.c_str());
+        break;
 
-        case logging::warning:
-            syslog(LOG_WARNING, "%s: %s", source.c_str(), message.c_str());
-            break;
+    case logging::warning:
+        syslog(LOG_WARNING, "%s: %s", source.c_str(), message.c_str());
+        break;
 
-        case logging::error:
-            syslog(LOG_ERR, "%s: %s", source.c_str(), message.c_str());
-            break;
+    case logging::error:
+        syslog(LOG_ERR, "%s: %s", source.c_str(), message.c_str());
+        break;
 
-        default:
-            break;
+    default:
+        break;
     }
 }

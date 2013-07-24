@@ -37,6 +37,7 @@ struct writable_stream {
     writable_stream(reactor_t& reactor, endpoint_type endpoint):
         m_socket(std::make_shared<socket_type>(endpoint)),
         m_socket_watcher(reactor.native()),
+        m_reactor(reactor),
         m_tx_offset(0),
         m_wr_offset(0)
     {
@@ -47,6 +48,7 @@ struct writable_stream {
     writable_stream(reactor_t& reactor, const std::shared_ptr<socket_type>& socket):
         m_socket(socket),
         m_socket_watcher(reactor.native()),
+        m_reactor(reactor),
         m_tx_offset(0),
         m_wr_offset(0)
     {
@@ -65,6 +67,19 @@ struct writable_stream {
         m_handle_error = nullptr;
     }
 
+
+    struct deferred_watch_action {
+        void
+        operator()() {
+            watcher.start(fd, events);
+        }
+
+        ev::io& watcher;
+
+        const int fd;
+        const int events;
+    };
+
     void
     write(const char* data, size_t size) {
         std::unique_lock<std::mutex> m_lock(m_ring_mutex);
@@ -76,7 +91,7 @@ struct writable_stream {
             // and enqueue only the remaining part, if any. Ignore any errors here.
             ssize_t sent = m_socket->write(data, size, ec);
 
-            if(sent >= 0) {
+            if(sent > 0) {
                 if(static_cast<size_t>(sent) == size) {
                     return;
                 }
@@ -87,22 +102,18 @@ struct writable_stream {
         }
 
         while(m_ring.size() - m_wr_offset < size) {
-            size_t unsent = m_wr_offset - m_tx_offset;
+            size_t pending = m_wr_offset - m_tx_offset;
 
-            if(unsent + size > m_ring.size()) {
+            if(pending + size > m_ring.size() / 2) {
                 m_ring.resize(m_ring.size() * 2);
                 continue;
             }
 
             // There's no space left at the end of the buffer, so copy all the unsent
             // data to the beginning and continue filling it from there.
-            std::memmove(
-                m_ring.data(),
-                m_ring.data() + m_tx_offset,
-                unsent
-            );
+            std::memmove(m_ring.data(), m_ring.data() + m_tx_offset, pending);
 
-            m_wr_offset = unsent;
+            m_wr_offset = pending;
             m_tx_offset = 0;
         }
 
@@ -111,19 +122,18 @@ struct writable_stream {
         m_wr_offset += size;
 
         if(!m_socket_watcher.is_active()) {
-            m_socket_watcher.start(m_socket->fd(), ev::WRITE);
+            m_reactor.post(deferred_watch_action {
+                m_socket_watcher,
+                m_socket->fd(),
+                ev::WRITE
+            });
         }
     }
 
 private:
     void
     on_event(ev::io& /* io */, int /* revents */) {
-        std::unique_lock<std::mutex> m_lock(m_ring_mutex);
-
-        if(m_tx_offset == m_wr_offset) {
-            m_socket_watcher.stop();
-            return;
-        }
+        std::unique_lock<std::mutex> lock(m_ring_mutex);
 
         // Keep the error code if the write() operation fails.
         std::error_code ec;
@@ -143,16 +153,22 @@ private:
         if(sent > 0) {
             m_tx_offset += sent;
         }
+
+        if(m_tx_offset == m_wr_offset) {
+            m_socket_watcher.stop();
+        }
     }
 
 private:
-    // NOTE: Sockets can be shared among multiple queues, at least to be able
-    // to write and read from two different queues.
     const std::shared_ptr<socket_type> m_socket;
 
     // Socket poll object.
     ev::io m_socket_watcher;
 
+    // Needed for asynchronous watcher control.
+    reactor_t& m_reactor;
+
+    // Ring buffer.
     std::vector<char> m_ring;
 
     off_t m_tx_offset,

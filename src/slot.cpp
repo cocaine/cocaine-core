@@ -18,9 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/slot.hpp"
+#include "cocaine/rpc/slots/deferred.hpp"
 
-namespace cocaine { namespace detail {
+using namespace cocaine::detail;
 
 state_t::state_t():
     m_packer(m_buffer),
@@ -30,7 +30,7 @@ state_t::state_t():
 
 void
 state_t::abort(int code, const std::string& reason) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     if(m_completed) {
         return;
@@ -49,7 +49,7 @@ state_t::abort(int code, const std::string& reason) {
 
 void
 state_t::close() {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     if(m_completed) {
         return;
@@ -64,7 +64,7 @@ state_t::close() {
 
 void
 state_t::attach(const api::stream_ptr_t& upstream) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     m_upstream = upstream;
 
@@ -78,5 +78,3 @@ state_t::attach(const api::stream_ptr_t& upstream) {
         m_upstream->close();
     }
 }
-
-}} // namespace cocaine::detail

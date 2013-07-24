@@ -41,7 +41,7 @@ struct acceptor {
         m_fd = ::socket(protocol.family(), protocol.type(), protocol.protocol());
 
         if(m_fd == -1) {
-            throw io_error_t("unable to create an acceptor");
+            throw std::system_error(errno, std::system_category(), "unable to create an acceptor");
         }
 
         ::fcntl(m_fd, F_SETFD, FD_CLOEXEC);
@@ -52,11 +52,23 @@ struct acceptor {
         ::setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
 
         if(::bind(m_fd, endpoint.data(), endpoint.size()) != 0) {
-            throw io_error_t("unable to bind an acceptor on '%s'", endpoint);
+            ::close(m_fd);
+
+            throw std::system_error(
+                errno,
+                std::system_category(),
+                cocaine::format("unable to bind an acceptor on '%s'", endpoint)
+            );
         }
 
         if(::listen(m_fd, backlog) != 0) {
-            throw io_error_t("unable to activate an acceptor on '%s'", endpoint);
+            ::close(m_fd);
+
+            throw std::system_error(
+                errno,
+                std::system_category(),
+                cocaine::format("unable to open an acceptor on '%s'", endpoint)
+            );
         }
     }
 
@@ -83,25 +95,21 @@ struct acceptor {
     // Operations
 
     std::shared_ptr<socket_type>
-    accept() {
+    accept(std::error_code& ec) {
         endpoint_type endpoint;
         socklen_t size = endpoint.size();
 
         int fd = ::accept(m_fd, endpoint.data(), &size);
 
         if(fd == -1) {
-            switch(errno) {
-                case EAGAIN:
-#if defined(EWOULDBLOCK) && EWOULDBLOCK != EAGAIN
-                case EWOULDBLOCK:
-#endif
-                case EINTR:
-                    return std::shared_ptr<socket_type>();
-
-                default:
-                    throw io_error_t("unable to accept a connection");
+            if(errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+                ec = std::error_code(errno, std::system_category());
             }
+
+            return std::shared_ptr<socket_type>();
         }
+
+        medium_type::configure(fd);
 
         ::fcntl(fd, F_SETFD, FD_CLOEXEC);
         ::fcntl(fd, F_SETFL, O_NONBLOCK);
@@ -121,7 +129,7 @@ public:
         socklen_t size = endpoint.size();
 
         if(::getsockname(m_fd, endpoint.data(), &size) != 0) {
-            throw io_error_t("unable to determine the local socket address");
+            throw std::system_error(errno, std::system_category(), "unable to detect the address");
         }
 
         return endpoint;
@@ -140,7 +148,7 @@ link() {
     int fd[] = { -1, -1 };
 
     if(::socketpair(AF_LOCAL, SOCK_STREAM, 0, fd)) {
-        throw io_error_t("unable to create linked sockets");
+        throw std::system_error(errno, std::system_category(), "unable to create a socket pair");
     }
 
     return std::make_pair(

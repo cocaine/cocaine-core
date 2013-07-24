@@ -34,13 +34,16 @@
 #include "cocaine/detail/profile.hpp"
 #include "cocaine/detail/session.hpp"
 #include "cocaine/detail/slave.hpp"
-#include "cocaine/detail/traits/json.hpp"
 #include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/logging.hpp"
+#include "cocaine/memory.hpp"
 #include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
+
+#include "cocaine/traits/json.hpp"
+#include "cocaine/traits/literal.hpp"
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/median.hpp>
@@ -54,88 +57,15 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-// Downstream
-
 namespace {
-    struct downstream_t:
-        public api::stream_t
-    {
-        downstream_t(const std::shared_ptr<session_t>& session):
-            m_session(session),
-            m_state(states::open)
-        { }
 
-        virtual
-       ~downstream_t() {
-            if(m_state != states::closed) {
-                close();
-            }
-        }
+struct ignore {
+    void
+    operator()(const std::error_code& /* ec */) const {
+        // Do nothing.
+    }
+};
 
-        virtual
-        void
-        write(const char* chunk, size_t size) {
-            if(m_state == states::closed) {
-                throw cocaine::error_t("the stream has been closed");
-            }
-
-            const std::shared_ptr<session_t> ptr = m_session.lock();
-
-            if(ptr) {
-                ptr->send<rpc::chunk>(std::string(chunk, size));
-            }
-        }
-
-        virtual
-        void
-        error(int code, const std::string& message) {
-            if(m_state == states::closed) {
-                throw cocaine::error_t("the stream has been closed");
-            }
-
-            m_state = states::closed;
-
-            const std::shared_ptr<session_t> ptr = m_session.lock();
-
-            if(ptr) {
-                ptr->send<rpc::error>(code, message);
-                ptr->send<rpc::choke>();
-            }
-        }
-
-        virtual
-        void
-        close() {
-            if(m_state == states::closed) {
-                throw cocaine::error_t("the stream has been closed");
-            }
-
-            m_state = states::closed;
-
-            const std::shared_ptr<session_t> ptr = m_session.lock();
-
-            if(ptr) {
-                ptr->send<rpc::choke>();
-            }
-        }
-
-    private:
-        const std::weak_ptr<session_t> m_session;
-
-        enum class states {
-            open,
-            closed
-        };
-
-        states m_state;
-    };
-
-    struct ignore {
-        void
-        operator()(const std::error_code& /* ec */) const {
-            // Do nothing.
-        }
-    };
 }
 
 engine_t::engine_t(context_t& context,
@@ -156,11 +86,11 @@ engine_t::engine_t(context_t& context,
     m_notification.set<engine_t, &engine_t::on_notification>(this);
     m_notification.start();
 
-    auto endpoint = local::endpoint(m_manifest.endpoint);
+    const auto endpoint = local::endpoint(m_manifest.endpoint);
 
     m_connector.reset(new connector<acceptor<local>>(
         *m_reactor,
-        std::unique_ptr<acceptor<local>>(new acceptor<local>(endpoint))
+        std::make_unique<acceptor<local>>(endpoint)
     ));
 
     m_connector->bind(
@@ -210,10 +140,8 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
         upstream
     );
 
-    session->send<rpc::invoke>(event.name);
-
     {
-        std::unique_lock<session_queue_t> lock(m_queue);
+        std::lock_guard<session_queue_t> queue_guard(m_queue);
 
         if(m_profile.queue_limit > 0 &&
            m_queue.size() >= m_profile.queue_limit)
@@ -224,10 +152,9 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
         m_queue.push(session);
     }
 
-    // Pump the queue!
     wake();
 
-    return std::make_shared<downstream_t>(session);
+    return std::make_shared<session_t::downstream_t>(session);
 }
 
 std::shared_ptr<api::stream_t>
@@ -242,12 +169,10 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
         upstream
     );
 
-    session->send<rpc::invoke>(event.name);
-
     pool_map_t::iterator it;
 
     {
-        std::unique_lock<std::mutex> lock(m_pool_mutex);
+        std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
 
         it = m_pool.find(tag);
 
@@ -265,12 +190,12 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
 
     it->second->assign(session);
 
-    return std::make_shared<downstream_t>(session);
+    return std::make_shared<session_t::downstream_t>(session);
 }
 
 void
 engine_t::erase(const std::string& id, int code, const std::string& reason) {
-    std::unique_lock<std::mutex> lock(m_pool_mutex);
+    std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
 
     m_pool.erase(id);
 
@@ -294,8 +219,10 @@ engine_t::wake() {
 
 void
 engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
-    auto fd = socket_->fd();
     auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
+
+    // Shortcut, disposable.
+    const int fd = socket_->fd();
 
     channel_->rd->bind(
         std::bind(&engine_t::on_handshake,  this, fd, _1),
@@ -306,7 +233,7 @@ engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
         std::bind(&engine_t::on_disconnect, this, fd, _1)
     );
 
-    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd %d", socket_->fd());
+    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd %d", fd);
 
     m_backlog[fd] = channel_;
 }
@@ -321,7 +248,7 @@ engine_t::on_handshake(int fd, const message_t& message) {
 
     try {
         message.as<rpc::handshake>(id);
-    } catch(const cocaine::error_t& e) {
+    } catch(const std::system_error& e) {
         COCAINE_LOG_WARNING(m_log, "disconnecting an incompatible slave on fd %d", fd);
         return;
     }
@@ -329,7 +256,7 @@ engine_t::on_handshake(int fd, const message_t& message) {
     pool_map_t::iterator it;
 
     {
-        std::unique_lock<std::mutex> lock(m_pool_mutex);
+        std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
 
         it = m_pool.find(id);
 
@@ -358,96 +285,90 @@ engine_t::on_disconnect(int fd, const std::error_code& ec) {
 }
 
 namespace {
-    static
-    const char* describe[] = {
-        "running",
-        "broken",
-        "stopping",
-        "stopped"
+
+const char* describe[] = {
+    "running",
+    "broken",
+    "stopping",
+    "stopped"
+};
+
+struct collector_t {
+    template<class>
+    struct result {
+        typedef bool type;
     };
 
-    struct collector_t {
-        template<class>
-        struct result {
-            typedef bool type;
-        };
+    template<class T>
+    bool
+    operator()(const T& slave) {
+        const size_t load = slave.second->load();
 
-        template<class T>
-        bool
-        operator()(const T& slave) {
-            size_t load = slave.second->load();
+        m_accumulator(load);
 
-            m_accumulator(load);
+        return slave.second->active() && load;
+    }
 
-            return slave.second->active() && load;
-        }
+    size_t
+    median() const {
+        return boost::accumulators::median(m_accumulator);
+    }
 
-        size_t
-        median() const {
-            return boost::accumulators::median(m_accumulator);
-        }
+    size_t
+    sum() const {
+        return boost::accumulators::sum(m_accumulator);
+    }
 
-        size_t
-        sum() const {
-            return boost::accumulators::sum(m_accumulator);
-        }
+private:
+    boost::accumulators::accumulator_set<
+        size_t,
+        boost::accumulators::features<
+            boost::accumulators::tag::median,
+            boost::accumulators::tag::sum
+        >
+    > m_accumulator;
+};
 
-    private:
-        boost::accumulators::accumulator_set<
-            size_t,
-            boost::accumulators::features<
-                boost::accumulators::tag::median,
-                boost::accumulators::tag::sum
-            >
-        > m_accumulator;
-    };
 }
 
 void
 engine_t::on_control(const message_t& message) {
+    std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
+
     switch(message.id()) {
-        case event_traits<control::report>::id: {
-            Json::Value info(Json::objectValue);
+    case event_traits<control::report>::id: {
+        collector_t collector;
+        Json::Value info(Json::objectValue);
 
-            collector_t collector;
+        size_t active = std::count_if(
+            m_pool.cbegin(),
+            m_pool.cend(),
+            std::bind<bool>(std::ref(collector), _1)
+        );
 
-            std::unique_lock<std::mutex> lock(m_pool_mutex);
+        info["load-median"] = static_cast<Json::LargestUInt>(collector.median());
+        info["queue"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.queue_limit);
+        info["queue"]["depth"] = static_cast<Json::LargestUInt>(m_queue.size());
+        info["sessions"]["pending"] = static_cast<Json::LargestUInt>(collector.sum());
+        info["slaves"]["active"] = static_cast<Json::LargestUInt>(active);
+        info["slaves"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.pool_limit);
+        info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active);
+        info["state"] = describe[static_cast<int>(m_state)];
 
-            size_t active = std::count_if(
-                m_pool.begin(),
-                m_pool.end(),
-                std::bind<bool>(std::ref(collector), _1)
-            );
+        m_channel->wr->write<control::info>(0UL, info);
+    } break;
 
-            info["load-median"] = static_cast<Json::LargestUInt>(collector.median());
-            info["queue"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.queue_limit);
-            info["queue"]["depth"] = static_cast<Json::LargestUInt>(m_queue.size());
-            info["sessions"]["pending"] = static_cast<Json::LargestUInt>(collector.sum());
-            info["slaves"]["active"] = static_cast<Json::LargestUInt>(active);
-            info["slaves"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.pool_limit);
-            info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active);
-            info["state"] = describe[static_cast<int>(m_state)];
+    case event_traits<control::terminate>::id: {
+        // Prepare for the shutdown.
+        migrate(states::stopping);
 
-            m_channel->wr->write<control::info>(0UL, info);
+        // NOTE: This message is needed to wake up the app's event loop, which is blocked
+        // in order to allow the stream to flush the message queue.
+        m_channel->wr->write<control::terminate>(0UL);
+    } break;
 
-            break;
-        }
-
-        case event_traits<control::terminate>::id: {
-            std::unique_lock<std::mutex> lock(m_pool_mutex);
-
-            // Prepare for the shutdown.
-            migrate(states::stopping);
-
-            // NOTE: This message is needed to wake up the app's event loop, which is blocked
-            // in order to allow the stream to flush the message queue.
-            m_channel->wr->write<control::terminate>(0UL);
-
-            break;
-        }
-
-        default:
-            COCAINE_LOG_ERROR(m_log, "dropping unknown type %d control message", message.id());
+    default:
+        COCAINE_LOG_ERROR(m_log, "dropping unknown type %d control message", message.id());
     }
 }
 
@@ -459,7 +380,7 @@ engine_t::on_notification(ev::async&, int) {
 
 void
 engine_t::on_termination(ev::timer&, int) {
-    std::unique_lock<session_queue_t> lock(m_queue);
+    std::lock_guard<session_queue_t> queue_guard(m_queue);
 
     COCAINE_LOG_WARNING(m_log, "forcing the engine termination");
 
@@ -467,54 +388,58 @@ engine_t::on_termination(ev::timer&, int) {
 }
 
 namespace {
-    struct load {
-        template<class T>
-        bool
-        operator()(const T& lhs, const T& rhs) const {
-            return lhs.second->load() < rhs.second->load();
-        }
-    };
 
-    struct available {
-        template<class T>
-        bool
-        operator()(const T& slave) const {
-            return slave.second->active() && slave.second->load() < max;
-        }
-
-        const size_t max;
-    };
-
-    template<class It, class Compare, class Predicate>
-    inline
-    It
-    min_element_if(It first, It last, Compare compare, Predicate predicate) {
-        while(first != last && !predicate(*first)) {
-            ++first;
-        }
-
-        if(first == last) {
-            return first;
-        }
-
-        It result = first;
-
-        while(++first != last) {
-            if(predicate(*first) && compare(*first, *result)) {
-                result = first;
-            }
-        }
-
-        return result;
+struct load {
+    template<class T>
+    bool
+    operator()(const T& lhs, const T& rhs) const {
+        return lhs.second->load() < rhs.second->load();
     }
+};
+
+struct available {
+    template<class T>
+    bool
+    operator()(const T& slave) const {
+        return slave.second->active() && slave.second->load() < max;
+    }
+
+    const size_t max;
+};
+
+template<class It, class Compare, class Predicate>
+inline
+It
+min_element_if(It first, It last, Compare compare, Predicate predicate) {
+    while(first != last && !predicate(*first)) {
+        ++first;
+    }
+
+    if(first == last) {
+        return last;
+    }
+
+    It result = first;
+
+    while(++first != last) {
+        if(predicate(*first) && compare(*first, *result)) {
+            result = first;
+        }
+    }
+
+    return result;
+}
+
 }
 
 void
 engine_t::pump() {
-    while(!m_queue.empty()) {
-        std::unique_lock<std::mutex> pool_lock(m_pool_mutex);
+    session_queue_t::value_type session;
 
-        auto it = min_element_if(m_pool.begin(), m_pool.end(), load(), available {
+    while(!m_queue.empty()) {
+        std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
+
+        const auto it = min_element_if(m_pool.begin(), m_pool.end(), load(), available {
             m_profile.concurrency
         });
 
@@ -522,27 +447,29 @@ engine_t::pump() {
             return;
         }
 
-        std::unique_lock<session_queue_t> queue_lock(m_queue);
+        {
+            std::lock_guard<session_queue_t> queue_guard(m_queue);
 
-        if(m_queue.empty()) {
-            return;
+            if(m_queue.empty()) {
+                return;
+            }
+
+            // Move out a new session from the queue.
+            session = std::move(m_queue.front());
+
+            // Destroy an empty session husk.
+            m_queue.pop_front();
         }
-
-        session_queue_t::value_type session = m_queue.front();
-        m_queue.pop_front();
 
         // Process the queue head outside the lock, because it might take some considerable amount
         // of time if the session has expired and there's some heavy-lifting in the error handler.
-        queue_lock.unlock();
-
-        // Attach the session to the slave.
         it->second->assign(session);
     }
 }
 
 void
 engine_t::balance() {
-    std::unique_lock<std::mutex> lock(m_pool_mutex);
+    std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
 
     if(m_pool.size() >= m_profile.pool_limit ||
        m_pool.size() * m_profile.grow_threshold >= m_queue.size())
@@ -550,7 +477,7 @@ engine_t::balance() {
         return;
     }
 
-    unsigned int target = std::min(
+    const unsigned int target = std::min(
         m_profile.pool_limit,
         std::max(
             1UL,
@@ -570,14 +497,14 @@ engine_t::balance() {
     );
 
     while(m_pool.size() != target) {
-        auto id = unique_id_t().string();
+        const auto id = unique_id_t().string();
 
         try {
             m_pool.insert(std::make_pair(
                 id,
                 std::make_shared<slave_t>(m_context, *m_reactor, m_manifest, m_profile, id, *this)
             ));
-        } catch(const cocaine::error_t& e) {
+        } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - %s", e.what());
             break;
         }
@@ -586,7 +513,7 @@ engine_t::balance() {
 
 void
 engine_t::migrate(states target) {
-    std::unique_lock<session_queue_t> lock(m_queue);
+    std::lock_guard<session_queue_t> queue_guard(m_queue);
 
     m_state = target;
 
@@ -624,7 +551,7 @@ engine_t::migrate(states target) {
     }
 
     if(!pending) {
-        return stop();
+        stop();
     }
 
     COCAINE_LOG_INFO(
@@ -648,7 +575,8 @@ engine_t::stop() {
 
     if(m_state == states::stopping) {
         m_state = states::stopped;
-    }
 
-    m_reactor->stop();
+        // Don't stop the event loop if the engine is becoming broken.
+        m_reactor->stop();
+    }
 }
