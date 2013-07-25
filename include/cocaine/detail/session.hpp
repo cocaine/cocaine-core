@@ -26,9 +26,9 @@
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
 
-#include "cocaine/asio/writable_stream.hpp"
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
+#include "cocaine/asio/writable_stream.hpp"
 
 #include "cocaine/detail/atomic.hpp"
 

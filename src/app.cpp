@@ -23,14 +23,13 @@
 #include "cocaine/api/driver.hpp"
 #include "cocaine/api/event.hpp"
 
-#include "cocaine/detail/actor.hpp"
-
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
 
 #include "cocaine/context.hpp"
 
+#include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/archive.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/manifest.hpp"

@@ -35,7 +35,7 @@ struct tcp {
         int enable = 1;
 
         // Enable TCP_NODELAY option to boost the performance a little.
-        ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable)); 
+        ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
     }
 };
 
