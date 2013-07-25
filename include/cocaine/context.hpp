@@ -52,6 +52,7 @@ struct defaults {
     static const char spool_path[];
 
     // Defaults for service locator.
+    static const char endpoint[];
     static const uint16_t locator_port;
     static const uint16_t min_port;
     static const uint16_t max_port;
@@ -77,6 +78,9 @@ struct config_t {
     struct {
         std::string hostname;
         std::string uuid;
+
+        // NOTE: An endpoint where all the services and the service locator will be bound.
+        std::string endpoint;
 
         // NOTE: Service locator port is configurable to allow multiple runtimes to run on a single
         // machine. This port will be forwarded to the slaves via a command-line argument.

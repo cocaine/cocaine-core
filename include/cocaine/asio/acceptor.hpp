@@ -52,21 +52,23 @@ struct acceptor {
         ::setsockopt(m_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
 
         if(::bind(m_fd, endpoint.data(), endpoint.size()) != 0) {
+            auto ec = std::error_code(errno, std::system_category());
+
             ::close(m_fd);
 
             throw std::system_error(
-                errno,
-                std::system_category(),
+                ec,
                 cocaine::format("unable to bind an acceptor on '%s'", endpoint)
             );
         }
 
         if(::listen(m_fd, backlog) != 0) {
+            auto ec = std::error_code(errno, std::system_category());
+
             ::close(m_fd);
 
             throw std::system_error(
-                errno,
-                std::system_category(),
+                ec,
                 cocaine::format("unable to open an acceptor on '%s'", endpoint)
             );
         }

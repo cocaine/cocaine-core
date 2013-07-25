@@ -35,12 +35,13 @@ struct resolver {
     typedef typename medium_type::resolver resolver_type;
 
     static inline
-    endpoint_type
+    std::vector<endpoint_type>
     query(const std::string& name, uint16_t port) {
         boost::asio::io_service service;
         resolver_type resolver(service);
 
-        auto it = typename resolver_type::iterator();
+        auto it = typename resolver_type::iterator(),
+             end = it;
 
         try {
             it = resolver.resolve(typename resolver_type::query(
@@ -48,10 +49,12 @@ struct resolver {
                 boost::lexical_cast<std::string>(port)
             ));
         } catch(const boost::system::system_error& e) {
-            throw cocaine::error_t("unable to resolve '%s' - %s", name, e.what());
+            throw cocaine::error_t(
+                "unable to resolve '%s' - [%d] %s", name, e.code().value(), e.code().message()
+            );
         }
 
-        return *it;
+        return std::vector<endpoint_type>(it, end);
     }
 };
 

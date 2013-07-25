@@ -288,7 +288,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
         }
 
         const std::vector<io::tcp::endpoint> endpoints = {
-            { boost::asio::ip::address::from_string("::"), port }
+            { boost::asio::ip::address::from_string(m_context.config.network.endpoint), port }
         };
 
         service->run(endpoints);
@@ -402,18 +402,14 @@ locator_t::on_announce_event(ev::io&, int) {
     }
 
     msgpack::unpacked unpacked;
-
-    try {
-        msgpack::unpack(&unpacked, buffers, size);
-    } catch(const msgpack::unpack_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
-        return;
-    }
-
     key_type key;
 
     try {
+        msgpack::unpack(&unpacked, buffers, size);
         unpacked.get() >> key;
+    } catch(const msgpack::unpack_error& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
+        return;
     } catch(const msgpack::type_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
         return;
@@ -428,25 +424,30 @@ locator_t::on_announce_event(ev::io&, int) {
 
         COCAINE_LOG_INFO(m_log, "discovered node '%s' on '%s:%d'", uuid, hostname, port);
 
-        std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
+        std::vector<io::tcp::endpoint> endpoints;
 
         try {
-            channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
-                m_reactor,
-                std::make_shared<io::socket<io::tcp>>(
-                    io::resolver<io::tcp>::query(hostname, port)
-                )
-            );
-        } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(
-                m_log,
-                "unable to connect to node '%s' - %s - [%d] %s",
-                hostname,
-                e.what(),
-                e.code().value(),
-                e.code().message()
-            );
+            endpoints = io::resolver<io::tcp>::query(hostname, port);
+        } catch(const cocaine::error_t& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to connect to node '%s' - %s", uuid, e.what());
+            return;
+        }
 
+        std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
+
+        for(auto it = endpoints.begin(); !channel || it != endpoints.end(); ++it) {
+            try {
+                channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
+                    m_reactor,
+                    std::make_shared<io::socket<io::tcp>>(*it)
+                );
+            } catch(const std::system_error& e) {
+                continue;
+            }
+        }
+
+        if(!channel) {
+            COCAINE_LOG_ERROR(m_log, "unable to connect to node '%s'", hostname);
             return;
         }
 

@@ -65,11 +65,12 @@ struct socket {
         medium_type::configure(m_fd);
 
         if(::connect(m_fd, endpoint.data(), endpoint.size()) != 0) {
+            auto ec = std::error_code(errno, std::system_category());
+
             ::close(m_fd);
 
             throw std::system_error(
-                errno,
-                std::system_category(),
+                ec,
                 cocaine::format("unable to connect a socket to '%s'", endpoint)
             );
         }

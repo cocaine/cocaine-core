@@ -62,6 +62,7 @@ const char defaults::plugins_path[]          = "/usr/lib/cocaine";
 const char defaults::runtime_path[]          = "/var/run/cocaine";
 const char defaults::spool_path[]            = "/var/spool/cocaine";
 
+const char defaults::endpoint[]              = "::";
 const uint16_t defaults::locator_port        = 10053;
 const uint16_t defaults::min_port            = 32768;
 const uint16_t defaults::max_port            = 61000;
@@ -174,6 +175,7 @@ config_t::config_t(const std::string& config_path) {
 
     // Locator configuration
 
+    network.endpoint = root["locator"].get("endpoint", defaults::endpoint).asString();
     network.locator = root["locator"].get("port", defaults::locator_port).asUInt();
 
     if(!root["locator"]["port-range"].empty()) {
@@ -343,7 +345,7 @@ context_t::bootstrap() {
     }
 
     const std::vector<io::tcp::endpoint> endpoints = {
-        { boost::asio::ip::address::from_string("::"), config.network.locator }
+        { boost::asio::ip::address::from_string(config.network.endpoint), config.network.locator }
     };
 
     COCAINE_LOG_INFO(blog, "starting the service locator on port %d", config.network.locator);
