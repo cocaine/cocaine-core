@@ -435,7 +435,7 @@ locator_t::on_announce_event(ev::io&, int) {
 
         std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
 
-        for(auto it = endpoints.begin(); !channel || it != endpoints.end(); ++it) {
+        for(auto it = endpoints.begin(); !channel && it != endpoints.end(); ++it) {
             try {
                 COCAINE_LOG_DEBUG(m_log, "trying endpoint %s for node '%s'", *it, uuid);
 
