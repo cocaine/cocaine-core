@@ -40,13 +40,15 @@ struct resolver {
         boost::asio::io_service service;
         resolver_type resolver(service);
 
-        auto it = resolver.resolve(typename resolver_type::query(
-            name,
-            boost::lexical_cast<std::string>(port)
-        ));
+        auto it = typename resolver_type::iterator();
 
-        if(it == typename resolver_type::iterator()) {
-            throw cocaine::error_t("unable to resolve '%s'", name);
+        try {
+            it = resolver.resolve(typename resolver_type::query(
+                name,
+                boost::lexical_cast<std::string>(port)
+            ));
+        } catch(const boost::system::system_error& e) {
+            throw cocaine::error_t("unable to resolve '%s' - %s", name, e.what());
         }
 
         return *it;
