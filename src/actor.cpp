@@ -59,6 +59,7 @@ struct actor_t::upstream_t:
     public api::stream_t
 {
     upstream_t(const std::shared_ptr<lockable_type>& channel, uint64_t tag):
+        m_state(state::open),
         m_channel(channel),
         m_tag(tag)
     { }
@@ -66,47 +67,46 @@ struct actor_t::upstream_t:
     virtual
     void
     write(const char* chunk, size_t size) {
-        if(m_channel) {
-            std::lock_guard<std::mutex> guard(m_channel->mutex);
+        std::lock_guard<std::mutex> guard(m_channel->mutex);
 
-            if(m_channel->ptr) {
-                m_channel->ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
-            }
+        if(m_state == state::open && m_channel->ptr) {
+            m_channel->ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
         }
     }
 
     virtual
     void
     error(int code, const std::string& reason) {
-        if(m_channel) {
-            std::lock_guard<std::mutex> guard(m_channel->mutex);
+        std::lock_guard<std::mutex> guard(m_channel->mutex);
 
-            if(m_channel->ptr) {
-                m_channel->ptr->wr->write<rpc::error>(m_tag, code, reason);
-            }
+        if(m_state == state::open && m_channel->ptr) {
+            m_channel->ptr->wr->write<rpc::error>(m_tag, code, reason);
         }
     }
 
     virtual
     void
     close() {
-        if(m_channel) {
-            std::lock_guard<std::mutex> guard(m_channel->mutex);
+        std::lock_guard<std::mutex> guard(m_channel->mutex);
 
+        if(m_state == state::open) {
             if(m_channel->ptr) {
                 m_channel->ptr->wr->write<rpc::choke>(m_tag);
-
             }
-        }
 
-        // Further messages will be discarded after this reset().
-        m_channel.reset();
+            m_state = state::closed;
+        }
     }
 
 private:
-    // Non-const because this pointer will be reset in close().
-    std::shared_ptr<lockable_type> m_channel;
+    struct state {
+        enum value: int { open, closed };
+    };
 
+    // Upstream state.
+    state::value m_state;
+
+    const std::shared_ptr<lockable_type> m_channel;
     const uint64_t m_tag;
 };
 
