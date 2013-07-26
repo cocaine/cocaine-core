@@ -116,7 +116,7 @@ repository_t::open(const std::string& target) {
 
     std::unique_ptr<handle_type, lt_dlclose_action> plugin(
         lt_dlopenadvise(target.c_str(), advice),
-        lt_dlclose_type()
+        lt_dlclose_action()
     );
 
     lt_dladvise_destroy(&advice);
