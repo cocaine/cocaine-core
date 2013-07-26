@@ -29,6 +29,7 @@
 #include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/dispatch.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 #include "cocaine/messages.hpp"
 
@@ -97,7 +98,8 @@ private:
 
 }
 
-actor_t::actor_t(std::shared_ptr<reactor_t> reactor, std::unique_ptr<dispatch_t>&& dispatch):
+actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::unique_ptr<dispatch_t>&& dispatch):
+    m_log(new logging::log_t(context, dispatch->name())),
     m_reactor(reactor),
     m_dispatch(std::move(dispatch))
 { }
@@ -179,10 +181,11 @@ actor_t::dispatch() -> dispatch_t& {
 
 void
 actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
-    auto channel_ = std::make_shared<channel<io::socket<tcp>>>(*m_reactor, socket_);
-
-    // Shortcut, disposable.
     const int fd = socket_->fd();
+
+    COCAINE_LOG_DEBUG(m_log, "accepted a new client from '%s' on fd %d", socket_->remote_endpoint(), fd);
+
+    auto channel_ = std::make_shared<channel<io::socket<tcp>>>(*m_reactor, socket_);
 
     channel_->rd->bind(
         std::bind(&actor_t::on_message, this, fd, _1),
@@ -211,6 +214,12 @@ actor_t::on_message(int fd, const message_t& message) {
 }
 
 void
-actor_t::on_failure(int fd, const std::error_code& /* ec */) {
+actor_t::on_failure(int fd, const std::error_code& ec) {
+    if(ec) {
+        COCAINE_LOG_DEBUG(m_log, "client on fd %d has disappeared - [%d] %s", fd, ec.value(), ec.message());
+    } else {
+        COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
+    }
+
     m_channels.erase(fd);
 }

@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/tcp.hpp"
 
 #include <list>
@@ -36,7 +37,10 @@ class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
 
     public:
-        actor_t(std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<dispatch_t>&& dispatch);
+        actor_t(context_t& context,
+                std::shared_ptr<io::reactor_t> reactor,
+                std::unique_ptr<dispatch_t>&& dispatch);
+
        ~actor_t();
 
         void
@@ -63,6 +67,7 @@ class actor_t {
         on_failure(int fd, const std::error_code& ec);
 
     private:
+        const std::unique_ptr<logging::log_t> m_log;
         const std::shared_ptr<io::reactor_t> m_reactor;
 
         // Actor I/O channels

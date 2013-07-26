@@ -219,10 +219,11 @@ engine_t::wake() {
 
 void
 engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
-    auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
-
-    // Shortcut, disposable.
     const int fd = socket_->fd();
+
+    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd %d", fd);
+
+    auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
 
     channel_->rd->bind(
         std::bind(&engine_t::on_handshake,  this, fd, _1),
@@ -232,8 +233,6 @@ engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
     channel_->wr->bind(
         std::bind(&engine_t::on_disconnect, this, fd, _1)
     );
-
-    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd %d", fd);
 
     m_backlog[fd] = channel_;
 }
