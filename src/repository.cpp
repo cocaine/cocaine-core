@@ -41,7 +41,7 @@ typedef std::remove_pointer<
     lt_dlhandle
 >::type handle_type;
 
-struct lt_dlclose_type {
+struct lt_dlclose_action {
     void
     operator()(handle_type* plugin) const {
         lt_dlclose(plugin);
@@ -55,7 +55,7 @@ repository_t::~repository_t() {
     m_categories.clear();
 
     // Dispose of the plugins.
-    std::for_each(m_plugins.begin(), m_plugins.end(), lt_dlclose_type());
+    std::for_each(m_plugins.begin(), m_plugins.end(), lt_dlclose_action());
 
     // Terminate the dynamic loader.
     lt_dlexit();
@@ -114,7 +114,7 @@ repository_t::open(const std::string& target) {
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
 
-    std::unique_ptr<handle_type, lt_dlclose_type> plugin(
+    std::unique_ptr<handle_type, lt_dlclose_action> plugin(
         lt_dlopenadvise(target.c_str(), advice),
         lt_dlclose_type()
     );
