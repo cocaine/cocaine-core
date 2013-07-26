@@ -67,17 +67,9 @@ struct writable_stream {
         m_handle_error = nullptr;
     }
 
-
-    struct deferred_watch_action {
+    struct deferred_wakeup_action {
         void
-        operator()() {
-            watcher.start(fd, events);
-        }
-
-        ev::io& watcher;
-
-        const int fd;
-        const int events;
+        operator()() const { }
     };
 
     void
@@ -122,23 +114,17 @@ struct writable_stream {
         m_wr_offset += size;
 
         if(!m_socket_watcher.is_active()) {
-            m_reactor.post(deferred_watch_action {
-                m_socket_watcher,
-                m_socket->fd(),
-                ev::WRITE
-            });
+            m_socket_watcher.start(m_socket->fd(), ev::WRITE);
+            m_reactor.post(deferred_wakeup_action());
         }
     }
 
 private:
     void
     on_event(ev::io& /* io */, int /* revents */) {
+        std::error_code ec;
         std::unique_lock<std::mutex> lock(m_ring_mutex);
 
-        // Keep the error code if the write() operation fails.
-        std::error_code ec;
-
-        // Try to send all the data at once.
         ssize_t sent = m_socket->write(
             m_ring.data() + m_tx_offset,
             m_wr_offset - m_tx_offset,
@@ -146,7 +132,7 @@ private:
         );
 
         if(ec) {
-            m_handle_error(ec);
+            m_reactor.post(std::bind(m_handle_error, ec));
             return;
         }
 
