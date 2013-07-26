@@ -72,9 +72,12 @@ class actor_t {
 
         // Actor I/O channels
 
+        struct lockable_type;
+        struct upstream_t;
+
         std::map<
             int,
-            std::shared_ptr<io::channel<io::socket<io::tcp>>>
+            std::shared_ptr<lockable_type>
         > m_channels;
 
         const std::unique_ptr<dispatch_t> m_dispatch;

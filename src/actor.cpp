@@ -46,12 +46,19 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-namespace {
+struct actor_t::lockable_type {
+    lockable_type(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_):
+        ptr(std::move(ptr_))
+    { }
 
-struct upstream_t:
+    std::unique_ptr<io::channel<io::socket<io::tcp>>> ptr;
+    std::mutex mutex;
+};
+
+struct actor_t::upstream_t:
     public api::stream_t
 {
-    upstream_t(const std::shared_ptr<channel<io::socket<tcp>>>& channel, uint64_t tag):
+    upstream_t(const std::shared_ptr<lockable_type>& channel, uint64_t tag):
         m_channel(channel),
         m_tag(tag)
     { }
@@ -59,44 +66,49 @@ struct upstream_t:
     virtual
     void
     write(const char* chunk, size_t size) {
-        const auto ptr = m_channel.lock();
+        if(m_channel) {
+            std::lock_guard<std::mutex> guard(m_channel->mutex);
 
-        if(ptr) {
-            ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
+            if(m_channel->ptr) {
+                m_channel->ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
+            }
         }
     }
 
     virtual
     void
     error(int code, const std::string& reason) {
-        const auto ptr = m_channel.lock();
+        if(m_channel) {
+            std::lock_guard<std::mutex> guard(m_channel->mutex);
 
-        if(ptr) {
-            ptr->wr->write<rpc::error>(m_tag, code, reason);
+            if(m_channel->ptr) {
+                m_channel->ptr->wr->write<rpc::error>(m_tag, code, reason);
+            }
         }
     }
 
     virtual
     void
     close() {
-        const auto ptr = m_channel.lock();
+        if(m_channel) {
+            std::lock_guard<std::mutex> guard(m_channel->mutex);
 
-        if(ptr) {
-            m_channel.reset();
+            if(m_channel->ptr) {
+                m_channel->ptr->wr->write<rpc::choke>(m_tag);
 
-            // Due to reset() above, further messages would be discarded.
-            ptr->wr->write<rpc::choke>(m_tag);
+            }
         }
+
+        // Further messages will be discarded after this reset().
+        m_channel.reset();
     }
 
 private:
     // Non-const because this pointer will be reset in close().
-    std::weak_ptr<channel<io::socket<tcp>>> m_channel;
+    std::shared_ptr<lockable_type> m_channel;
 
     const uint64_t m_tag;
 };
-
-}
 
 actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::unique_ptr<dispatch_t>&& dispatch):
     m_log(new logging::log_t(context, dispatch->name())),
@@ -187,18 +199,18 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
 
     COCAINE_LOG_DEBUG(m_log, "accepted a new client from '%s' on fd %d", socket_->remote_endpoint(), fd);
 
-    auto channel_ = std::make_shared<channel<io::socket<tcp>>>(*m_reactor, socket_);
+    auto ptr = std::make_unique<channel<io::socket<tcp>>>(*m_reactor, socket_);
 
-    channel_->rd->bind(
+    ptr->rd->bind(
         std::bind(&actor_t::on_message, this, fd, _1),
         std::bind(&actor_t::on_failure, this, fd, _1)
     );
 
-    channel_->wr->bind(
+    ptr->wr->bind(
         std::bind(&actor_t::on_failure, this, fd, _1)
     );
 
-    m_channels[fd] = channel_;
+    m_channels[fd] = std::make_shared<lockable_type>(std::move(ptr));
 }
 
 void
@@ -215,7 +227,9 @@ actor_t::on_message(int fd, const message_t& message) {
 
 void
 actor_t::on_failure(int fd, const std::error_code& ec) {
-    BOOST_ASSERT(m_channels.find(fd) != m_channels.end());
+    auto it = m_channels.find(fd);
+
+    BOOST_ASSERT(it != m_channels.end());
 
     if(ec) {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disappeared - [%d] %s", fd, ec.value(), ec.message());
@@ -223,5 +237,14 @@ actor_t::on_failure(int fd, const std::error_code& ec) {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
     }
 
-    m_channels.erase(fd);
+    std::shared_ptr<lockable_type>& channel = it->second;
+
+    {
+        std::lock_guard<std::mutex> guard(channel->mutex);
+
+        // Interlocked channel destruction to avoid interthread access.
+        channel->ptr.reset();
+    }
+
+    m_channels.erase(it);
 }
