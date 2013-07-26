@@ -309,7 +309,7 @@ context_t::bootstrap() {
 
     m_locator.reset(new actor_t(*this, reactor, std::move(locator)));
 
-    COCAINE_LOG_INFO(m
+    COCAINE_LOG_INFO(
         blog,
         "starting %d %s",
         config.services.size(),
