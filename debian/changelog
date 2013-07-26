@@ -6,7 +6,7 @@ cocaine-core (0.10.6.0) unstable; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 25 Jul 2013 18:49:30 +0400
 
-cocaine-core (0.10.5.8) unstable; urgency=low
+cocaine-core (0.10.5.18) unstable; urgency=low
 
   * Bugfix: properly handle response chunks larger than the output ring buffer
     capacity by expanding it instead of endlessly moving chunks around.
@@ -19,7 +19,7 @@ cocaine-core (0.10.5.8) unstable; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 23 Jul 2013 20:56:56 +0400
 
-cocaine-core (0.10.5.7) unstable; urgency=low
+cocaine-core (0.10.5.17) unstable; urgency=low
 
   * App Service now exposes the app_t::info() method.
   * Bugfix: properly close sessions in case a slave managed to close its half
@@ -27,7 +27,7 @@ cocaine-core (0.10.5.7) unstable; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 08 Jul 2013 23:32:50 +0400
 
-cocaine-core (0.10.5.6) unstable; urgency=low
+cocaine-core (0.10.5.16) unstable; urgency=low
 
   * App authors can now specify custom environment for their app executables
     via the 'environment' parameter in the manifest.
@@ -39,7 +39,7 @@ cocaine-core (0.10.5.6) unstable; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 03 Jul 2013 17:50:53 +0400
 
-cocaine-core (0.10.5.5) unstable; urgency=low
+cocaine-core (0.10.5.15) unstable; urgency=low
 
   * File storage find() method now uses tag intersections instead of unions.
   * Bugfix: do not stop the engine if a slave disconnects unexpectedly.
@@ -48,7 +48,7 @@ cocaine-core (0.10.5.5) unstable; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 02 Jul 2013 15:59:56 +0400
 
-cocaine-core (0.10.5.4) unstable; urgency=low
+cocaine-core (0.10.5.14) unstable; urgency=low
 
   * Plugin preconditions support. Now plugins should specify their minimum
     required runtime version during compilation, so that plugins with
@@ -58,26 +58,26 @@ cocaine-core (0.10.5.4) unstable; urgency=low
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 28 Jun 2013 14:46:38 +0400
 
-cocaine-core (0.10.5.3) unstable; urgency=low
+cocaine-core (0.10.5.13) unstable; urgency=low
 
   * Bugfix: do not die on emergency Locator shutdown.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 26 Jun 2013 20:37:43 +0400
 
-cocaine-core (0.10.5.2) unstable; urgency=low
+cocaine-core (0.10.5.12) unstable; urgency=low
 
   * Bugfix: do not die if failed to accept a connection.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 26 Jun 2013 19:23:07 +0400
 
-cocaine-core (0.10.5.1) unstable; urgency=low
+cocaine-core (0.10.5.11) unstable; urgency=low
 
   * Bugfix: update to the latest backward-cpp version to fix building issues
     on i386 architectures.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 26 Jun 2013 01:06:09 +0400
 
-cocaine-core (0.10.5.0) unstable; urgency=low
+cocaine-core (0.10.5.10) unstable; urgency=low
 
   * Bugfix: do not crash on node pruning in Locator.
 
