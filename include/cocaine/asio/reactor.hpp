@@ -27,10 +27,22 @@
 #include <functional>
 #include <mutex>
 
+#if defined(__clang__)
+    #pragma clang diagnostic push
+#elif defined(__GNUC__) && defined(HAVE_GCC46)
+    #pragma GCC diagnostic push
+#endif
+
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 
 #include <ev++.h>
+
+#if defined(__clang__)
+    #pragma clang diagnostic pop
+#elif defined(__GNUC__) && defined(HAVE_GCC46)
+    #pragma GCC diagnostic pop
+#endif
 
 namespace cocaine { namespace io {
 
