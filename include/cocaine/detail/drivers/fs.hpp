@@ -46,7 +46,7 @@ class fs_t:
         on_event(ev::stat&, int);
 
     private:
-        std::unique_ptr<logging::log_t> m_log;
+        const std::unique_ptr<logging::log_t> m_log;
 
         app_t& m_app;
 

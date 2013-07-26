@@ -24,6 +24,7 @@
 #include "cocaine/api/event.hpp"
 
 #include "cocaine/asio/acceptor.hpp"
+#include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
 
@@ -217,6 +218,7 @@ app_t::start() {
 
         // Publish the app service.
         m_context.attach(m_manifest->name, std::make_unique<actor_t>(
+            m_context,
             std::make_shared<reactor_t>(),
             std::make_unique<app_t::service_t>(m_context, m_manifest->name, *this)
         ));

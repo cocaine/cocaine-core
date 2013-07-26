@@ -53,7 +53,7 @@ class files_t:
         find(const std::string& collection, const std::vector<std::string>& tags);
 
     private:
-        std::unique_ptr<logging::log_t> m_log;
+        const std::unique_ptr<logging::log_t> m_log;
 
         // TODO: Drop this, switch to atomic writes.
         std::mutex m_mutex;

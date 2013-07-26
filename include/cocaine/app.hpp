@@ -59,7 +59,7 @@ class app_t {
 
     private:
         context_t& m_context;
-        std::unique_ptr<logging::log_t> m_log;
+        const std::unique_ptr<logging::log_t> m_log;
 
         // Configuration
 

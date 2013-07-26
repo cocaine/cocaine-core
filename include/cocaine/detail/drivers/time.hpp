@@ -46,7 +46,7 @@ class recurring_timer_t:
         on_event(ev::timer&, int);
 
     protected:
-        std::unique_ptr<logging::log_t> m_log;
+        const std::unique_ptr<logging::log_t> m_log;
 
         app_t& m_app;
 

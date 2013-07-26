@@ -39,7 +39,7 @@ class process_t:
         spawn(const std::string& path, const api::string_map_t& args, const api::string_map_t& environment, int pipe);
 
     private:
-        std::unique_ptr<logging::log_t> m_log;
+        const std::unique_ptr<logging::log_t> m_log;
         const std::string m_working_directory;
 };
 

@@ -49,7 +49,7 @@ class adhoc_t:
         prune(const std::string& uuid);
 
     private:
-        std::unique_ptr<logging::log_t> m_log;
+        const std::unique_ptr<logging::log_t> m_log;
 
 #if defined(__clang__) || defined(HAVE_GCC46)
         mutable std::default_random_engine m_random_generator;

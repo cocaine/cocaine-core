@@ -51,7 +51,7 @@ class archive_t {
         extract(archive* source, archive* target);
 
     private:
-        std::unique_ptr<logging::log_t> m_log;
+        const std::unique_ptr<logging::log_t> m_log;
 
         // The source archive.
         archive* m_archive;

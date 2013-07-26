@@ -46,8 +46,7 @@ struct channel {
     }
 
     void
-    attach(reactor_t& reactor, const std::shared_ptr<Socket>& socket)
-    {
+    attach(reactor_t& reactor, const std::shared_ptr<Socket>& socket) {
         rd->attach(std::make_shared<readable_stream<Socket>>(reactor, socket));
         wr->attach(std::make_shared<writable_stream<Socket>>(reactor, socket));
     }

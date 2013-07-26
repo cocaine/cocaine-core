@@ -203,9 +203,7 @@ void
 actor_t::on_message(int fd, const message_t& message) {
     auto it = m_channels.find(fd);
 
-    if(it == m_channels.end()) {
-        return;
-    }
+    BOOST_ASSERT(it != m_channels.end());
 
     m_dispatch->invoke(message, std::make_shared<upstream_t>(
         it->second,
@@ -215,6 +213,8 @@ actor_t::on_message(int fd, const message_t& message) {
 
 void
 actor_t::on_failure(int fd, const std::error_code& ec) {
+    BOOST_ASSERT(m_channels.find(fd) != m_channels.end());
+
     if(ec) {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disappeared - [%d] %s", fd, ec.value(), ec.message());
     } else {

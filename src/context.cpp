@@ -307,12 +307,9 @@ context_t::bootstrap() {
     auto reactor = std::make_shared<io::reactor_t>();
     auto locator = std::make_unique<locator_t>(*this, *reactor);
 
-    m_locator.reset(new actor_t(
-        reactor,
-        std::move(locator)
-    ));
+    m_locator.reset(new actor_t(*this, reactor, std::move(locator)));
 
-    COCAINE_LOG_INFO(
+    COCAINE_LOG_INFO(m
         blog,
         "starting %d %s",
         config.services.size(),
@@ -326,6 +323,7 @@ context_t::bootstrap() {
 
         try {
             attach(it->first, std::make_unique<actor_t>(
+                *this,
                 reactor,
                 get<api::service_t>(
                     it->second.type,
