@@ -27,82 +27,19 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     cached<Json::Value>(context, "profiles", name_),
     name(name_)
 {
-    log_output = get(
-        "log-output",
-        defaults::log_output
-    ).asBool();
+    log_output          = get("log-output", defaults::log_output).asBool();
+    heartbeat_timeout   = get("heartbeat-timeout", defaults::heartbeat_timeout).asDouble();
+    idle_timeout        = get("idle-timeout", defaults::idle_timeout).asDouble();
+    startup_timeout     = get("startup-timeout", defaults::startup_timeout).asDouble();
+    termination_timeout = get("termination-timeout", defaults::termination_timeout).asDouble();
+    concurrency         = get("concurrency", static_cast<Json::UInt>(defaults::concurrency)).asUInt();
+    crashlog_limit      = get("crashlog-limit", static_cast<Json::UInt>(defaults::crashlog_limit)).asUInt();
+    pool_limit          = get("pool-limit", static_cast<Json::UInt>(defaults::pool_limit)).asUInt();
+    queue_limit         = get("queue-limit", static_cast<Json::UInt>(defaults::queue_limit)).asUInt();
 
-    heartbeat_timeout = get(
-        "heartbeat-timeout",
-        defaults::heartbeat_timeout
-    ).asDouble();
+    unsigned long default_threshold = std::max(1UL, queue_limit / pool_limit * concurrency);
 
-    if(heartbeat_timeout <= 0.0f) {
-        throw cocaine::error_t("slave heartbeat timeout must be positive");
-    }
-
-    idle_timeout = get(
-        "idle-timeout",
-        defaults::idle_timeout
-    ).asDouble();
-
-    if(idle_timeout < 0.0f) {
-        throw cocaine::error_t("slave idle timeout must non-negative");
-    }
-
-    startup_timeout = get(
-        "startup-timeout",
-        defaults::startup_timeout
-    ).asDouble();
-
-    if(startup_timeout <= 0.0f) {
-        throw cocaine::error_t("slave startup timeout must be positive");
-    }
-
-    termination_timeout = get(
-        "termination-timeout",
-        defaults::termination_timeout
-    ).asDouble();
-
-    if(termination_timeout <= 0.0f) {
-        throw cocaine::error_t("engine termination timeout must be non-negative");
-    }
-
-    concurrency = get(
-        "concurrency",
-        static_cast<Json::UInt>(defaults::concurrency)
-    ).asUInt();
-
-    crashlog_limit = get(
-        "crashlog-limit",
-        static_cast<Json::UInt>(defaults::crashlog_limit)
-    ).asUInt();
-
-    pool_limit = get(
-        "pool-limit",
-        static_cast<Json::UInt>(defaults::pool_limit)
-    ).asUInt();
-
-    if(pool_limit == 0) {
-        throw cocaine::error_t("engine pool limit must be positive");
-    }
-
-    queue_limit = get(
-        "queue-limit",
-        static_cast<Json::UInt>(defaults::queue_limit)
-    ).asUInt();
-
-    if(concurrency == 0) {
-        throw cocaine::error_t("engine concurrency must be positive");
-    }
-
-    grow_threshold = get(
-        "grow-threshold",
-        std::max(
-            static_cast<Json::UInt>(1UL),
-            static_cast<Json::UInt>(queue_limit / pool_limit * concurrency)
-        )
-    ).asUInt();
+    grow_threshold      = get("grow-threshold", static_cast<Json::UInt>(default_threshold)).asUInt();
 
     // Isolation
 
@@ -110,5 +47,31 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         (*this)["isolate"].get("type", "process").asString(),
         (*this)["isolate"]["args"]
     };
+
+    // Validation
+
+    if(heartbeat_timeout <= 0.0f) {
+        throw cocaine::error_t("slave heartbeat timeout must be positive");
+    }
+
+    if(idle_timeout < 0.0f) {
+        throw cocaine::error_t("slave idle timeout must non-negative");
+    }
+
+    if(startup_timeout <= 0.0f) {
+        throw cocaine::error_t("slave startup timeout must be positive");
+    }
+
+    if(termination_timeout <= 0.0f) {
+        throw cocaine::error_t("engine termination timeout must be non-negative");
+    }
+
+    if(pool_limit == 0) {
+        throw cocaine::error_t("engine pool limit must be positive");
+    }
+
+    if(concurrency == 0) {
+        throw cocaine::error_t("engine concurrency must be positive");
+    }
 }
 
