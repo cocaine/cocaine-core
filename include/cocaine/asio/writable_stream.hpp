@@ -87,8 +87,8 @@ struct writable_stream {
         if(m_tx_offset == m_wr_offset) {
             std::error_code ec;
 
-            // Nothing is pending in the ring so try to write directly to the socket,
-            // and enqueue only the remaining part, if any. Ignore any errors here.
+            // Nothing is pending in the ring so try to write directly to the socket, and enqueue
+            // only the remaining part, if any. Ignore any errors here.
             ssize_t sent = m_socket->write(data, size, ec);
 
             if(sent > 0) {
