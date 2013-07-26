@@ -44,11 +44,6 @@ typedef io::event_traits<io::locator::synchronize>::result_type synchronize_resu
 class locator_t:
     public dispatch_t
 {
-    struct remote_t {
-        std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
-        std::shared_ptr<io::timeout_t> timeout;
-    };
-
     typedef std::tuple<std::string, std::string, uint16_t> key_type;
 
     public:
@@ -124,6 +119,11 @@ class locator_t:
 
         // Remote gateway.
         std::unique_ptr<api::gateway_t> m_gateway;
+
+        struct remote_t {
+            std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
+            std::shared_ptr<io::timeout_t> timeout;
+        };
 
         // These are remote channels indexed by endpoint and uuid. The uuid is required to easily
         // disambiguate between different runtime instances on the same host.
