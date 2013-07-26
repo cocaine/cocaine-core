@@ -56,7 +56,7 @@ def process(value):
     return len(value)
 
 def handle(request, response):
-    key = yield request
+    key = yield request.read()
     value = yield storage.read("collection", key)
 
     response.write(process(value))
