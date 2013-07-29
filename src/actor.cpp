@@ -232,7 +232,7 @@ actor_t::on_failure(int fd, const std::error_code& ec) {
     BOOST_ASSERT(it != m_channels.end());
 
     if(ec) {
-        COCAINE_LOG_DEBUG(m_log, "client on fd %d has disappeared - [%d] %s", fd, ec.value(), ec.message());
+        COCAINE_LOG_ERROR(m_log, "client on fd %d has disappeared - [%d] %s", fd, ec.value(), ec.message());
     } else {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
     }

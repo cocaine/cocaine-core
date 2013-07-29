@@ -67,6 +67,11 @@ struct writable_stream {
         m_handle_error = nullptr;
     }
 
+    size_t
+    footprint() const {
+        return m_ring.size();
+    }
+
     struct deferred_wakeup_action {
         void
         operator()() const { }
@@ -138,10 +143,10 @@ private:
 
         if(sent > 0) {
             m_tx_offset += sent;
-        }
 
-        if(m_tx_offset == m_wr_offset) {
-            m_socket_watcher.stop();
+            if(m_tx_offset == m_wr_offset) {
+                m_socket_watcher.stop();
+            }
         }
     }
 

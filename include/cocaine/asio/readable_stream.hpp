@@ -38,6 +38,7 @@ struct readable_stream {
         m_socket(std::make_shared<socket_type>(endpoint)),
         m_socket_watcher(reactor.native()),
         m_idle_watcher(reactor.native()),
+        m_reactor(reactor),
         m_rd_offset(0),
         m_rx_offset(0)
     {
@@ -50,6 +51,7 @@ struct readable_stream {
         m_socket(socket),
         m_socket_watcher(reactor.native()),
         m_idle_watcher(reactor.native()),
+        m_reactor(reactor),
         m_rd_offset(0),
         m_rx_offset(0)
     {
@@ -85,6 +87,11 @@ struct readable_stream {
         m_handle_error = nullptr;
     }
 
+    size_t
+    footprint() const {
+        return m_ring.size();
+    }
+
 private:
     void
     on_event(ev::io& /* io */, int /* revents */) {
@@ -115,7 +122,7 @@ private:
         );
 
         if(ec) {
-            m_handle_error(ec);
+            m_reactor.post(std::bind(m_handle_error, ec));
             return;
         }
 
@@ -124,7 +131,7 @@ private:
                 m_socket_watcher.stop();
 
                 // NOTE: This means that the remote peer has closed the connection.
-                m_handle_error(ec);
+                m_reactor.post(std::bind(m_handle_error, ec));
             }
 
             return;
@@ -135,7 +142,7 @@ private:
         try {
             m_rx_offset += m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
         } catch(const std::system_error& e) {
-            m_handle_error(e.code());
+            m_reactor.post(std::bind(m_handle_error, e.code()));
             return;
         }
 
@@ -151,7 +158,7 @@ private:
         try {
             parsed = m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
         } catch(const std::system_error& e) {
-            m_handle_error(e.code());
+            m_reactor.post(std::bind(m_handle_error, e.code()));
             return;
         }
 
@@ -165,9 +172,12 @@ private:
 private:
     const std::shared_ptr<socket_type> m_socket;
 
-    // Socket poll object.
+    // Socket poll objects.
     ev::io m_socket_watcher;
     ev::idle m_idle_watcher;
+
+    // Needed for asynchronous watcher control.
+    reactor_t& m_reactor;
 
     // Ring buffer.
     std::vector<char> m_ring;
