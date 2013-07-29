@@ -51,6 +51,14 @@ struct channel {
         wr->attach(std::make_shared<writable_stream<Socket>>(reactor, socket));
     }
 
+public:
+    size_t
+    footprint() const {
+        return rd->stream()->footprint() +
+               wr->stream()->footprint();
+    }
+
+public:
     std::unique_ptr<decoder<readable_stream<Socket>>> rd;
     std::unique_ptr<encoder<writable_stream<Socket>>> wr;
 };

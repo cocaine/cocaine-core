@@ -80,8 +80,10 @@ struct reactor_t {
     run_with_timeout(float timeout) {
         update();
 
-        throw_action_t action = { *this };
         ev::timer timeout_guard(*m_loop);
+
+        // Stupid library accepts functor pointers only.
+        throw_action action = { *this };
 
         timeout_guard.set(&action);
         timeout_guard.start(timeout);
@@ -100,7 +102,6 @@ struct reactor_t {
     post(const job_type& job) {
         std::unique_lock<std::mutex> lock(m_job_queue_mutex);
 
-        // Push the new job into the queue.
         m_job_queue.push_back(job);
 
         if(m_job_queue.size() == 1) {
@@ -150,13 +151,13 @@ private:
     }
 
 private:
-    struct throw_action_t {
+    struct throw_action {
         void
         operator()(ev::timer&, int) {
             self.stop();
 
             // This will destroy the timer in the run() stack frame as well.
-            throw cocaine::error_t("timed out");
+            throw cocaine::error_t("the operation has timed out");
         }
 
         reactor_t& self;
