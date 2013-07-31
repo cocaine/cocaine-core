@@ -1,3 +1,11 @@
+cocaine-core (0.10.6.2) unstable; urgency=low
+
+  * Bugfix: close the client channels on actor's destruction, even though
+    their wrapping objects might still be accessible from dispatches in other
+    threads.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 31 Jul 2013 20:17:55 +0400
+
 cocaine-core (0.10.6.1) unstable; urgency=low
 
   * Bugfix: process outstanding stream errors inside the event loop queue
