@@ -47,9 +47,21 @@ using namespace cocaine::io;
 using namespace std::placeholders;
 
 struct actor_t::lockable_type {
+    friend class actor_t;
+
     lockable_type(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_):
         ptr(std::move(ptr_))
     { }
+
+private:
+    void
+    destroy() {
+        std::lock_guard<std::mutex> guard(mutex);
+
+        // NOTE: This invalidates the internal channel pointer, but the wrapping lockable state
+        // might still be accessible via upstreams in other threads.
+        ptr.reset();
+    }
 
     std::unique_ptr<io::channel<io::socket<io::tcp>>> ptr;
     std::mutex mutex;
@@ -171,6 +183,14 @@ actor_t::terminate() {
     m_thread.reset();
 
     m_connectors.clear();
+
+    // Allow the dispatch to send its last messages to the upstreams.
+    m_dispatch.reset();
+
+    for(auto it = m_channels.cbegin(); it != m_channels.cend(); ++it) {
+        // Synchronously close the channels.
+        it->second->destroy();
+    }
 }
 
 auto
@@ -237,14 +257,7 @@ actor_t::on_failure(int fd, const std::error_code& ec) {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
     }
 
-    std::shared_ptr<lockable_type>& channel = it->second;
-
-    {
-        std::lock_guard<std::mutex> guard(channel->mutex);
-
-        // Interlocked channel destruction to avoid interthread access.
-        channel->ptr.reset();
-    }
+    it->second->destroy();
 
     m_channels.erase(it);
 }

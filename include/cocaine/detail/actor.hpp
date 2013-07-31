@@ -80,7 +80,7 @@ class actor_t {
             std::shared_ptr<lockable_type>
         > m_channels;
 
-        const std::unique_ptr<dispatch_t> m_dispatch;
+        std::unique_ptr<dispatch_t> m_dispatch;
 
         // Actor I/O connectors
 
