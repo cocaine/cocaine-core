@@ -129,7 +129,13 @@ actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::un
 { }
 
 actor_t::~actor_t() {
-    // Empty.
+    // Allow the dispatch to send its last messages to the upstreams.
+    m_dispatch.reset();
+
+    for(auto it = m_channels.cbegin(); it != m_channels.cend(); ++it) {
+        // Synchronously close the channels.
+        it->second->destroy();
+    }
 }
 
 namespace {
@@ -183,14 +189,6 @@ actor_t::terminate() {
     m_thread.reset();
 
     m_connectors.clear();
-
-    // Allow the dispatch to send its last messages to the upstreams.
-    m_dispatch.reset();
-
-    for(auto it = m_channels.cbegin(); it != m_channels.cend(); ++it) {
-        // Synchronously close the channels.
-        it->second->destroy();
-    }
 }
 
 auto
