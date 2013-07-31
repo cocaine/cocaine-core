@@ -435,7 +435,7 @@ locator_t::on_announce_event(ev::io&, int) {
 
         std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
 
-        for(auto it = endpoints.begin(); !channel && it != endpoints.end(); ++it) {
+        for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
             try {
                 channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
                     m_reactor,
@@ -443,16 +443,13 @@ locator_t::on_announce_event(ev::io&, int) {
                 );
             } catch(const std::system_error& e) {
                 COCAINE_LOG_WARNING(
-                    m_log,
-                    "unable to connect to node '%s' via endpoint %s - [%d] %s",
-                    uuid,
-                    *it,
-                    e.code().value(),
-                    e.code().message()
+                    m_log, "skipping node '%s' endpoint '%s' - [%d] %s", uuid, *it, e.code().value(), e.code().message()
                 );
 
                 continue;
             }
+
+            break;
         }
 
         if(!channel) {
