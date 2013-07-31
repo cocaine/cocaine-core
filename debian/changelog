@@ -1,8 +1,16 @@
+cocaine-core (0.10.6.1) unstable; urgency=low
+
+  * Bugfix: process outstanding stream errors inside the event loop queue
+    reactor instead of dispatching them right away, so that stream memory can
+    manipulated from the handler.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 29 Jul 2013 18:07:50 +0400
+
 cocaine-core (0.10.6.0) unstable; urgency=low
 
   * IPv6 support. Now it is possible to specify an endpoint to bind services
     and the service locator to. This endpoint can be an IPv6 endpoint as well.
-  * Bugfix: properly destroy shared channels in Actors.
+  * Bugfix: properly destroy shared channels in actors.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 25 Jul 2013 18:49:30 +0400
 
