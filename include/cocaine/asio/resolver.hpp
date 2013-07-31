@@ -37,6 +37,26 @@ struct resolver {
     static inline
     std::vector<endpoint_type>
     query(const std::string& name, uint16_t port) {
+        return query(typename resolver_type::query(
+            name,
+            boost::lexical_cast<std::string>(port)
+        ));
+    }
+
+    static inline
+    std::vector<endpoint_type>
+    query(typename endpoint_type::protocol_type protocol, const std::string& name, uint16_t port) {
+        return query(typename resolver_type::query(
+            protocol,
+            name,
+            boost::lexical_cast<std::string>(port)
+        ));
+    }
+
+private:
+    static inline
+    std::vector<endpoint_type>
+    query(typename resolver_type::query query) {
         boost::asio::io_service service;
         resolver_type resolver(service);
 
@@ -44,13 +64,10 @@ struct resolver {
              end = it;
 
         try {
-            it = resolver.resolve(typename resolver_type::query(
-                name,
-                boost::lexical_cast<std::string>(port)
-            ));
+            it = resolver.resolve(query);
         } catch(const boost::system::system_error& e) {
             throw cocaine::error_t(
-                "unable to resolve '%s' - [%d] %s", name, e.code().value(), e.code().message()
+                "unable to resolve '%s' - [%d] %s", query.host_name(), e.code().value(), e.code().message()
             );
         }
 
