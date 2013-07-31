@@ -80,13 +80,7 @@ adhoc_t::consume(const std::string& uuid, synchronize_result_type dump) {
     // Clear the old remote node services.
     prune(uuid);
 
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "discovered %llu %s on node '%s'",
-        dump.size(),
-        dump.size() == 1 ? "service" : "services",
-        uuid
-    );
+    COCAINE_LOG_DEBUG(m_log, "updating node '%s' services", uuid);
 
     for(auto it = dump.cbegin(); it != dump.cend(); ++it) {
         remote_service_t service = {
@@ -103,7 +97,7 @@ adhoc_t::prune(const std::string& uuid) {
     auto it  = m_remote_services.begin(),
          end = m_remote_services.end();
 
-    COCAINE_LOG_DEBUG(m_log, "pruning node '%s'", uuid);
+    COCAINE_LOG_DEBUG(m_log, "pruning node '%s' services", uuid);
 
     while(it != end) {
         if(it->second.uuid == uuid) {
