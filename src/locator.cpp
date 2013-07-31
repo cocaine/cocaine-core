@@ -437,13 +437,20 @@ locator_t::on_announce_event(ev::io&, int) {
 
         for(auto it = endpoints.begin(); !channel && it != endpoints.end(); ++it) {
             try {
-                COCAINE_LOG_DEBUG(m_log, "trying endpoint %s for node '%s'", *it, uuid);
-
                 channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
                     m_reactor,
                     std::make_shared<io::socket<io::tcp>>(*it)
                 );
             } catch(const std::system_error& e) {
+                COCAINE_LOG_WARNING(
+                    m_log,
+                    "unable to connect to node '%s' via endpoint %s - [%d] %s",
+                    uuid,
+                    *it,
+                    e.code().value(),
+                    e.code().message()
+                );
+
                 continue;
             }
         }
