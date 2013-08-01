@@ -10,7 +10,7 @@ cocaine-core (0.10.6.1) unstable; urgency=low
 
   * Bugfix: process outstanding stream errors inside the event loop queue
     reactor instead of dispatching them right away, so that stream memory can
-    manipulated from the handler.
+    be manipulated from the handler.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 29 Jul 2013 18:07:50 +0400
 
