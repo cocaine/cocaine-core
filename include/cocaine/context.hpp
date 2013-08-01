@@ -104,6 +104,10 @@ public:
     static
     component_map_t
     parse(const Json::Value& config);
+
+    static
+    int
+    version();
 };
 
 // Context
