@@ -399,7 +399,7 @@ slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "slave %s received session %s chunk, size: %llu bytes",
+        "slave %s received session %d chunk, size: %llu bytes",
         m_id,
         session_id,
         chunk.size()
@@ -412,8 +412,10 @@ slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
 
         it = m_sessions.find(session_id);
 
-        // TEST: Ensure that this slave is responsible for the session.
-        BOOST_ASSERT(it != m_sessions.end());
+        if(it == m_sessions.end()) {
+            COCAINE_LOG_WARNING(m_log, "slave %s received orphan session %d chunk", m_id, session_id);
+            return;
+        }
     }
 
     it->second->upstream->write(chunk.data(), chunk.size());
@@ -425,7 +427,7 @@ slave_t::on_error(uint64_t session_id, int code, const std::string& reason) {
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "slave %s received session %s error, code: %d, message: %s",
+        "slave %s received session %d error, code: %d, reason: %s",
         m_id,
         session_id,
         code,
@@ -439,8 +441,10 @@ slave_t::on_error(uint64_t session_id, int code, const std::string& reason) {
 
         it = m_sessions.find(session_id);
 
-        // TEST: Ensure that this slave is responsible for the session.
-        BOOST_ASSERT(it != m_sessions.end());
+        if(it == m_sessions.end()) {
+            COCAINE_LOG_WARNING(m_log, "slave %s received orphan session %d error", m_id, session_id);
+            return;
+        }
     }
 
     it->second->upstream->error(code, reason);
@@ -452,7 +456,7 @@ slave_t::on_choke(uint64_t session_id) {
 
     COCAINE_LOG_DEBUG(
         m_log,
-        "slave %s has completed session %s",
+        "slave %s has completed session %d",
         m_id,
         session_id
     );
@@ -464,8 +468,10 @@ slave_t::on_choke(uint64_t session_id) {
 
         session_map_t::iterator it = m_sessions.find(session_id);
 
-        // TEST: Ensure that this slave is responsible for the session.
-        BOOST_ASSERT(it != m_sessions.end());
+        if(it == m_sessions.end()) {
+            COCAINE_LOG_WARNING(m_log, "slave %s received orphan session %d choke", m_id, session_id);
+            return;
+        }
 
         session = std::move(it->second);
 
