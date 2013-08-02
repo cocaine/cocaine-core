@@ -1,3 +1,10 @@
+cocaine-core (0.10.6.3) unstable; urgency=low
+
+  * Core version can be obtained in runtime now via config_t::version().
+  * Bugfix: do not crash on out-of-protocol messages from slaves.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 02 Aug 2013 17:30:30 +0400
+
 cocaine-core (0.10.6.2) unstable; urgency=low
 
   * Bugfix: close the client channels on actor's destruction, even though
