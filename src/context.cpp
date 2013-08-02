@@ -227,6 +227,11 @@ config_t::parse(const Json::Value& config) {
     return components;
 }
 
+int
+config_t::version() {
+    return COCAINE_VERSION;
+}
+
 // Context
 
 context_t::context_t(config_t config_, const std::string& logger):
