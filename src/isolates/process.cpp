@@ -86,7 +86,12 @@ process_t::~process_t() {
     // Empty.
 }
 
-extern char** environ;
+#ifdef __APPLE__
+    #include <crt_externs.h>
+    #define environ (*_NSGetEnviron())
+#else
+    extern char** environ;
+#endif
 
 std::unique_ptr<api::handle_t>
 process_t::spawn(const std::string& path, const api::string_map_t& args, const api::string_map_t& environment, int pipe) {
