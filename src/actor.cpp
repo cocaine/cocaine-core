@@ -247,7 +247,10 @@ void
 actor_t::on_failure(int fd, const std::error_code& ec) {
     auto it = m_channels.find(fd);
 
-    BOOST_ASSERT(it != m_channels.end());
+    if(it == m_channels.end()) {
+        COCAINE_LOG_WARNING(m_log, "ignoring errors from a disconnected client on fd %d", fd);
+        return;
+    }
 
     if(ec) {
         COCAINE_LOG_ERROR(m_log, "client on fd %d has disappeared - [%d] %s", fd, ec.value(), ec.message());
@@ -255,7 +258,10 @@ actor_t::on_failure(int fd, const std::error_code& ec) {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
     }
 
+    // This destroys the channel but not the wrapping lockable state.
     it->second->destroy();
 
+    // This doesn't guarantee that the wrapping lockable state will be deleted, as it can be shared
+    // with other threads via upstreams, but it's fine since the channel is destroyed.
     m_channels.erase(it);
 }

@@ -1,3 +1,10 @@
+cocaine-core (0.10.6.4) unstable; urgency=low
+
+  * Bugfix: do not try to destroy already destroyed channels, for example if
+    both read() and write() queued a socket failure.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Sat, 03 Aug 2013 19:19:57 +0400
+
 cocaine-core (0.10.6.3) unstable; urgency=low
 
   * Core version can be obtained in runtime now via config_t::version().
