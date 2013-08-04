@@ -58,10 +58,9 @@ class isolate_t {
         spawn(const std::string& path, const string_map_t& args, const string_map_t& environment, int pipe) = 0;
 
     protected:
-        isolate_t(context_t&,
-                  const std::string& /* name */,
-                  const Json::Value& /* args */)
-        { }
+        isolate_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
+            // Empty.
+        }
 };
 
 template<>

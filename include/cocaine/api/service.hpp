@@ -36,10 +36,7 @@ class service_t:
         typedef service_t category_type;
 
     protected:
-        service_t(context_t& context,
-                  io::reactor_t&,
-                  const std::string& name,
-                  const Json::Value& /* args */):
+        service_t(context_t& context, io::reactor_t&, const std::string& name, const Json::Value& /* args */):
             dispatch_t(context, name)
         { }
 };

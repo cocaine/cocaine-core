@@ -129,7 +129,6 @@ actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::un
 { }
 
 actor_t::~actor_t() {
-    // Allow the dispatch to send its last messages to the upstreams.
     m_dispatch.reset();
 
     for(auto it = m_channels.cbegin(); it != m_channels.cend(); ++it) {
@@ -248,11 +247,8 @@ actor_t::on_failure(int fd, const std::error_code& ec) {
     auto it = m_channels.find(fd);
 
     if(it == m_channels.end()) {
-        COCAINE_LOG_WARNING(m_log, "ignoring errors from a disconnected client on fd %d", fd);
         return;
-    }
-
-    if(ec) {
+    } else if(ec) {
         COCAINE_LOG_ERROR(m_log, "client on fd %d has disappeared - [%d] %s", fd, ec.value(), ec.message());
     } else {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);

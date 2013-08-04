@@ -80,17 +80,15 @@ struct reactor_t {
     run_with_timeout(float timeout) {
         update();
 
-        ev::timer timeout_guard(*m_loop);
-
         // Stupid library accepts functor pointers only.
         throw_action action = { *this };
+
+        ev::timer timeout_guard(*m_loop);
 
         timeout_guard.set(&action);
         timeout_guard.start(timeout);
 
         m_loop->loop();
-
-        timeout_guard.stop();
     }
 
     void

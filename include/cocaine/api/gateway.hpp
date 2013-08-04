@@ -55,10 +55,9 @@ class gateway_t {
         prune(const std::string& uuid) = 0;
 
     protected:
-        gateway_t(context_t&,
-                  const std::string& /* name */,
-                  const Json::Value& /* args */)
-        { }
+        gateway_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
+            // Empty.
+        }
 };
 
 template<>
