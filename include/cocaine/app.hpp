@@ -25,6 +25,7 @@
 
 #include "json/json.h"
 
+#include <mutex>
 #include <thread>
 
 namespace cocaine {
@@ -70,6 +71,8 @@ class app_t {
 
         std::unique_ptr<io::reactor_t> m_reactor;
         std::unique_ptr<io::channel<io::socket<io::local>>> m_engine_control;
+
+        mutable std::mutex m_mutex;
 
         // Engine
 

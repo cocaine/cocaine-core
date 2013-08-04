@@ -355,6 +355,8 @@ void
 app_t::stop() {
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
+    std::lock_guard<std::mutex> guard(m_mutex);
+
     if(!m_manifest->local) {
         // Stop the app service.
         m_context.detach(m_manifest->name);
@@ -385,6 +387,8 @@ app_t::stop() {
 Json::Value
 app_t::info() const {
     Json::Value info(Json::objectValue);
+
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     if(!m_thread) {
         info["error"] = "the engine is not active";
