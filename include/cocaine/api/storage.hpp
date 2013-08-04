@@ -36,8 +36,7 @@ struct storage_error_t:
     public error_t
 {
     template<typename... Args>
-    storage_error_t(const std::string& format,
-                    const Args&... args):
+    storage_error_t(const std::string& format, const Args&... args):
         error_t(format, args...)
     { }
 };
@@ -56,45 +55,34 @@ class storage_t {
 
         virtual
         std::string
-        read(const std::string& collection,
-             const std::string& key) = 0;
+        read(const std::string& collection, const std::string& key) = 0;
 
         virtual
         void
-        write(const std::string& collection,
-              const std::string& key,
-              const std::string& blob,
-              const std::vector<std::string>& tags) = 0;
+        write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags) = 0;
 
         virtual
         void
-        remove(const std::string& collection,
-               const std::string& key) = 0;
+        remove(const std::string& collection, const std::string& key) = 0;
 
         virtual
         std::vector<std::string>
-        find(const std::string& collection,
-             const std::vector<std::string>& tags) = 0;
+        find(const std::string& collection, const std::vector<std::string>& tags) = 0;
 
         // Helper methods
 
         template<class T>
         T
-        get(const std::string& collection,
-            const std::string& key);
+        get(const std::string& collection, const std::string& key);
 
         template<class T>
         void
-        put(const std::string& collection,
-            const std::string& key,
-            const T& object,
-            const std::vector<std::string>& tags);
+        put(const std::string& collection, const std::string& key, const T& object, const std::vector<std::string>& tags);
 
     protected:
-        storage_t(context_t&,
-                  const std::string& /* name */,
-                  const Json::Value& /* args */)
-        { }
+        storage_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
+            // Empty.
+        }
 };
 
 template<class T>

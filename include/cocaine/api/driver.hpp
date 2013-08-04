@@ -43,12 +43,9 @@ class driver_t {
         info() const = 0;
 
     protected:
-        driver_t(context_t&,
-                 io::reactor_t&,
-                 app_t&,
-                 const std::string& /* name */,
-                 const Json::Value& /* args */)
-        { }
+        driver_t(context_t&, io::reactor_t&, app_t&, const std::string& /* name */, const Json::Value& /* args */) {
+            // Empty.
+        }
 };
 
 template<>
