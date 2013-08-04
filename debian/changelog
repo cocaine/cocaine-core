@@ -1,3 +1,10 @@
+cocaine-core (0.10.6.5) unstable; urgency=low
+
+  * Bugfix: protect the app control interface from races with a simple
+    ABI-breaking mutex.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Sun, 04 Aug 2013 20:15:18 +0400
+
 cocaine-core (0.10.6.4) unstable; urgency=low
 
   * Bugfix: do not try to destroy already destroyed channels, for example if
