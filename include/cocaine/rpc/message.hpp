@@ -31,17 +31,50 @@ namespace cocaine { namespace io {
 
 enum rpc_errc {
     parse_error,
-    invalid_format
+    frame_format_error,
+    data_type_mismatch
 };
 
+class rpc_category_t:
+    public std::error_category
+{
+    virtual
+    const char*
+    name() const throw() {
+        return "rpc";
+    }
+
+    virtual
+    std::string
+    message(int code) const {
+        switch(code) {
+        case rpc_errc::parse_error:
+            return "unable to parse the incoming data";
+
+        case rpc_errc::frame_format_error:
+            return "message has an unexpected framing";
+
+        case rpc_errc::data_type_mismatch:
+            return "message has an unexpected payload";
+
+        default:
+            return "unknown error";
+        }
+    }
+};
+
+inline
 const std::error_category&
-rpc_category();
+rpc_category() {
+    static rpc_category_t category_instance;
+    return category_instance;
+}
 
+inline
 std::error_code
-make_error_code(rpc_errc e);
-
-std::error_condition
-make_error_condition(rpc_errc e);
+make_error_code(rpc_errc e) {
+    return std::error_code(static_cast<int>(e), rpc_category());
+}
 
 struct message_t {
     COCAINE_DECLARE_NONCOPYABLE(message_t)
@@ -50,14 +83,14 @@ struct message_t {
         m_object(object)
     {
         if(object.type != msgpack::type::ARRAY || object.via.array.size != 3) {
-            throw std::system_error(make_error_code(rpc_errc::invalid_format));
+            throw std::system_error(make_error_code(rpc_errc::frame_format_error));
         }
 
         if(object.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER ||
            object.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER ||
            object.via.array.ptr[2].type != msgpack::type::ARRAY)
         {
-            throw std::system_error(make_error_code(rpc_errc::invalid_format));
+            throw std::system_error(make_error_code(rpc_errc::frame_format_error));
         }
     }
 
@@ -70,7 +103,7 @@ struct message_t {
                 std::forward<Args>(targets)...
             );
         } catch(const msgpack::type_error& e) {
-            throw std::system_error(make_error_code(rpc_errc::invalid_format));
+            throw std::system_error(make_error_code(rpc_errc::data_type_mismatch));
         }
     }
 

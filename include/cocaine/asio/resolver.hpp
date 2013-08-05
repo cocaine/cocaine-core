@@ -23,16 +23,40 @@
 
 #include "cocaine/common.hpp"
 
+#include <system_error>
+
 #include <boost/asio/io_service.hpp>
 #include <boost/lexical_cast.hpp>
 
 namespace cocaine { namespace io {
 
+class gai_category_t:
+    public std::error_category
+{
+    virtual
+    const char*
+    name() const throw() {
+        return "getaddrinfo";
+    }
+
+    virtual
+    std::string
+    message(int code) const {
+        return gai_strerror(code);
+    }
+};
+
+inline
+const std::error_category&
+gai_category() {
+    static gai_category_t category_instance;
+    return category_instance;
+}
+
 template<class Medium>
 struct resolver {
-    typedef Medium medium_type;
-    typedef typename medium_type::endpoint endpoint_type;
-    typedef typename medium_type::resolver resolver_type;
+    typedef typename Medium::endpoint endpoint_type;
+    typedef typename Medium::resolver resolver_type;
 
     static inline
     std::vector<endpoint_type>
@@ -66,9 +90,7 @@ private:
         try {
             it = resolver.resolve(query);
         } catch(const boost::system::system_error& e) {
-            throw cocaine::error_t(
-                "unable to resolve '%s' - [%d] %s", query.host_name(), e.code().value(), e.code().message()
-            );
+            throw std::system_error(e.code().value(), gai_category());
         }
 
         return std::vector<endpoint_type>(it, end);

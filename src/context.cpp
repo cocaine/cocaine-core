@@ -24,6 +24,7 @@
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/asio/reactor.hpp"
+#include "cocaine/asio/resolver.hpp"
 
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/essentials.hpp"
@@ -33,7 +34,6 @@
 #include "cocaine/memory.hpp"
 
 #include <cstring>
-#include <system_error>
 
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -80,29 +80,6 @@ validate_path(const fs::path& path) {
     } else if(!fs::is_directory(status)) {
         throw cocaine::error_t("the %s path is not a directory", path);
     }
-}
-
-class gai_category_t:
-    public std::error_category
-{
-    virtual
-    const char*
-    name() const throw() {
-        return "getaddrinfo";
-    }
-
-    virtual
-    std::string
-    message(int code) const {
-        return gai_strerror(code);
-    }
-};
-
-gai_category_t category_instance;
-
-const std::error_category&
-gai_category() {
-    return category_instance;
 }
 
 }
@@ -165,7 +142,7 @@ config_t::config_t(const std::string& config_path) {
     const int rv = getaddrinfo(hostname, nullptr, &hints, &result);
 
     if(rv != 0) {
-        throw std::system_error(rv, gai_category(), "unable to determine the hostname");
+        throw std::system_error(rv, io::gai_category(), "unable to determine the hostname");
     }
 
     network.hostname = result->ai_canonname;

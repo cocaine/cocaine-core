@@ -428,8 +428,10 @@ locator_t::on_announce_event(ev::io&, int) {
 
         try {
             endpoints = io::resolver<io::tcp>::query(hostname, port);
-        } catch(const cocaine::error_t& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to connect to node '%s' - %s", uuid, e.what());
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to resolve node '%s' endpoints - [%d] %s", uuid, e.code().value(),
+                e.code().message());
+
             return;
         }
 
@@ -442,9 +444,8 @@ locator_t::on_announce_event(ev::io&, int) {
                     std::make_shared<io::socket<io::tcp>>(*it)
                 );
             } catch(const std::system_error& e) {
-                COCAINE_LOG_WARNING(
-                    m_log, "skipping node '%s' endpoint '%s' - [%d] %s", uuid, *it, e.code().value(), e.code().message()
-                );
+                COCAINE_LOG_WARNING(m_log, "unable to connect to node '%s' via endpoint '%s' - [%d] %s", uuid, *it,
+                    e.code().value(), e.code().message());
 
                 continue;
             }
@@ -503,7 +504,7 @@ locator_t::on_announce_timer(ev::timer&, int) {
         if(ec) {
             COCAINE_LOG_ERROR(m_log, "unable to announce the node - [%d] %s", ec.value(), ec.message());
         } else {
-            COCAINE_LOG_ERROR(m_log, "unable to announce the node - unknown error");
+            COCAINE_LOG_ERROR(m_log, "unable to announce the node");
         }
     }
 }
@@ -572,7 +573,11 @@ locator_t::on_failure(const key_type& key, const std::error_code& ec) {
 
     std::tie(uuid, std::ignore, std::ignore) = key;
 
-    COCAINE_LOG_WARNING(m_log, "node '%s' has unexpectedly disconnected - [%d] %s", uuid, ec.value(), ec.message());
+    if(ec) {
+        COCAINE_LOG_WARNING(m_log, "node '%s' has unexpectedly disconnected - [%d] %s", uuid, ec.value(), ec.message());
+    } else {
+        COCAINE_LOG_WARNING(m_log, "node '%s' has unexpectedly disconnected", uuid);
+    }
 
     m_gateway->prune(uuid);
     m_remotes.erase(key);
