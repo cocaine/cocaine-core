@@ -99,7 +99,7 @@ struct acceptor {
     std::shared_ptr<socket_type>
     accept(std::error_code& ec) {
         endpoint_type endpoint;
-        socklen_t size = endpoint.size();
+        socklen_t size = endpoint.capacity();
 
         int fd = ::accept(m_fd, endpoint.data(), &size);
 
@@ -128,7 +128,7 @@ public:
     endpoint_type
     local_endpoint() const {
         endpoint_type endpoint;
-        socklen_t size = endpoint.size();
+        socklen_t size = endpoint.capacity();
 
         if(::getsockname(m_fd, endpoint.data(), &size) != 0) {
             throw std::system_error(errno, std::system_category(), "unable to detect the address");
