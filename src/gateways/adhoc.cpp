@@ -45,7 +45,8 @@ adhoc_t::~adhoc_t() {
 
 resolve_result_type
 adhoc_t::resolve(const std::string& name) const {
-    remote_service_map_t::const_iterator it, end;
+    auto it  = m_remote_services.cend(),
+         end = it;
 
     std::tie(it, end) = m_remote_services.equal_range(name);
 
@@ -76,9 +77,8 @@ adhoc_t::resolve(const std::string& name) const {
 }
 
 void
-adhoc_t::consume(const std::string& uuid, synchronize_result_type dump) {
-    // Clear the old remote node services.
-    prune(uuid);
+adhoc_t::consume(const std::string& uuid, const synchronize_result_type& dump) {
+    cleanup(uuid);
 
     COCAINE_LOG_DEBUG(m_log, "updating node '%s' services", uuid);
 
@@ -93,11 +93,11 @@ adhoc_t::consume(const std::string& uuid, synchronize_result_type dump) {
 }
 
 void
-adhoc_t::prune(const std::string& uuid) {
+adhoc_t::cleanup(const std::string& uuid) {
     auto it  = m_remote_services.begin(),
          end = m_remote_services.end();
 
-    COCAINE_LOG_DEBUG(m_log, "pruning node '%s' services", uuid);
+    COCAINE_LOG_DEBUG(m_log, "cleaning up node '%s' services", uuid);
 
     while(it != end) {
         if(it->second.uuid == uuid) {

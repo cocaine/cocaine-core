@@ -35,7 +35,7 @@ struct channel {
         rd(new decoder<readable_stream<Socket>>()),
         wr(new encoder<writable_stream<Socket>>())
     {
-        // pass
+        // Empty.
     }
 
     channel(reactor_t& reactor, const std::shared_ptr<Socket>& socket):
@@ -49,18 +49,28 @@ struct channel {
     attach(reactor_t& reactor, const std::shared_ptr<Socket>& socket) {
         rd->attach(std::make_shared<readable_stream<Socket>>(reactor, socket));
         wr->attach(std::make_shared<writable_stream<Socket>>(reactor, socket));
+
+        // TODO: Weak pointer, maybe?
+        m_socket = socket;
     }
 
 public:
+    auto
+    remote_endpoint() const -> typename Socket::endpoint_type {
+        return m_socket->remote_endpoint();
+    }
+
     size_t
     footprint() const {
         return rd->stream()->footprint() +
                wr->stream()->footprint();
     }
 
-public:
-    std::unique_ptr<decoder<readable_stream<Socket>>> rd;
-    std::unique_ptr<encoder<writable_stream<Socket>>> wr;
+    const std::unique_ptr<decoder<readable_stream<Socket>>> rd;
+    const std::unique_ptr<encoder<writable_stream<Socket>>> wr;
+
+private:
+    std::shared_ptr<Socket> m_socket;
 };
 
 }}

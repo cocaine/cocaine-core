@@ -48,11 +48,11 @@ class gateway_t {
 
         virtual
         void
-        consume(const std::string& uuid, synchronize_result_type dump) = 0;
+        consume(const std::string& uuid, const synchronize_result_type& dump) = 0;
 
         virtual
         void
-        prune(const std::string& uuid) = 0;
+        cleanup(const std::string& uuid) = 0;
 
     protected:
         gateway_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
