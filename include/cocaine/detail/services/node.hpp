@@ -44,7 +44,7 @@ class node_t:
         on_pause_app(const std::vector<std::string>& applist);
 
         Json::Value
-        on_info() const;
+        on_list() const;
 
     private:
         context_t& m_context;

@@ -349,7 +349,7 @@ namespace node {
         > tuple_type;
     };
 
-    struct info {
+    struct list {
         typedef node_tag tag;
     };
 }
@@ -363,7 +363,7 @@ struct protocol<node_tag> {
     typedef boost::mpl::list<
         node::start_app,
         node::pause_app,
-        node::info
+        node::list
     > type;
 };
 
