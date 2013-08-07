@@ -23,8 +23,6 @@
 
 #include "cocaine/api/service.hpp"
 
-#include <chrono>
-
 namespace cocaine { namespace service {
 
 class node_t:
@@ -57,13 +55,6 @@ class node_t:
 
         // Apps.
         app_map_t m_apps;
-
-        // Uptime.
-#if defined(__clang__) || defined(HAVE_GCC47)
-        const std::chrono::steady_clock::time_point m_birthstamp;
-#else
-        const std::chrono::monotonic_clock::time_point m_birthstamp;
-#endif
 };
 
 }} // namespace cocaine::service

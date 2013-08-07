@@ -44,12 +44,7 @@ typedef std::map<std::string, std::string> runlist_t;
 node_t::node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
     category_type(context, reactor, name, args),
     m_context(context),
-    m_log(new logging::log_t(context, name)),
-#if defined(__clang__) || defined(HAVE_GCC47)
-    m_birthstamp(std::chrono::steady_clock::now())
-#else
-    m_birthstamp(std::chrono::monotonic_clock::now())
-#endif
+    m_log(new logging::log_t(context, name))
 {
     on<io::node::start_app>("start_app", std::bind(&node_t::on_start_app, this, _1));
     on<io::node::pause_app>("pause_app", std::bind(&node_t::on_pause_app, this, _1));
@@ -94,20 +89,23 @@ node_t::node_t(context_t& context, io::reactor_t& reactor, const std::string& na
 }
 
 node_t::~node_t() {
-    if(!m_apps.empty()) {
-        COCAINE_LOG_INFO(m_log, "stopping the apps");
-
-        for(auto it = m_apps.begin(); it != m_apps.end(); ++it) {
-            it->second->stop();
-        }
-
-        m_apps.clear();
+    if(m_apps.empty()) {
+        return;
     }
+
+    COCAINE_LOG_INFO(m_log, "stopping the apps");
+
+    for(auto it = m_apps.begin(); it != m_apps.end(); ++it) {
+        it->second->stop();
+    }
+
+    m_apps.clear();
 }
 
 Json::Value
 node_t::on_start_app(const runlist_t& runlist) {
     Json::Value result(Json::objectValue);
+
     for(auto it = runlist.begin(); it != runlist.end(); ++it) {
         if(m_apps.find(it->first) != m_apps.end()) {
             result[it->first] = "the app is already running";
@@ -183,8 +181,7 @@ node_t::on_pause_app(const std::vector<std::string>& applist) {
 }
 
 Json::Value
-node_t::on_list() const
-{
+node_t::on_list() const {
     Json::Value result(Json::arrayValue);
 
     for(auto it = m_apps.begin(); it != m_apps.end(); ++it) {
