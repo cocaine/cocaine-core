@@ -53,7 +53,7 @@ node_t::node_t(context_t& context, io::reactor_t& reactor, const std::string& na
 {
     on<io::node::start_app>("start_app", std::bind(&node_t::on_start_app, this, _1));
     on<io::node::pause_app>("pause_app", std::bind(&node_t::on_pause_app, this, _1));
-    on<io::node::info>("info", std::bind(&node_t::on_info, this));
+    on<io::node::list>("list", std::bind(&node_t::on_list, this));
 
     // Configuration
 
@@ -183,26 +183,13 @@ node_t::on_pause_app(const std::vector<std::string>& applist) {
 }
 
 Json::Value
-node_t::on_info() const {
-    Json::Value result(Json::objectValue);
+node_t::on_list() const
+{
+    Json::Value result(Json::arrayValue);
 
     for(auto it = m_apps.begin(); it != m_apps.end(); ++it) {
-        result["apps"][it->first] = it->second->info();
+        result.append(it->first);
     }
-
-    result["identity"] = m_context.config.network.hostname;
-
-    using namespace std::chrono;
-
-    const auto uptime = duration_cast<seconds>(
-#if defined(__clang__) || defined(HAVE_GCC47)
-        steady_clock::now() - m_birthstamp
-#else
-        monotonic_clock::now() - m_birthstamp
-#endif
-    );
-
-    result["uptime"] = static_cast<Json::LargestUInt>(uptime.count());
 
     return result;
 }
