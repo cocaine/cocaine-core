@@ -64,13 +64,7 @@ files_t::read(const std::string& collection, const std::string& key) {
     fs::ifstream stream(file_path);
 
     if(!stream) {
-        try {
-            stream.exceptions(fs::ifstream::failbit);
-        } catch(const fs::ifstream::failure& e) {
-            throw storage_error_t("unable to access object '%s' in '%s' - %s", key, collection, e.what());
-        }
-
-        throw storage_error_t("unable to access object '%s' in '%s' - unknown error", key, collection);
+        throw storage_error_t("unable to access object '%s' in '%s'", key, collection);
     }
 
     return std::string(
@@ -114,13 +108,7 @@ files_t::write(const std::string& collection, const std::string& key, const std:
     );
 
     if(!stream) {
-        try {
-            stream.exceptions(fs::ofstream::failbit);
-        } catch(const fs::ofstream::failure& e) {
-            throw storage_error_t("unable to access object '%s' in '%s' - %s", key, collection, e.what());
-        }
-
-        throw storage_error_t("unable to access object '%s' in '%s' - unknown error", key, collection);
+        throw storage_error_t("unable to access object '%s' in '%s'", key, collection);
     }
 
     for(auto it = tags.begin(); it != tags.end(); ++it) {
@@ -137,17 +125,19 @@ files_t::write(const std::string& collection, const std::string& key, const std:
             throw storage_error_t("tag '%s' is corrupted", *it);
         }
 
-        if(!fs::is_symlink(tag_path / key)) {
-            try {
-                fs::create_symlink(file_path, tag_path / key);
-            } catch(const fs::filesystem_error& e) {
-                throw storage_error_t(
-                    "unable to assign tag '%s' on object '%s' in '%s'",
-                    *it,
-                    key,
-                    collection
-                );
-            }
+        if(fs::is_symlink(tag_path / key)) {
+            return;
+        }
+
+        try {
+            fs::create_symlink(file_path, tag_path / key);
+        } catch(const fs::filesystem_error& e) {
+            throw storage_error_t(
+                "unable to assign tag '%s' on object '%s' in '%s'",
+                *it,
+                key,
+                collection
+            );
         }
     }
 
