@@ -103,10 +103,7 @@ config_t::config_t(const std::string& config_path) {
     Json::Value root;
 
     if(!reader.parse(stream, root)) {
-        throw cocaine::error_t(
-            "the configuration file is corrupted - %s",
-            reader.getFormattedErrorMessages()
-        );
+        throw cocaine::error_t("the configuration file is corrupted - %s", reader.getFormattedErrorMessages());
     }
 
     // Validation

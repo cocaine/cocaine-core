@@ -182,11 +182,7 @@ main(int argc, char* argv[]) {
         ("version,v", "show version and build information");
 
     try {
-        po::store(
-            po::command_line_parser(argc, argv).
-                options(general_options).
-                run(),
-            vm);
+        po::store(po::command_line_parser(argc, argv).options(general_options).run(), vm);
         po::notify(vm);
     } catch(const po::error& e) {
         std::cerr << cocaine::format("ERROR: %s.", e.what()) << std::endl;
@@ -244,7 +240,7 @@ main(int argc, char* argv[]) {
         fs::path pid_path;
 
         if(!vm["pidfile"].empty()) {
-            pid_path = fs::path(vm["pidfile"].as<std::string>());
+            pid_path = vm["pidfile"].as<std::string>();
         } else {
             pid_path = cocaine::format("%s/cocained.pid", config->path.runtime);
         }
@@ -263,8 +259,7 @@ main(int argc, char* argv[]) {
     }
 #endif
 
-    // NOTE: The default event loop have to initialized first, otherwise
-    // signals wouldn't be properly handled. Probably a bug.
+    // NOTE: The default event loop have to initialized first, otherwise signals wouldn't be properly handled.
     runtime_t runtime;
 
     std::unique_ptr<context_t> context;
@@ -272,11 +267,7 @@ main(int argc, char* argv[]) {
     try {
         context.reset(new context_t(*config, "core"));
     } catch(const std::exception& e) {
-        std::cerr << cocaine::format(
-            "ERROR: unable to initialize the context - %s.",
-            e.what()
-        ) << std::endl;
-
+        std::cerr << cocaine::format("ERROR: unable to initialize the context - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 

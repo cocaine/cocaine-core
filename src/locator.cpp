@@ -536,16 +536,16 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
     switch(message.id()) {
     case io::event_traits<io::rpc::chunk>::id: {
         std::string chunk;
-        synchronize_result_type dump;
 
         message.as<io::rpc::chunk>(chunk);
 
         msgpack::unpacked unpacked;
         msgpack::unpack(&unpacked, chunk.data(), chunk.size());
 
-        unpacked.get() >> dump;
-
-        m_gateway->consume(uuid, dump);
+        m_gateway->consume(
+            uuid,
+            unpacked.get().as<synchronize_result_type>()
+        );
     } break;
 
     case io::event_traits<io::rpc::error>::id:
