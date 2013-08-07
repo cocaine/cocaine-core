@@ -66,7 +66,7 @@ struct locator_t::synchronize_slot_t:
 
     void
     update() {
-        const auto disconnected = std::partition(
+        auto disconnected = std::partition(
             m_upstreams.begin(),
             m_upstreams.end(),
             std::bind(&synchronize_slot_t::dump, this, _1)
@@ -270,7 +270,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
-        const auto existing = std::find_if(m_services.cbegin(), m_services.cend(), match {
+        auto existing = std::find_if(m_services.cbegin(), m_services.cend(), match {
             name
         });
 
@@ -357,7 +357,7 @@ locator_t::resolve(const std::string& name) const -> resolve_result_type {
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
-        const auto local = std::find_if(m_services.begin(), m_services.end(), match {
+        auto local = std::find_if(m_services.begin(), m_services.end(), match {
             name
         });
 
@@ -397,14 +397,14 @@ locator_t::reports() const -> reports_result_type {
     reports_result_type result;
 
     for(auto it = m_services.begin(); it != m_services.end(); ++it) {
-        auto report = io::locator::usage_report_type();
+        io::locator::usage_report_type report;
 
         // Get the usage counters from the service's actor.
-        auto source = it->second->counters();
+        const auto source = it->second->counters();
 
         for(auto channel = source.footprints.begin(); channel != source.footprints.end(); ++channel) {
-            auto& endpoint = channel->first,
-                  consumed = channel->second;
+            auto& endpoint = channel->first;
+            auto  consumed = channel->second;
 
             report.insert({
                 io::locator::endpoint_tuple_type(endpoint.address().to_string(), endpoint.port()),
