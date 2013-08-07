@@ -1,3 +1,9 @@
+cocaine-core (0.10.6.6) unstable; urgency=low
+
+  * Revert the previous ABI-breaking change in favor of a more subtle one.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 07 Aug 2013 16:53:12 +0400
+
 cocaine-core (0.10.6.5) unstable; urgency=low
 
   * Bugfix: protect the app control interface from races with a simple
