@@ -152,7 +152,7 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
 
     if(::execve(argv[0], argv.data(), envp.data()) != 0) {
         std::error_code ec(errno, std::system_category());
-        std::cerr << cocaine::format("unable to execute '%s' - %s", path, ec.message());
+        std::cerr << cocaine::format("unable to execute '%s' - [%d] %s", path, ec.value(), ec.message());
     }
 
     std::_Exit(EXIT_FAILURE);

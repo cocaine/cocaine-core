@@ -50,40 +50,26 @@ node_t::node_t(context_t& context, io::reactor_t& reactor, const std::string& na
     on<io::node::pause_app>("pause_app", std::bind(&node_t::on_pause_app, this, _1));
     on<io::node::list>("list", std::bind(&node_t::on_list, this));
 
-    // Configuration
-
-    const std::string runlist_id = args.get("runlist", "default").asString();
-
-    // Runlist
-
-    COCAINE_LOG_INFO(m_log, "reading the '%s' runlist", runlist_id);
+    const auto runlist_id = args.get("runlist", "default").asString();
 
     // It's here to keep the reference alive.
-    auto storage = api::storage(m_context, "core");
+    const auto storage = api::storage(m_context, "core");
 
     runlist_t runlist;
+
+    COCAINE_LOG_INFO(m_log, "reading the '%s' runlist", runlist_id);
 
     try {
         runlist = storage->get<runlist_t>("runlists", runlist_id);
     } catch(const storage_error_t& e) {
-        COCAINE_LOG_WARNING(
-            m_log,
-            "unable to read the '%s' runlist - %s",
-            runlist_id,
-            e.what()
-        );
+        COCAINE_LOG_WARNING(m_log, "unable to read the '%s' runlist - %s", runlist_id, e.what());
     }
 
     if(!runlist.empty()) {
-        COCAINE_LOG_INFO(
-            m_log,
-            "starting %d %s",
-            runlist.size(),
-            runlist.size() == 1 ? "app" : "apps"
-        );
+        COCAINE_LOG_INFO(m_log, "starting %d %s", runlist.size(), runlist.size() == 1 ? "app" : "apps");
 
-        // NOTE: Ignore the return value here, as there's nowhere to return it.
-        // It might be nice to parse and log it in case of errors or simply die.
+        // NOTE: Ignore the return value here, as there's nowhere to return it. It might be nice to
+        // parse and log it in case of errors or simply die.
         on_start_app(runlist);
     }
 }
@@ -117,37 +103,22 @@ node_t::on_start_app(const runlist_t& runlist) {
         app_map_t::iterator app;
 
         try {
-            std::tie(app, std::ignore) = m_apps.insert(std::make_pair(
+            std::tie(app, std::ignore) = m_apps.insert({
                 it->first,
                 std::make_shared<app_t>(m_context, it->first, it->second)
-            ));
+            });
         } catch(const cocaine::error_t& e) {
-            COCAINE_LOG_ERROR(
-                m_log,
-                "unable to initialize the '%s' app - %s",
-                it->first,
-                e.what()
-            );
-
+            COCAINE_LOG_ERROR(m_log, "unable to initialize the '%s' app - %s", it->first, e.what());
             result[it->first] = e.what();
-
             continue;
         }
 
         try {
             app->second->start();
         } catch(const cocaine::error_t& e) {
-            COCAINE_LOG_ERROR(
-                m_log,
-                "unable to start the '%s' app - %s",
-                it->first,
-                e.what()
-            );
-
+            COCAINE_LOG_ERROR(m_log, "unable to start the '%s' app - %s", it->first, e.what());
             m_apps.erase(app);
-
             result[it->first] = e.what();
-
             continue;
         }
 

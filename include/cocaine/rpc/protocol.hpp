@@ -112,6 +112,8 @@ namespace detail {
         typedef typename Event::tuple_type type;
     };
 
+    // Result type or typelist extraction
+
     template<class Event, class = void>
     struct result_type {
         typedef void type;
