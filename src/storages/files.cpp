@@ -181,8 +181,9 @@ files_t::write(const std::string& collection, const std::string& key, const std:
 
         try {
             if(!fs::is_symlink(tag_path / key)) {
-                fs::create_symlink(file_path, tag_path / key);
+                fs::remove(tag_path / key);
             }
+            fs::create_symlink(file_path, tag_path / key);
             fs::create_symlink(tag_path / key, tag_indexes_path / *it);
         } catch(const fs::filesystem_error& e) {
             throw storage_error_t("unable to assign tag '%s' to object '%s' in '%s'", *it, key, collection);
