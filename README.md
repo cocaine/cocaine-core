@@ -1,5 +1,12 @@
 What the hell is it? [![Build Status](https://travis-ci.org/cocaine/cocaine-core.png?branch=master)](https://travis-ci.org/cocaine/cocaine-core)
 ====================
+
+> If you wanna hang out you've got to take her out; cocaine. <br>
+> If you wanna get down, down on the ground; cocaine. <br>
+> She don't lie, she don't lie, she don't lie; cocaine. <br>
+
+-- [Gary Louris](https://en.wikipedia.org/wiki/Gary_Louris) & [Eric Clapton](https://www.youtube.com/watch?v=Q3L4spg8vyo)
+
 __Your personal app engine.__ Technically speaking, it's an open-source cloud platform enabling you to build your own PaaS clouds using simple yet effective dynamic components.
 
 Notable features:
