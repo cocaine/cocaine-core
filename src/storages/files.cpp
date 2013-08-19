@@ -77,8 +77,6 @@ void
 files_t::write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags) {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    const std::string index = ".index";
-
     const fs::path store_path(m_storage_path / collection);
     const auto store_status = fs::status(store_path);
 
@@ -94,57 +92,7 @@ files_t::write(const std::string& collection, const std::string& key, const std:
         throw storage_error_t("collection '%s' is corrupted", collection);
     }
 
-    const fs::path index_path(store_path / index);
-    const auto index_status = fs::status(index_path);
-
-    if(!fs::exists(index_status)) {
-        COCAINE_LOG_INFO(m_log, "creating index directory: %s", index_path);
-
-        try {
-            fs::create_directories(index_path);
-        } catch(const fs::filesystem_error& e) {
-            throw storage_error_t("unable to create index path");
-        }
-    } else if(!fs::is_directory(index_status)) {
-        throw storage_error_t("index '%s' is corrupted", index_path);
-    }
-
     const fs::path file_path(store_path / key);
-    const fs::path tag_indexes_path(index_path / key);
-    const auto key_indexes_status = fs::status(tag_indexes_path);
-
-    if(!fs::exists(key_indexes_status)) {
-        COCAINE_LOG_INFO(m_log, "creating index path: %s", tag_indexes_path);
-
-        try {
-            fs::create_directories(tag_indexes_path);
-        } catch(const fs::filesystem_error& e) {
-            throw storage_error_t("unable to create index path");
-        }
-    } else if(!fs::is_directory(key_indexes_status)) {
-        throw storage_error_t("index '%s' is corrupted", tag_indexes_path);
-    } else {
-        fs::directory_iterator dir_iter(tag_indexes_path), dir_end;
-
-        for(;dir_iter != dir_end; ++dir_iter)
-        {
-            if(fs::is_symlink(*dir_iter) && !fs::read_symlink(*dir_iter).empty()) {
-                try {
-                    COCAINE_LOG_DEBUG(m_log, "remove old tag %s", fs::read_symlink(*dir_iter))
-                    fs::remove(fs::read_symlink(*dir_iter));
-                } catch(const fs::filesystem_error& e) {
-                    throw storage_error_t("unable to remove %s", e.what());
-                }
-            }
-        }
-
-        fs::remove_all(tag_indexes_path);
-        try {
-            fs::create_directories(tag_indexes_path);
-        } catch(const fs::filesystem_error& e) {
-            throw storage_error_t("unable to remove %s", tag_indexes_path);
-        }
-    }
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -160,10 +108,8 @@ files_t::write(const std::string& collection, const std::string& key, const std:
         throw storage_error_t("unable to access object '%s' in '%s'", key, collection);
     }
 
-    
     for(auto it = tags.begin(); it != tags.end(); ++it) {
         const auto tag_path = store_path / *it;
-        const auto tag_index_path = tag_indexes_path / *it;
         const auto tag_status = fs::status(tag_path);
 
         if(!fs::exists(tag_status)) {
@@ -176,12 +122,12 @@ files_t::write(const std::string& collection, const std::string& key, const std:
             throw storage_error_t("tag '%s' is corrupted", *it);
         }
 
+        if(fs::is_symlink(tag_path / key)) {
+            return;
+        }
+
         try {
-            if(!fs::is_symlink(tag_path / key)) {
-                fs::remove(tag_path / key);
-            }
             fs::create_symlink(file_path, tag_path / key);
-            fs::create_symlink(tag_path / key, tag_indexes_path / *it);
         } catch(const fs::filesystem_error& e) {
             throw storage_error_t("unable to assign tag '%s' to object '%s' in '%s'", *it, key, collection);
         }
