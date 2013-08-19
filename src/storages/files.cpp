@@ -123,7 +123,7 @@ files_t::write(const std::string& collection, const std::string& key, const std:
         }
 
         if(fs::is_symlink(tag_path / key)) {
-            return;
+            continue;
         }
 
         try {
