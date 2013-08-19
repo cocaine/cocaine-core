@@ -61,7 +61,7 @@ files_t::read(const std::string& collection, const std::string& key) {
         file_path
     );
 
-    fs::ifstream stream(file_path);
+    fs::ifstream stream(file_path, fs::ifstream::in | fs::ifstream::binary);
 
     if(!stream) {
         throw storage_error_t("unable to access object '%s' in '%s'", key, collection);
@@ -102,10 +102,7 @@ files_t::write(const std::string& collection, const std::string& key, const std:
         file_path
     );
 
-    fs::ofstream stream(
-        file_path,
-        fs::ofstream::out | fs::ofstream::trunc
-    );
+    fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc | fs::ofstream::binary);
 
     if(!stream) {
         throw storage_error_t("unable to access object '%s' in '%s'", key, collection);
