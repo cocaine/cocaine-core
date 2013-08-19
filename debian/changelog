@@ -1,3 +1,13 @@
+cocaine-core (0.10.7.0) unstable; urgency=low
+
+  * Break Native Framework binary dependency on Core libraries.
+  * Bugfix: use proper size for Boost ASIO endpoints, so that IPv6 addresses
+    won't be cut off anymore.
+  * Bugfix: do not stop adding tags to a new object in the File Storage if one
+    of the tags already exists.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 19 Aug 2013 17:43:52 +0400
+
 cocaine-core (0.10.6.4) unstable; urgency=low
 
   * Bugfix: do not try to destroy already destroyed channels, for example if
