@@ -133,7 +133,7 @@ files_t::write(const std::string& collection, const std::string& key, const std:
         }
     }
 
-    stream << blob;
+    stream.write(blob.c_str(), blob.size());
     stream.close();
 }
 
