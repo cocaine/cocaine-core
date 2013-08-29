@@ -133,9 +133,11 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
         deploy(name, path.string());
     }
 
-    if(!fs::exists(m_manifest->executable)) {
+    // Docker doesn't extract executable to this path.
+
+    /*if(!fs::exists(m_manifest->executable)) {
         throw cocaine::error_t("executable '%s' does not exist", m_manifest->executable);
-    }
+    }*/
 
     m_reactor.reset(new reactor_t());
 }
