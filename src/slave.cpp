@@ -62,7 +62,7 @@ struct slave_t::pipe_t {
     }
 
    ~pipe_t() {
-        ::close(m_pipe);
+        // pass
     }
 
     int
@@ -148,32 +148,12 @@ slave_t::slave_t(context_t& context,
 
     args["--app"] = m_manifest.name;
     args["--endpoint"] = m_manifest.endpoint;
-    args["--locator"] = boost::lexical_cast<std::string>(m_context.config.network.locator);
+    args["--locator"] = m_context.config.network.hostname + ":" + boost::lexical_cast<std::string>(m_context.config.network.locator);
     args["--uuid"] = m_id;
 
-    // Standard output capture
+    m_handle = isolate->spawn(m_manifest.executable, args, m_manifest.environment);
 
-    std::array<int, 2> pipes;
-
-    if(::pipe(pipes.data()) != 0) {
-        throw std::system_error(errno, std::system_category(), "unable to create an output pipe");
-    }
-
-    for(auto it = pipes.begin(); it != pipes.end(); ++it) {
-        ::fcntl(*it, F_SETFD, FD_CLOEXEC);
-    }
-
-    try {
-        m_handle = isolate->spawn(m_manifest.executable, args, m_manifest.environment, pipes[1]);
-    } catch(...) {
-        std::for_each(pipes.begin(), pipes.end(), ::close);
-        throw;
-    }
-
-    // This end of the pipe is already cloned by the isolate, so we can safely close it.
-    ::close(pipes[1]);
-
-    m_output_pipe.reset(new readable_stream<pipe_t>(reactor, pipes[0]));
+    m_output_pipe.reset(new readable_stream<pipe_t>(reactor, m_handle->stdout()));
 
     m_output_pipe->bind(
         std::bind(&slave_t::on_output, this, _1, _2),
