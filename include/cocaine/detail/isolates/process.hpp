@@ -25,7 +25,7 @@
 
 #include <boost/filesystem/path.hpp>
 
-#ifdef COCAINE_FORCE_CGROUPS
+#ifdef COCAINE_ALLOW_CGROUPS
 struct cgroup;
 #endif
 
@@ -58,7 +58,7 @@ class process_t:
         // Spooling target directory.
         const boost::filesystem::path m_working_directory;
 
-#ifdef COCAINE_FORCE_CGROUPS
+#ifdef COCAINE_ALLOW_CGROUPS
         // Control group handle.
         cgroup* m_cgroup;
 #endif

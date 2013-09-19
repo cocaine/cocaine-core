@@ -33,7 +33,7 @@
 
 #include <boost/filesystem/operations.hpp>
 
-#ifdef COCAINE_FORCE_CGROUPS
+#ifdef COCAINE_ALLOW_CGROUPS
 #include <boost/lexical_cast.hpp>
 #endif
 
@@ -42,7 +42,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#ifdef COCAINE_FORCE_CGROUPS
+#ifdef COCAINE_ALLOW_CGROUPS
 #include <libcgroup.h>
 #endif
 
@@ -98,7 +98,7 @@ process_t::process_t(context_t& context, const std::string& name, const Json::Va
     m_name(name),
     m_working_directory(fs::path(args.get("spool", "/var/spool/cocaine").asString()) / name)
 {
-#ifdef COCAINE_FORCE_CGROUPS
+#ifdef COCAINE_ALLOW_CGROUPS
     int rv = 0;
 
     if((rv = cgroup_init()) != 0) {
@@ -164,7 +164,7 @@ process_t::process_t(context_t& context, const std::string& name, const Json::Va
 }
 
 process_t::~process_t() {
-#ifdef COCAINE_FORCE_CGROUPS
+#ifdef COCAINE_ALLOW_CGROUPS
     int rv = 0;
 
     if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
@@ -217,7 +217,7 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
     ::dup2(pipes[1], STDOUT_FILENO);
     ::dup2(pipes[1], STDERR_FILENO);
 
-#ifdef COCAINE_FORCE_CGROUPS
+#ifdef COCAINE_ALLOW_CGROUPS
     // Attach to the control group
 
     int rv = 0;
