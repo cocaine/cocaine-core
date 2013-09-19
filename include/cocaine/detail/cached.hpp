@@ -29,9 +29,8 @@
 
 namespace cocaine {
 
-enum class sources {
-    cache,
-    storage
+struct source {
+    enum value { cache, storage };
 };
 
 template<class T>
@@ -40,7 +39,7 @@ struct cached:
 {
     cached(context_t& context, const std::string& collection, const std::string& name);
 
-    sources
+    source::value
     source() const {
         return m_source;
     }
@@ -50,7 +49,7 @@ private:
     download(context_t& context, const std::string& collection, const std::string& name);
 
 private:
-    sources m_source;
+    source::value m_source;
 };
 
 template<class T>
@@ -80,7 +79,7 @@ cached<T>::cached(context_t& context, const std::string& collection, const std::
         return;
     }
 
-    m_source = sources::cache;
+    m_source = source::cache;
 }
 
 template<class T>
@@ -91,7 +90,7 @@ cached<T>::download(context_t& context, const std::string& collection, const std
     // Intentionally propagate storage exceptions from this call.
     object = api::storage(context, "core")->get<T>(collection, name);
 
-    m_source = sources::storage;
+    m_source = source::storage;
 }
 
 } // namespace cocaine

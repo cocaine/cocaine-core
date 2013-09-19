@@ -22,6 +22,7 @@
 
 #include "cocaine/api/driver.hpp"
 #include "cocaine/api/event.hpp"
+#include "cocaine/api/isolate.hpp"
 
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/reactor.hpp"
@@ -31,7 +32,6 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/detail/actor.hpp"
-#include "cocaine/detail/archive.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/manifest.hpp"
 #include "cocaine/detail/profile.hpp"
@@ -121,23 +121,16 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     m_manifest(new manifest_t(context, name)),
     m_profile(new profile_t(context, profile))
 {
-    const fs::path path = fs::path(m_context.config.path.spool) / name;
+    auto isolate = m_context.get<api::isolate_t>(
+        m_profile->isolate.type,
+        m_context,
+        m_manifest->name,
+        m_profile->isolate.args
+    );
 
-    if(!fs::exists(path) || m_manifest->source() != sources::cache) {
-        try {
-            fs::remove_all(path);
-        } catch(const fs::filesystem_error& e) {
-            throw cocaine::error_t("unable to clean up the app spool %s - %s", path, e.what());
-        }
-
-        deploy(name, path.string());
+    if(m_manifest->source() != source::cache) {
+        isolate->spool();
     }
-
-    if(!fs::exists(m_manifest->executable)) {
-        throw cocaine::error_t("executable '%s' does not exist", m_manifest->executable);
-    }
-
-    m_reactor.reset(new reactor_t());
 }
 
 app_t::~app_t() {
@@ -194,7 +187,8 @@ app_t::start() {
     // Create the engine control sockets.
     std::tie(lhs, rhs) = io::link<local>();
 
-    m_engine_control.reset(new channel<io::socket<local>>(*m_reactor, lhs));
+    m_reactor = std::make_unique<reactor_t>();
+    m_engine_control = std::make_unique<channel<io::socket<local>>>(*m_reactor, lhs);
 
     try {
         m_engine.reset(new engine_t(m_context, reactor, *m_manifest, *m_profile, rhs));
@@ -213,16 +207,14 @@ app_t::start() {
     // Start the engine thread.
     m_thread.reset(new std::thread(std::bind(&engine_t::run, m_engine)));
 
-    if(!m_manifest->local) {
-        COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
+    COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
 
-        // Publish the app service.
-        m_context.attach(m_manifest->name, std::make_unique<actor_t>(
-            m_context,
-            std::make_shared<reactor_t>(),
-            std::make_unique<app_t::service_t>(m_context, m_manifest->name, *this)
-        ));
-    }
+    // Publish the app service.
+    m_context.attach(m_manifest->name, std::make_unique<actor_t>(
+        m_context,
+        std::make_shared<reactor_t>(),
+        std::make_unique<app_t::service_t>(m_context, m_manifest->name, *this)
+    ));
 
     COCAINE_LOG_INFO(m_log, "the engine has started");
 }
@@ -421,28 +413,4 @@ app_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& 
 std::shared_ptr<api::stream_t>
 app_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag) {
     return m_engine->enqueue(event, upstream, tag);
-}
-
-void
-app_t::deploy(const std::string& name, const std::string& path) {
-    std::string blob;
-
-    COCAINE_LOG_INFO(m_log, "deploying the app to '%s'", path);
-
-    auto storage = api::storage(m_context, "core");
-
-    try {
-        blob = storage->get<std::string>("apps", name);
-    } catch(const storage_error_t& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to fetch the app from the storage - %s", e.what());
-        throw cocaine::error_t("the '%s' app is not available", name);
-    }
-
-    try {
-        archive_t archive(m_context, blob);
-        archive.deploy(path);
-    } catch(const archive_error_t& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to extract the app files - %s", e.what());
-        throw cocaine::error_t("the '%s' app is not available", name);
-    }
 }

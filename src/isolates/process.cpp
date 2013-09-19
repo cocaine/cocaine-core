@@ -32,7 +32,6 @@
 #include <system_error>
 
 #include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
 
 #include <fcntl.h>
 #include <sys/types.h>
@@ -86,12 +85,10 @@ private:
 
 process_t::process_t(context_t& context, const std::string& name, const Json::Value& args):
     category_type(context, name, args),
+    m_context(context),
     m_log(new logging::log_t(context, name)),
-#if BOOST_VERSION >= 104600
-    m_working_directory((fs::path(context.config.path.spool) / name).native())
-#else
-    m_working_directory((fs::path(context.config.path.spool) / name).string())
-#endif
+    m_name(name),
+    m_working_directory(fs::path(args.get("spool", "/var/spool/cocaine").asString()) / name)
 { }
 
 process_t::~process_t() {
@@ -147,7 +144,11 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
 
     // Prepare the command line and the environment
 
-    std::vector<char*> argv = { ::strdup(path.c_str()) }, envp;
+#if BOOST_VERSION >= 104600
+    std::vector<char*> argv = { ::strdup((m_working_directory / path).native().c_str()) }, envp;
+#else
+    std::vector<char*> argv = { ::strdup((m_working_directory / path).string().c_str()) }, envp;
+#endif
 
     for(auto it = args.begin(); it != args.end(); ++it) {
         argv.push_back(::strdup(it->first.c_str()));

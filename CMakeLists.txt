@@ -83,6 +83,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/essentials
     src/gateways/adhoc
     src/isolates/process
+    src/isolates/spooling
     src/locator
     src/loggers/files
     src/loggers/syslog

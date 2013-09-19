@@ -21,14 +21,9 @@
 #include "cocaine/detail/manifest.hpp"
 #include "cocaine/traits/json.hpp"
 
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
-
 #include <unistd.h>
 
 using namespace cocaine::engine;
-
-namespace fs = boost::filesystem;
 
 manifest_t::manifest_t(context_t& context, const std::string& name_):
     cached<Json::Value>(context, "manifests", name_),
@@ -43,19 +38,11 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
         runtime_pid
     );
 
-    auto target = fs::path(get("slave", "unspecified").asString());
-
-#if BOOST_VERSION >= 104400
-    if(!target.is_absolute()) {
-        target = fs::absolute(target, fs::path(context.config.path.spool) / name);
+    if(!isMember("slave")) {
+        throw cocaine::error_t("app runnable object has not been specified");
     }
-#else
-    if(!target.is_complete()) {
-        target = fs::complete(target, fs::path(context.config.path.spool) / name);
-    }
-#endif
 
-    executable = target.string();
+    executable = get("slave", "unspecified").asString();
 
     auto vars = get("environment", Json::Value(Json::objectValue));
     auto keys = vars.getMemberNames();

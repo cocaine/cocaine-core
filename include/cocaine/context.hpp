@@ -49,7 +49,6 @@ struct defaults {
     // Default paths.
     static const char plugins_path[];
     static const char runtime_path[];
-    static const char spool_path[];
 
     // Defaults for service locator.
     static const char endpoint[];
@@ -67,7 +66,6 @@ struct config_t {
         std::string config;
         std::string plugins;
         std::string runtime;
-        std::string spool;
     } path;
 
     struct component_t {

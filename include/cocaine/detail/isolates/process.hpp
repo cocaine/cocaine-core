@@ -23,6 +23,8 @@
 
 #include "cocaine/api/isolate.hpp"
 
+#include <boost/filesystem/path.hpp>
+
 namespace cocaine { namespace isolate {
 
 class process_t:
@@ -35,12 +37,22 @@ class process_t:
        ~process_t();
 
         virtual
+        void
+        spool();
+
+        virtual
         std::unique_ptr<api::handle_t>
         spawn(const std::string& path, const api::string_map_t& args, const api::string_map_t& environment);
 
     private:
+        context_t& m_context;
         const std::unique_ptr<logging::log_t> m_log;
-        const std::string m_working_directory;
+
+        // Spooling prefix.
+        const std::string m_name;
+
+        // Spooling target directory.
+        const boost::filesystem::path m_working_directory;
 };
 
 }} // namespace cocaine::isolate

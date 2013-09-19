@@ -60,7 +60,6 @@ const unsigned defaults::decoder_granularity = 256;
 
 const char defaults::plugins_path[]          = "/usr/lib/cocaine";
 const char defaults::runtime_path[]          = "/var/run/cocaine";
-const char defaults::spool_path[]            = "/var/spool/cocaine";
 
 const char defaults::endpoint[]              = "::";
 const uint16_t defaults::locator_port        = 10053;
@@ -69,27 +68,12 @@ const uint16_t defaults::max_port            = 61000;
 
 // Config
 
-namespace {
-
-void
-validate_path(const fs::path& path) {
-    const auto status = fs::status(path);
-
-    if(!fs::exists(status)) {
-        throw cocaine::error_t("the %s directory does not exist", path);
-    } else if(!fs::is_directory(status)) {
-        throw cocaine::error_t("the %s path is not a directory", path);
-    }
-}
-
-}
-
 config_t::config_t(const std::string& config_path) {
     path.config = config_path;
 
-    const auto status = fs::status(path.config);
+    const auto config_file_status = fs::status(path.config);
 
-    if(!fs::exists(status) || !fs::is_regular_file(status)) {
+    if(!fs::exists(config_file_status) || !fs::is_regular_file(config_file_status)) {
         throw cocaine::error_t("the configuration file path is invalid");
     }
 
@@ -116,10 +100,14 @@ config_t::config_t(const std::string& config_path) {
 
     path.plugins = root["paths"].get("plugins", defaults::plugins_path).asString();
     path.runtime = root["paths"].get("runtime", defaults::runtime_path).asString();
-    path.spool   = root["paths"].get("spool",   defaults::spool_path  ).asString();
 
-    validate_path(path.runtime);
-    validate_path(path.spool);
+    const auto runtime_path_status = fs::status(path.runtime);
+
+    if(!fs::exists(runtime_path_status)) {
+        throw cocaine::error_t("the %s directory does not exist", path.runtime);
+    } else if(!fs::is_directory(runtime_path_status)) {
+        throw cocaine::error_t("the %s path is not a directory", path.runtime);
+    }
 
     // Hostname configuration
 

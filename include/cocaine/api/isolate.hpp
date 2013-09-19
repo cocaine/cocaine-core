@@ -58,6 +58,10 @@ class isolate_t {
         }
 
         virtual
+        void
+        spool() = 0;
+
+        virtual
         std::unique_ptr<handle_t>
         spawn(const std::string& path, const string_map_t& args, const string_map_t& environment) = 0;
 

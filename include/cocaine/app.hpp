@@ -54,10 +54,6 @@ class app_t {
         enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag);
 
     private:
-        void
-        deploy(const std::string& name, const std::string& path);
-
-    private:
         context_t& m_context;
         const std::unique_ptr<logging::log_t> m_log;
 
