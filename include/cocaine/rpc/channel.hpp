@@ -45,6 +45,20 @@ struct channel {
         attach(reactor, socket);
     }
 
+    channel(channel&& other):
+        rd(std::move(other.rd)),
+        wr(std::move(other.wr))
+    {
+        // pass
+    }
+
+    channel&
+    operator=(channel&& other) {
+        rd = std::move(other.rd);
+        wr = std::move(other.wr);
+        return *this;
+    }
+
     void
     attach(reactor_t& reactor, const std::shared_ptr<Socket>& socket) {
         rd->attach(std::make_shared<readable_stream<Socket>>(reactor, socket));
