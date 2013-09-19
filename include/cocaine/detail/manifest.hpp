@@ -37,18 +37,18 @@ struct manifest_t:
     // The application name.
     std::string name;
 
+    // A configuration map for drivers, similar to the generic one found
+    // in the config_t structure.
+    config_t::component_map_t drivers;
+
     // The application engine's endpoint name.
     std::string endpoint;
-
-    // What to execute.
-    std::string executable;
 
     // Optional environment.
     std::map<std::string, std::string> environment;
 
-    // A configuration map for drivers, similar to the generic one found
-    // in the config_t structure.
-    config_t::component_map_t drivers;
+    // What to execute.
+    std::string executable;
 
     // Disables the publication of this app via the Locator.
     bool local;
