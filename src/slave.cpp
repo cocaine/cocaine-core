@@ -38,7 +38,6 @@
 #include "cocaine/traits/enum.hpp"
 #include "cocaine/traits/literal.hpp"
 
-#include <array>
 #include <sstream>
 
 #include <boost/lexical_cast.hpp>
@@ -59,10 +58,6 @@ struct slave_t::pipe_t {
         m_pipe(endpoint)
     {
         ::fcntl(m_pipe, F_SETFL, O_NONBLOCK);
-    }
-
-   ~pipe_t() {
-        // pass
     }
 
     int
@@ -96,12 +91,7 @@ struct ignore {
 
 }
 
-slave_t::slave_t(context_t& context,
-                 reactor_t& reactor,
-                 const manifest_t& manifest,
-                 const profile_t& profile,
-                 const std::string& id,
-                 engine_t& engine):
+slave_t::slave_t(context_t& context, reactor_t& reactor, const manifest_t& manifest, const profile_t& profile, const std::string& id, engine_t& engine):
     m_context(context),
     m_log(new logging::log_t(context, cocaine::format("app/%s", manifest.name))),
     m_reactor(reactor),
@@ -148,11 +138,12 @@ slave_t::slave_t(context_t& context,
 
     args["--app"] = m_manifest.name;
     args["--endpoint"] = m_manifest.endpoint;
-    args["--locator"] = m_context.config.network.hostname + ":" + boost::lexical_cast<std::string>(m_context.config.network.locator);
+    args["--locator"] = cocaine::format("%s:%d", m_context.config.network.hostname, m_context.config.network.locator);
     args["--uuid"] = m_id;
 
     m_handle = isolate->spawn(m_manifest.executable, args, m_manifest.environment);
 
+    // Start reading the standard outputs of the slave.
     m_output_pipe.reset(new readable_stream<pipe_t>(reactor, m_handle->stdout()));
 
     m_output_pipe->bind(
