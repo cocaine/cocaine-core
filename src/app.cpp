@@ -128,7 +128,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
         m_profile->isolate.args
     );
 
-    if(m_manifest->source() != source::cache) {
+    if(m_manifest->source() != sources::cache) {
         isolate->spool();
     }
 }
