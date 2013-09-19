@@ -205,14 +205,13 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
         throw std::system_error(errno, std::system_category(), "unable to fork");
     }
 
+    ::close(pipes[pid > 0]);
+
     if(pid > 0) {
-        ::close(pipes[1]);
         return std::make_unique<process_handle_t>(pid, pipes[0]);
     }
 
     // Child initialization
-
-    ::close(pipes[0]);
 
     ::dup2(pipes[1], STDOUT_FILENO);
     ::dup2(pipes[1], STDERR_FILENO);
