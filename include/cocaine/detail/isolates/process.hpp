@@ -25,6 +25,10 @@
 
 #include <boost/filesystem/path.hpp>
 
+#ifdef COCAINE_FORCE_CGROUPS
+struct cgroup;
+#endif
+
 namespace cocaine { namespace isolate {
 
 class process_t:
@@ -53,6 +57,11 @@ class process_t:
 
         // Spooling target directory.
         const boost::filesystem::path m_working_directory;
+
+#ifdef COCAINE_FORCE_CGROUPS
+        // Control group handle.
+        cgroup* m_cgroup;
+#endif
 };
 
 }} // namespace cocaine::isolate

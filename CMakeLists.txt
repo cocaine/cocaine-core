@@ -6,11 +6,24 @@ SET(COCAINE_VERSION_MAJOR   0)
 SET(COCAINE_VERSION_MINOR   11)
 SET(COCAINE_VERSION_RELEASE 0)
 
+IF(NOT APPLE)
+    OPTION(CGROUPS "Build CGroups support for Process Isolate" ON)
+ELSE()
+    OPTION(CGROUPS "Build CGroups support for Process Isolate" OFF)
+ENDIF()
+
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
     "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
+
+INCLUDE(cmake/locate_library.cmake)
+
+IF(NOT APPLE)
+    LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
+    SET(LIBBFD_LIBRARY "bfd" "dl")
+ENDIF()
 
 FIND_PACKAGE(Boost 1.40.0
     REQUIRED COMPONENTS
@@ -18,31 +31,33 @@ FIND_PACKAGE(Boost 1.40.0
         filesystem
         program_options)
 
-IF(NOT APPLE)
-    FIND_PACKAGE(OpenSSL REQUIRED)
-    SET(CRYPTO_SOURCES "src/auth")
-    SET(CRYPTO_LIBRARY "crypto")
+IF(NOT APPLE AND CGROUPS)
+    LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
+    SET(LIBCGROUP_LIBRARY "cgroup")
+
+    # Enables the CGroup-related code.
+    SET(COCAINE_FORCE_CGROUPS)
 ENDIF()
 
-INCLUDE(cmake/locate_library.cmake)
+IF(NOT APPLE)
+    FIND_PACKAGE(OpenSSL REQUIRED)
+    SET(LIBCRYPTO_SOURCES "src/auth")
+    SET(LIBCRYPTO_LIBRARY "crypto")
+ENDIF()
 
-LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
-LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
+LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
+LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
     SET(LIBUUID_LIBRARY "uuid")
 ENDIF()
 
-IF(NOT APPLE)
-    LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
-    SET(LIBBFD_LIBRARY "bfd" "dl")
-ENDIF()
-
 INCLUDE_DIRECTORIES(
     ${Boost_INCLUDE_DIRS}
+    ${LIBCGROUP_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
     ${LIBEV_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
@@ -56,6 +71,7 @@ INCLUDE_DIRECTORIES(BEFORE
 
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
+    ${LIBCGROUP_LIBRARY_DIRS}
     ${LIBEV_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
     ${LIBARCHIVE_LIBRARY_DIRS}
@@ -75,7 +91,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/app
     src/archive
     src/context
-    ${CRYPTO_SOURCES}
+    ${LIBCRYPTO_SOURCES}
     src/dispatch
     src/drivers/fs
     src/drivers/time
@@ -105,7 +121,8 @@ TARGET_LINK_LIBRARIES(cocaine-core
     archive
     boost_system-mt
     boost_filesystem-mt
-    ${CRYPTO_LIBRARY}
+    ${LIBCGROUP_LIBRARY}
+    ${LIBCRYPTO_LIBRARY}
     ev
     json
     ltdl

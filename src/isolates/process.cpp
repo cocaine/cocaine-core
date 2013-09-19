@@ -33,10 +33,18 @@
 
 #include <boost/filesystem/operations.hpp>
 
+#ifdef COCAINE_FORCE_CGROUPS
+#include <boost/lexical_cast.hpp>
+#endif
+
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#ifdef COCAINE_FORCE_CGROUPS
+#include <libcgroup.h>
+#endif
 
 using namespace cocaine;
 using namespace cocaine::isolate;
@@ -89,10 +97,86 @@ process_t::process_t(context_t& context, const std::string& name, const Json::Va
     m_log(new logging::log_t(context, name)),
     m_name(name),
     m_working_directory(fs::path(args.get("spool", "/var/spool/cocaine").asString()) / name)
-{ }
+{
+#ifdef COCAINE_FORCE_CGROUPS
+    int rv = 0;
+
+    if((rv = cgroup_init()) != 0) {
+        throw cocaine::error_t("unable to initialize the cgroups isolate - %s", cgroup_strerror(rv));
+    }
+
+    m_cgroup = cgroup_new_cgroup(name.c_str());
+
+    // TODO: Check if it changes anything.
+    cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());
+
+    Json::Value::Members controllers(args.getMemberNames());
+
+    for(auto c = controllers.begin(); c != controllers.end(); ++c) {
+        Json::Value cfg(args[*c]);
+
+        if(!cfg.isObject() || cfg.empty()) {
+            continue;
+        }
+
+        cgroup_controller * ctl = cgroup_add_controller(m_cgroup, c->c_str());
+
+        Json::Value::Members parameters(cfg.getMemberNames());
+
+        for(auto p = parameters.begin(); p != parameters.end(); ++p) {
+            switch(cfg[*p].type()) {
+            case Json::stringValue: {
+                cgroup_add_value_string(ctl, p->c_str(), cfg[*p].asCString());
+            } break;
+
+            case Json::intValue: {
+                cgroup_add_value_int64(ctl, p->c_str(), cfg[*p].asInt());
+            } break;
+
+            case Json::uintValue: {
+                cgroup_add_value_uint64(ctl, p->c_str(), cfg[*p].asUInt());
+            } break;
+
+            case Json::booleanValue: {
+                cgroup_add_value_bool(ctl, p->c_str(), cfg[*p].asBool());
+            } break;
+
+            default:
+                COCAINE_LOG_WARNING(m_log, "cgroup controller '%s' parameter '%s' type is not supported", *c, *p);
+                continue;
+            }
+
+            COCAINE_LOG_DEBUG(
+                m_log,
+                "setting cgroup controller '%s' parameter '%s' to '%s'",
+                *c,
+                *p,
+                boost::lexical_cast<std::string>(cfg[*p])
+            );
+        }
+    }
+
+    if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
+        cgroup_free(&m_cgroup);
+        throw cocaine::error_t("unable to create the cgroup - %s", cgroup_strerror(rv));
+    }
+#endif
+}
 
 process_t::~process_t() {
-    // Empty.
+#ifdef COCAINE_FORCE_CGROUPS
+    int rv = 0;
+
+    if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
+        COCAINE_LOG_ERROR(
+            m_log,
+            "unable to delete the cgroup - %s",
+            cgroup_strerror(rv)
+        );
+    }
+
+    cgroup_free(&m_cgroup);
+#endif
 }
 
 #ifdef __APPLE__
@@ -132,6 +216,17 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
 
     ::dup2(pipes[1], STDOUT_FILENO);
     ::dup2(pipes[1], STDERR_FILENO);
+
+#ifdef COCAINE_FORCE_CGROUPS
+    // Attach to the control group
+
+    int rv = 0;
+
+    if((rv = cgroup_attach_task(m_cgroup)) != 0) {
+        std::cerr << cocaine::format("unable to attach the process to a cgroup - %s", cgroup_strerror(rv));
+        std::_Exit(EXIT_FAILURE);
+    }
+#endif
 
     // Set the correct working directory
 
