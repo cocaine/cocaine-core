@@ -175,7 +175,7 @@ app_t::start() {
             } catch(const cocaine::error_t& e) {
                 throw cocaine::error_t("unable to initialize the '%s' driver - %s", name, e.what());
             } catch(...) {
-                throw cocaine::error_t("unable to initialize the '%s' driver - unknown exception");
+                throw cocaine::error_t("unable to initialize the '%s' driver - unknown exception", name);
             }
 
             drivers[it->first] = std::move(driver);
