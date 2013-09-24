@@ -119,7 +119,7 @@ process_t::process_t(context_t& context, const std::string& name, const Json::Va
             continue;
         }
 
-        cgroup_controller * ctl = cgroup_add_controller(m_cgroup, c->c_str());
+        cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->c_str());
 
         Json::Value::Members parameters(cfg.getMemberNames());
 
