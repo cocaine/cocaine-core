@@ -35,6 +35,9 @@ struct group_t:
 {
     group_t(context_t& context, const std::string& name);
 
+    const std::map<std::string, unsigned int>&
+    to_map() const;
+
     // Name of the application group.
     std::string name;
 };

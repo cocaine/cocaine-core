@@ -29,3 +29,8 @@ group_t::group_t(context_t& context, const std::string& name_):
     // pass
 }
 
+const std::map<std::string, unsigned int>&
+group_t::to_map() const {
+    return *static_cast<const std::map<std::string, unsigned int>*>(this);
+}
+
