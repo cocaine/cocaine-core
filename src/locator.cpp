@@ -43,6 +43,129 @@ using namespace cocaine;
 
 using namespace std::placeholders;
 
+group_index_t::group_index_t() {
+    std::get<3>(m_index) = 0;
+}
+
+group_index_t::group_index_t(const std::map<std::string, unsigned int>& group) {
+    std::vector<std::string> services;
+    std::vector<unsigned int> weights;
+
+    for(auto it = group.begin(); it != group.end(); ++it) {
+        services.push_back(it->first);
+        weights.push_back(it->second);
+    }
+
+    m_index = std::make_tuple(std::move(services),
+                              std::move(weights),
+                              std::vector<unsigned int>(group.size(), 0),
+                              0);
+}
+
+void
+group_index_t::add(size_t service_index) {
+    std::get<3>(m_index) += weights()[service_index];
+    std::get<2>(m_index)[service_index] = weights()[service_index];
+}
+
+void
+group_index_t::remove(size_t service_index) {
+    std::get<3>(m_index) -= weights()[service_index];
+    std::get<2>(m_index)[service_index] = 0;
+}
+
+void
+groups_t::set_group(const std::string& name,
+                    const std::map<std::string, unsigned int>& group)
+{
+    auto group_it = m_groups.insert(std::make_pair(name, group_index_t(group))).first;
+
+    for(size_t i = 0; i < group.size(); ++i) {
+        m_inverted[group_it->second.services()[i]][name] = i;
+
+        auto service_it = m_services.find(group_it->second.services()[i]);
+        if(service_it != m_services.end()) {
+            service_it->second[name] = i;
+            group_it->second.add(i);
+        }
+    }
+}
+
+void
+groups_t::remove_group(const std::string& name) {
+    auto group_it = m_groups.find(name);
+
+    if(group_it != m_groups.end()) {
+        const auto& services = group_it->second.services();
+        for(size_t i = 0; i < services.size(); ++i) {
+            auto service_it = m_inverted.find(services[i]);
+            if(service_it != m_inverted.end()) {
+                service_it->second.erase(name);
+                if(service_it->second.empty()) {
+                    m_inverted.erase(service_it);
+                }
+            }
+
+            service_it = m_services.find(services[i]);
+            if(service_it != m_services.end()) {
+                service_it->second.erase(name);
+            }
+        }
+        m_groups.erase(group_it);
+    }
+}
+
+void
+groups_t::add_service(const std::string& name) {
+    if(m_services.find(name) == m_services.end()) {
+        auto service_it = m_inverted.find(name);
+
+        if(service_it != m_inverted.end()) {
+            m_services[name] = service_it->second;
+
+            for(auto it = service_it->second.begin(); it != service_it->second.end(); ++it) {
+                m_groups[it->first].add(it->second);
+            }
+        } else {
+            m_services[name] = std::map<std::string, size_t>();
+        }
+    }
+}
+
+void
+groups_t::remove_service(const std::string& name) {
+    auto service_it = m_services.find(name);
+
+    if(service_it != m_services.end()) {
+        for(auto it = service_it->second.begin(); it != service_it->second.end(); ++it) {
+            m_groups[it->first].remove(it->second);
+        }
+
+        m_services.erase(service_it);
+    }
+}
+
+std::string
+groups_t::select_service(const std::string& group_name) const {
+    auto group_it = m_groups.find(group_name);
+
+    if(group_it != m_groups.end() && group_it->second.sum() != 0) {
+        boost::uniform_int<> distrib(1, group_it->second.sum());
+        boost::variate_generator<boost::mt19937&, boost::uniform_int<>> gen(m_generator, distrib);
+        unsigned int max = gen();
+        for (size_t i = 0; i < group_it->second.services().size(); ++i) {
+            if (max <= group_it->second.used_weights()[i]) {
+                return group_it->second.services()[i];
+            } else {
+                max -= group_it->second.used_weights()[i];
+            }
+        }
+        return "";
+    } else {
+        return "";
+    }
+}
+
 struct locator_t::synchronize_slot_t:
     public slot_concept_t
 {
@@ -125,6 +248,8 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
+    on<io::locator::set_group>("set_group", std::bind(&groups_t::set_group, &m_groups, _1, _2));
+    on<io::locator::remove_group>("remove_group", std::bind(&groups_t::remove_group, &m_groups, _1));
 
     if(m_context.config.network.ports) {
         uint16_t min, max;
@@ -352,13 +477,17 @@ locator_t::query(const std::unique_ptr<actor_t>& service) const {
 }
 
 resolve_result_type
-locator_t::resolve(const std::string& name) const {
+locator_t::resolve(const std::string& name_) const {
+    std::string name = m_groups.select_service(name_);
+
+    if(name.empty()) {
+        name = name_;
+    }
+
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
-        const auto local = std::find_if(m_services.begin(), m_services.end(), match {
-            name
-        });
+        const auto local = std::find_if(m_services.begin(), m_services.end(), match { name });
 
         if(local != m_services.end()) {
             COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);

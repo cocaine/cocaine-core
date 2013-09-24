@@ -26,8 +26,11 @@
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
+#include "cocaine/detail/group.hpp"
+
 #include <mutex>
 #include <queue>
+#include <boost/random.hpp>
 
 namespace ev {
     struct io;
@@ -35,6 +38,79 @@ namespace ev {
 }
 
 namespace cocaine {
+
+class group_index_t {
+    public:
+        group_index_t();
+
+        group_index_t(const std::map<std::string, unsigned int>& group);
+
+        void
+        add(size_t service_index);
+
+        void
+        remove(size_t service_index);
+
+        const std::vector<std::string>&
+        services() const {
+            return std::get<0>(m_index);
+        }
+
+        const std::vector<unsigned int>&
+        weights() const {
+            return std::get<1>(m_index);
+        }
+
+        const std::vector<unsigned int>&
+        used_weights() const {
+            return std::get<2>(m_index);
+        }
+
+        unsigned int
+        sum() const {
+            return std::get<3>(m_index);
+        }
+
+    private:
+        typedef std::tuple<std::vector<std::string>, // services
+                           std::vector<unsigned int>, // original weights
+                           std::vector<unsigned int>, // used weights (= original weight or 0 if there is no such service in locator)
+                           unsigned int> // sum of weights of services in group which are present in locator
+                index_t;
+
+        index_t m_index;
+};
+
+class groups_t {
+    public:
+        void
+        set_group(const std::string& name,
+                  const std::map<std::string, unsigned int>& group);
+
+        void
+        remove_group(const std::string& name);
+
+        void
+        add_service(const std::string& name);
+
+        void
+        remove_service(const std::string& name);
+
+        std::string
+        select_service(const std::string& group_name) const;
+
+    private:
+        typedef std::map<std::string, group_index_t> // name of group, index
+                direct_index_t;
+
+        typedef std::map<std::string, std::map<std::string, size_t>> // {service: {group: index in services vector}}
+                inverted_index_t;
+
+        direct_index_t m_groups; // index group -> services
+        inverted_index_t m_inverted; // inverted for m_groups index service -> groups
+        inverted_index_t m_services; // like m_inverted, but contains services which are present in locator
+        mutable boost::mt19937 m_generator;
+};
 
 class actor_t;
 
@@ -100,6 +176,8 @@ class locator_t:
 
         // Ports available for allocation.
         std::priority_queue<uint16_t, std::vector<uint16_t>, std::greater<uint16_t>> m_ports;
+
+        groups_t m_groups;
 
         typedef std::vector<
             std::pair<std::string, std::unique_ptr<actor_t>>
