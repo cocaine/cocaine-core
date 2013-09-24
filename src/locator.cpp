@@ -43,35 +43,32 @@ using namespace cocaine;
 
 using namespace std::placeholders;
 
-group_index_t::group_index_t() {
-    std::get<3>(m_index) = 0;
+group_index_t::group_index_t() :
+    m_sum(0)
+{
+    // pass
 }
 
-group_index_t::group_index_t(const std::map<std::string, unsigned int>& group) {
-    std::vector<std::string> services;
-    std::vector<unsigned int> weights;
-
+group_index_t::group_index_t(const std::map<std::string, unsigned int>& group) :
+    m_used_weights(group.size(), 0),
+    m_sum(0)
+{
     for(auto it = group.begin(); it != group.end(); ++it) {
-        services.push_back(it->first);
-        weights.push_back(it->second);
+        m_services.push_back(it->first);
+        m_weights.push_back(it->second);
     }
-
-    m_index = std::make_tuple(std::move(services),
-                              std::move(weights),
-                              std::vector<unsigned int>(group.size(), 0),
-                              0);
 }
 
 void
 group_index_t::add(size_t service_index) {
-    std::get<3>(m_index) += weights()[service_index];
-    std::get<2>(m_index)[service_index] = weights()[service_index];
+    m_sum += m_weights[service_index];
+    m_used_weights[service_index] = m_weights[service_index];
 }
 
 void
 group_index_t::remove(size_t service_index) {
-    std::get<3>(m_index) -= weights()[service_index];
-    std::get<2>(m_index)[service_index] = 0;
+    m_sum -= m_weights[service_index];
+    m_used_weights[service_index] = 0;
 }
 
 bool
@@ -136,7 +133,7 @@ services_t::has(const std::string& name) {
 }
 
 void
-groups_t::set_group(const std::string& name,
+groups_t::add_group(const std::string& name,
                     const std::map<std::string, unsigned int>& group)
 {
     m_groups[name] = group_index_t(group);
@@ -318,14 +315,14 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
         auto groups = api::storage(context, "core")->find("groups", std::vector<std::string>({"group"}));
 
         for (auto it = groups.begin(); it != groups.end(); ++it) {
-            m_groups.set_group(*it, group_t(context, *it).to_map());
+            m_groups.add_group(*it, group_t(context, *it).to_map());
         }
     } catch(...) {
         // Unable to read groups from storage. Ignore.
     }
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::set_group>("set_group", std::bind(&groups_t::set_group, &m_groups, _1, _2));
+    on<io::locator::set_group>("set_group", std::bind(&groups_t::add_group, &m_groups, _1, _2));
     on<io::locator::remove_group>("remove_group", std::bind(&groups_t::remove_group, &m_groups, _1));
 
     if(m_context.config.network.ports) {

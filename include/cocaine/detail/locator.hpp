@@ -39,48 +39,6 @@ namespace ev {
 
 namespace cocaine {
 
-class group_index_t {
-    public:
-        group_index_t();
-
-        group_index_t(const std::map<std::string, unsigned int>& group);
-
-        void
-        add(size_t service_index);
-
-        void
-        remove(size_t service_index);
-
-        const std::vector<std::string>&
-        services() const {
-            return std::get<0>(m_index);
-        }
-
-        const std::vector<unsigned int>&
-        weights() const {
-            return std::get<1>(m_index);
-        }
-
-        const std::vector<unsigned int>&
-        used_weights() const {
-            return std::get<2>(m_index);
-        }
-
-        unsigned int
-        sum() const {
-            return std::get<3>(m_index);
-        }
-
-    private:
-        typedef std::tuple<std::vector<std::string>, // services
-                           std::vector<unsigned int>, // original weights
-                           std::vector<unsigned int>, // used weights (= original weight or 0 if there is no such service in locator)
-                           unsigned int> // sum of weights of services in group which are present in locator
-                index_t;
-
-        index_t m_index;
-};
-
 class services_t {
     public:
         bool // added
@@ -100,10 +58,49 @@ class services_t {
         std::map<std::string, std::set<std::string>> m_inverted; // uuid -> services
 };
 
+class group_index_t {
+    public:
+        group_index_t();
+
+        group_index_t(const std::map<std::string, unsigned int>& group);
+
+        void
+        add(size_t service_index);
+
+        void
+        remove(size_t service_index);
+
+        const std::vector<std::string>&
+        services() const {
+            return m_services;
+        }
+
+        const std::vector<unsigned int>&
+        weights() const {
+            return m_weights;
+        }
+
+        const std::vector<unsigned int>&
+        used_weights() const {
+            return m_used_weights;
+        }
+
+        unsigned int
+        sum() const {
+            return m_sum;
+        }
+
+    private:
+        std::vector<std::string> m_services;
+        std::vector<unsigned int> m_weights;
+        std::vector<unsigned int> m_used_weights; // = original weight or 0 if there is no such service in locator
+        unsigned int m_sum;
+};
+
 class groups_t {
     public:
         void
-        set_group(const std::string& name,
+        add_group(const std::string& name,
                   const std::map<std::string, unsigned int>& group);
 
         void
@@ -130,7 +127,7 @@ class groups_t {
 
         groups_index_t m_groups; // index group -> services
         inverted_index_t m_inverted; // inverted for m_groups index service -> groups
-        services_t m_services; // like m_inverted, but contains services which are present in locator
+        services_t m_services; // contains services which are present in locator
         mutable boost::mt19937 m_generator;
 };
 
