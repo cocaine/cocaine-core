@@ -1,7 +1,8 @@
 cocaine-core (0.11.0.0) unstable; urgency=low
 
-  * Break Native Framework binary dependency on Core libraries.
   * Docker (http://docker.io) containerization support.
+  * Memory usage reports available from the Locator via the 'reports' method.
+  * Break Native Framework binary dependency on Core libraries.
   * Bugfix: use proper size for Boost ASIO endpoints, so that IPv6 addresses
     won't be cut off anymore.
   * Bugfix: do not stop adding tags to a new object in the File Storage if one
