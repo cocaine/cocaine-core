@@ -81,6 +81,25 @@ class group_index_t {
         index_t m_index;
 };
 
+class services_t {
+    public:
+        bool // added
+        add(const std::string& name, const std::string& uuid);
+
+        bool // removed
+        remove(const std::string& name, const std::string& uuid);
+
+        std::set<std::string> // list of removed services
+        remove_uuid(const std::string& uuid);
+
+        bool
+        has(const std::string& name);
+
+    private:
+        std::map<std::string, std::set<std::string>> m_services; // service -> uuid's
+        std::map<std::string, std::set<std::string>> m_inverted; // uuid -> services
+};
+
 class groups_t {
     public:
         void
@@ -91,24 +110,27 @@ class groups_t {
         remove_group(const std::string& name);
 
         void
-        add_service(const std::string& name);
+        add_service(const std::string& name, const std::string& uuid);
 
         void
-        remove_service(const std::string& name);
+        remove_service(const std::string& name, const std::string& uuid);
+
+        void
+        remove_uuid(const std::string& uuid);
 
         std::string
         select_service(const std::string& group_name) const;
 
     private:
         typedef std::map<std::string, group_index_t> // name of group, index
-                direct_index_t;
+                groups_index_t;
 
         typedef std::map<std::string, std::map<std::string, size_t>> // {service: {group: index in services vector}}
                 inverted_index_t;
 
-        direct_index_t m_groups; // index group -> services
+        groups_index_t m_groups; // index group -> services
         inverted_index_t m_inverted; // inverted for m_groups index service -> groups
-        inverted_index_t m_services; // like m_inverted, but contains services which are present in locator
+        services_t m_services; // like m_inverted, but contains services which are present in locator
         mutable boost::mt19937 m_generator;
 };
 

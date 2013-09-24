@@ -74,18 +74,78 @@ group_index_t::remove(size_t service_index) {
     std::get<2>(m_index)[service_index] = 0;
 }
 
+bool
+services_t::add(const std::string& name,
+                const std::string& uuid)
+{
+    auto insert_result = m_services.insert(std::make_pair(name, std::set<std::string>()));
+    insert_result.first->second.insert(uuid);
+    m_inverted[uuid].insert(name);
+
+    return insert_result.second;
+}
+
+bool
+services_t::remove(const std::string& name,
+                   const std::string& uuid)
+{
+    auto uuid_it = m_inverted.find(uuid);
+    if(uuid_it != m_inverted.end()) {
+        uuid_it->second.erase(name);
+        if(uuid_it->second.empty()) {
+            m_inverted.erase(uuid_it);
+        }
+    }
+
+    auto service_it = m_services.find(name);
+    if(service_it != m_services.end()) {
+        service_it->second.erase(uuid);
+        if(service_it->second.empty()) {
+            m_services.erase(service_it);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+std::set<std::string>
+services_t::remove_uuid(const std::string& uuid) {
+    std::set<std::string> removed;
+
+    auto uuid_it = m_inverted.find(uuid);
+    if(uuid_it != m_inverted.end()) {
+        for(auto it = uuid_it->second.begin(); it != uuid_it->second.end(); ++it) {
+            auto service_it = m_services.find(*it);
+            if(service_it != m_services.end()) {
+                service_it->second.erase(uuid);
+                if(service_it->second.empty()) {
+                    m_services.erase(service_it);
+                    removed.insert(*it);
+                }
+            }
+        }
+    }
+
+    return removed;
+}
+
+bool
+services_t::has(const std::string& name) {
+    return m_services.find(name) != m_services.end();
+}
+
 void
 groups_t::set_group(const std::string& name,
                     const std::map<std::string, unsigned int>& group)
 {
-    auto group_it = m_groups.insert(std::make_pair(name, group_index_t(group))).first;
+    m_groups[name] = group_index_t(group);
+    auto group_it = m_groups.find(name);
 
     for(size_t i = 0; i < group.size(); ++i) {
         m_inverted[group_it->second.services()[i]][name] = i;
 
-        auto service_it = m_services.find(group_it->second.services()[i]);
-        if(service_it != m_services.end()) {
-            service_it->second[name] = i;
+        if(m_services.has(group_it->second.services()[i])) {
             group_it->second.add(i);
         }
     }
@@ -105,43 +165,50 @@ groups_t::remove_group(const std::string& name) {
                     m_inverted.erase(service_it);
                 }
             }
-
-            service_it = m_services.find(services[i]);
-            if(service_it != m_services.end()) {
-                service_it->second.erase(name);
-            }
         }
         m_groups.erase(group_it);
     }
 }
 
 void
-groups_t::add_service(const std::string& name) {
-    if(m_services.find(name) == m_services.end()) {
+groups_t::add_service(const std::string& name,
+                      const std::string& uuid)
+{
+    if(m_services.add(name, uuid)) {
         auto service_it = m_inverted.find(name);
-
         if(service_it != m_inverted.end()) {
-            m_services[name] = service_it->second;
-
             for(auto it = service_it->second.begin(); it != service_it->second.end(); ++it) {
                 m_groups[it->first].add(it->second);
             }
-        } else {
-            m_services[name] = std::map<std::string, size_t>();
         }
     }
 }
 
 void
-groups_t::remove_service(const std::string& name) {
-    auto service_it = m_services.find(name);
-
-    if(service_it != m_services.end()) {
-        for(auto it = service_it->second.begin(); it != service_it->second.end(); ++it) {
-            m_groups[it->first].remove(it->second);
+groups_t::remove_service(const std::string& name,
+                         const std::string& uuid)
+{
+    if(m_services.remove(name, uuid)) {
+        auto service_it = m_inverted.find(name);
+        if(service_it != m_inverted.end()) {
+            for(auto it = service_it->second.begin(); it != service_it->second.end(); ++it) {
+                m_groups[it->first].remove(it->second);
+            }
         }
+    }
+}
 
-        m_services.erase(service_it);
+void
+groups_t::remove_uuid(const std::string& uuid)
+{
+    auto removed = m_services.remove_uuid(uuid);
+    for(auto removed_it = removed.begin(); removed_it != removed.end(); ++removed_it) {
+        auto service_it = m_inverted.find(*removed_it);
+        if(service_it != m_inverted.end()) {
+            for(auto it = service_it->second.begin(); it != service_it->second.end(); ++it) {
+                m_groups[it->first].remove(it->second);
+            }
+        }
     }
 }
 
@@ -153,8 +220,8 @@ groups_t::select_service(const std::string& group_name) const {
         boost::uniform_int<> distrib(1, group_it->second.sum());
         boost::variate_generator<boost::mt19937&, boost::uniform_int<>> gen(m_generator, distrib);
         unsigned int max = gen();
-        for (size_t i = 0; i < group_it->second.services().size(); ++i) {
-            if (max <= group_it->second.used_weights()[i]) {
+        for(size_t i = 0; i < group_it->second.services().size(); ++i) {
+            if(max <= group_it->second.used_weights()[i]) {
                 return group_it->second.services()[i];
             } else {
                 max -= group_it->second.used_weights()[i];
@@ -421,6 +488,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
         COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, service->endpoints().front().port());
 
         m_services.emplace_back(name, std::move(service));
+        m_groups.add_service(name, "local");
     }
 
     if(m_synchronizer) {
@@ -455,6 +523,7 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
         service = std::move(it->second);
 
         m_services.erase(it);
+        m_groups.remove_service(name, "local");
     }
 
     if(m_synchronizer) {
@@ -671,10 +740,13 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
         msgpack::unpacked unpacked;
         msgpack::unpack(&unpacked, chunk.data(), chunk.size());
 
-        m_gateway->consume(
-            uuid,
-            unpacked.get().as<synchronize_result_type>()
-        );
+        synchronize_result_type services = unpacked.get().as<synchronize_result_type>();
+
+        for(auto it = services.begin(); it != services.end(); ++it) {
+            m_groups.add_service(it->first, uuid);
+        }
+
+        m_gateway->consume(uuid, std::move(services));
     } break;
 
     case io::event_traits<io::rpc::error>::id:
@@ -682,6 +754,7 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
         COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
 
         m_gateway->prune(uuid);
+        m_groups.remove_uuid(uuid);
 
         // NOTE: It is dangerous to remove the channel while the message is still being
         // processed, so we defer it via reactor_t::post().
@@ -709,6 +782,7 @@ locator_t::on_failure(const key_type& key, const std::error_code& ec) {
     }
 
     m_gateway->prune(uuid);
+    m_groups.remove_uuid(uuid);
     m_remotes.erase(key);
 }
 
@@ -721,5 +795,6 @@ locator_t::on_timeout(const key_type& key) {
     COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", uuid);
 
     m_gateway->prune(uuid);
+    m_groups.remove_uuid(uuid);
     m_remotes.erase(key);
 }
