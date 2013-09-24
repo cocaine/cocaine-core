@@ -38,12 +38,13 @@ namespace cocaine {
 
 class actor_t;
 
-typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
-typedef io::event_traits<io::locator::synchronize>::result_type synchronize_result_type;
-
 class locator_t:
     public dispatch_t
 {
+    typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
+    typedef io::event_traits<io::locator::synchronize>::result_type synchronize_result_type;
+    typedef io::event_traits<io::locator::reports>::result_type reports_result_type;
+
     typedef std::tuple<std::string, std::string, uint16_t> key_type;
 
     public:
@@ -73,6 +74,9 @@ class locator_t:
 
         synchronize_result_type
         dump() const;
+
+        reports_result_type
+        reports() const;
 
         // Cluster I/O
 

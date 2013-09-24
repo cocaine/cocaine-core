@@ -42,11 +42,11 @@ class adhoc_t:
 
         virtual
         void
-        consume(const std::string& uuid, api::synchronize_result_type dump);
+        consume(const std::string& uuid, const api::synchronize_result_type& dump);
 
         virtual
         void
-        prune(const std::string& uuid);
+        cleanup(const std::string& uuid);
 
     private:
         const std::unique_ptr<logging::log_t> m_log;
@@ -62,9 +62,7 @@ class adhoc_t:
             api::resolve_result_type info;
         };
 
-        typedef std::multimap<std::string, remote_service_t> remote_service_map_t;
-
-        remote_service_map_t m_remote_services;
+        std::multimap<std::string, remote_service_t> m_remote_services;
 };
 
 }} // namespace cocaine::gateway

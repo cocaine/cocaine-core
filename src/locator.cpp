@@ -66,7 +66,7 @@ struct locator_t::synchronize_slot_t:
 
     void
     update() {
-        const auto disconnected = std::partition(
+        auto disconnected = std::partition(
             m_upstreams.begin(),
             m_upstreams.end(),
             std::bind(&synchronize_slot_t::dump, this, _1)
@@ -125,6 +125,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
+    on<io::locator::reports>("reports", std::bind(&locator_t::reports, this));
 
     if(m_context.config.network.ports) {
         uint16_t min, max;
@@ -269,7 +270,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
-        const auto existing = std::find_if(m_services.cbegin(), m_services.cend(), match {
+        auto existing = std::find_if(m_services.cbegin(), m_services.cend(), match {
             name
         });
 
@@ -293,7 +294,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
         service->run(endpoints);
 
-        COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, service->endpoints().front().port());
+        COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, service->location().front().port());
 
         m_services.emplace_back(name, std::move(service));
     }
@@ -316,7 +317,7 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
 
         BOOST_VERIFY(it != m_services.end());
 
-        const std::vector<io::tcp::endpoint> endpoints = it->second->endpoints();
+        const std::vector<io::tcp::endpoint> endpoints = it->second->location();
 
         it->second->terminate();
 
@@ -339,10 +340,10 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
     return service;
 }
 
-resolve_result_type
-locator_t::query(const std::unique_ptr<actor_t>& service) const {
-    const auto port = service->endpoints().front().port();
-    const auto endpoint = std::make_tuple(m_context.config.network.hostname, port);
+auto
+locator_t::query(const std::unique_ptr<actor_t>& service) const -> resolve_result_type {
+    const auto port = service->location().front().port();
+    const auto endpoint = io::locator::endpoint_tuple_type(m_context.config.network.hostname, port);
 
     return resolve_result_type(
         endpoint,
@@ -351,17 +352,20 @@ locator_t::query(const std::unique_ptr<actor_t>& service) const {
     );
 }
 
-resolve_result_type
-locator_t::resolve(const std::string& name) const {
+auto
+locator_t::resolve(const std::string& name) const -> resolve_result_type {
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
-        const auto local = std::find_if(m_services.begin(), m_services.end(), match {
+        auto local = std::find_if(m_services.begin(), m_services.end(), match {
             name
         });
 
         if(local != m_services.end()) {
             COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);
+
+            // TODO: Might be a good idea to return an endpoint suitable for the interface
+            // which the client used to connect to the Locator.
             return query(local->second);
         }
     }
@@ -373,14 +377,45 @@ locator_t::resolve(const std::string& name) const {
     }
 }
 
-synchronize_result_type
-locator_t::dump() const {
+auto
+locator_t::dump() const -> synchronize_result_type {
     std::lock_guard<std::mutex> guard(m_services_mutex);
 
     synchronize_result_type result;
 
     for(auto it = m_services.begin(); it != m_services.end(); ++it) {
         result[it->first] = query(it->second);
+    }
+
+    return result;
+}
+
+auto
+locator_t::reports() const -> reports_result_type {
+    std::lock_guard<std::mutex> guard(m_services_mutex);
+
+    reports_result_type result;
+
+    for(auto it = m_services.begin(); it != m_services.end(); ++it) {
+        io::locator::usage_report_type report;
+
+        // Get the usage counters from the service's actor.
+        const auto source = it->second->counters();
+
+        for(auto channel = source.footprints.begin(); channel != source.footprints.end(); ++channel) {
+            auto& endpoint = channel->first;
+            auto  consumed = channel->second;
+
+            report.insert({
+                io::locator::endpoint_tuple_type(endpoint.address().to_string(), endpoint.port()),
+                consumed
+            });
+        }
+
+        result[it->first] = make_tuple(
+            source.channels,
+            report
+        );
     }
 
     return result;
@@ -552,7 +587,7 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
     case io::event_traits<io::rpc::choke>::id: {
         COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
 
-        m_gateway->prune(uuid);
+        m_gateway->cleanup(uuid);
 
         // NOTE: It is dangerous to remove the channel while the message is still being
         // processed, so we defer it via reactor_t::post().
@@ -579,7 +614,9 @@ locator_t::on_failure(const key_type& key, const std::error_code& ec) {
         COCAINE_LOG_WARNING(m_log, "node '%s' has unexpectedly disconnected", uuid);
     }
 
-    m_gateway->prune(uuid);
+    m_gateway->cleanup(uuid);
+
+    // NOTE: Safe to do since errors are queued up.
     m_remotes.erase(key);
 }
 
@@ -591,6 +628,8 @@ locator_t::on_timeout(const key_type& key) {
 
     COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", uuid);
 
-    m_gateway->prune(uuid);
+    m_gateway->cleanup(uuid);
+
+    // NOTE: Safe to do since timeouts are not related to I/O.
     m_remotes.erase(key);
 }

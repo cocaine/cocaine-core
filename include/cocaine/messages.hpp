@@ -34,6 +34,8 @@ namespace cocaine { namespace io {
 struct locator_tag;
 
 namespace locator {
+    typedef std::tuple<std::string, uint16_t> endpoint_tuple_type;
+
     struct resolve {
         typedef locator_tag tag;
 
@@ -44,7 +46,7 @@ namespace locator {
 
         typedef boost::mpl::list<
          /* An endpoint for the client to connect to in order to use the the service. */
-            std::tuple<std::string, uint16_t>,
+            endpoint_tuple_type,
          /* Service protocol version. If the client wishes to use the service, the protocol
             versions must match. */
             unsigned int,
@@ -63,6 +65,18 @@ namespace locator {
             std::map<std::string, tuple::fold<resolve::result_type>::type>
         result_type;
     };
+
+    typedef std::map<endpoint_tuple_type, size_t> usage_report_type;
+
+    struct reports {
+        typedef locator_tag tag;
+
+        typedef
+         /* Service I/O usage counters: number of concurrent connections and their buffer
+            resource usages. */
+            std::map<std::string, std::tuple<size_t, usage_report_type>>
+        result_type;
+    };
 }
 
 template<>
@@ -73,7 +87,8 @@ struct protocol<locator_tag> {
 
     typedef boost::mpl::list<
         locator::resolve,
-        locator::synchronize
+        locator::synchronize,
+        locator::reports
     > type;
 };
 

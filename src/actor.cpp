@@ -190,8 +190,8 @@ actor_t::terminate() {
     m_connectors.clear();
 }
 
-auto
-actor_t::endpoints() const -> std::vector<tcp::endpoint> {
+std::vector<tcp::endpoint>
+actor_t::location() const {
     BOOST_ASSERT(!m_connectors.empty());
 
     std::vector<tcp::endpoint> endpoints;
@@ -203,9 +203,27 @@ actor_t::endpoints() const -> std::vector<tcp::endpoint> {
     return endpoints;
 }
 
-auto
-actor_t::dispatch() -> dispatch_t& {
+dispatch_t&
+actor_t::dispatch() {
     return *m_dispatch;
+}
+
+auto
+actor_t::counters() const -> counters_t {
+    counters_t result;
+
+    result.channels = m_channels.size();
+
+    for(auto it = m_channels.begin(); it != m_channels.end(); ++it) {
+        std::lock_guard<std::mutex> guard(it->second->mutex);
+
+        result.footprints.insert({
+            it->second->ptr->remote_endpoint(),
+            it->second->ptr->footprint()
+        });
+    }
+
+    return result;
 }
 
 void

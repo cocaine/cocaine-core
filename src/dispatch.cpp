@@ -43,7 +43,7 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
     {
         std::unique_lock<std::mutex> lock(m_mutex);
 
-        const auto it = m_slots.find(message.id());
+        auto it = m_slots.find(message.id());
 
         if(it == m_slots.end()) {
             COCAINE_LOG_WARNING(m_log, "dropping an unknown type %d: %s message", message.id(), message.args());
