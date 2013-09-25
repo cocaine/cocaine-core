@@ -43,6 +43,29 @@ using namespace cocaine;
 
 using namespace std::placeholders;
 
+namespace {
+
+#if defined(__clang__) || defined(HAVE_GCC46)
+    typedef std::uniform_int_distribution<unsigned int> uniform_uint;
+
+    inline
+    void
+    init_generator(detail::random_generator_t& gen) {
+        std::random_device device;
+        gen.seed(device());
+    }
+#else
+    typedef std::uniform_int<unsigned int> uniform_uint;
+
+    inline
+    void
+    init_generator(detail::random_generator_t& gen) {
+        gen.seed(static_cast<unsigned long>(::time(nullptr)));
+    }
+#endif
+
+} // namespace
+
 group_index_t::group_index_t() :
     m_sum(0)
 {
@@ -132,6 +155,10 @@ services_t::has(const std::string& name) {
     return m_services.find(name) != m_services.end();
 }
 
+groups_t::groups_t() {
+    init_generator(m_generator);
+}
+
 void
 groups_t::add_group(const std::string& name,
                     const std::map<std::string, unsigned int>& group)
@@ -214,9 +241,8 @@ groups_t::select_service(const std::string& group_name) const {
     auto group_it = m_groups.find(group_name);
 
     if(group_it != m_groups.end() && group_it->second.sum() != 0) {
-        boost::uniform_int<> distrib(1, group_it->second.sum());
-        boost::variate_generator<boost::mt19937&, boost::uniform_int<>> gen(m_generator, distrib);
-        unsigned int max = gen();
+        uniform_uint distrib(1, group_it->second.sum());
+        unsigned int max = distrib(m_generator);
         for(size_t i = 0; i < group_it->second.services().size(); ++i) {
             if(max <= group_it->second.used_weights()[i]) {
                 return group_it->second.services()[i];
@@ -224,9 +250,9 @@ groups_t::select_service(const std::string& group_name) const {
                 max -= group_it->second.used_weights()[i];
             }
         }
-        return "";
+        return group_name;
     } else {
-        return "";
+        return group_name;
     }
 }
 
@@ -554,22 +580,18 @@ locator_t::query(const std::unique_ptr<actor_t>& service) const {
 
 resolve_result_type
 locator_t::resolve(const std::string& name_) const {
+    std::unique_lock<std::mutex> guard(m_services_mutex);
+
     std::string name = m_groups.select_service(name_);
 
-    if(name.empty()) {
-        name = name_;
+    const auto local = std::find_if(m_services.begin(), m_services.end(), match { name });
+
+    if(local != m_services.end()) {
+        COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);
+        return query(local->second);
     }
 
-    {
-        std::lock_guard<std::mutex> guard(m_services_mutex);
-
-        const auto local = std::find_if(m_services.begin(), m_services.end(), match { name });
-
-        if(local != m_services.end()) {
-            COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);
-            return query(local->second);
-        }
-    }
+    guard.unlock();
 
     if(m_gateway) {
         return m_gateway->resolve(name);
@@ -749,8 +771,12 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
 
         synchronize_result_type services = unpacked.get().as<synchronize_result_type>();
 
-        for(auto it = services.begin(); it != services.end(); ++it) {
-            m_groups.add_service(it->first, uuid);
+        {
+            std::lock_guard<std::mutex> guard(m_services_mutex);
+
+            for(auto it = services.begin(); it != services.end(); ++it) {
+                m_groups.add_service(it->first, uuid);
+            }
         }
 
         m_gateway->consume(uuid, std::move(services));
@@ -761,7 +787,11 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
         COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
 
         m_gateway->prune(uuid);
-        m_groups.remove_uuid(uuid);
+
+        {
+            std::lock_guard<std::mutex> guard(m_services_mutex);
+            m_groups.remove_uuid(uuid);
+        }
 
         // NOTE: It is dangerous to remove the channel while the message is still being
         // processed, so we defer it via reactor_t::post().
@@ -789,8 +819,12 @@ locator_t::on_failure(const key_type& key, const std::error_code& ec) {
     }
 
     m_gateway->prune(uuid);
-    m_groups.remove_uuid(uuid);
     m_remotes.erase(key);
+
+    {
+        std::lock_guard<std::mutex> guard(m_services_mutex);
+        m_groups.remove_uuid(uuid);
+    }
 }
 
 void
@@ -802,6 +836,10 @@ locator_t::on_timeout(const key_type& key) {
     COCAINE_LOG_WARNING(m_log, "node '%s' has timed out", uuid);
 
     m_gateway->prune(uuid);
-    m_groups.remove_uuid(uuid);
     m_remotes.erase(key);
+
+    {
+        std::lock_guard<std::mutex> guard(m_services_mutex);
+        m_groups.remove_uuid(uuid);
+    }
 }

@@ -30,7 +30,7 @@
 
 #include <mutex>
 #include <queue>
-#include <boost/random.hpp>
+#include <random>
 
 namespace ev {
     struct io;
@@ -38,6 +38,16 @@ namespace ev {
 }
 
 namespace cocaine {
+
+namespace detail {
+
+#if defined(__clang__) || defined(HAVE_GCC46)
+    typedef std::default_random_engine random_generator_t;
+#else
+    typedef std::minstd_rand0 random_generator_t;
+#endif
+
+} // namespace detail
 
 class services_t {
     public:
@@ -99,6 +109,8 @@ class group_index_t {
 
 class groups_t {
     public:
+        groups_t();
+
         void
         add_group(const std::string& name,
                   const std::map<std::string, unsigned int>& group);
@@ -128,7 +140,7 @@ class groups_t {
         groups_index_t m_groups; // index group -> services
         inverted_index_t m_inverted; // inverted for m_groups index service -> groups
         services_t m_services; // contains services which are present in locator
-        mutable boost::mt19937 m_generator;
+        mutable detail::random_generator_t m_generator;
 };
 
 class actor_t;
