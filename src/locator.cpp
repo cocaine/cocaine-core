@@ -397,7 +397,7 @@ locator_t::reports() const -> reports_result_type {
     reports_result_type result;
 
     for(auto it = m_services.begin(); it != m_services.end(); ++it) {
-        io::locator::usage_report_type report;
+        io::locator::reports::usage_report_type report;
 
         // Get the usage counters from the service's actor.
         const auto source = it->second->counters();
@@ -412,10 +412,7 @@ locator_t::reports() const -> reports_result_type {
             });
         }
 
-        result[it->first] = make_tuple(
-            source.channels,
-            report
-        );
+        result[it->first] = make_tuple(source.channels, report);
     }
 
     return result;

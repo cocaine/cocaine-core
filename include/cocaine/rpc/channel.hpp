@@ -56,6 +56,7 @@ struct channel {
     operator=(channel&& other) {
         rd = std::move(other.rd);
         wr = std::move(other.wr);
+
         return *this;
     }
 
@@ -76,8 +77,7 @@ public:
 
     size_t
     footprint() const {
-        return rd->stream()->footprint() +
-               wr->stream()->footprint();
+        return rd->stream()->footprint() + wr->stream()->footprint();
     }
 
     const std::unique_ptr<decoder<readable_stream<Socket>>> rd;

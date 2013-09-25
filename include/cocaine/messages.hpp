@@ -66,10 +66,9 @@ namespace locator {
         result_type;
     };
 
-    typedef std::map<endpoint_tuple_type, size_t> usage_report_type;
-
     struct reports {
         typedef locator_tag tag;
+        typedef std::map<endpoint_tuple_type, size_t> usage_report_type;
 
         typedef
          /* Service I/O usage counters: number of concurrent connections and their buffer
