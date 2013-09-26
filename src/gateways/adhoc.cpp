@@ -76,28 +76,23 @@ adhoc_t::resolve(const std::string& name) const {
 }
 
 void
-adhoc_t::consume(const std::string& uuid, synchronize_result_type dump) {
-    // Clear the old remote node services.
-    prune(uuid);
+adhoc_t::add(const std::string& uuid,
+             const std::string& name,
+             const api::resolve_result_type& info)
+{
+    COCAINE_LOG_DEBUG(m_log, "adding service '%s' from node '%s'", name, uuid);
 
-    COCAINE_LOG_DEBUG(m_log, "updating node '%s' services", uuid);
-
-    for(auto it = dump.cbegin(); it != dump.cend(); ++it) {
-        remote_service_t service = {
-            uuid,
-            it->second
-        };
-
-        m_remote_services.insert(std::make_pair(it->first, service));
-    }
+    m_remote_services.insert(std::make_pair(name, remote_service_t { uuid, info }));
 }
 
 void
-adhoc_t::prune(const std::string& uuid) {
-    auto it  = m_remote_services.begin(),
-         end = m_remote_services.end();
+adhoc_t::remove(const std::string& uuid,
+                const std::string& name)
+{
+    COCAINE_LOG_DEBUG(m_log, "removing service '%s' from node '%s'", name, uuid);
 
-    COCAINE_LOG_DEBUG(m_log, "pruning node '%s' services", uuid);
+    remote_service_map_t::const_iterator it, end;
+    std::tie(it, end) = m_remote_services.equal_range(name);
 
     while(it != end) {
         if(it->second.uuid == uuid) {

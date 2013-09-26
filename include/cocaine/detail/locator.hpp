@@ -27,6 +27,7 @@
 #include "cocaine/messages.hpp"
 
 #include "cocaine/detail/group.hpp"
+#include "cocaine/api/gateway.hpp"
 
 #include <mutex>
 #include <queue>
@@ -49,23 +50,42 @@ namespace detail {
 
 } // namespace detail
 
+class locator_t;
+
 class services_t {
     public:
+        typedef std::vector<std::pair<std::string, api::resolve_result_type>>
+                services_vector_t;
+
+    public:
         bool // added
-        add(const std::string& name, const std::string& uuid);
+        add_local(const std::string& name);
 
         bool // removed
-        remove(const std::string& name, const std::string& uuid);
+        remove_local(const std::string& name);
 
-        std::set<std::string> // list of removed services
-        remove_uuid(const std::string& uuid);
+        std::pair<services_vector_t, services_vector_t> // added, removed
+        update_remote(const std::string& uuid, const api::synchronize_result_type& dump);
+
+        std::vector<std::string> // list of removed services
+        remove_remote(const std::string& uuid);
 
         bool
-        has(const std::string& name);
+        has(const std::string& name) const;
 
     private:
+        bool
+        add(const std::string& uuid, const std::string& name, const api::resolve_result_type& info);
+
+        bool
+        remove(const std::string& uuid, const std::string& name);
+
+    private:
+        typedef std::map<std::string, std::map<std::string, api::resolve_result_type>>
+                inverted_index_t;
+
         std::map<std::string, std::set<std::string>> m_services; // service -> uuid's
-        std::map<std::string, std::set<std::string>> m_inverted; // uuid -> services
+        inverted_index_t m_inverted; // uuid -> {(service, info)}
 };
 
 class group_index_t {
@@ -109,37 +129,32 @@ class group_index_t {
 
 class groups_t {
     public:
-        groups_t();
+        groups_t(locator_t &locator);
 
         void
-        add_group(const std::string& name,
-                  const std::map<std::string, unsigned int>& group);
+        add_group(const std::string& name, const std::map<std::string, unsigned int>& group);
 
         void
         remove_group(const std::string& name);
 
         void
-        add_service(const std::string& name, const std::string& uuid);
+        add_service(const std::string& name);
 
         void
-        remove_service(const std::string& name, const std::string& uuid);
-
-        void
-        remove_uuid(const std::string& uuid);
+        remove_service(const std::string& name);
 
         std::string
         select_service(const std::string& group_name) const;
 
     private:
-        typedef std::map<std::string, group_index_t> // name of group, index
-                groups_index_t;
-
         typedef std::map<std::string, std::map<std::string, size_t>> // {service: {group: index in services vector}}
                 inverted_index_t;
 
-        groups_index_t m_groups; // index group -> services
+        std::map<std::string, group_index_t> m_groups; // index group -> services
         inverted_index_t m_inverted; // inverted for m_groups index service -> groups
-        services_t m_services; // contains services which are present in locator
+
+        locator_t &m_locator;
+
         mutable detail::random_generator_t m_generator;
 };
 
@@ -171,6 +186,12 @@ class locator_t:
         auto
         detach(const std::string& name) -> std::unique_ptr<actor_t>;
 
+        const std::unique_ptr<logging::log_t>&
+        logger() const;
+
+        bool
+        has_service(const std::string& name) const;
+
     private:
         resolve_result_type
         query(const std::unique_ptr<actor_t>& service) const;
@@ -180,6 +201,9 @@ class locator_t:
 
         synchronize_result_type
         dump() const;
+
+        void
+        remove_uuid(const std::string& uuid);
 
         // Cluster I/O
 
@@ -208,6 +232,10 @@ class locator_t:
         // Ports available for allocation.
         std::priority_queue<uint16_t, std::vector<uint16_t>, std::greater<uint16_t>> m_ports;
 
+        // Contains services which are present in the locator.
+        services_t m_services_index;
+
+        // Groups index.
         groups_t m_groups;
 
         typedef std::vector<

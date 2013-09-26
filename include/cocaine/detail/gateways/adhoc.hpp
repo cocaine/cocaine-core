@@ -42,11 +42,14 @@ class adhoc_t:
 
         virtual
         void
-        consume(const std::string& uuid, api::synchronize_result_type dump);
+        add(const std::string& uuid,
+            const std::string& name,
+            const api::resolve_result_type& info);
 
         virtual
         void
-        prune(const std::string& uuid);
+        remove(const std::string& uuid,
+               const std::string& name);
 
     private:
         const std::unique_ptr<logging::log_t> m_log;
