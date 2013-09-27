@@ -52,42 +52,6 @@ namespace detail {
 
 class locator_t;
 
-class services_t {
-    public:
-        typedef std::vector<std::pair<std::string, api::resolve_result_type>>
-                services_vector_t;
-
-    public:
-        bool // added
-        add_local(const std::string& name);
-
-        bool // removed
-        remove_local(const std::string& name);
-
-        std::pair<services_vector_t, services_vector_t> // added, removed
-        update_remote(const std::string& uuid, const api::synchronize_result_type& dump);
-
-        std::vector<std::string> // list of removed services
-        remove_remote(const std::string& uuid);
-
-        bool
-        has(const std::string& name) const;
-
-    private:
-        bool
-        add(const std::string& uuid, const std::string& name, const api::resolve_result_type& info);
-
-        bool
-        remove(const std::string& uuid, const std::string& name);
-
-    private:
-        typedef std::map<std::string, std::map<std::string, api::resolve_result_type>>
-                inverted_index_t;
-
-        std::map<std::string, std::set<std::string>> m_services; // service -> uuid's
-        inverted_index_t m_inverted; // uuid -> {(service, info)}
-};
-
 class group_index_t {
     public:
         group_index_t();
@@ -156,6 +120,59 @@ class groups_t {
         locator_t &m_locator;
 
         mutable detail::random_generator_t m_generator;
+};
+
+class services_t {
+    public:
+        typedef std::vector<std::pair<std::string, api::resolve_result_type>>
+                services_vector_t;
+
+    public:
+        services_t(locator_t &locator);
+
+        void // added
+        add_local(const std::string& name);
+
+        void // removed
+        remove_local(const std::string& name);
+
+        std::pair<services_vector_t, services_vector_t> // added, removed
+        update_remote(const std::string& uuid, const api::synchronize_result_type& dump);
+
+        std::map<std::string, api::resolve_result_type> // services of removed node
+        remove_remote(const std::string& uuid);
+
+        bool
+        has(const std::string& name) const;
+
+        void
+        add_group(const std::string& name, const std::map<std::string, unsigned int>& group);
+
+        void
+        remove_group(const std::string& name);
+
+        // Takes name of service or group and returns name of service.
+        std::string
+        select_service(const std::string& name) const;
+
+    private:
+        void
+        add(const std::string& uuid, const std::string& name, const api::resolve_result_type& info);
+
+        void
+        remove(const std::string& uuid, const std::string& name);
+
+    private:
+        typedef std::map<std::string, std::map<std::string, api::resolve_result_type>>
+                inverted_index_t;
+
+        // service -> uuid's of remote nodes, that have this service
+        std::map<std::string, std::set<std::string>> m_services;
+        // Inverted index.
+        inverted_index_t m_inverted; // uuid -> {(service, info)}
+
+        // Groups index.
+        groups_t m_groups;
 };
 
 class actor_t;
@@ -232,11 +249,8 @@ class locator_t:
         // Ports available for allocation.
         std::priority_queue<uint16_t, std::vector<uint16_t>, std::greater<uint16_t>> m_ports;
 
-        // Contains services which are present in the locator.
+        // Contains services and groups which are present in the locator.
         services_t m_services_index;
-
-        // Groups index.
-        groups_t m_groups;
 
         typedef std::vector<
             std::pair<std::string, std::unique_ptr<actor_t>>

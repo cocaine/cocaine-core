@@ -64,19 +64,27 @@ namespace {
 
 } // namespace
 
-bool
+services_t::services_t(locator_t &locator):
+    m_groups(locator)
+{
+    // pass
+}
+
+void
 services_t::add(const std::string& uuid,
                 const std::string& name,
                 const api::resolve_result_type& info)
 {
     auto insert_result = m_services.insert(std::make_pair(name, std::set<std::string>()));
-    insert_result.first->second.insert(uuid); // special "uuid" that indicates local services
+    insert_result.first->second.insert(uuid);
     m_inverted[uuid][name] = info;
 
-    return insert_result.second;
+    if(insert_result.second) {
+        m_groups.add_service(name);
+    }
 }
 
-bool
+void
 services_t::remove(const std::string& uuid,
                    const std::string& name)
 {
@@ -93,22 +101,20 @@ services_t::remove(const std::string& uuid,
         service_it->second.erase(uuid);
         if(service_it->second.empty()) {
             m_services.erase(service_it);
-            return true;
+            m_groups.remove_service(name);
         }
     }
-
-    return false;
 }
 
-bool
+void
 services_t::add_local(const std::string& name) {
     // "local" is a special "uuid" that indicates local services
-    return add("local", name, api::resolve_result_type());
+    add("local", name, api::resolve_result_type());
 }
 
-bool
+void
 services_t::remove_local(const std::string& name) {
-    return remove("local", name);
+    remove("local", name);
 }
 
 std::pair<services_t::services_vector_t, services_t::services_vector_t>
@@ -145,18 +151,16 @@ services_t::update_remote(const std::string& uuid, const api::synchronize_result
     } else {
         added.assign(dump.begin(), dump.end());
         for(auto it = added.begin(); it != added.end(); ++it) {
-            m_services[it->first].insert(uuid);
+            add(uuid, it->first, it->second);
         }
-
-        m_inverted[uuid] = dump;
     }
 
     return std::make_pair(std::move(added), std::move(removed));
 }
 
-std::vector<std::string>
+std::map<std::string, api::resolve_result_type>
 services_t::remove_remote(const std::string& uuid) {
-    std::vector<std::string> removed;
+    std::map<std::string, api::resolve_result_type> removed;
 
     auto uuid_it = m_inverted.find(uuid);
     if(uuid_it != m_inverted.end()) {
@@ -166,10 +170,11 @@ services_t::remove_remote(const std::string& uuid) {
                 service_it->second.erase(uuid);
                 if(service_it->second.empty()) {
                     m_services.erase(service_it);
-                    removed.push_back(it->first);
+                    m_groups.remove_service(it->first);
                 }
             }
         }
+        removed = std::move(uuid_it->second);
         m_inverted.erase(uuid_it);
     }
 
@@ -179,6 +184,23 @@ services_t::remove_remote(const std::string& uuid) {
 bool
 services_t::has(const std::string& name) const {
     return m_services.find(name) != m_services.end();
+}
+
+void
+services_t::add_group(const std::string& name,
+                      const std::map<std::string, unsigned int>& group)
+{
+    m_groups.add_group(name, group);
+}
+
+void
+services_t::remove_group(const std::string& name) {
+    m_groups.remove_group(name);
+}
+
+std::string
+services_t::select_service(const std::string& name) const {
+    return m_groups.select_service(name);
 }
 
 group_index_t::group_index_t() :
@@ -371,7 +393,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor),
-    m_groups(*this)
+    m_services_index(*this)
 {
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
@@ -379,15 +401,15 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
         auto groups = api::storage(context, "core")->find("groups", std::vector<std::string>({"group"}));
 
         for (auto it = groups.begin(); it != groups.end(); ++it) {
-            m_groups.add_group(*it, group_t(context, *it).to_map());
+            m_services_index.add_group(*it, group_t(context, *it).to_map());
         }
     } catch(...) {
         // Unable to read groups from storage. Ignore.
     }
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::set_group>("set_group", std::bind(&groups_t::add_group, &m_groups, _1, _2));
-    on<io::locator::remove_group>("remove_group", std::bind(&groups_t::remove_group, &m_groups, _1));
+    on<io::locator::set_group>("set_group", std::bind(&services_t::add_group, &m_services_index, _1, _2));
+    on<io::locator::remove_group>("remove_group", std::bind(&services_t::remove_group, &m_services_index, _1));
 
     if(m_context.config.network.ports) {
         uint16_t min, max;
@@ -560,9 +582,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
         m_services.emplace_back(name, std::move(service));
 
-        if(m_services_index.add_local(name)) {
-            m_groups.add_service(name);
-        }
+        m_services_index.add_local(name);
     }
 
     if(m_synchronizer) {
@@ -598,9 +618,7 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
 
         m_services.erase(it);
 
-        if(m_services_index.remove_local(name)) {
-            m_groups.remove_service(name);
-        }
+        m_services_index.remove_local(name);
     }
 
     if(m_synchronizer) {
@@ -627,8 +645,7 @@ locator_t::remove_uuid(const std::string& uuid) {
     auto removed = m_services_index.remove_remote(uuid);
 
     for(auto removed_it = removed.begin(); removed_it != removed.end(); ++removed_it) {
-        m_groups.remove_service(*removed_it);
-        m_gateway->remove(uuid, *removed_it);
+        m_gateway->remove(uuid, removed_it->first);
     }
 }
 
@@ -648,7 +665,7 @@ resolve_result_type
 locator_t::resolve(const std::string& name_) const {
     std::unique_lock<std::mutex> guard(m_services_mutex);
 
-    std::string name = m_groups.select_service(name_);
+    std::string name = m_services_index.select_service(name_);
 
     const auto local = std::find_if(m_services.begin(), m_services.end(), match { name });
 
@@ -844,13 +861,11 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
 
             // remove
             for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
-                m_groups.remove_service(it->first);
                 m_gateway->remove(uuid, it->first);
             }
 
             // add
             for(auto it = diff.first.begin(); it != diff.first.end(); ++it) {
-                m_groups.add_service(it->first);
                 m_gateway->add(uuid, it->first, it->second);
             }
         }
