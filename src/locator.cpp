@@ -64,8 +64,8 @@ namespace {
 
 } // namespace
 
-services_t::services_t(locator_t &locator):
-    m_groups(locator)
+services_t::services_t(logging::log_t& log):
+    m_groups(log, *this)
 {
     // pass
 }
@@ -231,8 +231,9 @@ group_index_t::remove(size_t service_index) {
     m_used_weights[service_index] = 0;
 }
 
-groups_t::groups_t(locator_t &locator) :
-    m_locator(locator)
+groups_t::groups_t(logging::log_t& log, const services_t& services_index) :
+    m_log(log),
+    m_services_index(services_index)
 {
     init_generator(m_generator);
 }
@@ -241,7 +242,7 @@ void
 groups_t::add_group(const std::string& name,
                     const std::map<std::string, unsigned int>& group)
 {
-    COCAINE_LOG_INFO(m_locator.logger(), "adding group '%s'", name);
+    COCAINE_LOG_INFO((&m_log), "adding group '%s'", name);
 
     m_groups[name] = group_index_t(group);
     auto group_it = m_groups.find(name);
@@ -249,7 +250,7 @@ groups_t::add_group(const std::string& name,
     for(size_t i = 0; i < group.size(); ++i) {
         m_inverted[group_it->second.services()[i]][name] = i;
 
-        if(m_locator.has_service(group_it->second.services()[i])) {
+        if(m_services_index.has(group_it->second.services()[i])) {
             group_it->second.add(i);
         }
     }
@@ -271,7 +272,7 @@ groups_t::remove_group(const std::string& name) {
             }
         }
         m_groups.erase(group_it);
-        COCAINE_LOG_INFO(m_locator.logger(), "group '%s' has been removed", name);
+        COCAINE_LOG_INFO((&m_log), "group '%s' has been removed", name);
     }
 }
 
@@ -393,7 +394,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor),
-    m_services_index(*this)
+    m_services_index(*m_log.get())
 {
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
@@ -408,8 +409,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     }
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::set_group>("set_group", std::bind(&services_t::add_group, &m_services_index, _1, _2));
-    on<io::locator::remove_group>("remove_group", std::bind(&services_t::remove_group, &m_services_index, _1));
+    on<io::locator::update_group>("update_group", std::bind(&locator_t::update_group, this, _1));
 
     if(m_context.config.network.ports) {
         uint16_t min, max;
@@ -694,6 +694,18 @@ locator_t::dump() const {
     }
 
     return result;
+}
+
+void
+locator_t::update_group(const std::string& name) {
+    try {
+        group_t group(m_context, name);
+        std::lock_guard<std::mutex> guard(m_services_mutex);
+        m_services_index.add_group(name, group.to_map());
+    } catch (...) {
+        std::lock_guard<std::mutex> guard(m_services_mutex);
+        m_services_index.remove_group(name);
+    }
 }
 
 void

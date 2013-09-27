@@ -51,6 +51,7 @@ namespace detail {
 } // namespace detail
 
 class locator_t;
+class services_t;
 
 class group_index_t {
     public:
@@ -93,7 +94,7 @@ class group_index_t {
 
 class groups_t {
     public:
-        groups_t(locator_t &locator);
+        groups_t(logging::log_t& log, const services_t& services_index);
 
         void
         add_group(const std::string& name, const std::map<std::string, unsigned int>& group);
@@ -117,7 +118,8 @@ class groups_t {
         std::map<std::string, group_index_t> m_groups; // index group -> services
         inverted_index_t m_inverted; // inverted for m_groups index service -> groups
 
-        locator_t &m_locator;
+        logging::log_t& m_log;
+        const services_t& m_services_index;
 
         mutable detail::random_generator_t m_generator;
 };
@@ -128,7 +130,7 @@ class services_t {
                 services_vector_t;
 
     public:
-        services_t(locator_t &locator);
+        services_t(logging::log_t& log);
 
         void // added
         add_local(const std::string& name);
@@ -218,6 +220,9 @@ class locator_t:
 
         synchronize_result_type
         dump() const;
+
+        void
+        update_group(const std::string& name);
 
         void
         remove_uuid(const std::string& uuid);

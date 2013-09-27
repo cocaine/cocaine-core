@@ -64,18 +64,7 @@ namespace locator {
         result_type;
     };
 
-    struct set_group {
-        typedef locator_tag tag;
-
-        typedef boost::mpl::list<
-        /* Name of the group. */
-            std::string,
-        /* Services with weights. */
-            std::map<std::string, unsigned int>
-        > tuple_type;
-    };
-
-    struct remove_group {
+    struct update_group {
         typedef locator_tag tag;
 
         typedef boost::mpl::list<
@@ -94,8 +83,7 @@ struct protocol<locator_tag> {
     typedef boost::mpl::list<
         locator::resolve,
         locator::synchronize,
-        locator::set_group,
-        locator::remove_group
+        locator::update_group
     > type;
 };
 
