@@ -90,7 +90,7 @@ void
 adhoc_t::cleanup(const std::string& uuid, const std::string& name) {
     COCAINE_LOG_DEBUG(m_log, "removing node '%s' service '%s'", uuid, name);
 
-    remote_service_map_t::const_iterator it, end;
+    remote_service_map_t::iterator it, end;
 
     std::tie(it, end) = m_remote_services.equal_range(name);
 
