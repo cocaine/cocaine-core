@@ -1,5 +1,6 @@
 /*
     Copyright (c) 2011-2013 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2013 Andrey Goryachev <andrey.goryachev@gmail.com>
     Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
 
     This file is part of Cocaine.
@@ -23,6 +24,8 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/api/gateway.hpp"
+
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
@@ -41,11 +44,12 @@ class actor_t;
 class locator_t:
     public dispatch_t
 {
+    typedef std::tuple<std::string, std::string, uint16_t> key_type;
+
     typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
     typedef io::event_traits<io::locator::synchronize>::result_type synchronize_result_type;
     typedef io::event_traits<io::locator::reports>::result_type reports_result_type;
-
-    typedef std::tuple<std::string, std::string, uint16_t> key_type;
+    typedef io::event_traits<io::locator::refresh>::result_type refresh_result_type;
 
     public:
         locator_t(context_t& context, io::reactor_t& reactor);
@@ -67,9 +71,6 @@ class locator_t:
 
     private:
         resolve_result_type
-        query(const std::unique_ptr<actor_t>& service) const;
-
-        resolve_result_type
         resolve(const std::string& name) const;
 
         synchronize_result_type
@@ -77,6 +78,12 @@ class locator_t:
 
         reports_result_type
         reports() const;
+
+        refresh_result_type
+        refresh(const std::string& name);
+
+        void
+        remove_uuid(const std::string& uuid);
 
         // Cluster I/O
 
@@ -141,6 +148,11 @@ class locator_t:
 
         // Synchronizing slot.
         std::shared_ptr<synchronize_slot_t> m_synchronizer;
+
+        class services_t;
+
+        // Contains services and groups which are present in the locator.
+        std::unique_ptr<services_t> m_services_index;
 };
 
 } // namespace cocaine

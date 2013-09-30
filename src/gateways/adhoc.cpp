@@ -77,27 +77,22 @@ adhoc_t::resolve(const std::string& name) const {
 }
 
 void
-adhoc_t::consume(const std::string& uuid, const synchronize_result_type& dump) {
-    cleanup(uuid);
+adhoc_t::consume(const std::string& uuid, const std::string& name, const api::resolve_result_type& info) {
+    COCAINE_LOG_DEBUG(m_log, "consumed node '%s' service '%s'", uuid, name);
 
-    COCAINE_LOG_DEBUG(m_log, "updating node '%s' services", uuid);
-
-    for(auto it = dump.cbegin(); it != dump.cend(); ++it) {
-        remote_service_t service = {
-            uuid,
-            it->second
-        };
-
-        m_remote_services.insert(std::make_pair(it->first, service));
-    }
+    m_remote_services.insert({
+        name,
+        remote_service_t { uuid, info }
+    });
 }
 
 void
-adhoc_t::cleanup(const std::string& uuid) {
-    auto it  = m_remote_services.begin(),
-         end = m_remote_services.end();
+adhoc_t::cleanup(const std::string& uuid, const std::string& name) {
+    COCAINE_LOG_DEBUG(m_log, "removing node '%s' service '%s'", uuid, name);
 
-    COCAINE_LOG_DEBUG(m_log, "cleaning up node '%s' services", uuid);
+    remote_service_map_t::const_iterator it, end;
+
+    std::tie(it, end) = m_remote_services.equal_range(name);
 
     while(it != end) {
         if(it->second.uuid == uuid) {

@@ -68,13 +68,25 @@ namespace locator {
 
     struct reports {
         typedef locator_tag tag;
-        typedef std::map<endpoint_tuple_type, size_t> usage_report_type;
+
+        typedef std::map<
+         /* Maps client remote endpoint to the amount of memory used for that client. */
+            endpoint_tuple_type, size_t
+        > usage_report_type;
 
         typedef
-         /* Service I/O usage counters: number of concurrent connections and their buffer
-            resource usages. */
+         /* Service I/O usage counters: number of concurrent connections and memory footprints. */
             std::map<std::string, std::tuple<size_t, usage_report_type>>
         result_type;
+    };
+
+    struct refresh {
+        typedef locator_tag tag;
+
+        typedef boost::mpl::list<
+         /* Name of the group to refresh. */
+            std::string
+        > tuple_type;
     };
 }
 
@@ -87,7 +99,8 @@ struct protocol<locator_tag> {
     typedef boost::mpl::list<
         locator::resolve,
         locator::synchronize,
-        locator::reports
+        locator::reports,
+        locator::refresh
     > type;
 };
 

@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2011-2013 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2013 Andrey Goryachev <andrey.goryachev@gmail.com>
     Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
 
     This file is part of Cocaine.
@@ -18,41 +18,26 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_APP_MANIFEST_HPP
-#define COCAINE_APP_MANIFEST_HPP
+#ifndef COCAINE_LOCATOR_GROUP_HPP
+#define COCAINE_LOCATOR_GROUP_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/detail/cached.hpp"
 
-#include "json/json.h"
+namespace cocaine {
 
-namespace cocaine { namespace engine {
-
-struct manifest_t:
-    cached<Json::Value>
+struct group_t:
+    cached<std::map<std::string, unsigned int>>
 {
-    manifest_t(context_t& context, const std::string& name);
+    group_t(context_t& context, const std::string& name);
 
-    // The application name.
+    const std::map<std::string, unsigned int>&
+    to_map() const;
+
+    // Name of the routing group.
     std::string name;
-
-    // A configuration map for drivers, similar to the generic one found
-    // in the config_t structure.
-    config_t::component_map_t drivers;
-
-    // The application engine's endpoint name.
-    std::string endpoint;
-
-    // Optional environment.
-    std::map<std::string, std::string> environment;
-
-    // What to execute.
-    std::string executable;
-
-    // Disables the publication of this app via the Locator.
-    bool local;
 };
 
-}} // namespace cocaine::engine
+} // namespace cocaine
 
 #endif
