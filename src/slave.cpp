@@ -23,6 +23,8 @@
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
 
+#include "cocaine/asio/reactor.hpp"
+
 #include "cocaine/context.hpp"
 
 #include "cocaine/detail/engine.hpp"
@@ -105,8 +107,8 @@ slave_t::slave_t(context_t& context, reactor_t& reactor, const manifest_t& manif
 #else
     m_birthstamp(std::chrono::monotonic_clock::now()),
 #endif
-    m_heartbeat_timer(reactor.native()),
-    m_idle_timer(reactor.native()),
+    m_heartbeat_timer(new ev::timer(reactor.native())),
+    m_idle_timer(new ev::timer(reactor.native())),
     m_output_ring(profile.crashlog_limit)
 {
     reactor.update();
@@ -119,11 +121,11 @@ slave_t::slave_t(context_t& context, reactor_t& reactor, const manifest_t& manif
     );
 
     // NOTE: Initialization heartbeat can be different.
-    m_heartbeat_timer.set<slave_t, &slave_t::on_timeout>(this);
-    m_heartbeat_timer.start(m_profile.startup_timeout);
+    m_heartbeat_timer->set<slave_t, &slave_t::on_timeout>(this);
+    m_heartbeat_timer->start(m_profile.startup_timeout);
 
     // NOTE: Idle timer will be started on the first heartbeat.
-    m_idle_timer.set<slave_t, &slave_t::on_idle>(this);
+    m_idle_timer->set<slave_t, &slave_t::on_idle>(this);
 
     auto isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -156,8 +158,8 @@ slave_t::~slave_t() {
     BOOST_ASSERT(m_state == states::inactive);
     BOOST_ASSERT(m_sessions.empty() && m_queue.empty());
 
-    m_heartbeat_timer.stop();
-    m_idle_timer.stop();
+    m_heartbeat_timer->stop();
+    m_idle_timer->stop();
 
     // Closes our end of the socket.
     m_channel.reset();
@@ -211,7 +213,7 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
 
     BOOST_ASSERT(m_state == states::active);
 
-    m_idle_timer.stop();
+    m_idle_timer->stop();
 
     m_sessions.insert(std::make_pair(session->id, session));
 
@@ -316,8 +318,8 @@ slave_t::on_ping() {
         m_profile.heartbeat_timeout
     );
 
-    m_heartbeat_timer.stop();
-    m_heartbeat_timer.start(m_profile.heartbeat_timeout);
+    m_heartbeat_timer->stop();
+    m_heartbeat_timer->start(m_profile.heartbeat_timeout);
 
     m_channel->wr->write<rpc::heartbeat>(0UL);
 
@@ -343,7 +345,7 @@ slave_t::on_ping() {
 
         if(m_profile.idle_timeout) {
             // Start the idle timer, which will kill the slave when it's not used.
-            m_idle_timer.start(m_profile.idle_timeout);
+            m_idle_timer->start(m_profile.idle_timeout);
         }
 
         pump();
@@ -537,7 +539,7 @@ slave_t::pump() {
     }
 
     if(m_sessions.empty() && m_profile.idle_timeout) {
-        m_idle_timer.start(m_profile.idle_timeout);
+        m_idle_timer->start(m_profile.idle_timeout);
     }
 
     m_engine.wake();

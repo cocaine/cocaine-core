@@ -25,9 +25,6 @@
 
 #include "cocaine/api/isolate.hpp"
 
-// TODO: Either forward or wrap libev types.
-#include "cocaine/asio/reactor.hpp"
-
 #include "cocaine/detail/atomic.hpp"
 #include "cocaine/detail/queue.hpp"
 
@@ -36,6 +33,11 @@
 #include <mutex>
 
 #include <boost/mpl/list.hpp>
+
+namespace ev {
+    struct async;
+    struct timer;
+}
 
 namespace cocaine {
 
@@ -163,8 +165,8 @@ class engine_t {
 
         std::shared_ptr<io::reactor_t> m_reactor;
 
-        ev::async m_notification;
-        ev::timer m_termination_timer;
+        std::unique_ptr<ev::async> m_notification;
+        std::unique_ptr<ev::timer> m_termination_timer;
 
         // I/O
 

@@ -26,6 +26,8 @@
 #include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/tcp.hpp"
 
+#include "cocaine/messages.hpp"
+
 #include <list>
 #include <thread>
 
@@ -53,6 +55,11 @@ class actor_t {
         dispatch_t&
         dispatch();
 
+        typedef io::event_traits<io::locator::resolve>::result_type metadata_t;
+
+        metadata_t
+        metadata() const;
+
         struct counters_t {
             size_t channels;
 
@@ -74,17 +81,19 @@ class actor_t {
         on_failure(int fd, const std::error_code& ec);
 
     private:
+        context_t& m_context;
+
         const std::unique_ptr<logging::log_t> m_log;
         const std::shared_ptr<io::reactor_t> m_reactor;
 
         // Actor I/O channels
 
-        struct lockable_type;
+        struct lockable_t;
         struct upstream_t;
 
         std::map<
             int,
-            std::shared_ptr<lockable_type>
+            std::shared_ptr<lockable_t>
         > m_channels;
 
         std::unique_ptr<dispatch_t> m_dispatch;

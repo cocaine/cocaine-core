@@ -29,11 +29,6 @@
 
 namespace cocaine { namespace api {
 
-typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
-typedef io::event_traits<io::locator::synchronize>::result_type synchronize_result_type;
-typedef io::event_traits<io::locator::reports>::result_type reports_result_type;
-typedef io::event_traits<io::locator::refresh>::result_type refresh_result_type;
-
 class gateway_t {
     public:
         typedef gateway_t category_type;
@@ -44,13 +39,15 @@ class gateway_t {
             // Empty.
         }
 
+        typedef io::event_traits<io::locator::resolve>::result_type metadata_t;
+
         virtual
-        resolve_result_type
+        metadata_t
         resolve(const std::string& name) const = 0;
 
         virtual
         void
-        consume(const std::string& uuid, const std::string& name, const resolve_result_type& info) = 0;
+        consume(const std::string& uuid, const std::string& name, const metadata_t& meta) = 0;
 
         virtual
         void

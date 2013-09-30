@@ -26,6 +26,7 @@
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/connector.hpp"
 #include "cocaine/asio/local.hpp"
+#include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/socket.hpp"
 
 #include "cocaine/context.hpp"
@@ -79,12 +80,12 @@ engine_t::engine_t(context_t& context,
     m_profile(profile),
     m_state(states::stopped),
     m_reactor(reactor),
-    m_notification(m_reactor->native()),
-    m_termination_timer(m_reactor->native()),
+    m_notification(new ev::async(m_reactor->native())),
+    m_termination_timer(new ev::timer(m_reactor->native())),
     m_next_id(1)
 {
-    m_notification.set<engine_t, &engine_t::on_notification>(this);
-    m_notification.start();
+    m_notification->set<engine_t, &engine_t::on_notification>(this);
+    m_notification->start();
 
     const auto endpoint = local::endpoint(m_manifest.endpoint);
 
@@ -214,7 +215,7 @@ engine_t::erase(const std::string& id, int code, const std::string& reason) {
 
 void
 engine_t::wake() {
-    m_notification.send();
+    m_notification->send();
 }
 
 void
@@ -561,13 +562,13 @@ engine_t::migrate(states target) {
         m_profile.termination_timeout
     );
 
-    m_termination_timer.set<engine_t, &engine_t::on_termination>(this);
-    m_termination_timer.start(m_profile.termination_timeout);
+    m_termination_timer->set<engine_t, &engine_t::on_termination>(this);
+    m_termination_timer->start(m_profile.termination_timeout);
 }
 
 void
 engine_t::stop() {
-    m_termination_timer.stop();
+    m_termination_timer->stop();
 
     // NOTE: This will force the slave pool termination.
     m_pool.clear();

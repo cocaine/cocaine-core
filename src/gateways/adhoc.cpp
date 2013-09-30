@@ -43,8 +43,8 @@ adhoc_t::~adhoc_t() {
     // Empty.
 }
 
-resolve_result_type
-adhoc_t::resolve(const std::string& name) const {
+auto
+adhoc_t::resolve(const std::string& name) const -> metadata_t {
     auto it  = m_remote_services.cend(),
          end = it;
 
@@ -62,7 +62,7 @@ adhoc_t::resolve(const std::string& name) const {
 
     std::advance(it, distribution(m_random_generator));
 
-    const auto endpoint = std::get<0>(it->second.info);
+    const auto endpoint = std::get<0>(it->second.meta);
 
     COCAINE_LOG_DEBUG(
         m_log,
@@ -73,16 +73,16 @@ adhoc_t::resolve(const std::string& name) const {
         std::get<1>(endpoint)
     );
 
-    return it->second.info;
+    return it->second.meta;
 }
 
 void
-adhoc_t::consume(const std::string& uuid, const std::string& name, const api::resolve_result_type& info) {
+adhoc_t::consume(const std::string& uuid, const std::string& name, const metadata_t& meta) {
     COCAINE_LOG_DEBUG(m_log, "consumed node '%s' service '%s'", uuid, name);
 
     m_remote_services.insert({
         name,
-        remote_service_t { uuid, info }
+        remote_service_t { uuid, meta }
     });
 }
 

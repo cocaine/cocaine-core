@@ -37,12 +37,12 @@ class adhoc_t:
        ~adhoc_t();
 
         virtual
-        api::resolve_result_type
+        metadata_t
         resolve(const std::string& name) const;
 
         virtual
         void
-        consume(const std::string& uuid, const std::string& name, const api::resolve_result_type& info);
+        consume(const std::string& uuid, const std::string& name, const metadata_t& info);
 
         virtual
         void
@@ -59,7 +59,7 @@ class adhoc_t:
 
         struct remote_service_t {
             std::string uuid;
-            api::resolve_result_type info;
+            metadata_t  meta;
         };
 
         typedef std::multimap<

@@ -25,15 +25,16 @@
 
 #include "cocaine/api/isolate.hpp"
 
-// TODO: Either forward or wrap libev types.
-#include "cocaine/asio/reactor.hpp"
-
 #include "cocaine/detail/atomic.hpp"
 #include "cocaine/detail/queue.hpp"
 
 #include <chrono>
 
 #include <boost/circular_buffer.hpp>
+
+namespace ev {
+    struct timer;
+}
 
 namespace cocaine { namespace engine {
 
@@ -161,8 +162,8 @@ class slave_t {
         const std::chrono::monotonic_clock::time_point m_birthstamp;
 #endif
 
-        ev::timer m_heartbeat_timer;
-        ev::timer m_idle_timer;
+        std::unique_ptr<ev::timer> m_heartbeat_timer;
+        std::unique_ptr<ev::timer> m_idle_timer;
 
         // Native handle
 

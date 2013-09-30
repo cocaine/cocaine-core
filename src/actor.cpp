@@ -28,6 +28,7 @@
 #include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/tcp.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
@@ -46,10 +47,10 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-struct actor_t::lockable_type {
+struct actor_t::lockable_t {
     friend class actor_t;
 
-    lockable_type(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_):
+    lockable_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_):
         ptr(std::move(ptr_))
     { }
 
@@ -70,7 +71,7 @@ private:
 struct actor_t::upstream_t:
     public api::stream_t
 {
-    upstream_t(const std::shared_ptr<lockable_type>& channel, uint64_t tag):
+    upstream_t(const std::shared_ptr<lockable_t>& channel, uint64_t tag):
         m_state(state::open),
         m_channel(channel),
         m_tag(tag)
@@ -118,11 +119,12 @@ private:
     // Upstream state.
     state::value m_state;
 
-    const std::shared_ptr<lockable_type> m_channel;
+    const std::shared_ptr<lockable_t> m_channel;
     const uint64_t m_tag;
 };
 
 actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::unique_ptr<dispatch_t>&& dispatch):
+    m_context(context),
     m_log(new logging::log_t(context, dispatch->name())),
     m_reactor(reactor),
     m_dispatch(std::move(dispatch))
@@ -209,6 +211,18 @@ actor_t::dispatch() {
 }
 
 auto
+actor_t::metadata() const -> metadata_t {
+    const auto port = location().front().port();
+    const auto endpoint = locator::endpoint_tuple_type(m_context.config.network.hostname, port);
+
+    return metadata_t(
+        endpoint,
+        m_dispatch->version(),
+        m_dispatch->map()
+    );
+}
+
+auto
 actor_t::counters() const -> counters_t {
     counters_t result;
 
@@ -245,7 +259,7 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
         std::bind(&actor_t::on_failure, this, fd, _1)
     );
 
-    m_channels[fd] = std::make_shared<lockable_type>(std::move(ptr));
+    m_channels[fd] = std::make_shared<lockable_t>(std::move(ptr));
 }
 
 void
