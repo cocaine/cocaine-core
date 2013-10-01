@@ -149,10 +149,12 @@ class locator_t:
         // Synchronizing slot.
         std::shared_ptr<synchronize_slot_t> m_synchronizer;
 
-        class services_t;
+        class router_t;
 
         // Contains services and groups which are present in the locator.
-        std::unique_ptr<services_t> m_services_index;
+        std::unique_ptr<router_t> m_router;
+
+        mutable std::mutex m_router_mutex;
 };
 
 } // namespace cocaine

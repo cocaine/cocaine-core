@@ -107,18 +107,18 @@ private:
 
 } // namespace
 
-class locator_t::services_t {
+class locator_t::router_t {
     public:
         typedef std::vector<std::pair<std::string, locator_t::resolve_result_type>>
                 services_vector_t;
 
     public:
-        services_t(logging::log_t& log);
+        router_t(logging::log_t& log);
 
-        void // added
+        void
         add_local(const std::string& name);
 
-        void // removed
+        void
         remove_local(const std::string& name);
 
         std::pair<services_vector_t, services_vector_t> // added, removed
@@ -127,6 +127,7 @@ class locator_t::services_t {
         std::map<std::string, resolve_result_type> // services of removed node
         remove_remote(const std::string& uuid);
 
+        // Check if the locator has such service.
         bool
         has(const std::string& name) const;
 
@@ -157,7 +158,7 @@ class locator_t::services_t {
         inverted_index_t m_inverted; // uuid -> {(service, info)}
 
         struct groups_t {
-            groups_t(logging::log_t& log, const locator_t::services_t& services_index);
+            groups_t(logging::log_t& log, const locator_t::router_t& router);
 
             void
             add_group(const std::string& name, const std::map<std::string, unsigned int>& group);
@@ -182,7 +183,7 @@ class locator_t::services_t {
             inverted_index_t m_inverted; // inverted for m_groups index service -> groups
 
             logging::log_t& m_log;
-            const locator_t::services_t& m_services_index;
+            const locator_t::router_t& m_router;
 
             mutable random_generator_t m_generator;
         };
@@ -191,16 +192,16 @@ class locator_t::services_t {
         groups_t m_groups;
 };
 
-locator_t::services_t::services_t(logging::log_t& log):
+locator_t::router_t::router_t(logging::log_t& log):
     m_groups(log, *this)
 {
     // pass
 }
 
 void
-locator_t::services_t::add(const std::string& uuid,
-                const std::string& name,
-                const resolve_result_type& info)
+locator_t::router_t::add(const std::string& uuid,
+                         const std::string& name,
+                         const resolve_result_type& info)
 {
     auto insert_result = m_services.insert(std::make_pair(name, std::set<std::string>()));
     insert_result.first->second.insert(uuid);
@@ -212,8 +213,8 @@ locator_t::services_t::add(const std::string& uuid,
 }
 
 void
-locator_t::services_t::remove(const std::string& uuid,
-                   const std::string& name)
+locator_t::router_t::remove(const std::string& uuid,
+                            const std::string& name)
 {
     auto uuid_it = m_inverted.find(uuid);
     if(uuid_it != m_inverted.end()) {
@@ -234,18 +235,18 @@ locator_t::services_t::remove(const std::string& uuid,
 }
 
 void
-locator_t::services_t::add_local(const std::string& name) {
-    // "local" is a special "uuid" that indicates local services
+locator_t::router_t::add_local(const std::string& name) {
+    // "local" is a special "uuid" that indicates local services.
     add("local", name, resolve_result_type());
 }
 
 void
-locator_t::services_t::remove_local(const std::string& name) {
+locator_t::router_t::remove_local(const std::string& name) {
     remove("local", name);
 }
 
 auto
-locator_t::services_t::update_remote(const std::string& uuid, const synchronize_result_type& dump)
+locator_t::router_t::update_remote(const std::string& uuid, const synchronize_result_type& dump)
     -> std::pair<services_vector_t, services_vector_t>
 {
     services_vector_t added, removed;
@@ -288,7 +289,7 @@ locator_t::services_t::update_remote(const std::string& uuid, const synchronize_
 }
 
 auto
-locator_t::services_t::remove_remote(const std::string& uuid)
+locator_t::router_t::remove_remote(const std::string& uuid)
     -> std::map<std::string, resolve_result_type>
 {
     std::map<std::string, resolve_result_type> removed;
@@ -313,24 +314,24 @@ locator_t::services_t::remove_remote(const std::string& uuid)
 }
 
 bool
-locator_t::services_t::has(const std::string& name) const {
+locator_t::router_t::has(const std::string& name) const {
     return m_services.find(name) != m_services.end();
 }
 
 void
-locator_t::services_t::add_group(const std::string& name,
-                      const std::map<std::string, unsigned int>& group)
+locator_t::router_t::add_group(const std::string& name,
+                               const std::map<std::string, unsigned int>& group)
 {
     m_groups.add_group(name, group);
 }
 
 void
-locator_t::services_t::remove_group(const std::string& name) {
+locator_t::router_t::remove_group(const std::string& name) {
     m_groups.remove_group(name);
 }
 
 std::string
-locator_t::services_t::select_service(const std::string& name) const {
+locator_t::router_t::select_service(const std::string& name) const {
     return m_groups.select_service(name);
 }
 
@@ -362,16 +363,16 @@ group_index_t::remove(size_t service_index) {
     m_used_weights[service_index] = 0;
 }
 
-locator_t::services_t::groups_t::groups_t(logging::log_t& log, const services_t& services_index) :
+locator_t::router_t::groups_t::groups_t(logging::log_t& log, const router_t& router) :
     m_log(log),
-    m_services_index(services_index)
+    m_router(router)
 {
     init_generator(m_generator);
 }
 
 void
-locator_t::services_t::groups_t::add_group(const std::string& name,
-                    const std::map<std::string, unsigned int>& group)
+locator_t::router_t::groups_t::add_group(const std::string& name,
+                                         const std::map<std::string, unsigned int>& group)
 {
     COCAINE_LOG_INFO((&m_log), "adding group '%s'", name);
 
@@ -381,14 +382,14 @@ locator_t::services_t::groups_t::add_group(const std::string& name,
     for(size_t i = 0; i < group.size(); ++i) {
         m_inverted[group_it->second.services()[i]][name] = i;
 
-        if(m_services_index.has(group_it->second.services()[i])) {
+        if(m_router.has(group_it->second.services()[i])) {
             group_it->second.add(i);
         }
     }
 }
 
 void
-locator_t::services_t::groups_t::remove_group(const std::string& name) {
+locator_t::router_t::groups_t::remove_group(const std::string& name) {
     auto group_it = m_groups.find(name);
 
     if(group_it != m_groups.end()) {
@@ -408,7 +409,7 @@ locator_t::services_t::groups_t::remove_group(const std::string& name) {
 }
 
 void
-locator_t::services_t::groups_t::add_service(const std::string& name) {
+locator_t::router_t::groups_t::add_service(const std::string& name) {
     auto service_it = m_inverted.find(name);
     if(service_it != m_inverted.end()) {
         for(auto it = service_it->second.begin(); it != service_it->second.end(); ++it) {
@@ -418,7 +419,7 @@ locator_t::services_t::groups_t::add_service(const std::string& name) {
 }
 
 void
-locator_t::services_t::groups_t::remove_service(const std::string& name) {
+locator_t::router_t::groups_t::remove_service(const std::string& name) {
     auto service_it = m_inverted.find(name);
     if(service_it != m_inverted.end()) {
         for(auto it = service_it->second.begin(); it != service_it->second.end(); ++it) {
@@ -428,7 +429,7 @@ locator_t::services_t::groups_t::remove_service(const std::string& name) {
 }
 
 std::string
-locator_t::services_t::groups_t::select_service(const std::string& group_name) const {
+locator_t::router_t::groups_t::select_service(const std::string& group_name) const {
     auto group_it = m_groups.find(group_name);
 
     if(group_it != m_groups.end() && group_it->second.sum() != 0) {
@@ -525,7 +526,7 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor),
-    m_services_index(new services_t(*m_log.get()))
+    m_router(new router_t(*m_log.get()))
 {
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
@@ -533,10 +534,13 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
         auto groups = api::storage(context, "core")->find("groups", std::vector<std::string>({"group"}));
 
         for (auto it = groups.begin(); it != groups.end(); ++it) {
-            m_services_index->add_group(*it, group_t(context, *it).to_map());
+            m_router->add_group(*it, group_t(context, *it).to_map());
         }
     } catch(...) {
-        // Unable to read groups from storage. Ignore.
+        // Unable to read groups from storage. It's normal.
+        // Remove already loaded groups to move in a predictable state.
+        m_router.reset(new router_t(*m_log.get()));
+        COCAINE_LOG_INFO(m_log, "Routing groups will not be loaded.");
     }
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
@@ -713,8 +717,12 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
         COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, service->location().front().port());
 
         m_services.emplace_back(name, std::move(service));
+    }
 
-        m_services_index->add_local(name);
+    {
+        std::lock_guard<std::mutex> guard(m_router_mutex);
+
+        m_router->add_local(name);
     }
 
     if(m_synchronizer) {
@@ -749,8 +757,12 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
         service = std::move(it->second);
 
         m_services.erase(it);
+    }
 
-        m_services_index->remove_local(name);
+    {
+        std::lock_guard<std::mutex> guard(m_router_mutex);
+
+        m_router->remove_local(name);
     }
 
     if(m_synchronizer) {
@@ -762,9 +774,9 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
 
 void
 locator_t::remove_uuid(const std::string& uuid) {
-    std::lock_guard<std::mutex> guard(m_services_mutex);
-
-    auto removed = m_services_index->remove_remote(uuid);
+    std::unique_lock<std::mutex> guard(m_router_mutex);
+    auto removed = m_router->remove_remote(uuid);
+    guard.unlock();
 
     for(auto removed_it = removed.begin(); removed_it != removed.end(); ++removed_it) {
         m_gateway->cleanup(uuid, removed_it->first);
@@ -773,22 +785,27 @@ locator_t::remove_uuid(const std::string& uuid) {
 
 auto
 locator_t::resolve(const std::string& name) const -> resolve_result_type {
-    std::unique_lock<std::mutex> lock(m_services_mutex);
-    std::string target = m_services_index->select_service(name);
-
-    auto local = std::find_if(m_services.begin(), m_services.end(), match {
-        target
-    });
-
-    if(local != m_services.end()) {
-        COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);
-
-        // TODO: Might be a good idea to return an endpoint suitable for the interface
-        // which the client used to connect to the Locator.
-        return local->second->metadata();
+    std::string target;
+    {
+        std::lock_guard<std::mutex> guard(m_router_mutex);
+        target = m_router->select_service(name);
     }
 
-    lock.unlock();
+    {
+        std::lock_guard<std::mutex> guard(m_services_mutex);
+
+        auto local = std::find_if(m_services.begin(), m_services.end(), match {
+            target
+        });
+
+        if(local != m_services.end()) {
+            COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);
+
+            // TODO: Might be a good idea to return an endpoint suitable for the interface
+            // which the client used to connect to the Locator.
+            return local->second->metadata();
+        }
+    }
 
     if(m_gateway) {
         return m_gateway->resolve(target);
@@ -842,11 +859,14 @@ void
 locator_t::refresh(const std::string& name) {
     try {
         group_t group(m_context, name);
-        std::lock_guard<std::mutex> guard(m_services_mutex);
-        m_services_index->add_group(name, group.to_map());
-    } catch (...) {
-        std::lock_guard<std::mutex> guard(m_services_mutex);
-        m_services_index->remove_group(name);
+        std::lock_guard<std::mutex> guard(m_router_mutex);
+        m_router->add_group(name, group.to_map());
+    } catch (const storage_error_t& e) {
+        COCAINE_LOG_INFO(m_log, "unable to read group '%s' from storage: %s", name, e.what());
+
+        // Unable to read the group from storage. Assume that it was deleted.
+        std::lock_guard<std::mutex> guard(m_router_mutex);
+        m_router->remove_group(name);
     }
 }
 
@@ -1008,9 +1028,9 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
 
         auto dump = unpacked.get().as<synchronize_result_type>();
 
-        std::lock_guard<std::mutex> guard(m_services_mutex);
-
-        auto diff = m_services_index->update_remote(uuid, dump);
+        std::unique_lock<std::mutex> guard(m_router_mutex);
+        auto diff = m_router->update_remote(uuid, dump);
+        guard.unlock();
 
         for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
             m_gateway->cleanup(uuid, it->first);
