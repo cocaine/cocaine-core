@@ -533,14 +533,19 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     try {
         auto groups = api::storage(context, "core")->find("groups", std::vector<std::string>({"group"}));
 
-        for (auto it = groups.begin(); it != groups.end(); ++it) {
-            m_router->add_group(*it, group_t(context, *it).to_map());
+        if(groups.empty()) {
+            COCAINE_LOG_INFO(m_log, "there is no routing groups to load");
+        } else {
+            for(auto it = groups.begin(); it != groups.end(); ++it) {
+                m_router->add_group(*it, group_t(context, *it).to_map());
+            }
         }
-    } catch(...) {
-        // Unable to read groups from storage. It's normal.
+    } catch(const std::exception& e) {
+        // Unable to read groups from storage.
         // Remove already loaded groups to move in a predictable state.
         m_router.reset(new router_t(*m_log.get()));
-        COCAINE_LOG_INFO(m_log, "Routing groups will not be loaded.");
+
+        COCAINE_LOG_INFO(m_log, "unable to read groups from storage: %s", e.what());
     }
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
