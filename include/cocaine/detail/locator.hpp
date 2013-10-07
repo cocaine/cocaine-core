@@ -24,8 +24,6 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/api/gateway.hpp"
-
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
@@ -82,9 +80,6 @@ class locator_t:
         refresh_result_type
         refresh(const std::string& name);
 
-        void
-        remove_uuid(const std::string& uuid);
-
         // Cluster I/O
 
         void
@@ -104,6 +99,7 @@ class locator_t:
 
     private:
         context_t& m_context;
+
         const std::unique_ptr<logging::log_t> m_log;
 
         // For future cluster locator interconnections.
@@ -151,10 +147,8 @@ class locator_t:
 
         class router_t;
 
-        // Contains services and groups which are present in the locator.
+        // Used to resolve service names against service groups based on weights and other metrics.
         std::unique_ptr<router_t> m_router;
-
-        mutable std::mutex m_router_mutex;
 };
 
 } // namespace cocaine
