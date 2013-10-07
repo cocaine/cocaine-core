@@ -235,21 +235,13 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
     try {
-        auto groups = api::storage(context, "core")->find("groups", std::vector<std::string>({"group"}));
+        auto groups = api::storage(context, "core")->find("groups", { "group", "active" });
 
-        if(groups.empty()) {
-            COCAINE_LOG_INFO(m_log, "there is no routing groups to load");
-        } else {
-            for(auto it = groups.begin(); it != groups.end(); ++it) {
-                m_router->add_group(*it, group_t(context, *it).to_map());
-            }
+        for(auto it = groups.begin(); it != groups.end(); ++it) {
+            m_router->add_group(*it, group_t(context, *it).to_map());
         }
-    } catch(const std::exception& e) {
-        // Unable to read groups from storage.
-        // Remove already loaded groups to move in a predictable state.
-        m_router.reset(new router_t(*m_log.get()));
-
-        COCAINE_LOG_INFO(m_log, "unable to read groups from storage: %s", e.what());
+    } catch(const storage_error_t& e) {
+        COCAINE_LOG_INFO(m_log, "unable to read routing groups from the storage: %s", e.what());
     }
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
@@ -546,9 +538,9 @@ locator_t::refresh(const std::string& name) {
     try {
         m_router->add_group(name, group_t(m_context, name).to_map());
     } catch(const storage_error_t& e) {
-        COCAINE_LOG_INFO(m_log, "unable to read group '%s' from storage - %s", name, e.what());
+        COCAINE_LOG_INFO(m_log, "unable to read routing group '%s' from the storage - %s", name, e.what());
 
-        // Unable to read the group from storage. Assume that it was deleted.
+        // Assume that the group was deleted.
         m_router->remove_group(name);
     }
 }
