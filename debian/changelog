@@ -1,6 +1,8 @@
 cocaine-core (0.11.0.0) unstable; urgency=low
 
   * Docker (http://docker.io) containerization support.
+  * Routing groups. An ability to route requests to multiple versions of the
+    same app based on weights and other metrics.
   * Memory usage reports available from the Locator via the 'reports' method.
   * Break Native Framework binary dependency on Core libraries.
   * Bugfix: use proper size for Boost ASIO endpoints, so that IPv6 addresses
