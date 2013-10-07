@@ -235,7 +235,10 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
     try {
-        auto groups = api::storage(context, "core")->find("groups", { "group", "active" });
+        auto groups = api::storage(context, "core")->find("groups", std::vector<std::string>({
+            "group",
+            "active"
+        }));
 
         for(auto it = groups.begin(); it != groups.end(); ++it) {
             m_router->add_group(*it, group_t(context, *it).to_map());
