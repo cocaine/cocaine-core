@@ -244,23 +244,25 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
             m_router->add_group(*it, group_t(context, *it).to_map());
         }
     } catch(const storage_error_t& e) {
-        COCAINE_LOG_INFO(m_log, "unable to read routing groups from the storage: %s", e.what());
+        throw cocaine::error_t("unable to initialize the routing groups - %s", e.what());
     }
 
     on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
     on<io::locator::reports>("reports", std::bind(&locator_t::reports, this));
     on<io::locator::refresh>("refresh", std::bind(&locator_t::refresh, this, _1));
 
-    if(m_context.config.network.ports) {
-        uint16_t min, max;
+    if(!m_context.config.network.ports) {
+        return;
+    }
 
-        std::tie(min, max) = m_context.config.network.ports.get();
+    uint16_t min, max;
 
-        COCAINE_LOG_INFO(m_log, "%u locator ports available, %u through %u", max - min, min, max);
+    std::tie(min, max) = m_context.config.network.ports.get();
 
-        while(min != max) {
-            m_ports.push(--max);
-        }
+    COCAINE_LOG_INFO(m_log, "%u locator ports available, %u through %u", max - min, min, max);
+
+    while(min != max) {
+        m_ports.push(--max);
     }
 }
 
@@ -538,12 +540,24 @@ locator_t::reports() const -> reports_result_type {
 
 void
 locator_t::refresh(const std::string& name) {
-    try {
-        m_router->add_group(name, group_t(m_context, name).to_map());
-    } catch(const storage_error_t& e) {
-        COCAINE_LOG_INFO(m_log, "unable to read routing group '%s' from the storage - %s", name, e.what());
+    std::vector<std::string> groups;
 
-        // Assume that the group was deleted.
+    try {
+        groups = api::storage(m_context, "core")->find("groups", std::vector<std::string>({
+            "group",
+            "active"
+        }));
+    } catch(const storage_error_t& e) {
+        throw cocaine::error_t("unable to read the routing group list - %s", e.what());
+    }
+
+    if(std::find(groups.begin(), groups.end(), name) != groups.end()) {
+        try {
+            m_router->add_group(name, group_t(m_context, name).to_map());
+        } catch(const storage_error_t& e) {
+            throw cocaine::error_t("unable to read routing group '%s' - %s", name, e.what());
+        }
+    } else {
         m_router->remove_group(name);
     }
 }
