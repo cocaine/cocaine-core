@@ -20,7 +20,7 @@
 
 #include <random>
 
-namespace {
+namespace routing {
 
 #if defined(__clang__) || defined(HAVE_GCC46)
 typedef std::default_random_engine random_generator_t;
@@ -67,7 +67,9 @@ private:
     unsigned int m_sum;
 };
 
-} // namespace
+} // namespace routing
+
+using namespace routing;
 
 class locator_t::router_t {
     public:
