@@ -18,6 +18,151 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <random>
+
+namespace {
+
+#if defined(__clang__) || defined(HAVE_GCC46)
+typedef std::default_random_engine random_generator_t;
+typedef std::uniform_int_distribution<unsigned int> uniform_uint;
+#else
+typedef std::minstd_rand0 random_generator_t;
+typedef std::uniform_int<unsigned int> uniform_uint;
+#endif
+
+struct group_index_t {
+    group_index_t();
+    group_index_t(const std::map<std::string, unsigned int>& group);
+
+    void
+    add(size_t service_index);
+
+    void
+    remove(size_t service_index);
+
+    const std::vector<std::string>&
+    services() const {
+        return m_services;
+    }
+
+    const std::vector<unsigned int>&
+    weights() const {
+        return m_weights;
+    }
+
+    const std::vector<unsigned int>&
+    used_weights() const {
+        return m_used_weights;
+    }
+
+    unsigned int
+    sum() const {
+        return m_sum;
+    }
+
+private:
+    std::vector<std::string> m_services;
+    std::vector<unsigned int> m_weights;
+    std::vector<unsigned int> m_used_weights; // = original weight or 0 if there is no such service in the Locator
+    unsigned int m_sum;
+};
+
+} // namespace
+
+class locator_t::router_t {
+    public:
+        typedef std::vector<
+            std::pair<std::string, locator_t::resolve_result_type>
+        > services_vector_t;
+
+    public:
+        router_t(logging::log_t& log);
+
+        void
+        add_local(const std::string& name);
+
+        void
+        remove_local(const std::string& name);
+
+        std::pair<services_vector_t, services_vector_t> // added, removed
+        update_remote(const std::string& uuid, const synchronize_result_type& dump);
+
+        std::map<std::string, resolve_result_type> // services of the removed node
+        remove_remote(const std::string& uuid);
+
+        bool
+        has(const std::string& name) const;
+
+        void
+        add_group(const std::string& name, const std::map<std::string, unsigned int>& group);
+
+        void
+        remove_group(const std::string& name);
+
+        std::string
+        select_service(const std::string& name) const;
+
+    private:
+        void
+        add(const std::string& uuid, const std::string& name, const resolve_result_type& info);
+
+        void
+        remove(const std::string& uuid, const std::string& name);
+
+    private:
+        typedef std::map<
+            std::string,
+            std::map<std::string, resolve_result_type>
+        > inverted_index_t;
+
+        // Service -> UUIDs of the remote nodes that have this service.
+        std::map<std::string, std::set<std::string>> m_services;
+
+        // Inverse index: UUID -> {(service, info)}.
+        inverted_index_t m_inverted;
+
+        struct groups_t {
+            groups_t(logging::log_t& log, const locator_t::router_t& router);
+
+            void
+            add_group(const std::string& name, const std::map<std::string, unsigned int>& group);
+
+            void
+            remove_group(const std::string& name);
+
+            void
+            add_service(const std::string& name);
+
+            void
+            remove_service(const std::string& name);
+
+            std::string
+            select_service(const std::string& group_name) const;
+
+        private:
+            // Maps group name to services.
+            std::map<std::string, group_index_t> m_groups;
+
+            typedef std::map<
+                std::string,
+                std::map<std::string, size_t>
+            > inverted_index_t;
+
+            // Inverse index: {service: {group: index in services vector}}.
+            inverted_index_t m_inverted;
+
+            logging::log_t& m_log;
+            const locator_t::router_t& m_router;
+
+            mutable random_generator_t m_generator;
+        };
+
+        groups_t m_groups;
+
+        // Router interlocking.
+        mutable std::mutex m_mutex;
+};
+
 group_index_t::group_index_t() :
     m_sum(0)
 {

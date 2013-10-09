@@ -32,7 +32,6 @@
 #include <tuple>
 
 using namespace cocaine::service;
-
 using namespace std::placeholders;
 
 namespace {

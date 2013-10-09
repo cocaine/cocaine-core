@@ -18,6 +18,38 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+struct locator_t::synchronize_slot_t:
+    public slot_concept_t
+{
+    synchronize_slot_t(locator_t& self);
+
+    virtual
+    void
+    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream);
+
+    void
+    update();
+
+    void
+    shutdown();
+
+private:
+    bool
+    dump(const api::stream_ptr_t& upstream);
+
+    static
+    void
+    close(const api::stream_ptr_t& upstream);
+
+private:
+    msgpack::sbuffer m_buffer;
+    msgpack::packer<msgpack::sbuffer> m_packer;
+
+    locator_t& m_self;
+
+    std::vector<api::stream_ptr_t> m_upstreams;
+};
+
 locator_t::synchronize_slot_t::synchronize_slot_t(locator_t& self):
     slot_concept_t("synchronize"),
     m_packer(m_buffer),
