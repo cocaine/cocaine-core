@@ -240,7 +240,11 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
 
     auto target = fs::path(path);
 
-    if(target.is_relative()) {
+#if BOOST_VERSION >= 104600
+    if(!target.is_absolute()) {
+#else
+    if(!target.is_complete()) {
+#endif
         target = m_working_directory / target;
     }
 
