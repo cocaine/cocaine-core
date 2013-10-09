@@ -232,16 +232,22 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
     try {
         fs::current_path(m_working_directory);
     } catch(const fs::filesystem_error& e) {
-        std::cerr << cocaine::format("unable to change the working directory to '%s' - %s", path, e.what());
+        std::cerr << cocaine::format("unable to change the working directory to '%s' - %s", m_working_directory, e.what());
         std::_Exit(EXIT_FAILURE);
     }
 
     // Prepare the command line and the environment
 
+    auto target = fs::path(path);
+
+    if(target.is_relative()) {
+        target = m_working_directory / target;
+    }
+
 #if BOOST_VERSION >= 104600
-    std::vector<char*> argv = { ::strdup((m_working_directory / path).native().c_str()) }, envp;
+    std::vector<char*> argv = { ::strdup(target.native().c_str()) }, envp;
 #else
-    std::vector<char*> argv = { ::strdup((m_working_directory / path).string().c_str()) }, envp;
+    std::vector<char*> argv = { ::strdup(target.string().c_str()) }, envp;
 #endif
 
     for(auto it = args.begin(); it != args.end(); ++it) {
