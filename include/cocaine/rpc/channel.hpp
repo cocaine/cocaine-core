@@ -80,8 +80,8 @@ public:
         return rd->stream()->footprint() + wr->stream()->footprint();
     }
 
-    const std::unique_ptr<decoder<readable_stream<Socket>>> rd;
-    const std::unique_ptr<encoder<writable_stream<Socket>>> wr;
+    std::unique_ptr<decoder<readable_stream<Socket>>> rd;
+    std::unique_ptr<encoder<writable_stream<Socket>>> wr;
 
 private:
     std::shared_ptr<Socket> m_socket;
