@@ -37,7 +37,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     pool_limit          = get("pool-limit", static_cast<Json::UInt>(defaults::pool_limit)).asUInt();
     queue_limit         = get("queue-limit", static_cast<Json::UInt>(defaults::queue_limit)).asUInt();
 
-    unsigned long default_threshold = std::max(1UL, queue_limit / pool_limit * concurrency);
+    unsigned long default_threshold = std::max(1UL, queue_limit / pool_limit / 2);
 
     grow_threshold      = get("grow-threshold", static_cast<Json::UInt>(default_threshold)).asUInt();
 
