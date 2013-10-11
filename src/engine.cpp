@@ -510,6 +510,9 @@ engine_t::balance() {
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - %s", e.what());
             break;
+        } catch(...) {
+            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - unknown exception");
+            break;
         }
     }
 }
