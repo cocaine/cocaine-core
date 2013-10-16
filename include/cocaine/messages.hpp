@@ -70,12 +70,12 @@ namespace locator {
         typedef locator_tag tag;
 
         typedef std::map<
-         /* Maps client remote endpoint to the amount of memory used for that client. */
+         /* Maps client remote endpoint to the amount of memory used for its session. */
             endpoint_tuple_type, size_t
         > usage_report_type;
 
         typedef
-         /* Service I/O usage counters: number of concurrent connections and memory footprints. */
+         /* Service I/O usage counters: number of concurrent sessions and memory footprints. */
             std::map<std::string, std::tuple<size_t, usage_report_type>>
         result_type;
     };

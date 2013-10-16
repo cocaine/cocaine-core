@@ -47,67 +47,115 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-struct actor_t::lockable_t {
+struct actor_t::session_t {
     friend class actor_t;
 
-    lockable_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_):
-        ptr(std::move(ptr_))
+    session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<dispatch_t>& prototype_):
+        ptr(std::move(ptr_)),
+        prototype(prototype_)
     { }
+
+    void
+    detach(uint64_t tag) {
+        downstreams.erase(tag);
+    }
 
 private:
     void
+    invoke(const message_t& message) {
+        auto it = downstreams.find(message.band());
+
+        if(it == downstreams.end()) {
+            std::tie(it, std::ignore) = downstreams.insert({ message.band(), downstream_t {
+                prototype,
+                std::make_shared<actor_t::upstream_t>(*this, message.band())
+            }});
+        }
+
+        it->second.invoke(message);
+    }
+
+    void
     destroy() {
         std::lock_guard<std::mutex> guard(mutex);
+
+        // This closes all the downstreams.
+        downstreams.clear();
 
         // NOTE: This invalidates the internal channel pointer, but the wrapping lockable state
         // might still be accessible via upstreams in other threads.
         ptr.reset();
     }
 
+private:
     std::unique_ptr<io::channel<io::socket<io::tcp>>> ptr;
     std::mutex mutex;
+
+    // Root dispatch
+
+    const std::shared_ptr<dispatch_t> prototype;
+
+    // Downstreams
+
+    struct downstream_t {
+        void
+        invoke(const message_t& message);
+
+        // Active protocol for this downstream.
+        std::shared_ptr<dispatch_t> dispatch;
+
+        // As of now, all clients are considered using the single streaming protocol, so upstreams
+        // don't change when the downstream protocol is switched over.
+        const std::shared_ptr<actor_t::upstream_t> upstream;
+    };
+
+    std::map<uint64_t, downstream_t> downstreams;
 };
 
 struct actor_t::upstream_t:
     public api::stream_t
 {
-    upstream_t(const std::shared_ptr<lockable_t>& channel, uint64_t tag):
+    upstream_t(session_t& session, uint64_t tag):
         m_state(state::open),
-        m_channel(channel),
+        m_session(session),
         m_tag(tag)
     { }
 
     virtual
     void
     write(const char* chunk, size_t size) {
-        std::lock_guard<std::mutex> guard(m_channel->mutex);
+        std::lock_guard<std::mutex> guard(m_session.mutex);
 
-        if(m_state == state::open && m_channel->ptr) {
-            m_channel->ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
+        if(m_state == state::open && m_session.ptr) {
+            m_session.ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
         }
     }
 
     virtual
     void
     error(int code, const std::string& reason) {
-        std::lock_guard<std::mutex> guard(m_channel->mutex);
+        std::lock_guard<std::mutex> guard(m_session.mutex);
 
-        if(m_state == state::open && m_channel->ptr) {
-            m_channel->ptr->wr->write<rpc::error>(m_tag, code, reason);
+        if(m_state == state::open && m_session.ptr) {
+            m_session.ptr->wr->write<rpc::error>(m_tag, code, reason);
         }
     }
 
     virtual
     void
     close() {
-        std::lock_guard<std::mutex> guard(m_channel->mutex);
+        std::lock_guard<std::mutex> guard(m_session.mutex);
 
         if(m_state == state::open) {
-            if(m_channel->ptr) {
-                m_channel->ptr->wr->write<rpc::choke>(m_tag);
+            if(m_session.ptr) {
+                m_session.ptr->wr->write<rpc::choke>(m_tag);
             }
 
             m_state = state::closed;
+
+            // Destroys the session with the given tag in the stream, so that new requests might
+            // reuse the tag in the future.
+            m_session.detach(m_tag);
         }
     }
 
@@ -119,21 +167,32 @@ private:
     // Upstream state.
     state::value m_state;
 
-    const std::shared_ptr<lockable_t> m_channel;
+    session_t& m_session;
     const uint64_t m_tag;
 };
 
-actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::unique_ptr<dispatch_t>&& dispatch):
+void
+actor_t::session_t::downstream_t::invoke(const message_t& message) {
+    try {
+        dispatch = dispatch->invoke(message, upstream);
+    } catch(const std::exception& e) {
+        // TODO: COCAINE-82 changes to a category-based exception serialization.
+        upstream->error(invocation_error, e.what());
+        upstream->close();
+    }
+}
+
+actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::unique_ptr<dispatch_t>&& prototype):
     m_context(context),
-    m_log(new logging::log_t(context, dispatch->name())),
+    m_log(new logging::log_t(context, prototype->name())),
     m_reactor(reactor),
-    m_dispatch(std::move(dispatch))
+    m_prototype(std::move(prototype))
 { }
 
 actor_t::~actor_t() {
-    m_dispatch.reset();
+    m_prototype.reset();
 
-    for(auto it = m_channels.cbegin(); it != m_channels.cend(); ++it) {
+    for(auto it = m_sessions.cbegin(); it != m_sessions.cend(); ++it) {
         // Synchronously close the channels.
         it->second->destroy();
     }
@@ -175,7 +234,7 @@ actor_t::run(std::vector<tcp::endpoint> endpoints) {
     }
 
     m_thread.reset(new std::thread(named_runnable {
-        m_dispatch->name(),
+        m_prototype->name(),
         m_reactor
     }));
 }
@@ -207,7 +266,7 @@ actor_t::location() const {
 
 dispatch_t&
 actor_t::dispatch() {
-    return *m_dispatch;
+    return *m_prototype;
 }
 
 auto
@@ -217,8 +276,8 @@ actor_t::metadata() const -> metadata_t {
 
     return metadata_t(
         endpoint,
-        m_dispatch->version(),
-        m_dispatch->map()
+        m_prototype->version(),
+        m_prototype->map()
     );
 }
 
@@ -226,9 +285,9 @@ auto
 actor_t::counters() const -> counters_t {
     counters_t result;
 
-    result.channels = m_channels.size();
+    result.sessions = m_sessions.size();
 
-    for(auto it = m_channels.begin(); it != m_channels.end(); ++it) {
+    for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
         std::lock_guard<std::mutex> guard(it->second->mutex);
 
         result.footprints.insert({
@@ -259,26 +318,26 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
         std::bind(&actor_t::on_failure, this, fd, _1)
     );
 
-    m_channels[fd] = std::make_shared<lockable_t>(std::move(ptr));
+    m_sessions[fd] = std::make_shared<session_t>(std::move(ptr), m_prototype);
 }
 
 void
 actor_t::on_message(int fd, const message_t& message) {
-    auto it = m_channels.find(fd);
+    auto it = m_sessions.find(fd);
 
-    BOOST_ASSERT(it != m_channels.end());
+    BOOST_ASSERT(it != m_sessions.end());
 
-    m_dispatch->invoke(message, std::make_shared<upstream_t>(
-        it->second,
-        message.band()
-    ));
+    it->second->invoke(message);
 }
 
 void
 actor_t::on_failure(int fd, const std::error_code& ec) {
-    auto it = m_channels.find(fd);
+    auto it = m_sessions.find(fd);
 
-    if(it == m_channels.end()) {
+    if(it == m_sessions.end()) {
+        // TODO: COCAINE-75 fixes this via cancellation.
+        // Check whether the channel actually exists, in case multiple errors were queued up in the
+        // reactor and it was already dropped.
         return;
     } else if(ec) {
         COCAINE_LOG_ERROR(m_log, "client on fd %d has disappeared - [%d] %s", fd, ec.value(), ec.message());
@@ -291,5 +350,5 @@ actor_t::on_failure(int fd, const std::error_code& ec) {
 
     // This doesn't guarantee that the wrapping lockable state will be deleted, as it can be shared
     // with other threads via upstreams, but it's fine since the channel is destroyed.
-    m_channels.erase(it);
+    m_sessions.erase(it);
 }

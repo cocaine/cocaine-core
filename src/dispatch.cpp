@@ -28,6 +28,7 @@
 using namespace cocaine;
 
 dispatch_t::dispatch_t(context_t& context, const std::string& name):
+    m_context(context),
     m_log(new logging::log_t(context, name)),
     m_name(name)
 { }
@@ -36,7 +37,7 @@ dispatch_t::~dispatch_t() {
     // Empty.
 }
 
-void
+std::shared_ptr<dispatch_t>
 dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstream) const {
     slot_map_t::mapped_type slot;
 
@@ -48,12 +49,8 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
         if(it == m_slots.end()) {
             COCAINE_LOG_WARNING(m_log, "dropping an unknown type %d: %s message", message.id(), message.args());
 
-            lock.unlock();
-
-            upstream->error(invocation_error, "unknown message type");
-            upstream->close();
-
-            return;
+            // TODO: COCAINE-82 changes this to a 'client' error category.
+            throw cocaine::error_t("unknown message type");
         }
 
         slot = it->second;
@@ -64,17 +61,13 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
     try {
         (*slot)(message.args(), upstream);
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(
-            m_log,
-            "unable to process type %d message using slot '%s' - %s",
-            message.id(),
-            slot->name(),
-            e.what()
-        );
+        COCAINE_LOG_ERROR(m_log, "unable to process type %d message using slot '%s' - %s", message.id(), slot->name(), e.what());
 
-        upstream->error(invocation_error, e.what());
-        upstream->close();
+        // TODO: COCAINE-82 changes this to rethrow with a 'server' error category.
+        throw;
     }
+
+    return std::make_shared<dispatch_t>(m_context, "void");
 }
 
 auto
