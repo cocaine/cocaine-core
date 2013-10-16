@@ -505,7 +505,13 @@ engine_t::balance() {
                 std::make_shared<slave_t>(m_context, *m_reactor, m_manifest, m_profile, id, *this)
             ));
         } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - [%d] %s", e.code().value(), e.code().message());
+            break;
+        } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - %s", e.what());
+            break;
+        } catch(...) {
+            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - unknown exception");
             break;
         }
     }

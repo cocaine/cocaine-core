@@ -52,7 +52,7 @@ class dispatch_t {
         forget();
 
     public:
-        void
+        std::shared_ptr<dispatch_t>
         invoke(const io::message_t& message, const api::stream_ptr_t& upstream) const;
 
         typedef std::map<int, std::string> dispatch_map_t;
@@ -67,6 +67,8 @@ class dispatch_t {
         name() const;
 
     private:
+        context_t& m_context;
+
         const std::unique_ptr<logging::log_t> m_log;
 
         typedef std::map<

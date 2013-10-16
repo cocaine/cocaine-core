@@ -354,7 +354,7 @@ locator_t::reports() const -> reports_result_type {
             });
         }
 
-        result[it->first] = make_tuple(source.channels, report);
+        result[it->first] = make_tuple(source.sessions, report);
     }
 
     return result;

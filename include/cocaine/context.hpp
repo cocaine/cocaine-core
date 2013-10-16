@@ -166,10 +166,7 @@ class context_t {
 template<class Category, typename... Args>
 typename api::category_traits<Category>::ptr_type
 context_t::get(const std::string& type, Args&&... args) {
-    return m_repository->get<Category>(
-        type,
-        std::forward<Args>(args)...
-    );
+    return m_repository->get<Category>(type, std::forward<Args>(args)...);
 }
 
 } // namespace cocaine
