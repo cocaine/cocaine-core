@@ -9,8 +9,9 @@ cocaine-core (0.11.0.0) unstable; urgency=low
     won't be cut off anymore.
   * Bugfix: do not stop adding tags to a new object in the File Storage if one
     of the tags already exists.
+  * Bugfix: stop processing messages in dead channels.
 
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 19 Aug 2013 17:43:52 +0400
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 16 Oct 2013 18:40:58 +0400
 
 cocaine-core (0.10.6.4) unstable; urgency=low
 
