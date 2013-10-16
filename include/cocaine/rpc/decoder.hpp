@@ -97,7 +97,7 @@ private:
 
                 m_handle_message(message_t(object));
 
-                if(rv == msgpack::UNPACK_SUCCESS) {
+                if(rv == msgpack::UNPACK_SUCCESS || !m_handle_message) {
                     return size;
                 }
 
