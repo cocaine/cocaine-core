@@ -67,7 +67,7 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
         throw;
     }
 
-    return std::make_shared<dispatch_t>(m_context, "void");
+    return std::make_shared<dispatch_t>(m_context, m_name);
 }
 
 auto

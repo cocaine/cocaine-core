@@ -63,16 +63,21 @@ struct actor_t::session_t {
 private:
     void
     invoke(const message_t& message) {
+        std::unique_lock<std::mutex> lock(mutex);
+
         auto it = downstreams.find(message.band());
 
         if(it == downstreams.end()) {
-            std::tie(it, std::ignore) = downstreams.insert({ message.band(), downstream_t {
+            std::tie(it, std::ignore) = downstreams.insert({ message.band(), std::make_shared<downstream_t>(
                 prototype,
                 std::make_shared<actor_t::upstream_t>(*this, message.band())
-            }});
+            )});
         }
 
-        it->second.invoke(message);
+        std::shared_ptr<downstream_t> downstream = it->second;
+        lock.unlock();
+
+        downstream->invoke(message);
     }
 
     void
@@ -98,6 +103,11 @@ private:
     // Downstreams
 
     struct downstream_t {
+        downstream_t(const std::shared_ptr<dispatch_t>& d, const std::shared_ptr<actor_t::upstream_t>& u):
+            dispatch(d),
+            upstream(u)
+        { }
+
         void
         invoke(const message_t& message);
 
@@ -106,10 +116,10 @@ private:
 
         // As of now, all clients are considered using the single streaming protocol, so upstreams
         // don't change when the downstream protocol is switched over.
-        const std::shared_ptr<actor_t::upstream_t> upstream;
+        std::shared_ptr<actor_t::upstream_t> upstream;
     };
 
-    std::map<uint64_t, downstream_t> downstreams;
+    std::map<uint64_t, std::shared_ptr<downstream_t>> downstreams;
 };
 
 struct actor_t::upstream_t:
@@ -151,11 +161,11 @@ struct actor_t::upstream_t:
                 m_session.ptr->wr->write<rpc::choke>(m_tag);
             }
 
-            m_state = state::closed;
-
             // Destroys the session with the given tag in the stream, so that new requests might
             // reuse the tag in the future.
             m_session.detach(m_tag);
+
+            m_state = state::closed;
         }
     }
 
@@ -174,7 +184,7 @@ private:
 void
 actor_t::session_t::downstream_t::invoke(const message_t& message) {
     try {
-        dispatch = dispatch->invoke(message, upstream);
+        std::swap(dispatch, dispatch->invoke(message, upstream));
     } catch(const std::exception& e) {
         // TODO: COCAINE-82 changes to a category-based exception serialization.
         upstream->error(invocation_error, e.what());
