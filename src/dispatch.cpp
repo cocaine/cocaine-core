@@ -28,7 +28,6 @@
 using namespace cocaine;
 
 dispatch_t::dispatch_t(context_t& context, const std::string& name):
-    m_context(context),
     m_log(new logging::log_t(context, name)),
     m_name(name)
 { }
@@ -53,21 +52,21 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
             throw cocaine::error_t("unknown message type");
         }
 
+        // NOTE: The slot pointer is copied here so that the handling code could unregister the slot
+        // via dispatch_t::forget() without pulling the object from underneath itself.
         slot = it->second;
     }
 
     COCAINE_LOG_DEBUG(m_log, "processing type %d message using slot '%s'", message.id(), slot->name());
 
     try {
-        (*slot)(message.args(), upstream);
+        return (*slot)(message.args(), upstream);
     } catch(const std::exception& e) {
         COCAINE_LOG_ERROR(m_log, "unable to process type %d message using slot '%s' - %s", message.id(), slot->name(), e.what());
 
         // TODO: COCAINE-82 changes this to rethrow with a 'server' error category.
         throw;
     }
-
-    return std::make_shared<dispatch_t>(m_context, m_name);
 }
 
 auto

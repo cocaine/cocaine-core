@@ -41,9 +41,12 @@ struct deferred_slot:
     { }
 
     virtual
-    void
+    std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
         this->call(unpacked).attach(upstream);
+
+        // Return an empty protocol dispatch.
+        return nullptr;
     }
 };
 

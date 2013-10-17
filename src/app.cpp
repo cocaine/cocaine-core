@@ -63,56 +63,100 @@ struct app_t::service_t:
     struct enqueue_slot_t:
         public slot_concept_t
     {
-        enqueue_slot_t(app_t::service_t& self):
+        enqueue_slot_t(app_t::service_t& self_):
             slot_concept_t("enqueue"),
-            m_self(self)
+            self(self_)
         { }
 
         virtual
-        void
+        std::shared_ptr<dispatch_t>
         operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-            io::detail::invoke<event_traits<app::enqueue>::tuple_type>::apply(
-                boost::bind(&service_t::enqueue, &m_self, upstream, _1, _2, _3),
+            return io::detail::invoke<event_traits<app::enqueue>::tuple_type>::apply(
+                boost::bind(&service_t::enqueue, &self, upstream, _1, _2),
                 unpacked
             );
         }
 
     private:
-        app_t::service_t& m_self;
+        app_t::service_t& self;
     };
 
-    service_t(context_t& context, const std::string& name, app_t& app):
-        dispatch_t(context, cocaine::format("service/%1%", name)),
-        m_app(app)
+    struct streaming_service_t:
+        public dispatch_t,
+        public std::enable_shared_from_this<streaming_service_t>
     {
-        on<app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
-        on<app::info>("info", std::bind(&app_t::info, std::ref(m_app)));
-    }
+        struct write_slot_t:
+            public slot_concept_t
+        {
+            write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
+                slot_concept_t("write"),
+                self(self_)
+            { }
 
-private:
-    void
-    enqueue(const api::stream_ptr_t& upstream, const std::string& event, const std::string& blob, const std::string& tag) {
-        api::stream_ptr_t downstream;
+            virtual
+            std::shared_ptr<dispatch_t>
+            operator()(const msgpack::object& unpacked, const api::stream_ptr_t& /* upstream */) {
+                io::detail::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
+                    boost::bind(&streaming_service_t::write, self, _1),
+                    unpacked
+                );
 
-        try {
-            if(tag.empty()) {
-                downstream = m_app.enqueue(api::event_t(event), upstream);
-            } else {
-                downstream = m_app.enqueue(api::event_t(event), upstream, tag);
+                return self;
             }
-        } catch(const cocaine::error_t& e) {
-            upstream->error(resource_error, e.what());
-            upstream->close();
 
-            return;
+        private:
+            const std::shared_ptr<streaming_service_t> self;
+        };
+
+        streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& d):
+            dispatch_t(context, name),
+            downstream(d)
+        {
+            on<rpc::chunk>(std::make_shared<write_slot_t>(shared_from_this()));
+            on<rpc::choke>("close", std::bind(&streaming_service_t::close, this));
         }
 
-        downstream->write(blob.data(), blob.size());
-        downstream->close();
+    private:
+        void
+        write(const std::string& chunk) {
+            downstream->write(chunk.data(), chunk.size());
+        }
+
+        void
+        close() {
+            downstream->close();
+        }
+
+    private:
+        const api::stream_ptr_t downstream;
+    };
+
+    service_t(context_t& context_, const std::string& name_, app_t& app_):
+        dispatch_t(context_, cocaine::format("service/%1%", name_)),
+        context(context_),
+        app(app_)
+    {
+        on<app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
+        on<app::info>("info", std::bind(&app_t::info, std::ref(app)));
     }
 
 private:
-    app_t& m_app;
+    std::shared_ptr<dispatch_t>
+    enqueue(const api::stream_ptr_t& upstream, const std::string& event, const std::string& tag) {
+        api::stream_ptr_t downstream;
+
+        if(tag.empty()) {
+            downstream = app.enqueue(api::event_t(event), upstream);
+        } else {
+            downstream = app.enqueue(api::event_t(event), upstream, tag);
+        }
+
+        return std::make_shared<streaming_service_t>(context, name(), downstream);
+    }
+
+private:
+    context_t& context;
+    app_t& app;
 };
 
 app_t::app_t(context_t& context, const std::string& name, const std::string& profile):

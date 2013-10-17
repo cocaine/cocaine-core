@@ -40,7 +40,7 @@ struct blocking_slot:
     { }
 
     virtual
-    void
+    std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
         type_traits<R>::pack(m_packer, this->call(unpacked));
 
@@ -48,6 +48,9 @@ struct blocking_slot:
         upstream->close();
 
         m_buffer.clear();
+
+        // Return an empty protocol dispatch.
+        return nullptr;
     }
 
 private:
@@ -69,12 +72,15 @@ struct blocking_slot<void, Sequence>:
     { }
 
     virtual
-    void
+    std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
         this->call(unpacked);
 
         // This is needed so that service clients could detect operation completion.
         upstream->close();
+
+        // Return an empty protocol dispatch.
+        return nullptr;
     }
 };
 

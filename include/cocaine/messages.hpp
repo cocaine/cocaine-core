@@ -116,9 +116,6 @@ namespace app {
          /* Event name. This name is intentionally dynamic so that the underlying application can
             do whatever it wants using these event names, for example handle every possible one. */
             std::string,
-         /* Data. Some arbitrary sequence of bytes. By convention, this is usually an object packed
-            with MessagePack, but that's not some rule of thumb, do whatever you want. */
-            std::string,
          /* Tag. Event can be enqueued to a specific worker with some user-defined name. */
             optional<std::string>
         > tuple_type;

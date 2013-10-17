@@ -191,6 +191,9 @@ private:
 void
 actor_t::session_t::downstream_t::invoke(const message_t& message) {
     try {
+        if(!dispatch)
+            // TODO: COCAINE-82 changes to 'client' error category.
+            throw cocaine::error_t("downstream has been closed");
         dispatch = dispatch->invoke(message, upstream);
     } catch(const std::exception& e) {
         // TODO: COCAINE-82 changes to a category-based exception serialization.

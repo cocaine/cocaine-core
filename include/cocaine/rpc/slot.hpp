@@ -27,6 +27,8 @@
 
 namespace cocaine {
 
+class dispatch_t;
+
 // Slot basics
 
 struct slot_concept_t {
@@ -40,7 +42,7 @@ struct slot_concept_t {
     }
 
     virtual
-    void
+    std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) = 0;
 
 public:

@@ -24,7 +24,7 @@ struct locator_t::synchronize_slot_t:
     synchronize_slot_t(locator_t& self);
 
     virtual
-    void
+    std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream);
 
     void
@@ -56,7 +56,7 @@ locator_t::synchronize_slot_t::synchronize_slot_t(locator_t& self):
     m_self(self)
 { }
 
-void
+std::shared_ptr<dispatch_t>
 locator_t::synchronize_slot_t::operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
     io::detail::invoke<io::event_traits<io::locator::synchronize>::tuple_type>::apply(
         std::bind(&synchronize_slot_t::dump, this, upstream),
@@ -65,6 +65,9 @@ locator_t::synchronize_slot_t::operator()(const msgpack::object& unpacked, const
 
     // Save this upstream for the future notifications.
     m_upstreams.push_back(upstream);
+
+    // Return an empty protocol dispatch.
+    return nullptr;
 }
 
 void
