@@ -77,4 +77,6 @@ Worker().run({
 Okay, I want to try it!
 =======================
 
+Hey kids, don't try cocaine! For serious web developers only.
+
 Then it's time to read our [Wiki](https://github.com/cocaine/cocaine-core/wiki) for installation instructions, reference manuals and cookies!
