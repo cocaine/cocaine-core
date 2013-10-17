@@ -11,7 +11,7 @@ __Your personal app engine.__ Technically speaking, it's an open-source cloud pl
 
 Notable features:
 
-* You are not restricted by a language or a framework. Similiar to Heroku model, Cocaine simply spawns whatever you tell it to spawn. The only requirement is that these newly spawned apps must connect to their app controller for request load balancing. But we plan to get rid of this last requiremenet as well.
+* You are not restricted by a language or a framework. Similiar to Heroku model, Cocaine simply spawns whatever you tell it to spawn. The only requirement is that these newly spawned apps must connect to their app controller for request load balancing. But we plan to get rid of this last requirement as well.
 * Your apps are driven by events, which is fancy. There are two sources of events for every app, and we got lots of predefined plugins providing those sources, so unless you need to handle clients via a PS/2 port, you're good.
   * First, there are services: this concept is similiar to Google App Engine's services. Simply speaking, services are other apps running in the same cloud. These apps can be anything ranging from a distributed storage access service or a publish-subscribe notification service to specially-crafted service for your own personal needs.
   * Second, there are event drivers: these are simple statically configurable objects attached to your app generating events from some predefined source, for example a recurring timer or a watched file on the filesystem.
