@@ -95,11 +95,7 @@ private:
             case msgpack::UNPACK_SUCCESS: {
                 checkpoint = offset;
 
-                if(m_handle_message) {
-                    m_handle_message(message_t(object));
-                } else {
-                    return checkpoint;
-                }
+                m_handle_message(message_t(object));
 
                 if(rv == msgpack::UNPACK_SUCCESS || !m_handle_message) {
                     return size;
