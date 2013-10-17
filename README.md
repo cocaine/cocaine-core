@@ -79,4 +79,4 @@ Okay, I want to try it!
 
 Hey kids, don't try cocaine! For serious web developers only.
 
-Then it's time to read our [Wiki](https://github.com/cocaine/cocaine-core/wiki) for installation instructions, reference manuals and cookies!
+Check out [our wiki](https://github.com/cocaine/cocaine-core/wiki) for installation instructions, reference manuals and cookies! We also got a bit [outdated docs](https://github.com/cocaine/cocaine-docs-en/wiki) for v0.9, but worry not, up-to-date documention is on its way!
