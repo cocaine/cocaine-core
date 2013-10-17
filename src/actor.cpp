@@ -184,7 +184,7 @@ private:
 void
 actor_t::session_t::downstream_t::invoke(const message_t& message) {
     try {
-        std::swap(dispatch, dispatch->invoke(message, upstream));
+        dispatch = dispatch->invoke(message, upstream);
     } catch(const std::exception& e) {
         // TODO: COCAINE-82 changes to a category-based exception serialization.
         upstream->error(invocation_error, e.what());
