@@ -97,7 +97,7 @@ struct app_t::service_t:
             std::shared_ptr<dispatch_t>
             operator()(const msgpack::object& unpacked, const api::stream_ptr_t& /* upstream */) {
                 io::detail::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
-                    boost::bind(&streaming_service_t::write, self, _1),
+                    boost::bind(&streaming_service_t::write, self.get(), _1),
                     unpacked
                 );
 

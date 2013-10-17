@@ -46,7 +46,7 @@ struct deferred_slot:
         this->call(unpacked).attach(upstream);
 
         // Return an empty protocol dispatch.
-        return nullptr;
+        return std::shared_ptr<dispatch_t>();
     }
 };
 

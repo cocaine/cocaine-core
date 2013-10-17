@@ -50,7 +50,7 @@ struct blocking_slot:
         m_buffer.clear();
 
         // Return an empty protocol dispatch.
-        return nullptr;
+        return std::shared_ptr<dispatch_t>();
     }
 
 private:
@@ -80,7 +80,7 @@ struct blocking_slot<void, Sequence>:
         upstream->close();
 
         // Return an empty protocol dispatch.
-        return nullptr;
+        return std::shared_ptr<dispatch_t>();
     }
 };
 

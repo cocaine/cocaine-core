@@ -67,7 +67,7 @@ locator_t::synchronize_slot_t::operator()(const msgpack::object& unpacked, const
     m_upstreams.push_back(upstream);
 
     // Return an empty protocol dispatch.
-    return nullptr;
+    return std::shared_ptr<dispatch_t>();
 }
 
 void
