@@ -77,7 +77,11 @@ public:
 
     size_t
     footprint() const {
-        return rd->stream()->footprint() + wr->stream()->footprint();
+        if (rd->stream() && wr->stream()) {
+            return rd->stream()->footprint() + wr->stream()->footprint();
+        } else {
+            return 0;
+        }
     }
 
     std::unique_ptr<decoder<readable_stream<Socket>>> rd;
