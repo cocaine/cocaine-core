@@ -63,19 +63,26 @@ struct actor_t::session_t {
 private:
     void
     invoke(const message_t& message) {
-        std::unique_lock<std::mutex> lock(mutex);
+        std::shared_ptr<downstream_t> downstream;
 
-        auto it = downstreams.find(message.band());
+        {
+            std::lock_guard<std::mutex> guard(mutex);
 
-        if(it == downstreams.end()) {
-            std::tie(it, std::ignore) = downstreams.insert({ message.band(), std::make_shared<downstream_t>(
-                prototype,
-                std::make_shared<actor_t::upstream_t>(*this, message.band())
-            )});
+            auto it = downstreams.find(message.band());
+
+            if(it == downstreams.end()) {
+                std::tie(it, std::ignore) = downstreams.insert({ message.band(), std::make_shared<downstream_t>(
+                    prototype,
+                    std::make_shared<actor_t::upstream_t>(*this, message.band())
+                )});
+            }
+
+            // NOTE: The downstream pointer is copied here so that if the slot decides to close the
+            // downstream, it won't destroy it inside the downstream_t::invoke(). Instead, it will
+            // be destroyed when this function scope is exited, liberating us from thinking of some
+            // voodoo magic to handle it.
+            downstream = it->second;
         }
-
-        std::shared_ptr<downstream_t> downstream = it->second;
-        lock.unlock();
 
         downstream->invoke(message);
     }
