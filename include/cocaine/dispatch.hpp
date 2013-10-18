@@ -45,7 +45,7 @@ class dispatch_t {
 
         template<class Event>
         void
-        on(std::shared_ptr<slot_concept_t> ptr);
+        on(const std::shared_ptr<slot_concept_t>& ptr);
 
         template<class Event>
         void
@@ -117,7 +117,7 @@ dispatch_t::on(const std::string& name, F callable) {
 
 template<class Event>
 void
-dispatch_t::on(std::shared_ptr<slot_concept_t> ptr) {
+dispatch_t::on(const std::shared_ptr<slot_concept_t>& ptr) {
     const int id = io::event_traits<Event>::id;
 
     std::lock_guard<std::mutex> guard(m_mutex);
