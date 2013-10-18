@@ -41,7 +41,7 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
     slot_map_t::mapped_type slot;
 
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> guard(m_mutex);
 
         auto it = m_slots.find(message.id());
 
