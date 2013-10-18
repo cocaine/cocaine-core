@@ -60,6 +60,28 @@ namespace fs = boost::filesystem;
 struct app_t::service_t:
     public dispatch_t
 {
+    struct streaming_service_t:
+        public dispatch_t
+    {
+        streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& d):
+            dispatch_t(context, name),
+            downstream(d)
+        { }
+
+        void
+        write(const std::string& chunk) {
+            downstream->write(chunk.data(), chunk.size());
+        }
+
+        void
+        close() {
+            downstream->close();
+        }
+
+    private:
+        const api::stream_ptr_t downstream;
+    };
+
     struct enqueue_slot_t:
         public slot_concept_t
     {
@@ -81,54 +103,27 @@ struct app_t::service_t:
         app_t::service_t& self;
     };
 
-    struct streaming_service_t:
-        public dispatch_t,
-        public std::enable_shared_from_this<streaming_service_t>
+    struct write_slot_t:
+        public slot_concept_t
     {
-        struct write_slot_t:
-            public slot_concept_t
-        {
-            write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
-                slot_concept_t("write"),
-                self(self_)
-            { }
+        write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
+            slot_concept_t("write"),
+            self(self_)
+        { }
 
-            virtual
-            std::shared_ptr<dispatch_t>
-            operator()(const msgpack::object& unpacked, const api::stream_ptr_t& /* upstream */) {
-                io::detail::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
-                    boost::bind(&streaming_service_t::write, self, _1),
-                    unpacked
-                );
+        virtual
+        std::shared_ptr<dispatch_t>
+        operator()(const msgpack::object& unpacked, const api::stream_ptr_t& /* upstream */) {
+            io::detail::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
+                boost::bind(&streaming_service_t::write, self.get(), _1),
+                unpacked
+            );
 
-                return self;
-            }
-
-        private:
-            const std::shared_ptr<streaming_service_t> self;
-        };
-
-        streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& d):
-            dispatch_t(context, name),
-            downstream(d)
-        {
-            on<rpc::chunk>(std::make_shared<write_slot_t>(shared_from_this()));
-            on<rpc::choke>("close", std::bind(&streaming_service_t::close, this));
+            return self;
         }
 
     private:
-        void
-        write(const std::string& chunk) {
-            downstream->write(chunk.data(), chunk.size());
-        }
-
-        void
-        close() {
-            downstream->close();
-        }
-
-    private:
-        const api::stream_ptr_t downstream;
+        const std::shared_ptr<streaming_service_t> self;
     };
 
     service_t(context_t& context_, const std::string& name_, app_t& app_):
@@ -151,7 +146,12 @@ private:
             downstream = app.enqueue(api::event_t(event), upstream, tag);
         }
 
-        return std::make_shared<streaming_service_t>(context, name(), downstream);
+        auto service = std::make_shared<streaming_service_t>(context, name(), downstream);
+
+        service->on<rpc::choke>("close", std::bind(&streaming_service_t::close, service));
+        service->on<rpc::chunk>(std::make_shared<write_slot_t>(service));
+
+        return service;
     }
 
 private:
