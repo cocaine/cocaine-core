@@ -23,8 +23,9 @@ At the moment, Cocaine Core supports the following languages and specifications:
 
 * C++
 * Python
-* Javascript
-* [In development] Java
+* NodeJs
+* Java
+* Go
 * [In development] Racket
 
 We have the following services:
