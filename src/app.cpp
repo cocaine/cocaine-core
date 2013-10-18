@@ -148,8 +148,8 @@ private:
 
         auto service = std::make_shared<streaming_service_t>(context, name(), downstream);
 
-        service->on<rpc::choke>("close", std::bind(&streaming_service_t::close, service));
         service->on<rpc::chunk>(std::make_shared<write_slot_t>(service));
+        service->on<rpc::choke>("close", std::bind(&streaming_service_t::close, service));
 
         return service;
     }
