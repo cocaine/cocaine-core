@@ -100,17 +100,17 @@ class dispatch_t {
 namespace detail {
     template<class R>
     struct select {
-        template<class Sequence>
+        template<class Event>
         struct apply {
-            typedef io::blocking_slot<R, Sequence> type;
+            typedef io::blocking_slot<R, Event> type;
         };
     };
 
     template<class R>
     struct select<deferred<R>> {
-        template<class Sequence>
+        template<class Event>
         struct apply {
-            typedef io::deferred_slot<deferred<R>, Sequence> type;
+            typedef io::deferred_slot<deferred<R>, Event> type;
         };
     };
 }

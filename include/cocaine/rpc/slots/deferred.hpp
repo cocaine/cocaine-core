@@ -29,7 +29,7 @@ namespace cocaine { namespace io {
 
 // Deferred slot
 
-template<class R, class Event, class Sequence = typename io::event_traits<Event>::tuple_type>
+template<class R, class Event, class Sequence = typename event_traits<Event>::tuple_type>
 struct deferred_slot:
     public function_slot<R, Sequence>
 {
