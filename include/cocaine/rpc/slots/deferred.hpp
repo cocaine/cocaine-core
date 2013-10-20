@@ -29,15 +29,15 @@ namespace cocaine { namespace io {
 
 // Deferred slot
 
-template<class R, class Sequence>
+template<class R, class Event, class Sequence = typename io::event_traits<Event>::tuple_type>
 struct deferred_slot:
     public function_slot<R, Sequence>
 {
-    typedef function_slot<R, Sequence> base_type;
-    typedef typename base_type::callable_type callable_type;
+    typedef function_slot<R, Sequence> parent_type;
+    typedef typename parent_type::callable_type callable_type;
 
-    deferred_slot(const std::string& name, callable_type callable):
-        base_type(name, callable)
+    deferred_slot(callable_type callable):
+        parent_type(Event::alias(), callable)
     { }
 
     virtual

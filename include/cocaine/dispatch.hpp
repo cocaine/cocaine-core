@@ -30,6 +30,20 @@
 
 namespace cocaine {
 
+namespace detail {
+
+template<class F>
+struct is_slot:
+    public std::false_type
+{ };
+
+template<class F>
+struct is_slot<std::shared_ptr<F>>:
+    public std::is_base_of<slot_concept_t, F>
+{ };
+
+}
+
 class dispatch_t {
     COCAINE_DECLARE_NONCOPYABLE(dispatch_t)
 
@@ -41,7 +55,7 @@ class dispatch_t {
 
         template<class Event, class F>
         void
-        on(const std::string& name, F callable);
+        on(const F& callable, typename std::enable_if<!detail::is_slot<F>::value>::type* = nullptr);
 
         template<class Event>
         void
@@ -103,16 +117,15 @@ namespace detail {
 
 template<class Event, class F>
 void
-dispatch_t::on(const std::string& name, F callable) {
+dispatch_t::on(const F& callable, typename std::enable_if<!detail::is_slot<F>::value>::type*) {
     typedef typename io::detail::result_of<F>::type result_type;
-    typedef typename io::event_traits<Event>::tuple_type tuple_type;
 
     typedef typename boost::mpl::apply<
         detail::select<result_type>,
-        tuple_type
+        Event
     >::type slot_type;
 
-    on<Event>(std::make_shared<slot_type>(name, callable));
+    on<Event>(std::make_shared<slot_type>(callable));
 }
 
 template<class Event>

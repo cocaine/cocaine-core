@@ -36,7 +36,7 @@ logging_t::logging_t(context_t& context, io::reactor_t& reactor, const std::stri
 
     using cocaine::logging::logger_concept_t;
 
-    on<io::logging::emit>("emit", std::bind(&logger_concept_t::emit, logger, _1, _2, _3));
-    on<io::logging::verbosity>("verbosity", std::bind(&logger_concept_t::verbosity, logger));
+    on<io::logging::emit>(std::bind(&logger_concept_t::emit, logger, _1, _2, _3));
+    on<io::logging::verbosity>(std::bind(&logger_concept_t::verbosity, logger));
 }
 

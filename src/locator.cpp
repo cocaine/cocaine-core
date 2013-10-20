@@ -69,9 +69,9 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
         throw cocaine::error_t("unable to initialize the routing groups - %s", e.what());
     }
 
-    on<io::locator::resolve>("resolve", std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::reports>("reports", std::bind(&locator_t::reports, this));
-    on<io::locator::refresh>("refresh", std::bind(&locator_t::refresh, this, _1));
+    on<io::locator::resolve>(std::bind(&locator_t::resolve, this, _1));
+    on<io::locator::reports>(std::bind(&locator_t::reports, this));
+    on<io::locator::refresh>(std::bind(&locator_t::refresh, this, _1));
 
     if(!m_context.config.network.ports) {
         return;

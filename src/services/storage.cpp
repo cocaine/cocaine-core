@@ -33,8 +33,8 @@ storage_t::storage_t(context_t& context, io::reactor_t& reactor, const std::stri
 {
     auto storage = api::storage(context, args.get("backend", "core").asString());
 
-    on<io::storage::read>("read", std::bind(&api::storage_t::read, storage, _1, _2));
-    on<io::storage::write>("write", std::bind(&api::storage_t::write, storage, _1, _2, _3, _4));
-    on<io::storage::remove>("remove", std::bind(&api::storage_t::remove, storage, _1, _2));
-    on<io::storage::find>("find", std::bind(&api::storage_t::find, storage, _1, _2));
+    on<io::storage::read>(std::bind(&api::storage_t::read, storage, _1, _2));
+    on<io::storage::write>(std::bind(&api::storage_t::write, storage, _1, _2, _3, _4));
+    on<io::storage::remove>(std::bind(&api::storage_t::remove, storage, _1, _2));
+    on<io::storage::find>(std::bind(&api::storage_t::find, storage, _1, _2));
 }

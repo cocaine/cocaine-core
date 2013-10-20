@@ -27,15 +27,15 @@ namespace cocaine { namespace io {
 
 // Blocking slot
 
-template<class R, class Sequence>
+template<class R, class Event, class Sequence = typename io::event_traits<Event>::tuple_type>
 struct blocking_slot:
     public function_slot<R, Sequence>
 {
-    typedef function_slot<R, Sequence> base_type;
-    typedef typename base_type::callable_type callable_type;
+    typedef function_slot<R, Sequence> parent_type;
+    typedef typename parent_type::callable_type callable_type;
 
-    blocking_slot(const std::string& name, callable_type callable):
-        base_type(name, callable),
+    blocking_slot(callable_type callable):
+        parent_type(Event::alias(), callable),
         m_packer(m_buffer)
     { }
 
@@ -60,15 +60,15 @@ private:
 
 // Blocking slot specialization for void functions
 
-template<class Sequence>
-struct blocking_slot<void, Sequence>:
+template<class Event, class Sequence>
+struct blocking_slot<void, Event, Sequence>:
     public function_slot<void, Sequence>
 {
-    typedef function_slot<void, Sequence> base_type;
-    typedef typename base_type::callable_type callable_type;
+    typedef function_slot<void, Sequence> parent_type;
+    typedef typename parent_type::callable_type callable_type;
 
-    blocking_slot(const std::string& name, callable_type callable):
-        base_type(name, callable)
+    blocking_slot(callable_type callable):
+        parent_type(Event::alias(), callable)
     { }
 
     virtual

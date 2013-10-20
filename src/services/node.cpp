@@ -45,9 +45,9 @@ node_t::node_t(context_t& context, io::reactor_t& reactor, const std::string& na
     m_context(context),
     m_log(new logging::log_t(context, name))
 {
-    on<io::node::start_app>("start_app", std::bind(&node_t::on_start_app, this, _1));
-    on<io::node::pause_app>("pause_app", std::bind(&node_t::on_pause_app, this, _1));
-    on<io::node::list>("list", std::bind(&node_t::on_list, this));
+    on<io::node::start_app>(std::bind(&node_t::on_start_app, this, _1));
+    on<io::node::pause_app>(std::bind(&node_t::on_pause_app, this, _1));
+    on<io::node::list>(std::bind(&node_t::on_list, this));
 
     const auto runlist_id = args.get("runlist", "default").asString();
 
