@@ -117,6 +117,13 @@ class engine_t {
         void
         erase(const std::string& id, int code, const std::string& reason);
 
+        // App access
+
+        io::reactor_t&
+        reactor() {
+            return *m_reactor;
+        }
+
     private:
         void
         on_connection(const std::shared_ptr<io::socket<io::local>>& socket);

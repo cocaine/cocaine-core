@@ -175,6 +175,25 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     if(m_manifest->source() != sources::cache) {
         isolate->spool();
     }
+
+    std::shared_ptr<io::socket<local>> lhs, rhs;
+
+    // Create the engine control sockets.
+    std::tie(lhs, rhs) = io::link<local>();
+
+    m_reactor = std::make_unique<reactor_t>();
+    m_engine_control = std::make_unique<channel<io::socket<local>>>(*m_reactor, lhs);
+
+    try {
+        m_engine.reset(new engine_t(m_context, std::make_shared<reactor_t>(), *m_manifest, *m_profile, rhs));
+    } catch(const std::system_error& e) {
+        throw cocaine::error_t(
+            "unable to initialize the engine - %s - [%d] %s",
+            e.what(),
+            e.code().value(),
+            e.code().message()
+        );
+    }
 }
 
 app_t::~app_t() {
@@ -185,7 +204,6 @@ void
 app_t::start() {
     COCAINE_LOG_INFO(m_log, "starting the engine");
 
-    auto reactor = std::make_shared<reactor_t>();
     auto drivers = driver_map_t();
 
     if(!m_manifest->drivers.empty()) {
@@ -211,7 +229,7 @@ app_t::start() {
                 driver = m_context.get<api::driver_t>(
                     it->second.type,
                     m_context,
-                    *reactor,
+                    m_engine->reactor(),
                     *this,
                     name,
                     it->second.args
@@ -224,25 +242,6 @@ app_t::start() {
 
             drivers[it->first] = std::move(driver);
         }
-    }
-
-    std::shared_ptr<io::socket<local>> lhs, rhs;
-
-    // Create the engine control sockets.
-    std::tie(lhs, rhs) = io::link<local>();
-
-    m_reactor = std::make_unique<reactor_t>();
-    m_engine_control = std::make_unique<channel<io::socket<local>>>(*m_reactor, lhs);
-
-    try {
-        m_engine.reset(new engine_t(m_context, reactor, *m_manifest, *m_profile, rhs));
-    } catch(const std::system_error& e) {
-        throw cocaine::error_t(
-            "unable to initialize the engine - %s - [%d] %s",
-            e.what(),
-            e.code().value(),
-            e.code().message()
-        );
     }
 
     // We can safely swap the current driver set now.
