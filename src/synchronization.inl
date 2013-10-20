@@ -19,7 +19,7 @@
 */
 
 struct locator_t::synchronize_slot_t:
-    public slot_concept_t
+    public basic_slot<io::locator::synchronize>
 {
     synchronize_slot_t(locator_t& self);
 
@@ -51,7 +51,6 @@ private:
 };
 
 locator_t::synchronize_slot_t::synchronize_slot_t(locator_t& self):
-    slot_concept_t("synchronize"),
     m_packer(m_buffer),
     m_self(self)
 { }

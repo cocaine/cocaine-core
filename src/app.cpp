@@ -83,10 +83,9 @@ struct app_t::service_t:
     };
 
     struct enqueue_slot_t:
-        public slot_concept_t
+        public basic_slot<io::app::enqueue>
     {
         enqueue_slot_t(app_t::service_t& self_):
-            slot_concept_t("enqueue"),
             self(self_)
         { }
 
@@ -104,10 +103,9 @@ struct app_t::service_t:
     };
 
     struct write_slot_t:
-        public slot_concept_t
+        public basic_slot<rpc::chunk>
     {
         write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
-            slot_concept_t("write"),
             self(self_)
         { }
 

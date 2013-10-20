@@ -193,12 +193,14 @@ namespace detail {
     };
 }
 
-template<class R, class Sequence>
+template<class R, class Event>
 struct function_slot:
-    public slot_concept_t
+    public basic_slot<Event>
 {
+    typedef typename event_traits<Event>::tuple_type tuple_type;
+
     typedef typename mpl::transform<
-        Sequence,
+        tuple_type,
         mpl::lambda<detail::unwrap_type<mpl::arg<1>>>
     >::type sequence_type;
 
@@ -208,13 +210,12 @@ struct function_slot:
 
     typedef std::function<function_type> callable_type;
 
-    function_slot(const std::string& name, callable_type callable):
-        slot_concept_t(name),
+    function_slot(callable_type callable):
         m_callable(callable)
     { }
 
     R call(const msgpack::object& packed) const {
-        return detail::invoke<Sequence>::apply(m_callable, packed);
+        return detail::invoke<tuple_type>::apply(m_callable, packed);
     }
 
 private:

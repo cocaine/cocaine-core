@@ -29,6 +29,8 @@ namespace cocaine {
 
 class dispatch_t;
 
+namespace detail {
+
 // Slot basics
 
 struct slot_concept_t {
@@ -53,6 +55,17 @@ public:
 
 private:
     const std::string m_name;
+};
+
+}
+
+template<class Event>
+struct basic_slot:
+    public detail::slot_concept_t
+{
+    basic_slot():
+        slot_concept_t(Event::alias())
+    { }
 };
 
 } // namespace cocaine
