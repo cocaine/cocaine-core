@@ -63,8 +63,10 @@ template<class Event>
 struct basic_slot:
     public detail::slot_concept_t
 {
+    typedef Event event_type;
+
     basic_slot():
-        slot_concept_t(Event::alias())
+        slot_concept_t(event_type::alias())
     { }
 };
 
