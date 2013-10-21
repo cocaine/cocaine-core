@@ -32,7 +32,7 @@
 
 namespace cocaine {
 
-namespace detail {
+namespace aux {
 
 template<class F>
 struct is_slot:
@@ -41,7 +41,7 @@ struct is_slot:
 
 template<class F>
 struct is_slot<std::shared_ptr<F>>:
-    public std::is_base_of<slot_concept_t, F>
+    public std::is_base_of<detail::slot_concept_t, F>
 { };
 
 }
@@ -57,7 +57,7 @@ class dispatch_t {
 
         template<class Event, class F>
         void
-        on(const F& callable, typename std::enable_if<!detail::is_slot<F>::value>::type* = nullptr);
+        on(const F& callable, typename std::enable_if<!aux::is_slot<F>::value>::type* = nullptr);
 
         template<class Event>
         void
@@ -117,7 +117,7 @@ namespace detail {
 
 template<class Event, class F>
 void
-dispatch_t::on(const F& callable, typename std::enable_if<!detail::is_slot<F>::value>::type*) {
+dispatch_t::on(const F& callable, typename std::enable_if<!aux::is_slot<F>::value>::type*) {
     typedef typename io::detail::result_of<F>::type result_type;
 
     typedef typename boost::mpl::apply<

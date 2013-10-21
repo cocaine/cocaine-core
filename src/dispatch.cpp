@@ -76,7 +76,7 @@ dispatch_t::tree() const {
     dispatch_tree_t result;
 
     for(auto it = m_slots.begin(); it != m_slots.end(); ++it) {
-        result[it->first] = { it->second->name(), it->second->tree() };
+        result[it->first] = std::make_tuple(it->second->name(), it->second->tree());
     }
 
     return result;

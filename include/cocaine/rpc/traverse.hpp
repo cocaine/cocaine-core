@@ -66,7 +66,7 @@ struct traverse_impl<End, End> {
     }
 };
 
-}
+} // namespace aux
 
 template<class Tag>
 inline
