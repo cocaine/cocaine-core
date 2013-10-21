@@ -217,7 +217,9 @@ struct write {
     }
 
     typedef boost::mpl::list<
-        /* chunk */ std::string
+     /* Some chunk of data to be sent to the app. By convention, it is expected to be serialized
+        with MessagePack, but obviously you can send whatever you want. */
+        std::string
     > tuple_type;
 };
 
