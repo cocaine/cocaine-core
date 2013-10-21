@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_LITERAL_TYPE_TRAITS_HPP
-#define COCAINE_LITERAL_TYPE_TRAITS_HPP
+#ifndef COCAINE_LITERAL_SERIALIZATION_TRAITS_HPP
+#define COCAINE_LITERAL_SERIALIZATION_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
 

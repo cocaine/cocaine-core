@@ -19,7 +19,7 @@
 */
 
 struct locator_t::synchronize_slot_t:
-    public basic_slot<io::locator::synchronize>
+    public io::basic_slot<io::locator::synchronize>
 {
     synchronize_slot_t(locator_t& self);
 

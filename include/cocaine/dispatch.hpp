@@ -34,14 +34,14 @@ namespace cocaine {
 
 namespace aux {
 
-template<class F>
+template<class T>
 struct is_slot:
     public std::false_type
 { };
 
-template<class F>
-struct is_slot<std::shared_ptr<F>>:
-    public std::is_base_of<detail::slot_concept_t, F>
+template<class T>
+struct is_slot<std::shared_ptr<T>>:
+    public std::is_base_of<io::detail::slot_concept_t, T>
 { };
 
 }
@@ -61,7 +61,7 @@ class dispatch_t {
 
         template<class Event>
         void
-        on(const std::shared_ptr<detail::slot_concept_t>& ptr);
+        on(const std::shared_ptr<io::detail::slot_concept_t>& ptr);
 
         template<class Event>
         void
@@ -85,7 +85,7 @@ class dispatch_t {
 
         typedef std::map<
             int,
-            std::shared_ptr<detail::slot_concept_t>
+            std::shared_ptr<io::detail::slot_concept_t>
         > slot_map_t;
 
         slot_map_t m_slots;
@@ -130,7 +130,7 @@ dispatch_t::on(const F& callable, typename std::enable_if<!aux::is_slot<F>::valu
 
 template<class Event>
 void
-dispatch_t::on(const std::shared_ptr<detail::slot_concept_t>& ptr) {
+dispatch_t::on(const std::shared_ptr<io::detail::slot_concept_t>& ptr) {
     const int id = io::event_traits<Event>::id;
 
     std::lock_guard<std::mutex> guard(m_mutex);

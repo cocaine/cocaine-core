@@ -83,7 +83,7 @@ struct app_t::service_t:
     };
 
     struct enqueue_slot_t:
-        public basic_slot<io::app::enqueue>
+        public io::basic_slot<io::app::enqueue>
     {
         enqueue_slot_t(app_t::service_t& self_):
             self(self_)
@@ -103,7 +103,7 @@ struct app_t::service_t:
     };
 
     struct write_slot_t:
-        public basic_slot<streaming::write>
+        public io::basic_slot<io::streaming::write>
     {
         write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
             self(self_)
@@ -129,8 +129,8 @@ struct app_t::service_t:
         context(context_),
         app(app_)
     {
-        on<app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
-        on<app::info>(std::bind(&app_t::info, std::ref(app)));
+        on<io::app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
+        on<io::app::info>(std::bind(&app_t::info, std::ref(app)));
     }
 
 private:
@@ -146,8 +146,8 @@ private:
 
         auto service = std::make_shared<streaming_service_t>(context, name(), downstream);
 
-        service->on<streaming::write>(std::make_shared<write_slot_t>(service));
-        service->on<streaming::close>(std::bind(&streaming_service_t::close, service));
+        service->on<io::streaming::write>(std::make_shared<write_slot_t>(service));
+        service->on<io::streaming::close>(std::bind(&streaming_service_t::close, service));
 
         return service;
     }

@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_TUPLE_TYPE_TRAITS_HPP
-#define COCAINE_TUPLE_TYPE_TRAITS_HPP
+#ifndef COCAINE_TUPLE_SERIALIZATION_TRAITS_HPP
+#define COCAINE_TUPLE_SERIALIZATION_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/typelist.hpp"

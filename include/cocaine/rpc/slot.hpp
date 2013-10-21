@@ -32,7 +32,7 @@ namespace cocaine {
 
 class dispatch_t;
 
-namespace detail {
+namespace io { namespace detail {
 
 // Slot basics
 
@@ -64,7 +64,7 @@ private:
     const std::string m_name;
 };
 
-}
+} // namespace detail
 
 template<class Event>
 struct basic_slot:
@@ -87,6 +87,6 @@ private:
     const dispatch_tree_t tree_;
 };
 
-} // namespace cocaine
+}} // namespace cocaine::io
 
 #endif

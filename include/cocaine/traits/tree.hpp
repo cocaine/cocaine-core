@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_DISPATCH_TREE_TYPE_TRAITS_HPP
-#define COCAINE_IO_DISPATCH_TREE_TYPE_TRAITS_HPP
+#ifndef COCAINE_IO_DISPATCH_TREE_SERIALIZATION_TRAITS_HPP
+#define COCAINE_IO_DISPATCH_TREE_SERIALIZATION_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
 
