@@ -38,6 +38,11 @@ namespace mpl = boost::mpl;
 template<class Tag>
 struct protocol;
 
+template<>
+struct protocol<void> {
+    typedef mpl::list<> type;
+};
+
 template<class Tag>
 struct extends {
     typedef protocol<Tag> parent_type;
@@ -141,6 +146,22 @@ namespace detail {
 
         typedef typename fold<typename Event::result_type>::type type;
     };
+
+    // Transition type extraction
+
+    template<class Event, class = void>
+    struct transition_type {
+        typedef void type;
+    };
+
+    template<class Event>
+    struct transition_type<
+        Event,
+        typename depend<typename Event::transition_type>::type
+    >
+    {
+        typedef typename Event::transition_type type;
+    };
 }
 
 template<class Event>
@@ -148,6 +169,7 @@ struct event_traits {
     enum constants { id = detail::enumerate<Event>::type::value };
 
     typedef typename detail::tuple_type<Event>::type tuple_type;
+    typedef typename detail::transition_type<Event>::type transition_type;
     typedef typename detail::result_type<Event>::type result_type;
 };
 

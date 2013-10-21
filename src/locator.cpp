@@ -39,6 +39,7 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include "cocaine/traits/maps.hpp"
 #include "cocaine/traits/tuple.hpp"
 
 using namespace cocaine;

@@ -25,6 +25,9 @@
 
 #include "cocaine/traits.hpp"
 
+#include "cocaine/rpc/maps.hpp"
+#include "cocaine/rpc/traverse.hpp"
+
 namespace cocaine {
 
 class dispatch_t;
@@ -53,6 +56,10 @@ public:
         return m_name;
     }
 
+    virtual
+    dispatch_maps_t
+    maps() const = 0;
+
 private:
     const std::string m_name;
 };
@@ -66,8 +73,18 @@ struct basic_slot:
     typedef Event event_type;
 
     basic_slot():
-        slot_concept_t(event_type::alias())
+        slot_concept_t(event_type::alias()),
+        maps_(io::traverse<typename io::event_traits<Event>::transition_type>())
     { }
+
+    virtual
+    dispatch_maps_t
+    maps() const {
+        return maps_;
+    }
+
+private:
+    const dispatch_maps_t maps_;
 };
 
 } // namespace cocaine

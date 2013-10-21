@@ -25,6 +25,7 @@
 
 #include "cocaine/rpc/slots/blocking.hpp"
 #include "cocaine/rpc/slots/deferred.hpp"
+#include "cocaine/rpc/maps.hpp"
 
 #include <boost/mpl/apply.hpp>
 
@@ -69,10 +70,8 @@ class dispatch_t {
         std::shared_ptr<dispatch_t>
         invoke(const io::message_t& message, const api::stream_ptr_t& upstream) const;
 
-        typedef std::map<int, std::string> dispatch_map_t;
-
-        dispatch_map_t
-        map() const;
+        dispatch_maps_t
+        maps() const;
 
         int
         version() const;

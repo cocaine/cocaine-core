@@ -69,14 +69,14 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
     }
 }
 
-auto
-dispatch_t::map() const -> dispatch_map_t {
+dispatch_maps_t
+dispatch_t::maps() const {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    dispatch_map_t result;
+    dispatch_maps_t result;
 
     for(auto it = m_slots.begin(); it != m_slots.end(); ++it) {
-        result[it->first] = it->second->name();
+        result[it->first] = { it->second->name(), it->second->maps() };
     }
 
     return result;

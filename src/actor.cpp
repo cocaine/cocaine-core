@@ -297,7 +297,7 @@ actor_t::metadata() const -> metadata_t {
     return metadata_t(
         endpoint,
         m_prototype->version(),
-        m_prototype->map()
+        m_prototype->maps()
     );
 }
 

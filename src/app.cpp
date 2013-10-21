@@ -103,7 +103,7 @@ struct app_t::service_t:
     };
 
     struct write_slot_t:
-        public basic_slot<rpc::chunk>
+        public basic_slot<streaming::write>
     {
         write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
             self(self_)
@@ -146,8 +146,8 @@ private:
 
         auto service = std::make_shared<streaming_service_t>(context, name(), downstream);
 
-        service->on<rpc::chunk>(std::make_shared<write_slot_t>(service));
-        service->on<rpc::choke>(std::bind(&streaming_service_t::close, service));
+        service->on<streaming::write>(std::make_shared<write_slot_t>(service));
+        service->on<streaming::close>(std::bind(&streaming_service_t::close, service));
 
         return service;
     }

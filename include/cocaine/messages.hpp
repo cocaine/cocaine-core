@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/rpc/maps.hpp"
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
 #include "cocaine/rpc/types.hpp"
@@ -55,9 +56,9 @@ struct resolve {
      /* Service protocol version. If the client wishes to use the service, the protocol
         versions must match. */
         unsigned int,
-     /* A mapping between method slot numbers and names for use in dynamic languages like
-        Python or Ruby. */
-        std::map<int, std::string>
+     /* A mapping between method slot numbers, method names and state protocol transitions for use
+        in dynamic languages like Python or Ruby. */
+        dispatch_maps_t
     > result_type;
 };
 
@@ -122,7 +123,7 @@ struct protocol<locator_tag> {
     > type;
 };
 
-// Streaming service interface
+// Old-school interface
 
 struct rpc_tag;
 
@@ -165,10 +166,6 @@ struct invoke {
 struct chunk {
     typedef rpc_tag tag;
 
-    static const char* alias() {
-        return "write";
-    }
-
     typedef boost::mpl::list<
         /* chunk */ std::string
     > tuple_type;
@@ -185,10 +182,6 @@ struct error {
 
 struct choke {
     typedef rpc_tag tag;
-
-    static const char* alias() {
-        return "close";
-    }
 };
 
 }
@@ -210,6 +203,46 @@ struct protocol<rpc_tag> {
     >::type type;
 };
 
+// Streaming interface
+
+struct streaming_tag;
+
+namespace streaming {
+
+struct write {
+    typedef streaming_tag tag;
+
+    static const char* alias() {
+        return "write";
+    }
+
+    typedef boost::mpl::list<
+        /* chunk */ std::string
+    > tuple_type;
+};
+
+struct close {
+    typedef streaming_tag tag;
+
+    static const char* alias() {
+        return "close";
+    }
+};
+
+}
+
+template<>
+struct protocol<streaming_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        streaming::write,
+        streaming::close
+    >::type type;
+};
+
 // App service interface
 
 struct app_tag;
@@ -218,6 +251,9 @@ namespace app {
 
 struct enqueue {
     typedef app_tag tag;
+
+    // Allow clients to stream data into the apps.
+    typedef streaming_tag transition_type;
 
     static const char* alias() {
         return "enqueue";
