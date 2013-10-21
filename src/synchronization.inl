@@ -28,7 +28,7 @@ struct locator_t::synchronize_slot_t:
     operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream);
 
     void
-    update();
+    announce();
 
     void
     shutdown();
@@ -37,22 +37,18 @@ private:
     bool
     dump(const api::stream_ptr_t& upstream);
 
-    static
-    void
-    close(const api::stream_ptr_t& upstream);
-
 private:
-    msgpack::sbuffer m_buffer;
-    msgpack::packer<msgpack::sbuffer> m_packer;
+    msgpack::sbuffer buffer;
+    msgpack::packer<msgpack::sbuffer> packer;
 
-    locator_t& m_self;
+    locator_t& self;
 
-    std::vector<api::stream_ptr_t> m_upstreams;
+    std::vector<api::stream_ptr_t> upstreams;
 };
 
-locator_t::synchronize_slot_t::synchronize_slot_t(locator_t& self):
-    m_packer(m_buffer),
-    m_self(self)
+locator_t::synchronize_slot_t::synchronize_slot_t(locator_t& self_):
+    packer(buffer),
+    self(self_)
 { }
 
 std::shared_ptr<dispatch_t>
@@ -63,49 +59,44 @@ locator_t::synchronize_slot_t::operator()(const msgpack::object& unpacked, const
     );
 
     // Save this upstream for the future notifications.
-    m_upstreams.push_back(upstream);
+    upstreams.push_back(upstream);
 
     // Return an empty protocol dispatch.
     return std::shared_ptr<dispatch_t>();
 }
 
 void
-locator_t::synchronize_slot_t::update() {
+locator_t::synchronize_slot_t::announce() {
     auto disconnected = std::partition(
-        m_upstreams.begin(),
-        m_upstreams.end(),
+        upstreams.begin(),
+        upstreams.end(),
         std::bind(&synchronize_slot_t::dump, this, _1)
     );
 
-    m_upstreams.erase(disconnected, m_upstreams.end());
+    upstreams.erase(disconnected, upstreams.end());
 }
 
 void
 locator_t::synchronize_slot_t::shutdown() {
     std::for_each(
-        m_upstreams.begin(),
-        m_upstreams.end(),
-        std::bind(&synchronize_slot_t::close, _1)
+        upstreams.begin(),
+        upstreams.end(),
+        std::bind(&api::stream_t::close, _1)
     );
 
-    m_upstreams.clear();
+    upstreams.clear();
 }
 
 bool
 locator_t::synchronize_slot_t::dump(const api::stream_ptr_t& upstream) {
-    m_buffer.clear();
+    buffer.clear();
 
     io::type_traits<synchronize_result_type>::pack(
-        m_packer,
-        m_self.dump()
+        packer,
+        self.dump()
     );
 
-    upstream->write(m_buffer.data(), m_buffer.size());
+    upstream->write(buffer.data(), buffer.size());
 
     return true;
-}
-
-void
-locator_t::synchronize_slot_t::close(const api::stream_ptr_t& upstream) {
-    upstream->close();
 }

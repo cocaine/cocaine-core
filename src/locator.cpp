@@ -250,7 +250,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
     m_router->add_local(name);
 
     if(m_synchronizer) {
-        m_synchronizer->update();
+        m_synchronizer->announce();
     }
 }
 
@@ -286,7 +286,7 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
     m_router->remove_local(name);
 
     if(m_synchronizer) {
-        m_synchronizer->update();
+        m_synchronizer->announce();
     }
 
     return service;
