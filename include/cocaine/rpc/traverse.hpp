@@ -44,10 +44,10 @@ struct traverse_impl {
         typedef typename boost::mpl::deref<It>::type event_type;
         typedef event_traits<event_type> traits_type;
 
-        object[traits_type::id] = {
+        object.insert({ traits_type::id, {
             event_type::alias(),
             traverse<typename traits_type::transition_type>()
-        };
+        }});
 
         return traverse_impl<
             typename boost::mpl::next<It>::type,
