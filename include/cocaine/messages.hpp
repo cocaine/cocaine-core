@@ -23,9 +23,9 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/rpc/maps.hpp"
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
+#include "cocaine/rpc/tree.hpp"
 #include "cocaine/rpc/types.hpp"
 
 namespace cocaine { namespace io {
@@ -58,7 +58,7 @@ struct resolve {
         unsigned int,
      /* A mapping between method slot numbers, method names and state protocol transitions for use
         in dynamic languages like Python or Ruby. */
-        dispatch_maps_t
+        dispatch_tree_t
     > result_type;
 };
 
@@ -112,7 +112,7 @@ struct refresh {
 template<>
 struct protocol<locator_tag> {
     typedef boost::mpl::int_<
-        1
+        2
     >::type version;
 
     typedef boost::mpl::list<

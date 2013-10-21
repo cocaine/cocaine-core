@@ -18,30 +18,30 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_DISPATCH_MAPS_HPP
-#define COCAINE_IO_DISPATCH_MAPS_HPP
+#ifndef COCAINE_IO_DISPATCH_TREE_HPP
+#define COCAINE_IO_DISPATCH_TREE_HPP
 
 #include "cocaine/common.hpp"
 
 namespace cocaine {
 
-struct dispatch_maps_t:
-    public std::map<int, std::tuple<std::string, dispatch_maps_t>>
+struct dispatch_tree_t:
+    public std::map<int, std::tuple<std::string, dispatch_tree_t>>
 {
     typedef std::map<
         int,
-        std::tuple<std::string, dispatch_maps_t>
+        std::tuple<std::string, dispatch_tree_t>
     > mapping_type;
 
-    dispatch_maps_t(): mapping_type() { }
-    dispatch_maps_t(const dispatch_maps_t& o): mapping_type(o) { }
-    dispatch_maps_t(dispatch_maps_t&& o): mapping_type(std::move(o)) { }
+    dispatch_tree_t(): mapping_type() { }
+    dispatch_tree_t(const dispatch_tree_t& o): mapping_type(o) { }
+    dispatch_tree_t(dispatch_tree_t&& o): mapping_type(std::move(o)) { }
 
-    dispatch_maps_t& operator=(const dispatch_maps_t& lhs) {
+    dispatch_tree_t& operator=(const dispatch_tree_t& lhs) {
         static_cast<mapping_type&>(*this) = lhs; return *this;
     }
 
-    dispatch_maps_t& operator=(dispatch_maps_t&& lhs) {
+    dispatch_tree_t& operator=(dispatch_tree_t&& lhs) {
         static_cast<mapping_type&>(*this) = std::move(lhs); return *this;
     }
 };

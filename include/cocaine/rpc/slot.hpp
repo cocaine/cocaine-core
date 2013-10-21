@@ -25,8 +25,8 @@
 
 #include "cocaine/traits.hpp"
 
-#include "cocaine/rpc/maps.hpp"
 #include "cocaine/rpc/traverse.hpp"
+#include "cocaine/rpc/tree.hpp"
 
 namespace cocaine {
 
@@ -57,8 +57,8 @@ public:
     }
 
     virtual
-    dispatch_maps_t
-    maps() const = 0;
+    dispatch_tree_t
+    tree() const = 0;
 
 private:
     const std::string m_name;
@@ -74,17 +74,17 @@ struct basic_slot:
 
     basic_slot():
         slot_concept_t(event_type::alias()),
-        maps_(io::traverse<typename io::event_traits<Event>::transition_type>())
+        tree_(io::traverse<typename io::event_traits<Event>::transition_type>())
     { }
 
     virtual
-    dispatch_maps_t
-    maps() const {
-        return maps_;
+    dispatch_tree_t
+    tree() const {
+        return tree_;
     }
 
 private:
-    const dispatch_maps_t maps_;
+    const dispatch_tree_t tree_;
 };
 
 } // namespace cocaine

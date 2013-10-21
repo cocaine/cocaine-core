@@ -21,8 +21,8 @@
 #ifndef COCAINE_IO_PROTOCOL_TRAVERSE_HPP
 #define COCAINE_IO_PROTOCOL_TRAVERSE_HPP
 
-#include "cocaine/rpc/maps.hpp"
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/rpc/tree.hpp"
 
 #include <boost/mpl/end.hpp>
 #include <boost/mpl/deref.hpp>
@@ -30,7 +30,7 @@
 namespace cocaine { namespace io {
 
 template<class Tag>
-dispatch_maps_t
+dispatch_tree_t
 traverse();
 
 namespace aux {
@@ -40,7 +40,7 @@ struct traverse_impl {
     static
     inline
     void
-    invoke(dispatch_maps_t& object) {
+    invoke(dispatch_tree_t& object) {
         typedef typename boost::mpl::deref<It>::type event_type;
         typedef event_traits<event_type> traits_type;
 
@@ -61,7 +61,7 @@ struct traverse_impl<End, End> {
     static
     inline
     void
-    invoke(dispatch_maps_t& /* object */) {
+    invoke(dispatch_tree_t& /* object */) {
         // Empty.
     }
 };
@@ -70,9 +70,9 @@ struct traverse_impl<End, End> {
 
 template<class Tag>
 inline
-dispatch_maps_t
+dispatch_tree_t
 traverse() {
-    dispatch_maps_t result;
+    dispatch_tree_t result;
 
     aux::traverse_impl<
         typename boost::mpl::begin<typename protocol<Tag>::type>::type,
