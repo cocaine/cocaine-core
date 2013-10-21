@@ -36,7 +36,7 @@ typedef std::map<
     std::tuple<std::string, boost::optional<dispatch_tree_t>>
 > recursion_base_t;
 
-}
+} // namespace aux
 
 struct dispatch_tree_t: public aux::recursion_base_t {
     typedef aux::recursion_base_t base_type;

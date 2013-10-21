@@ -38,8 +38,7 @@ namespace aux {
 
 template<class It, class End>
 struct traverse_impl {
-    static
-    inline
+    static inline
     void
     invoke(dispatch_tree_t& object) {
         typedef typename boost::mpl::deref<It>::type event_type;
@@ -56,8 +55,7 @@ struct traverse_impl {
 
 template<class End>
 struct traverse_impl<End, End> {
-    static
-    inline
+    statiс inline
     void
     invoke(dispatch_tree_t& /* object */) {
         // Empty.
