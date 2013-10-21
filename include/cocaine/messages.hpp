@@ -211,6 +211,8 @@ namespace streaming {
 
 struct write {
     typedef streaming_tag tag;
+
+    // Specifies that this slot doesn't switch the protocol dispatch.
     typedef recursive_tag transition_type;
 
     static const char* alias() {
