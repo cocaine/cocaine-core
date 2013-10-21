@@ -55,7 +55,7 @@ struct traverse_impl {
 
 template<class End>
 struct traverse_impl<End, End> {
-    statiс inline
+    static inline
     void
     invoke(dispatch_tree_t& /* object */) {
         // Empty.
