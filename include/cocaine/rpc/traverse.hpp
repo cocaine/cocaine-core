@@ -31,8 +31,8 @@
 namespace cocaine { namespace io {
 
 template<class Tag>
-boost::optional<dispatch_tree_t>
-traverse();
+auto
+traverse() -> boost::optional<dispatch_tree_t>;
 
 namespace aux {
 
@@ -50,10 +50,7 @@ struct traverse_impl {
             traverse<typename traits_type::transition_type>()
         );
 
-        return traverse_impl<
-            typename boost::mpl::next<It>::type,
-            End
-        >::invoke(object);
+        traverse_impl<typename boost::mpl::next<It>::type, End>::invoke(object);
     }
 };
 
@@ -71,8 +68,8 @@ struct traverse_impl<End, End> {
 
 template<class Tag>
 inline
-boost::optional<dispatch_tree_t>
-traverse() {
+auto
+traverse() -> boost::optional<dispatch_tree_t> {
     dispatch_tree_t result;
 
     aux::traverse_impl<
@@ -85,8 +82,8 @@ traverse() {
 
 template<>
 inline
-boost::optional<dispatch_tree_t>
-traverse<recursive_tag>() {
+auto
+traverse<recursive_tag>() -> boost::optional<dispatch_tree_t> {
     return boost::none_t();
 }
 

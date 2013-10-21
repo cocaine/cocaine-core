@@ -57,8 +57,8 @@ public:
     }
 
     virtual
-    boost::optional<dispatch_tree_t>
-    tree() const = 0;
+    auto
+    tree() const -> boost::optional<dispatch_tree_t> = 0;
 
 private:
     const std::string m_name;
@@ -78,8 +78,8 @@ struct basic_slot:
     { }
 
     virtual
-    boost::optional<dispatch_tree_t>
-    tree() const {
+    auto
+    tree() const -> boost::optional<dispatch_tree_t> {
         return tree_;
     }
 

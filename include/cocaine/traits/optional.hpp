@@ -35,7 +35,7 @@ struct type_traits<boost::optional<T>> {
     pack(msgpack::packer<Stream>& packer, const boost::optional<T>& source) {
         return source ?
             type_traits<T>::pack(packer, source.get())
-          : (void)packer.pack_nil();
+          : (void)(packer.pack_nil());
     }
 
     static inline
