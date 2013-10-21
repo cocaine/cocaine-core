@@ -44,7 +44,7 @@ struct is_slot<std::shared_ptr<T>>:
     public std::is_base_of<io::detail::slot_concept_t, T>
 { };
 
-}
+} // namespace aux
 
 class dispatch_t {
     COCAINE_DECLARE_NONCOPYABLE(dispatch_t)
@@ -97,23 +97,25 @@ class dispatch_t {
         const std::string m_name;
 };
 
-namespace detail {
-    template<class R>
-    struct select {
-        template<class Event>
-        struct apply {
-            typedef io::blocking_slot<R, Event> type;
-        };
-    };
+namespace aux {
 
-    template<class R>
-    struct select<deferred<R>> {
-        template<class Event>
-        struct apply {
-            typedef io::deferred_slot<deferred<R>, Event> type;
-        };
+template<class R>
+struct select {
+    template<class Event>
+    struct apply {
+        typedef io::blocking_slot<R, Event> type;
     };
-}
+};
+
+template<class R>
+struct select<deferred<R>> {
+    template<class Event>
+    struct apply {
+        typedef io::deferred_slot<deferred<R>, Event> type;
+    };
+};
+
+} // namespace aux
 
 template<class Event, class F>
 void
@@ -121,7 +123,7 @@ dispatch_t::on(const F& callable, typename std::enable_if<!aux::is_slot<F>::valu
     typedef typename io::detail::result_of<F>::type result_type;
 
     typedef typename boost::mpl::apply<
-        detail::select<result_type>,
+        aux::select<result_type>,
         Event
     >::type slot_type;
 

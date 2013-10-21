@@ -117,6 +117,22 @@ namespace detail {
         typedef typename Event::tuple_type type;
     };
 
+    // Transition type extraction
+
+    template<class Event, class = void>
+    struct transition_type {
+        typedef void type;
+    };
+
+    template<class Event>
+    struct transition_type<
+        Event,
+        typename depend<typename Event::transition_type>::type
+    >
+    {
+        typedef typename Event::transition_type type;
+    };
+
     // Result type or typelist extraction
 
     template<class Event, class = void>
@@ -145,22 +161,6 @@ namespace detail {
         };
 
         typedef typename fold<typename Event::result_type>::type type;
-    };
-
-    // Transition type extraction
-
-    template<class Event, class = void>
-    struct transition_type {
-        typedef void type;
-    };
-
-    template<class Event>
-    struct transition_type<
-        Event,
-        typename depend<typename Event::transition_type>::type
-    >
-    {
-        typedef typename Event::transition_type type;
     };
 }
 

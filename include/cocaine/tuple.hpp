@@ -41,42 +41,44 @@ struct nth_element {
     }
 };
 
-namespace detail {
-    template<class It, class End, typename... Args>
-    struct fold_impl {
-        typedef typename fold_impl<
-            typename boost::mpl::next<It>::type,
-            End,
-            Args...,
-            typename boost::mpl::deref<It>::type
-        >::type type;
-    };
+namespace aux {
 
-    template<class End, typename... Args>
-    struct fold_impl<End, End, Args...> {
-        typedef std::tuple<Args...> type;
-    };
+template<class It, class End, typename... Args>
+struct fold_impl {
+    typedef typename fold_impl<
+        typename boost::mpl::next<It>::type,
+        End,
+        Args...,
+        typename boost::mpl::deref<It>::type
+    >::type type;
+};
 
-    template<class, typename...>
-    struct unfold_impl;
+template<class End, typename... Args>
+struct fold_impl<End, End, Args...> {
+    typedef std::tuple<Args...> type;
+};
 
-    template<class TypeList, class Head, typename... Args>
-    struct unfold_impl<TypeList, Head, Args...> {
-        typedef typename unfold_impl<
-            typename boost::mpl::push_back<TypeList, Head>::type,
-            Args...
-        >::type type;
-    };
+template<class, typename...>
+struct unfold_impl;
 
-    template<class TypeList>
-    struct unfold_impl<TypeList> {
-        typedef TypeList type;
-    };
-}
+template<class TypeList, class Head, typename... Args>
+struct unfold_impl<TypeList, Head, Args...> {
+    typedef typename unfold_impl<
+        typename boost::mpl::push_back<TypeList, Head>::type,
+        Args...
+    >::type type;
+};
+
+template<class TypeList>
+struct unfold_impl<TypeList> {
+    typedef TypeList type;
+};
+
+} // namespace aux
 
 template<typename TypeList>
 struct fold {
-    typedef typename detail::fold_impl<
+    typedef typename aux::fold_impl<
         typename boost::mpl::begin<TypeList>::type,
         typename boost::mpl::end<TypeList>::type
     >::type type;
@@ -84,7 +86,7 @@ struct fold {
 
 template<typename... Args>
 struct unfold {
-    typedef typename detail::unfold_impl<
+    typedef typename aux::unfold_impl<
         boost::mpl::deque<>,
         Args...
     >::type type;

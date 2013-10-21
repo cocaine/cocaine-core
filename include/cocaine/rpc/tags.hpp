@@ -32,27 +32,27 @@ template<class T, T Default>
 struct optional_with_default;
 
 namespace detail {
-    template<class T>
-    struct is_required<optional<T>>:
-        public std::false_type
-    { };
 
-    template<class T, T Default>
-    struct is_required<optional_with_default<T, Default>>:
-        public std::false_type
-    { };
+template<class T>
+struct is_required<optional<T>>:
+    public std::false_type
+{ };
 
-    template<class T>
-    struct unwrap_type<optional<T>> {
-        typedef T type;
-    };
+template<class T, T Default>
+struct is_required<optional_with_default<T, Default>>:
+    public std::false_type
+{ };
 
-    template<class T, T Default>
-    struct unwrap_type<optional_with_default<T, Default>> {
-        typedef T type;
-    };
-}
+template<class T>
+struct unwrap_type<optional<T>> {
+    typedef T type;
+};
 
-}} // namespace cocaine::io
+template<class T, T Default>
+struct unwrap_type<optional_with_default<T, Default>> {
+    typedef T type;
+};
+
+}}} // namespace cocaine::io::detail
 
 #endif
