@@ -34,13 +34,13 @@ struct type_traits<dispatch_tree_t> {
     static inline
     void
     pack(msgpack::packer<Stream>& packer, const dispatch_tree_t& source) {
-        packer << static_cast<const dispatch_tree_t::mapping_type&>(source);
+        packer << static_cast<const dispatch_tree_t::base_type&>(source);
     }
 
     static inline
     void
     unpack(const msgpack::object& unpacked, dispatch_tree_t& target) {
-        unpacked >> static_cast<dispatch_tree_t::mapping_type&>(target);
+        unpacked >> static_cast<dispatch_tree_t::base_type&>(target);
     }
 };
 

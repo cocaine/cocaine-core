@@ -27,24 +27,30 @@
 
 namespace cocaine {
 
-struct dispatch_tree_t:
-    public std::map<int, std::tuple<std::string, boost::optional<dispatch_tree_t>>>
-{
-    typedef std::map<
-        int,
-        std::tuple<std::string, boost::optional<dispatch_tree_t>>
-    > mapping_type;
+struct dispatch_tree_t;
+
+namespace aux {
+
+typedef std::map<
+    int,
+    std::tuple<std::string, boost::optional<dispatch_tree_t>>
+> recursion_base_t;
+
+}
+
+struct dispatch_tree_t: public aux::recursion_base_t {
+    typedef aux::recursion_base_t base_type;
 
     dispatch_tree_t() { }
-    dispatch_tree_t(const dispatch_tree_t& o): mapping_type(o) { }
-    dispatch_tree_t(dispatch_tree_t&& o): mapping_type(std::move(o)) { }
+    dispatch_tree_t(const dispatch_tree_t& o): base_type(o) { }
+    dispatch_tree_t(dispatch_tree_t&& o): base_type(std::move(o)) { }
 
     dispatch_tree_t& operator=(const dispatch_tree_t& lhs) {
-        static_cast<mapping_type&>(*this) = lhs; return *this;
+        static_cast<base_type&>(*this) = lhs; return *this;
     }
 
     dispatch_tree_t& operator=(dispatch_tree_t&& lhs) {
-        static_cast<mapping_type&>(*this) = std::move(lhs); return *this;
+        static_cast<base_type&>(*this) = std::move(lhs); return *this;
     }
 };
 
