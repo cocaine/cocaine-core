@@ -18,29 +18,32 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_DISPATCH_TREE_SERIALIZATION_TRAITS_HPP
-#define COCAINE_IO_DISPATCH_TREE_SERIALIZATION_TRAITS_HPP
+#ifndef COCAINE_IO_OPTIONAL_SERIALIZATION_TRAITS_HPP
+#define COCAINE_IO_OPTIONAL_SERIALIZATION_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
-#include "cocaine/traits/optional.hpp"
 
-#include "cocaine/rpc/tree.hpp"
+#include "boost/optional.hpp"
 
 namespace cocaine { namespace io {
 
-template<>
-struct type_traits<dispatch_tree_t> {
+template<class T>
+struct type_traits<boost::optional<T>> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer, const dispatch_tree_t& source) {
-        packer << static_cast<const dispatch_tree_t::mapping_type&>(source);
+    pack(msgpack::packer<Stream>& packer, const boost::optional<T>& source) {
+        return source ?
+            type_traits<T>::pack(packer, source.get())
+          : (void)packer.pack_nil();
     }
 
     static inline
     void
-    unpack(const msgpack::object& unpacked, dispatch_tree_t& target) {
-        unpacked >> static_cast<dispatch_tree_t::mapping_type&>(target);
+    unpack(const msgpack::object& unpacked, boost::optional<T>& target) {
+        return unpacked.type != msgpack::type::NIL ?
+            type_traits<T>::unpack(unpacked, target.get())
+          : (void)(target = boost::none_t());
     }
 };
 

@@ -22,6 +22,7 @@
 #define COCAINE_IO_PROTOCOL_TRAVERSE_HPP
 
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/rpc/tags.hpp"
 #include "cocaine/rpc/tree.hpp"
 
 #include <boost/mpl/end.hpp>
@@ -30,7 +31,7 @@
 namespace cocaine { namespace io {
 
 template<class Tag>
-dispatch_tree_t
+boost::optional<dispatch_tree_t>
 traverse();
 
 namespace aux {
@@ -70,7 +71,7 @@ struct traverse_impl<End, End> {
 
 template<class Tag>
 inline
-dispatch_tree_t
+boost::optional<dispatch_tree_t>
 traverse() {
     dispatch_tree_t result;
 
@@ -80,6 +81,13 @@ traverse() {
     >::invoke(result);
 
     return result;
+}
+
+template<>
+inline
+boost::optional<dispatch_tree_t>
+traverse<recursive_tag>() {
+    return boost::none_t();
 }
 
 }} // namespace cocaine::io

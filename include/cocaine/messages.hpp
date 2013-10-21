@@ -211,6 +211,7 @@ namespace streaming {
 
 struct write {
     typedef streaming_tag tag;
+    typedef recursive_tag transition_type;
 
     static const char* alias() {
         return "write";

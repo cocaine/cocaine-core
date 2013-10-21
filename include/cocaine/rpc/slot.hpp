@@ -57,7 +57,7 @@ public:
     }
 
     virtual
-    dispatch_tree_t
+    boost::optional<dispatch_tree_t>
     tree() const = 0;
 
 private:
@@ -78,13 +78,13 @@ struct basic_slot:
     { }
 
     virtual
-    dispatch_tree_t
+    boost::optional<dispatch_tree_t>
     tree() const {
         return tree_;
     }
 
 private:
-    const dispatch_tree_t tree_;
+    const boost::optional<dispatch_tree_t> tree_;
 };
 
 }} // namespace cocaine::io

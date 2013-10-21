@@ -23,17 +23,19 @@
 
 #include "cocaine/common.hpp"
 
+#include <boost/optional.hpp>
+
 namespace cocaine {
 
 struct dispatch_tree_t:
-    public std::map<int, std::tuple<std::string, dispatch_tree_t>>
+    public std::map<int, std::tuple<std::string, boost::optional<dispatch_tree_t>>>
 {
     typedef std::map<
         int,
-        std::tuple<std::string, dispatch_tree_t>
+        std::tuple<std::string, boost::optional<dispatch_tree_t>>
     > mapping_type;
 
-    dispatch_tree_t(): mapping_type() { }
+    dispatch_tree_t() { }
     dispatch_tree_t(const dispatch_tree_t& o): mapping_type(o) { }
     dispatch_tree_t(dispatch_tree_t&& o): mapping_type(std::move(o)) { }
 

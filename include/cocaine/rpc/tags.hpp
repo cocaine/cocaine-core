@@ -25,6 +25,12 @@
 
 namespace cocaine { namespace io {
 
+// Protocol tags
+
+struct recursive_tag;
+
+// Value tags
+
 template<class T>
 struct optional;
 
