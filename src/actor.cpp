@@ -73,7 +73,7 @@ private:
             if(it == downstreams.end()) {
                 std::tie(it, std::ignore) = downstreams.insert({ message.band(), std::make_shared<downstream_t>(
                     prototype,
-                    std::make_shared<actor_t::upstream_t>(*this, message.band())
+                    std::make_shared<upstream_t>(*this, message.band())
                 )});
             }
 
@@ -110,7 +110,7 @@ private:
     // Downstreams
 
     struct downstream_t {
-        downstream_t(const std::shared_ptr<dispatch_t>& d, const std::shared_ptr<actor_t::upstream_t>& u):
+        downstream_t(const std::shared_ptr<dispatch_t>& d, const std::shared_ptr<upstream_t>& u):
             dispatch(d),
             upstream(u)
         { }
@@ -123,7 +123,7 @@ private:
 
         // As of now, all clients are considered using the single streaming protocol, so upstreams
         // don't change when the downstream protocol is switched over.
-        std::shared_ptr<actor_t::upstream_t> upstream;
+        std::shared_ptr<upstream_t> upstream;
     };
 
     std::map<uint64_t, std::shared_ptr<downstream_t>> downstreams;
