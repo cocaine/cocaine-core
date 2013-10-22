@@ -338,7 +338,7 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
         std::bind(&actor_t::on_failure, this, fd, _1)
     );
 
-    m_sessions[fd] = std::make_shared<session_t>(std::move(ptr), m_prototype);
+    m_sessions[fd] = std::make_unique<session_t>(std::move(ptr), m_prototype);
 }
 
 void
