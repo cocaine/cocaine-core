@@ -96,11 +96,15 @@ struct reactor_t {
         m_loop->unloop(ev::ALL);
     }
 
+    // The template method allows a user to move a job to the reactor.
+    // It means that the user will not have a copy of the job after the job queue is unlocked.
+    // It may be usefull to remove some object between two iterations of the reactor.
+    template<class Callback>
     void
-    post(const job_type& job) {
+    post(Callback&& job) {
         std::unique_lock<std::mutex> lock(m_job_queue_mutex);
 
-        m_job_queue.push_back(job);
+        m_job_queue.emplace_back(std::forward<Callback>(job));
 
         if(m_job_queue.size() == 1) {
             lock.unlock();
