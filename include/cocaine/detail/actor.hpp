@@ -93,7 +93,7 @@ class actor_t {
 
         std::map<
             int,
-            std::unique_ptr<session_t>
+            std::shared_ptr<session_t>
         > m_sessions;
 
         std::shared_ptr<dispatch_t> m_prototype;
