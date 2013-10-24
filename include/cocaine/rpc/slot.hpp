@@ -25,14 +25,7 @@
 
 #include "cocaine/traits.hpp"
 
-#include "cocaine/rpc/traverse.hpp"
-#include "cocaine/rpc/tree.hpp"
-
-namespace cocaine {
-
-class dispatch_t;
-
-namespace io { namespace detail {
+namespace cocaine { namespace io { namespace detail {
 
 // Slot basics
 
@@ -56,10 +49,6 @@ public:
         return m_name;
     }
 
-    virtual
-    auto
-    tree() const -> boost::optional<dispatch_tree_t> = 0;
-
 private:
     const std::string m_name;
 };
@@ -73,18 +62,8 @@ struct basic_slot:
     typedef Event event_type;
 
     basic_slot():
-        slot_concept_t(event_type::alias()),
-        tree_(traverse<typename event_traits<Event>::transition_type>())
+        slot_concept_t(event_type::alias())
     { }
-
-    virtual
-    auto
-    tree() const -> boost::optional<dispatch_tree_t> {
-        return tree_;
-    }
-
-private:
-    const boost::optional<dispatch_tree_t> tree_;
 };
 
 }} // namespace cocaine::io

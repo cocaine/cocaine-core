@@ -33,13 +33,13 @@
 
 namespace cocaine {
 
-class dispatch_t;
-
 class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
 
     public:
-        actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<dispatch_t>&& prototype);
+        actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::dispatch_t>&& prototype);
+        actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t>&& service);
+
        ~actor_t();
 
         void
@@ -52,7 +52,7 @@ class actor_t {
         auto
         location() const -> std::vector<io::tcp::endpoint>;
 
-        dispatch_t&
+        io::dispatch_t&
         dispatch();
 
         typedef io::event_traits<io::locator::resolve>::result_type metadata_t;
@@ -96,7 +96,7 @@ class actor_t {
             std::shared_ptr<session_t>
         > m_sessions;
 
-        std::shared_ptr<dispatch_t> m_prototype;
+        std::shared_ptr<io::dispatch_t> m_prototype;
 
         // Actor I/O connectors
 

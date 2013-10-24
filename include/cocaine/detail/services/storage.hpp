@@ -23,13 +23,21 @@
 
 #include "cocaine/api/service.hpp"
 
+#include "cocaine/dispatch.hpp"
+#include "cocaine/rpc/tags.hpp"
+
 namespace cocaine { namespace service {
 
 class storage_t:
-    public api::service_t
+    public api::service_t,
+    public implementation<io::storage_tag>
 {
     public:
         storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
+
+        virtual dispatch_t& prototype() {
+            return *this;
+        }
 };
 
 }} // namespace cocaine::service

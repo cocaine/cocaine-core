@@ -25,10 +25,6 @@
 
 namespace cocaine { namespace io {
 
-// Protocol tags
-
-struct recursive_tag;
-
 // Value tags
 
 template<class T>
@@ -36,6 +32,18 @@ struct optional;
 
 template<class T, T Default>
 struct optional_with_default;
+
+// Protocol tags
+
+struct recursive_tag;
+
+struct app_tag;
+struct locator_tag;
+struct logging_tag;
+struct node_tag;
+struct rpc_tag;
+struct storage_tag;
+struct streaming_tag;
 
 namespace detail {
 

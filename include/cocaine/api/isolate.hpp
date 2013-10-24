@@ -47,28 +47,26 @@ struct handle_t {
 
 typedef std::map<std::string, std::string> string_map_t;
 
-class isolate_t {
-    public:
-        typedef isolate_t category_type;
+struct isolate_t {
+    typedef isolate_t category_type;
 
-    public:
-        virtual
-       ~isolate_t() {
-            // Empty.
-        }
+    virtual
+   ~isolate_t() {
+        // Empty.
+    }
 
-        virtual
-        void
-        spool() = 0;
+    virtual
+    void
+    spool() = 0;
 
-        virtual
-        std::unique_ptr<handle_t>
-        spawn(const std::string& path, const string_map_t& args, const string_map_t& environment) = 0;
+    virtual
+    std::unique_ptr<handle_t>
+    spawn(const std::string& path, const string_map_t& args, const string_map_t& environment) = 0;
 
-    protected:
-        isolate_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
-            // Empty.
-        }
+protected:
+    isolate_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
+        // Empty.
+    }
 };
 
 template<>

@@ -28,24 +28,22 @@
 
 namespace cocaine { namespace api {
 
-class driver_t {
-    public:
-        typedef driver_t category_type;
+struct driver_t {
+    typedef driver_t category_type;
 
-    public:
-        virtual
-       ~driver_t() {
-            // Empty.
-        }
+    virtual
+   ~driver_t() {
+        // Empty.
+    }
 
-        virtual
-        Json::Value
-        info() const = 0;
+    virtual
+    Json::Value
+    info() const = 0;
 
-    protected:
-        driver_t(context_t&, io::reactor_t&, app_t&, const std::string& /* name */, const Json::Value& /* args */) {
-            // Empty.
-        }
+protected:
+    driver_t(context_t&, io::reactor_t&, app_t&, const std::string& /* name */, const Json::Value& /* args */) {
+        // Empty.
+    }
 };
 
 template<>

@@ -40,7 +40,7 @@ namespace cocaine {
 class actor_t;
 
 class locator_t:
-    public dispatch_t
+    public implementation<io::locator_tag>
 {
     typedef std::tuple<std::string, std::string, uint16_t> key_type;
 

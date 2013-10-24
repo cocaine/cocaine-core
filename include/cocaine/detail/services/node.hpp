@@ -23,16 +23,24 @@
 
 #include "cocaine/api/service.hpp"
 
+#include "cocaine/dispatch.hpp"
+#include "cocaine/rpc/tags.hpp"
+
 namespace cocaine { namespace service {
 
 class node_t:
-    public api::service_t
+    public api::service_t,
+    public implementation<io::node_tag>
 {
     public:
         node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
 
         virtual
        ~node_t();
+
+        virtual dispatch_t& prototype() {
+            return *this;
+        }
 
     private:
         Json::Value

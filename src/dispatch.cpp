@@ -26,6 +26,7 @@
 #include "cocaine/rpc/message.hpp"
 
 using namespace cocaine;
+using namespace cocaine::io;
 
 dispatch_t::dispatch_t(context_t& context, const std::string& name):
     m_log(new logging::log_t(context, name)),
@@ -67,24 +68,6 @@ dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstre
         // TODO: COCAINE-82 changes this to rethrow with a 'server' error category.
         throw;
     }
-}
-
-dispatch_tree_t
-dispatch_t::tree() const {
-    std::lock_guard<std::mutex> guard(m_mutex);
-
-    dispatch_tree_t result;
-
-    for(auto it = m_slots.begin(); it != m_slots.end(); ++it) {
-        result[it->first] = std::make_tuple(it->second->name(), it->second->tree());
-    }
-
-    return result;
-}
-
-int
-dispatch_t::version() const {
-    return 1;
 }
 
 std::string

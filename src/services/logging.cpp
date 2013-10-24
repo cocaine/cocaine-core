@@ -30,7 +30,8 @@ using namespace cocaine::service;
 using namespace std::placeholders;
 
 logging_t::logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
-    category_type(context, reactor, name, args)
+    api::service_t(context, reactor, name, args),
+    implementation(context, name)
 {
     auto logger = std::ref(context.logger());
 

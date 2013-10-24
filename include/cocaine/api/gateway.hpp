@@ -29,34 +29,32 @@
 
 namespace cocaine { namespace api {
 
-class gateway_t {
-    public:
-        typedef gateway_t category_type;
+struct gateway_t {
+    typedef gateway_t category_type;
 
-    public:
-        virtual
-       ~gateway_t() {
-            // Empty.
-        }
+    virtual
+   ~gateway_t() {
+        // Empty.
+    }
 
-        typedef io::event_traits<io::locator::resolve>::result_type metadata_t;
+    typedef io::event_traits<io::locator::resolve>::result_type metadata_t;
 
-        virtual
-        metadata_t
-        resolve(const std::string& name) const = 0;
+    virtual
+    metadata_t
+    resolve(const std::string& name) const = 0;
 
-        virtual
-        void
-        consume(const std::string& uuid, const std::string& name, const metadata_t& meta) = 0;
+    virtual
+    void
+    consume(const std::string& uuid, const std::string& name, const metadata_t& meta) = 0;
 
-        virtual
-        void
-        cleanup(const std::string& uuid, const std::string& name) = 0;
+    virtual
+    void
+    cleanup(const std::string& uuid, const std::string& name) = 0;
 
-    protected:
-        gateway_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
-            // Empty.
-        }
+protected:
+    gateway_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
+        // Empty.
+    }
 };
 
 template<>

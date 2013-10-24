@@ -22,23 +22,28 @@
 #define COCAINE_SERVICE_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/dispatch.hpp"
 #include "cocaine/repository.hpp"
 
 #include "json/json.h"
 
 namespace cocaine { namespace api {
 
-class service_t:
-    public dispatch_t
-{
-    public:
-        typedef service_t category_type;
+struct service_t {
+    typedef service_t category_type;
 
-    protected:
-        service_t(context_t& context, io::reactor_t&, const std::string& name, const Json::Value& /* args */):
-            dispatch_t(context, name)
-        { }
+    virtual
+   ~service_t() {
+        // Empty.
+    }
+
+    virtual
+    auto
+    prototype() -> io::dispatch_t& = 0;
+
+protected:
+    service_t(context_t&, io::reactor_t&, const std::string& /* name */, const Json::Value& /* args */) {
+        // Empty.
+    }
 };
 
 template<>

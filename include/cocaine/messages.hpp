@@ -32,8 +32,6 @@ namespace cocaine { namespace io {
 
 // Service locator interface
 
-struct locator_tag;
-
 namespace locator {
 
 typedef std::tuple<std::string, uint16_t> endpoint_tuple_type;
@@ -125,8 +123,6 @@ struct protocol<locator_tag> {
 
 // Old-school interface
 
-struct rpc_tag;
-
 namespace rpc {
 
 struct handshake {
@@ -205,8 +201,6 @@ struct protocol<rpc_tag> {
 
 // Streaming interface
 
-struct streaming_tag;
-
 namespace streaming {
 
 struct write {
@@ -249,8 +243,6 @@ struct protocol<streaming_tag> {
 };
 
 // App service interface
-
-struct app_tag;
 
 namespace app {
 
@@ -301,8 +293,6 @@ struct protocol<app_tag> {
 };
 
 // Logging service interface
-
-struct logging_tag;
 
 namespace logging {
 
@@ -356,8 +346,6 @@ struct protocol<logging_tag> {
 };
 
 // Storage service interface
-
-struct storage_tag;
 
 namespace storage {
 
@@ -457,8 +445,6 @@ struct protocol<storage_tag> {
 };
 
 // Node service interface
-
-struct node_tag;
 
 namespace node {
 

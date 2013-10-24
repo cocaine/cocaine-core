@@ -43,46 +43,44 @@ struct storage_error_t:
 
 namespace api {
 
-class storage_t {
-    public:
-        typedef storage_t category_type;
+struct storage_t {
+    typedef storage_t category_type;
 
-    public:
-        virtual
-       ~storage_t() {
-            // Empty.
-        }
+    virtual
+   ~storage_t() {
+        // Empty.
+    }
 
-        virtual
-        std::string
-        read(const std::string& collection, const std::string& key) = 0;
+    virtual
+    std::string
+    read(const std::string& collection, const std::string& key) = 0;
 
-        virtual
-        void
-        write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags) = 0;
+    virtual
+    void
+    write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags) = 0;
 
-        virtual
-        void
-        remove(const std::string& collection, const std::string& key) = 0;
+    virtual
+    void
+    remove(const std::string& collection, const std::string& key) = 0;
 
-        virtual
-        std::vector<std::string>
-        find(const std::string& collection, const std::vector<std::string>& tags) = 0;
+    virtual
+    std::vector<std::string>
+    find(const std::string& collection, const std::vector<std::string>& tags) = 0;
 
-        // Helper methods
+    // Helper methods
 
-        template<class T>
-        T
-        get(const std::string& collection, const std::string& key);
+    template<class T>
+    T
+    get(const std::string& collection, const std::string& key);
 
-        template<class T>
-        void
-        put(const std::string& collection, const std::string& key, const T& object, const std::vector<std::string>& tags);
+    template<class T>
+    void
+    put(const std::string& collection, const std::string& key, const T& object, const std::vector<std::string>& tags);
 
-    protected:
-        storage_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
-            // Empty.
-        }
+protected:
+    storage_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
+        // Empty.
+    }
 };
 
 template<class T>

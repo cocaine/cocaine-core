@@ -43,13 +43,15 @@
 #include "cocaine/traits/tuple.hpp"
 
 using namespace cocaine;
+using namespace cocaine::io;
+
 using namespace std::placeholders;
 
 #include "routing.inl"
 #include "synchronization.inl"
 
-locator_t::locator_t(context_t& context, io::reactor_t& reactor):
-    dispatch_t(context, "service/locator"),
+locator_t::locator_t(context_t& context, reactor_t& reactor):
+    implementation(context, "service/locator"),
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor),
@@ -527,13 +529,13 @@ struct deferred_erase_action {
 }
 
 void
-locator_t::on_message(const key_type& key, const io::message_t& message) {
+locator_t::on_message(const key_type& key, const message_t& message) {
     std::string uuid;
 
     std::tie(uuid, std::ignore, std::ignore) = key;
 
     switch(message.id()) {
-    case io::event_traits<io::rpc::chunk>::id: {
+    case event_traits<io::rpc::chunk>::id: {
         std::string chunk;
 
         message.as<io::rpc::chunk>(chunk);
@@ -553,8 +555,8 @@ locator_t::on_message(const key_type& key, const io::message_t& message) {
         }
     } break;
 
-    case io::event_traits<io::rpc::error>::id:
-    case io::event_traits<io::rpc::choke>::id: {
+    case event_traits<io::rpc::error>::id:
+    case event_traits<io::rpc::choke>::id: {
         COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
 
         auto removed = m_router->remove_remote(uuid);

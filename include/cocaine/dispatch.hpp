@@ -26,11 +26,12 @@
 #include "cocaine/rpc/slots/blocking.hpp"
 #include "cocaine/rpc/slots/deferred.hpp"
 
+#include "cocaine/rpc/traverse.hpp"
 #include "cocaine/rpc/tree.hpp"
 
 #include <boost/mpl/apply.hpp>
 
-namespace cocaine {
+namespace cocaine { namespace io {
 
 namespace aux {
 
@@ -41,7 +42,7 @@ struct is_slot:
 
 template<class T>
 struct is_slot<std::shared_ptr<T>>:
-    public std::is_base_of<io::detail::slot_concept_t, T>
+    public std::is_base_of<detail::slot_concept_t, T>
 { };
 
 } // namespace aux
@@ -61,7 +62,7 @@ class dispatch_t {
 
         template<class Event>
         void
-        on(const std::shared_ptr<io::detail::slot_concept_t>& ptr);
+        on(const std::shared_ptr<detail::slot_concept_t>& ptr);
 
         template<class Event>
         void
@@ -69,23 +70,25 @@ class dispatch_t {
 
     public:
         std::shared_ptr<dispatch_t>
-        invoke(const io::message_t& message, const api::stream_ptr_t& upstream) const;
+        invoke(const message_t& message, const api::stream_ptr_t& upstream) const;
 
-        dispatch_tree_t
-        tree() const;
+        virtual
+        auto
+        protocol() const -> const dispatch_tree_t& = 0;
 
+        virtual
         int
-        version() const;
+        versions() const = 0;
 
         std::string
         name() const;
 
     private:
-        const std::unique_ptr<logging::log_t> m_log;
+        const std::unique_ptr<cocaine::logging::log_t> m_log;
 
         typedef std::map<
             int,
-            std::shared_ptr<io::detail::slot_concept_t>
+            std::shared_ptr<detail::slot_concept_t>
         > slot_map_t;
 
         slot_map_t m_slots;
@@ -103,7 +106,7 @@ template<class R>
 struct select {
     template<class Event>
     struct apply {
-        typedef io::blocking_slot<R, Event> type;
+        typedef blocking_slot<R, Event> type;
     };
 };
 
@@ -111,7 +114,7 @@ template<class R>
 struct select<deferred<R>> {
     template<class Event>
     struct apply {
-        typedef io::deferred_slot<deferred<R>, Event> type;
+        typedef deferred_slot<deferred<R>, Event> type;
     };
 };
 
@@ -120,7 +123,7 @@ struct select<deferred<R>> {
 template<class Event, class F>
 void
 dispatch_t::on(const F& callable, typename std::enable_if<!aux::is_slot<F>::value>::type*) {
-    typedef typename io::detail::result_of<F>::type result_type;
+    typedef typename detail::result_of<F>::type result_type;
 
     typedef typename boost::mpl::apply<
         aux::select<result_type>,
@@ -132,8 +135,8 @@ dispatch_t::on(const F& callable, typename std::enable_if<!aux::is_slot<F>::valu
 
 template<class Event>
 void
-dispatch_t::on(const std::shared_ptr<io::detail::slot_concept_t>& ptr) {
-    const int id = io::event_traits<Event>::id;
+dispatch_t::on(const std::shared_ptr<detail::slot_concept_t>& ptr) {
+    const int id = event_traits<Event>::id;
 
     std::lock_guard<std::mutex> guard(m_mutex);
 
@@ -148,8 +151,35 @@ template<class Event>
 void
 dispatch_t::forget() {
     std::lock_guard<std::mutex> guard(m_mutex);
-    m_slots.erase(io::event_traits<Event>::id);
+    m_slots.erase(event_traits<Event>::id);
 }
+
+} // namespace io
+
+template<class Tag>
+struct implementation:
+    public io::dispatch_t
+{
+    implementation(context_t& context, const std::string& name):
+        dispatch_t(context, name),
+        protograph(io::traverse<Tag>().get())
+    { }
+
+    virtual
+    auto
+    protocol() const -> const dispatch_tree_t& {
+        return protograph;
+    }
+
+    virtual
+    int
+    versions() const {
+        return io::protocol<Tag>::version::value;
+    }
+
+private:
+    const dispatch_tree_t protograph;
+};
 
 } // namespace cocaine
 

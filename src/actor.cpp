@@ -20,6 +20,7 @@
 
 #include "cocaine/detail/actor.hpp"
 
+#include "cocaine/api/service.hpp"
 #include "cocaine/api/stream.hpp"
 
 #include "cocaine/asio/acceptor.hpp"
@@ -209,6 +210,17 @@ actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::un
     m_prototype(std::move(prototype))
 { }
 
+actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::unique_ptr<api::service_t>&& service):
+    m_context(context),
+    m_log(new logging::log_t(context, service->prototype().name())),
+    m_reactor(reactor)
+{
+    m_prototype = std::shared_ptr<dispatch_t>(
+        std::shared_ptr<api::service_t>(std::move(service)),
+        &service->prototype()
+    );
+}
+
 actor_t::~actor_t() {
     m_prototype.reset();
 
@@ -296,8 +308,8 @@ actor_t::metadata() const -> metadata_t {
 
     return metadata_t(
         endpoint,
-        m_prototype->version(),
-        m_prototype->tree()
+        m_prototype->versions(),
+        m_prototype->protocol()
     );
 }
 

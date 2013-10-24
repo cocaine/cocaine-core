@@ -29,45 +29,42 @@
 
 namespace cocaine { namespace api {
 
-class logger_t:
+static inline
+logging::priorities
+logmask(const Json::Value& args) {
+    const std::string& verbosity = args["verbosity"].asString();
+
+    if(verbosity == "ignore") {
+        return logging::ignore;
+    } else if(verbosity == "debug") {
+        return logging::debug;
+    } else if(verbosity == "warning") {
+        return logging::warning;
+    } else if(verbosity == "error") {
+        return logging::error;
+    } else {
+        return logging::info;
+    }
+}
+
+struct logger_t:
     public logging::logger_concept_t
 {
-    public:
-        typedef logger_t category_type;
+    typedef logger_t category_type;
 
-    public:
-        virtual
-        logging::priorities
-        verbosity() const {
-            return m_verbosity;
-        }
+    virtual
+    logging::priorities
+    verbosity() const {
+        return m_verbosity;
+    }
 
-    protected:
-        logger_t(const config_t&, const Json::Value& args):
-            m_verbosity(resolve(args))
-        { }
+protected:
+    logger_t(const config_t&, const Json::Value& args):
+        m_verbosity(logmask(args))
+    { }
 
-    private:
-        static
-        logging::priorities
-        resolve(const Json::Value& args) {
-            const std::string& verbosity = args["verbosity"].asString();
-
-            if(verbosity == "ignore") {
-                return logging::ignore;
-            } else if(verbosity == "debug") {
-                return logging::debug;
-            } else if(verbosity == "warning") {
-                return logging::warning;
-            } else if(verbosity == "error") {
-                return logging::error;
-            } else {
-                return logging::info;
-            }
-        }
-
-    private:
-        const logging::priorities m_verbosity;
+private:
+    const logging::priorities m_verbosity;
 };
 
 template<>

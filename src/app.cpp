@@ -58,13 +58,13 @@ using namespace cocaine::io;
 namespace fs = boost::filesystem;
 
 struct app_t::service_t:
-    public dispatch_t
+    public implementation<io::app_tag>
 {
     struct streaming_service_t:
-        public dispatch_t
+        public implementation<io::streaming_tag>
     {
         streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& d):
-            dispatch_t(context, name),
+            implementation(context, name),
             downstream(d)
         { }
 
@@ -83,7 +83,7 @@ struct app_t::service_t:
     };
 
     struct enqueue_slot_t:
-        public io::basic_slot<io::app::enqueue>
+        public basic_slot<io::app::enqueue>
     {
         enqueue_slot_t(app_t::service_t& self_):
             self(self_)
@@ -103,7 +103,7 @@ struct app_t::service_t:
     };
 
     struct write_slot_t:
-        public io::basic_slot<io::streaming::write>
+        public basic_slot<io::streaming::write>
     {
         write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
             self(self_)
@@ -125,7 +125,7 @@ struct app_t::service_t:
     };
 
     service_t(context_t& context_, const std::string& name_, app_t& app_):
-        dispatch_t(context_, cocaine::format("service/%1%", name_)),
+        implementation(context_, cocaine::format("service/%1%", name_)),
         context(context_),
         app(app_)
     {

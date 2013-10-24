@@ -32,12 +32,12 @@ namespace cocaine {
     class app_t;
 
     namespace api {
-        class driver_t;
-        class gateway_t;
-        class isolate_t;
-        class logger_t;
-        class service_t;
-        class storage_t;
+        struct driver_t;
+        struct gateway_t;
+        struct isolate_t;
+        struct logger_t;
+        struct service_t;
+        struct storage_t;
 
         struct event_t;
         struct stream_t;
@@ -84,6 +84,8 @@ namespace cocaine {
         struct protocol;
 
         struct message_t;
+
+        class dispatch_t;
 
         // Messaging
 
