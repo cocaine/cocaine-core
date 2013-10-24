@@ -215,11 +215,11 @@ actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::un
     m_log(new logging::log_t(context, service->prototype().name())),
     m_reactor(reactor)
 {
-    std::shared_ptr<api::service_t> host(std::move(service));
+    std::shared_ptr<api::service_t> enclosure(std::move(service));
 
     m_prototype = std::shared_ptr<dispatch_t>(
-        enclosing
-       &enclosing->prototype()
+        enclosure,
+       &enclosure->prototype()
     );
 }
 
