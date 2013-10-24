@@ -272,7 +272,7 @@ context_t::bootstrap() {
 
     // Service locator internals.
     auto reactor = std::make_shared<io::reactor_t>();
-    auto locator = std::make_unique<locator_t>(*this, *reactor);
+    std::unique_ptr<io::dispatch_t> locator = std::make_unique<locator_t>(*this, *reactor);
 
     m_locator.reset(new actor_t(*this, reactor, std::move(locator)));
 

@@ -64,7 +64,7 @@ struct app_t::service_t:
         public implementation<io::streaming_tag>
     {
         streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& d):
-            implementation(context, name),
+            implementation<io::streaming_tag>(context, name),
             downstream(d)
         { }
 
@@ -125,7 +125,7 @@ struct app_t::service_t:
     };
 
     service_t(context_t& context_, const std::string& name_, app_t& app_):
-        implementation(context_, cocaine::format("service/%1%", name_)),
+        implementation<io::app_tag>(context_, cocaine::format("service/%1%", name_)),
         context(context_),
         app(app_)
     {
@@ -254,7 +254,7 @@ app_t::start() {
     m_context.attach(m_manifest->name, std::make_unique<actor_t>(
         m_context,
         std::make_shared<reactor_t>(),
-        std::make_unique<app_t::service_t>(m_context, m_manifest->name, *this)
+        std::unique_ptr<dispatch_t>(new app_t::service_t(m_context, m_manifest->name, *this))
     ));
 
     COCAINE_LOG_INFO(m_log, "the engine has started");

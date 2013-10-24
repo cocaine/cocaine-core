@@ -42,7 +42,7 @@ typedef std::map<std::string, std::string> runlist_t;
 
 node_t::node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
     api::service_t(context, reactor, name, args),
-    implementation(context, name),
+    implementation<io::node_tag>(context, name),
     m_context(context),
     m_log(new logging::log_t(context, name))
 {

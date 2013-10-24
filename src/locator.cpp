@@ -51,7 +51,7 @@ using namespace std::placeholders;
 #include "synchronization.inl"
 
 locator_t::locator_t(context_t& context, reactor_t& reactor):
-    implementation(context, "service/locator"),
+    implementation<io::locator_tag>(context, "service/locator"),
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor),

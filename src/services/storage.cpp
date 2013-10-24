@@ -30,7 +30,7 @@ using namespace std::placeholders;
 
 storage_t::storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
     api::service_t(context, reactor, name, args),
-    implementation(context, name)
+    implementation<io::storage_tag>(context, name)
 {
     auto storage = api::storage(context, args.get("backend", "core").asString());
 

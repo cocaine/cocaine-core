@@ -31,7 +31,7 @@ using namespace std::placeholders;
 
 logging_t::logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
     api::service_t(context, reactor, name, args),
-    implementation(context, name)
+    implementation<io::logging_tag>(context, name)
 {
     auto logger = std::ref(context.logger());
 
