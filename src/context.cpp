@@ -269,12 +269,15 @@ context_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
 void
 context_t::bootstrap() {
     auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
-
-    // Service locator internals.
     auto reactor = std::make_shared<io::reactor_t>();
-    std::unique_ptr<io::dispatch_t> locator = std::make_unique<locator_t>(*this, *reactor);
 
-    m_locator.reset(new actor_t(*this, reactor, std::move(locator)));
+    // Service locator internals
+
+    m_locator.reset(new actor_t(
+        *this,
+        reactor,
+        std::unique_ptr<io::dispatch_t>(new locator_t(*this, *reactor))
+    ));
 
     COCAINE_LOG_INFO(
         blog,
