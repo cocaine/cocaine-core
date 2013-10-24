@@ -96,11 +96,12 @@ struct reactor_t {
         m_loop->unloop(ev::ALL);
     }
 
+    template<class T>
     void
-    post(const job_type& job) {
+    post(T&& job) {
         std::unique_lock<std::mutex> lock(m_job_queue_mutex);
 
-        m_job_queue.push_back(job);
+        m_job_queue.emplace_back(std::forward<T>(job));
 
         if(m_job_queue.size() == 1) {
             lock.unlock();
