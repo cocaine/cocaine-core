@@ -25,8 +25,10 @@
 #include "cocaine/rpc/tags.hpp"
 #include "cocaine/rpc/tree.hpp"
 
-#include <boost/mpl/end.hpp>
+#include <boost/mpl/begin.hpp>
 #include <boost/mpl/deref.hpp>
+#include <boost/mpl/end.hpp>
+#include <boost/mpl/next.hpp>
 
 namespace cocaine { namespace io {
 
@@ -36,12 +38,14 @@ traverse() -> boost::optional<dispatch_tree_t>;
 
 namespace aux {
 
+namespace mpl = boost::mpl;
+
 template<class It, class End>
 struct traverse_impl {
     static inline
     void
-    invoke(dispatch_tree_t& object) {
-        typedef typename boost::mpl::deref<It>::type event_type;
+    apply(dispatch_tree_t& object) {
+        typedef typename mpl::deref<It>::type event_type;
         typedef event_traits<event_type> traits_type;
 
         object[traits_type::id] = std::make_tuple(
@@ -49,7 +53,7 @@ struct traverse_impl {
             traverse<typename traits_type::transition_type>()
         );
 
-        traverse_impl<typename boost::mpl::next<It>::type, End>::invoke(object);
+        traverse_impl<typename mpl::next<It>::type, End>::apply(object);
     }
 };
 
@@ -57,7 +61,7 @@ template<class End>
 struct traverse_impl<End, End> {
     static inline
     void
-    invoke(dispatch_tree_t& /* object */) {
+    apply(dispatch_tree_t& /* object */) {
         // Empty.
     }
 };
@@ -71,9 +75,9 @@ traverse() -> boost::optional<dispatch_tree_t> {
     dispatch_tree_t result;
 
     aux::traverse_impl<
-        typename boost::mpl::begin<typename protocol<Tag>::type>::type,
-        typename boost::mpl::end<typename protocol<Tag>::type>::type
-    >::invoke(result);
+        typename mpl::begin<typename protocol<Tag>::type>::type,
+        typename mpl::end<typename protocol<Tag>::type>::type
+    >::apply(result);
 
     return result;
 }

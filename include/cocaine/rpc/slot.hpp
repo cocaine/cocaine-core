@@ -74,7 +74,7 @@ struct basic_slot:
 
     basic_slot():
         slot_concept_t(event_type::alias()),
-        tree_(io::traverse<typename io::event_traits<Event>::transition_type>())
+        tree_(traverse<typename event_traits<Event>::transition_type>())
     { }
 
     virtual

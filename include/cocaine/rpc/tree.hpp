@@ -21,7 +21,8 @@
 #ifndef COCAINE_IO_DISPATCH_TREE_HPP
 #define COCAINE_IO_DISPATCH_TREE_HPP
 
-#include "cocaine/common.hpp"
+#include <map>
+#include <string>
 
 #include <boost/optional.hpp>
 
