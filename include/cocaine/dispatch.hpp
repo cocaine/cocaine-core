@@ -30,6 +30,7 @@
 #include "cocaine/rpc/tree.hpp"
 
 #include <boost/mpl/apply.hpp>
+#include <boost/mpl/empty.hpp>
 
 namespace cocaine { namespace io {
 
@@ -93,7 +94,7 @@ class dispatch_t {
 
         slot_map_t m_slots;
 
-        // It's mutable to enable invoke() and describe() to be const.
+        // It's mutable to enable invoke() to be const.
         mutable std::mutex m_mutex;
 
         // For actor's named threads feature.
@@ -163,7 +164,12 @@ struct implementation:
     implementation(context_t& context, const std::string& name):
         dispatch_t(context, name),
         protograph(io::traverse<Tag>().get())
-    { }
+    {
+        static_assert(
+            !boost::mpl::empty<typename io::protocol<Tag>::type>::value,
+            "protocol has no registered events"
+        );
+    }
 
     virtual
     auto
