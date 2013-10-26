@@ -63,8 +63,8 @@ class actor_t {
         struct counters_t {
             size_t sessions;
 
-            // Memory usage per client connection.
-            std::map<io::tcp::endpoint, size_t> footprints;
+            // The number of streams and memory usage per client connection.
+            std::map<io::tcp::endpoint, std::tuple<size_t, size_t>> footprints;
         };
 
         counters_t

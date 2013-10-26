@@ -82,8 +82,8 @@ struct reports {
     }
 
     typedef std::map<
-     /* Maps client remote endpoint to the amount of memory used for its session. */
-        endpoint_tuple_type, size_t
+     /* Maps client remote endpoint to the number of streams and memory usage. */
+        endpoint_tuple_type, std::tuple<size_t, size_t>
     > usage_report_type;
 
     typedef

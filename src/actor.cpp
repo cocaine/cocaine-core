@@ -324,10 +324,12 @@ actor_t::counters() const -> counters_t {
     for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
         std::lock_guard<std::mutex> guard(it->second->mutex);
 
-        result.footprints.insert({
-            it->second->ptr->remote_endpoint(),
+        auto info = std::make_tuple(
+            it->second->downstreams.size(),
             it->second->ptr->footprint()
-        });
+        );
+
+        result.footprints.insert({ it->second->ptr->remote_endpoint(), info });
     }
 
     return result;
