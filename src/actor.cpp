@@ -63,7 +63,7 @@ struct actor_t::session_t {
 
 private:
     void
-    invoke(const message_t& message) {
+    invoke(const message_t& message, const std::shared_ptr<session_t>& self) {
         std::shared_ptr<downstream_t> downstream;
 
         {
@@ -74,7 +74,7 @@ private:
             if(it == downstreams.end()) {
                 std::tie(it, std::ignore) = downstreams.insert({ message.band(), std::make_shared<downstream_t>(
                     prototype,
-                    std::make_shared<upstream_t>(*this, message.band())
+                    std::make_shared<upstream_t>(self, message.band())
                 )});
             }
 
@@ -133,7 +133,7 @@ private:
 struct actor_t::upstream_t:
     public api::stream_t
 {
-    upstream_t(session_t& session, uint64_t tag):
+    upstream_t(const std::shared_ptr<session_t>& session, uint64_t tag):
         m_state(state::open),
         m_session(session),
         m_tag(tag)
@@ -142,36 +142,36 @@ struct actor_t::upstream_t:
     virtual
     void
     write(const char* chunk, size_t size) {
-        std::lock_guard<std::mutex> guard(m_session.mutex);
+        std::lock_guard<std::mutex> guard(m_session->mutex);
 
-        if(m_state == state::open && m_session.ptr) {
-            m_session.ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
+        if(m_state == state::open && m_session->ptr) {
+            m_session->ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
         }
     }
 
     virtual
     void
     error(int code, const std::string& reason) {
-        std::lock_guard<std::mutex> guard(m_session.mutex);
+        std::lock_guard<std::mutex> guard(m_session->mutex);
 
-        if(m_state == state::open && m_session.ptr) {
-            m_session.ptr->wr->write<rpc::error>(m_tag, code, reason);
+        if(m_state == state::open && m_session->ptr) {
+            m_session->ptr->wr->write<rpc::error>(m_tag, code, reason);
         }
     }
 
     virtual
     void
     close() {
-        std::lock_guard<std::mutex> guard(m_session.mutex);
+        std::lock_guard<std::mutex> guard(m_session->mutex);
 
         if(m_state == state::open) {
-            if(m_session.ptr) {
-                m_session.ptr->wr->write<rpc::choke>(m_tag);
+            if(m_session->ptr) {
+                m_session->ptr->wr->write<rpc::choke>(m_tag);
             }
 
             // Destroys the session with the given tag in the stream, so that new requests might
             // reuse the tag in the future.
-            m_session.detach(m_tag);
+            m_session->detach(m_tag);
 
             m_state = state::closed;
         }
@@ -185,7 +185,7 @@ private:
     // Upstream state.
     state::value m_state;
 
-    session_t& m_session;
+    const std::shared_ptr<session_t> m_session;
     const uint64_t m_tag;
 };
 
@@ -363,7 +363,7 @@ actor_t::on_message(int fd, const message_t& message) {
 
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->invoke(message);
+    it->second->invoke(message, it->second);
 }
 
 void
