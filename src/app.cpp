@@ -388,13 +388,9 @@ void
 app_t::stop() {
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
-    // This is needed in order to keep the invocation service alive (but stopped) until the engine
-    // has killed all its slaves. Otherwise, slaves would have to operate on invalid upstreams.
-    std::unique_ptr<actor_t> service;
-
     if(!m_manifest->local) {
-        // Stop the app service.
-        service = m_context.detach(m_manifest->name);
+        // Destroy the app service.
+        m_context.detach(m_manifest->name);
     }
 
     auto callback = expect<control::terminate>(*m_reactor);
