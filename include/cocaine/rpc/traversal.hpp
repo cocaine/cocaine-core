@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_PROTOCOL_TRAVERSE_HPP
-#define COCAINE_IO_PROTOCOL_TRAVERSE_HPP
+#ifndef COCAINE_IO_PROTOCOL_TRAVERSAL_HPP
+#define COCAINE_IO_PROTOCOL_TRAVERSAL_HPP
 
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
