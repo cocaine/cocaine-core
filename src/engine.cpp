@@ -558,18 +558,18 @@ engine_t::migrate(states target) {
 
     if(!pending) {
         stop();
+    } else {
+        COCAINE_LOG_INFO(
+            m_log,
+            "waiting for %d active %s to terminate, timeout: %.02f seconds",
+            pending,
+            pending == 1 ? "slave" : "slaves",
+            m_profile.termination_timeout
+        );
+
+        m_termination_timer->set<engine_t, &engine_t::on_termination>(this);
+        m_termination_timer->start(m_profile.termination_timeout);
     }
-
-    COCAINE_LOG_INFO(
-        m_log,
-        "waiting for %d active %s to terminate, timeout: %.02f seconds",
-        pending,
-        pending == 1 ? "slave" : "slaves",
-        m_profile.termination_timeout
-    );
-
-    m_termination_timer->set<engine_t, &engine_t::on_termination>(this);
-    m_termination_timer->start(m_profile.termination_timeout);
 }
 
 void
