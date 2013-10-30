@@ -91,6 +91,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/context
     ${LIBCRYPTO_SOURCES}
     src/dispatch
+    src/dynamic
     src/essentials
     src/group
     src/gateways/adhoc
