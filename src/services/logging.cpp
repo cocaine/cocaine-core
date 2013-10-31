@@ -30,7 +30,7 @@ using namespace cocaine::service;
 
 using namespace std::placeholders;
 
-logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& name, const Json::Value& args):
+logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& name, const dynamic_t& args):
     api::service_t(context, reactor, name, args),
     implements<io::logging_tag>(context, name)
 {

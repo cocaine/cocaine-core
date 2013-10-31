@@ -1,8 +1,29 @@
+/*
+    Copyright (c) 2013 Andrey Goryachev <andrey.goryachev@gmail.com>
+    Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef COCAINE_DYNAMIC_HPP
 #define COCAINE_DYNAMIC_HPP
 
 #include <vector>
 #include <utility>
+#include <boost/lexical_cast.hpp>
 
 #include <cocaine/dynamic/detail.hpp>
 
@@ -31,6 +52,8 @@ public:
             bool_t;
     typedef int64_t
             int_t;
+    typedef uint64_t
+            uint_t;
     typedef double
             double_t;
     typedef std::string
@@ -43,11 +66,18 @@ public:
     typedef boost::variant<null_t,
                            bool_t,
                            int_t,
+                           uint_t,
                            double_t,
                            string_t,
                            array_t,
                            object_t>
             value_t;
+
+    // Just useful constants which may be accessed by a reference from any place of a program.
+    static const dynamic_t null;
+    static const dynamic_t empty_string;
+    static const dynamic_t empty_array;
+    static const dynamic_t empty_object;
 
 public:
     dynamic_t();
@@ -118,6 +148,9 @@ public:
     is_int() const;
 
     bool
+    is_uint() const;
+
+    bool
     is_double() const;
 
     bool
@@ -134,6 +167,9 @@ public:
 
     int_t
     as_int() const;
+
+    uint_t
+    as_uint() const;
 
     double_t
     as_double() const;
@@ -229,5 +265,13 @@ dynamic_t::to() const {
 
 #include <cocaine/dynamic/constructors.hpp>
 #include <cocaine/dynamic/converters.hpp>
+
+namespace boost {
+
+template<>
+std::string
+lexical_cast<std::string, cocaine::dynamic_t>(const cocaine::dynamic_t&);
+
+} // namespace boost
 
 #endif // COCAINE_DYNAMIC_HPP

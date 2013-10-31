@@ -20,33 +20,34 @@
 
 #include "cocaine/detail/services/node/profile.hpp"
 
-#include "cocaine/traits/json.hpp"
+#include "cocaine/traits/dynamic.hpp"
 
 using namespace cocaine::engine;
 
 profile_t::profile_t(context_t& context, const std::string& name_):
-    cached<Json::Value>(context, "profiles", name_),
+    cached<dynamic_t>(context, "profiles", name_),
     name(name_)
 {
-    log_output          = get("log-output", defaults::log_output).asBool();
-    heartbeat_timeout   = get("heartbeat-timeout", defaults::heartbeat_timeout).asDouble();
-    idle_timeout        = get("idle-timeout", defaults::idle_timeout).asDouble();
-    startup_timeout     = get("startup-timeout", defaults::startup_timeout).asDouble();
-    termination_timeout = get("termination-timeout", defaults::termination_timeout).asDouble();
-    concurrency         = get("concurrency", static_cast<Json::UInt>(defaults::concurrency)).asUInt();
-    crashlog_limit      = get("crashlog-limit", static_cast<Json::UInt>(defaults::crashlog_limit)).asUInt();
-    pool_limit          = get("pool-limit", static_cast<Json::UInt>(defaults::pool_limit)).asUInt();
-    queue_limit         = get("queue-limit", static_cast<Json::UInt>(defaults::queue_limit)).asUInt();
+    log_output          = as_object().at("log-output", defaults::log_output).as_bool();
+    heartbeat_timeout   = as_object().at("heartbeat-timeout", defaults::heartbeat_timeout).to<double>();
+    idle_timeout        = as_object().at("idle-timeout", defaults::idle_timeout).to<double>();
+    startup_timeout     = as_object().at("startup-timeout", defaults::startup_timeout).to<double>();
+    termination_timeout = as_object().at("termination-timeout", defaults::termination_timeout).to<double>();
+    concurrency         = as_object().at("concurrency", defaults::concurrency).to<uint64_t>();
+    crashlog_limit      = as_object().at("crashlog-limit", defaults::crashlog_limit).to<uint64_t>();
+    pool_limit          = as_object().at("pool-limit", defaults::pool_limit).to<uint64_t>();
+    queue_limit         = as_object().at("queue-limit", defaults::queue_limit).to<uint64_t>();
 
     unsigned long default_threshold = std::max(1UL, queue_limit / pool_limit / 2);
 
-    grow_threshold      = get("grow-threshold", static_cast<Json::UInt>(default_threshold)).asUInt();
+    grow_threshold      = as_object().at("grow-threshold", default_threshold).to<uint64_t>();
 
     // Isolation
 
+    const auto& isolate_config = as_object().at("isolate", dynamic_t::empty_object).as_object();
     isolate = {
-        (*this)["isolate"].get("type", "process").asString(),
-        (*this)["isolate"]["args"]
+        isolate_config.at("type", "process").as_string(),
+        isolate_config.at("args", dynamic_t::empty_object)
     };
 
     // Validation

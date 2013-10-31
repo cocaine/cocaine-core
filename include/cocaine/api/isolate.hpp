@@ -23,8 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
-
-#include "json/json.h"
+#include "cocaine/dynamic/dynamic.hpp"
 
 #include <mutex>
 
@@ -64,7 +63,7 @@ struct isolate_t {
     spawn(const std::string& path, const string_map_t& args, const string_map_t& environment) = 0;
 
 protected:
-    isolate_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
+    isolate_t(context_t&, const std::string& /* name */, const dynamic_t& /* args */) {
         // Empty.
     }
 };
@@ -76,14 +75,14 @@ struct category_traits<isolate_t> {
     struct factory_type: public basic_factory<isolate_t> {
         virtual
         ptr_type
-        get(context_t& context, const std::string& name, const Json::Value& args) = 0;
+        get(context_t& context, const std::string& name, const dynamic_t& args) = 0;
     };
 
     template<class T>
     struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(context_t& context, const std::string& name, const Json::Value& args) {
+        get(context_t& context, const std::string& name, const dynamic_t& args) {
             std::lock_guard<std::mutex> guard(m_mutex);
 
             typename instance_map_t::iterator it(m_instances.find(name));

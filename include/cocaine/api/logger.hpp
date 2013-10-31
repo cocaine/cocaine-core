@@ -24,15 +24,14 @@
 #include "cocaine/common.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/repository.hpp"
-
-#include "json/json.h"
+#include "cocaine/dynamic/dynamic.hpp"
 
 namespace cocaine { namespace api {
 
 static inline
 logging::priorities
-logmask(const Json::Value& args) {
-    const std::string& verbosity = args["verbosity"].asString();
+logmask(const dynamic_t& args) {
+    const std::string& verbosity = args.as_object()["verbosity"].as_string();
 
     if(verbosity == "ignore") {
         return logging::ignore;
@@ -59,7 +58,7 @@ struct logger_t:
     }
 
 protected:
-    logger_t(const config_t&, const Json::Value& args):
+    logger_t(const config_t&, const dynamic_t& args):
         m_verbosity(logmask(args))
     { }
 
@@ -74,14 +73,14 @@ struct category_traits<logger_t> {
     struct factory_type: public basic_factory<logger_t> {
         virtual
         ptr_type
-        get(const config_t& config, const Json::Value& args) = 0;
+        get(const config_t& config, const dynamic_t& args) = 0;
     };
 
     template<class T>
     struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(const config_t& config, const Json::Value& args) {
+        get(const config_t& config, const dynamic_t& args) {
             return ptr_type(new T(config, args));
         }
     };

@@ -1,6 +1,31 @@
+/*
+    Copyright (c) 2013 Andrey Goryachev <andrey.goryachev@gmail.com>
+    Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <cocaine/dynamic/dynamic.hpp>
 
 using namespace cocaine;
+
+const dynamic_t dynamic_t::null = dynamic_t::null_t();
+const dynamic_t dynamic_t::empty_string = dynamic_t::string_t();
+const dynamic_t dynamic_t::empty_array = dynamic_t::array_t();
+const dynamic_t dynamic_t::empty_object = dynamic_t::object_t();
 
 cocaine::dynamic_t&
 detail::dynamic::object_t::at(const std::string& key, cocaine::dynamic_t& def) {
@@ -26,45 +51,6 @@ const cocaine::dynamic_t&
 detail::dynamic::object_t::operator[](const std::string& key) const {
     return at(key);
 }
-
-struct is_empty_visitor :
-    public boost::static_visitor<bool>
-{
-    bool
-    operator()(const dynamic_t::null_t&) const {
-        return true;
-    }
-
-    bool
-    operator()(const dynamic_t::bool_t&) const {
-        return false;
-    }
-
-    bool
-    operator()(const dynamic_t::int_t&) const {
-        return false;
-    }
-
-    bool
-    operator()(const dynamic_t::double_t&) const {
-        return false;
-    }
-
-    bool
-    operator()(const dynamic_t::string_t& v) const {
-        return v.empty();
-    }
-
-    bool
-    operator()(const dynamic_t::array_t& v) const {
-        return v.empty();
-    }
-
-    bool
-    operator()(const dynamic_t::object_t& v) const {
-        return v.empty();
-    }
-};
 
 struct move_visitor :
     public boost::static_visitor<>
@@ -132,7 +118,20 @@ dynamic_t::as_bool() const {
 
 dynamic_t::int_t
 dynamic_t::as_int() const {
-    return get<int_t>();
+    if (is_int()) {
+        return get<int_t>();
+    } else {
+        return get<uint_t>();
+    }
+}
+
+dynamic_t::uint_t
+dynamic_t::as_uint() const {
+    if (is_int()) {
+        return get<int_t>();
+    } else {
+        return get<uint_t>();
+    }
 }
 
 dynamic_t::double_t
@@ -198,6 +197,11 @@ dynamic_t::is_int() const {
 }
 
 bool
+dynamic_t::is_uint() const {
+    return is<uint_t>();
+}
+
+bool
 dynamic_t::is_double() const {
     return is<double_t>();
 }
@@ -215,4 +219,67 @@ dynamic_t::is_array() const {
 bool
 dynamic_t::is_object() const {
     return is<object_t>();
+}
+
+struct to_string_visitor :
+    public boost::static_visitor<std::string>
+{
+    std::string
+    operator()(const dynamic_t::null_t&) const {
+        return "null";
+    }
+
+    std::string
+    operator()(const dynamic_t::bool_t& v) const {
+        return v ? "True" : "False";
+    }
+
+    template<class T>
+    std::string
+    operator()(const T& v) const {
+        return boost::lexical_cast<std::string>(v);
+    }
+
+    std::string
+    operator()(const dynamic_t::string_t& v) const {
+        return "\"" + v + "\"";
+    }
+
+    std::string
+    operator()(const dynamic_t::array_t& v) const {
+        std::string result = "[";
+
+        bool print_coma = false;
+        for(size_t i = 0; i < v.size(); ++i) {
+            if (print_coma) {
+                result += ",";
+            }
+            result += v[i].apply(*this);
+            print_coma = true;
+        }
+
+        return result + "]";
+    }
+
+    std::string
+    operator()(const dynamic_t::object_t& v) const {
+        std::string result = "{";
+
+        bool print_coma = false;
+        for(auto it = v.begin(); it != v.end(); ++it) {
+            if (print_coma) {
+                result += ",";
+            }
+            result += "\"" + it->first + "\":" + it->second.apply(*this);
+            print_coma = true;
+        }
+
+        return result + "}";
+    }
+};
+
+template<>
+std::string
+boost::lexical_cast<std::string, cocaine::dynamic_t>(const cocaine::dynamic_t& v) {
+    return v.apply(to_string_visitor());
 }

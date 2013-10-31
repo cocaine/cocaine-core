@@ -24,8 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 #include "cocaine/traits.hpp"
-
-#include "json/json.h"
+#include "cocaine/dynamic/dynamic.hpp"
 
 #include <mutex>
 #include <sstream>
@@ -78,7 +77,7 @@ struct storage_t {
     put(const std::string& collection, const std::string& key, const T& object, const std::vector<std::string>& tags);
 
 protected:
-    storage_t(context_t&, const std::string& /* name */, const Json::Value& /* args */) {
+    storage_t(context_t&, const std::string& /* name */, const dynamic_t& /* args */) {
         // Empty.
     }
 };
@@ -124,14 +123,14 @@ struct category_traits<storage_t> {
     struct factory_type: public basic_factory<storage_t> {
         virtual
         ptr_type
-        get(context_t& context, const std::string& name, const Json::Value& args) = 0;
+        get(context_t& context, const std::string& name, const dynamic_t& args) = 0;
     };
 
     template<class T>
     struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(context_t& context, const std::string& name, const Json::Value& args) {
+        get(context_t& context, const std::string& name, const dynamic_t& args) {
             std::lock_guard<std::mutex> guard(m_mutex);
 
             typename instance_map_t::iterator it(m_instances.find(name));

@@ -37,7 +37,7 @@ class node_t:
     public implements<io::node_tag>
 {
     public:
-        node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
+        node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
 
         virtual
        ~node_t();
@@ -47,13 +47,13 @@ class node_t:
         prototype();
 
     private:
-        Json::Value
+        dynamic_t
         on_start_app(const std::map<std::string, std::string>& runlist);
 
-        Json::Value
+        dynamic_t
         on_pause_app(const std::vector<std::string>& applist);
 
-        Json::Value
+        dynamic_t
         on_list() const;
 
     private:

@@ -23,13 +23,12 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/detail/cached.hpp"
-
-#include "json/json.h"
+#include "cocaine/dynamic/dynamic.hpp"
 
 namespace cocaine { namespace engine {
 
 struct profile_t:
-    cached<Json::Value>
+    cached<dynamic_t>
 {
     profile_t(context_t& context, const std::string& name);
 

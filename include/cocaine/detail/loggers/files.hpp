@@ -29,7 +29,7 @@ class files_t:
     public api::logger_t
 {
     public:
-        files_t(const config_t& config, const Json::Value& args);
+        files_t(const config_t& config, const dynamic_t& args);
 
         virtual
        ~files_t();

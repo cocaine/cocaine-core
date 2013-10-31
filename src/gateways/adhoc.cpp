@@ -27,7 +27,7 @@ using namespace cocaine;
 using namespace cocaine::api;
 using namespace cocaine::gateway;
 
-adhoc_t::adhoc_t(context_t& context, const std::string& name, const Json::Value& args):
+adhoc_t::adhoc_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
     m_log(new logging::log_t(context, name))
 {
