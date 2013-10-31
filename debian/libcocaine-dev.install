@@ -3,4 +3,3 @@ usr/include/cocaine/api
 usr/include/cocaine/asio
 usr/include/cocaine/rpc
 usr/include/cocaine/traits
-usr/include/json
