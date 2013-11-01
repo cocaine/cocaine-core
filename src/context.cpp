@@ -298,7 +298,7 @@ config_t::config_t(const std::string& config_path) {
     // Locator configuration
 
     network.endpoint = locator_config.at("endpoint", defaults::endpoint).as_string();
-    network.locator = locator_config.at("port", defaults::locator_port).as_int();
+    network.locator = locator_config.at("port", defaults::locator_port).to<uint16_t>();
 
     // WARNING: Now only arrays of two items are allowed.
     auto ports = locator_config.find("port-range");

@@ -50,20 +50,32 @@ struct dynamic_constructor<bool, void> {
     }
 };
 
-template<>
-struct dynamic_constructor<dynamic_t::uint_t, void> {
+template<class From>
+struct dynamic_constructor<
+    From,
+    typename std::enable_if<
+        std::is_integral<From>::value &&
+        std::is_unsigned<From>::value
+    >::type
+> {
     static const bool enable = true;
 
     static
     inline
     void
-    convert(dynamic_t::uint_t from, dynamic_t::value_t& to) {
-        to = from;
+    convert(From from, dynamic_t::value_t& to) {
+        to = dynamic_t::uint_t(from);
     }
 };
 
 template<class From>
-struct dynamic_constructor<From, typename std::enable_if<std::is_integral<From>::value>::type> {
+struct dynamic_constructor<
+    From,
+    typename std::enable_if<
+        std::is_integral<From>::value &&
+        std::is_signed<From>::value
+    >::type
+> {
     static const bool enable = true;
 
     static

@@ -118,20 +118,12 @@ dynamic_t::as_bool() const {
 
 dynamic_t::int_t
 dynamic_t::as_int() const {
-    if (is_int()) {
-        return get<int_t>();
-    } else {
-        return get<uint_t>();
-    }
+    return get<int_t>();
 }
 
 dynamic_t::uint_t
 dynamic_t::as_uint() const {
-    if (is_int()) {
-        return get<int_t>();
-    } else {
-        return get<uint_t>();
-    }
+    return get<uint_t>();
 }
 
 dynamic_t::double_t
