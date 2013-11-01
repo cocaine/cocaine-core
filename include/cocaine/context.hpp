@@ -111,6 +111,7 @@ public:
 // Context
 
 class actor_t;
+class locator_t;
 
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
@@ -149,18 +150,17 @@ class context_t {
         bootstrap();
 
     private:
-        // NOTE: This is the first object in the component tree, all the other
-        // components, including loggers, storages or isolates have to be declared
-        // after this one.
+        // NOTE: This is the first object in the component tree, all the other components, including
+        // loggers, storages or isolates have to be declared after this one.
         std::unique_ptr<api::repository_t> m_repository;
 
-        // NOTE: As the loggers themselves are components, the repository
-        // have to be initialized first without a logger, unfortunately.
+        // NOTE: As the loggers themselves are components, the repository has to be initialized
+        // first without a logger, unfortunately.
         std::unique_ptr<logging::logger_concept_t> m_logger;
 
-        // NOTE: This is the magic service locator service. Have to be started first,
-        // stopped last, and always listens on a well-known port.
-        std::unique_ptr<actor_t> m_locator;
+        // NOTE: This is the magic service locator service. Has to be started first, stopped last,
+        // and always listens on a well-known port.
+        std::unique_ptr<locator_t> m_locator;
 };
 
 template<class Category, typename... Args>

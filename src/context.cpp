@@ -213,9 +213,10 @@ context_t::context_t(config_t config_, const std::string& logger):
         throw cocaine::error_t("the '%s' logger is not configured", logger);
     }
 
-    // Try to initialize the logger. If this fails, there's no way to report the failure,
-    // unfortunately, except printing it to the standart output.
+    // Try to initialize the logger. If this fails, there's no way to report the failure, unfortunately,
+    // except printing it to the standart output.
     m_logger = get<api::logger_t>(it->second.type, config, it->second.args);
+    m_locator = std::make_unique<locator_t>(*this);
 
     bootstrap();
 }
@@ -231,9 +232,10 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t
     // Load the plugins.
     m_repository->load(config.path.plugins);
 
-    // NOTE: The context takes the ownership of the passed logger, so it will
-    // become invalid at the calling site after this call.
+    // NOTE: The context takes the ownership of the passed logger, so it will become invalid at the
+    // calling site after this call.
     m_logger = std::move(logger);
+    m_locator = std::make_unique<locator_t>(*this);
 
     bootstrap();
 }
@@ -241,13 +243,9 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t
 context_t::~context_t() {
     auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
 
-    COCAINE_LOG_INFO(blog, "stopping the service locator");
+    COCAINE_LOG_INFO(blog, "stopping the locators");
 
     m_locator->terminate();
-
-    if(config.network.group) {
-        static_cast<locator_t&>(m_locator->dispatch()).disconnect();
-    }
 
     COCAINE_LOG_INFO(blog, "stopping the services");
     
@@ -258,26 +256,17 @@ context_t::~context_t() {
 
 void
 context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
-    static_cast<locator_t&>(m_locator->dispatch()).attach(name, std::move(service));
+    m_locator->attach(name, std::move(service));
 }
 
 auto
 context_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
-    return static_cast<locator_t&>(m_locator->dispatch()).detach(name);
+    return m_locator->detach(name);
 }
 
 void
 context_t::bootstrap() {
     auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
-    auto reactor = std::make_shared<io::reactor_t>();
-
-    // Service locator internals
-
-    m_locator.reset(new actor_t(
-        *this,
-        reactor,
-        std::unique_ptr<io::dispatch_t>(new locator_t(*this, *reactor))
-    ));
 
     COCAINE_LOG_INFO(
         blog,
@@ -287,7 +276,7 @@ context_t::bootstrap() {
     );
 
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
-        reactor = std::make_shared<io::reactor_t>();
+        auto reactor = std::make_shared<io::reactor_t>();
 
         COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
 
@@ -312,20 +301,10 @@ context_t::bootstrap() {
         }
     }
 
-    const std::vector<io::tcp::endpoint> endpoints = {
-        { boost::asio::ip::address::from_string(config.network.endpoint), config.network.locator }
-    };
-
-    COCAINE_LOG_INFO(blog, "starting the service locator on port %d", config.network.locator);
+    COCAINE_LOG_INFO(blog, "starting the locators");
 
     try {
-        if(config.network.group) {
-            static_cast<locator_t&>(m_locator->dispatch()).connect();
-        }
-
-        // NOTE: Start the locator thread last, so that we won't needlessly send node updates to
-        // the peers which managed to connect during the bootstrap.
-        m_locator->run(endpoints);
+        m_locator->run();
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(blog, "unable to initialize the locator - %s - [%d] %s", e.what(), e.code().value(), e.code().message());
         throw;

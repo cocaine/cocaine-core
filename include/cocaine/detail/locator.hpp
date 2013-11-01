@@ -27,6 +27,7 @@
 #include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
+#include <deque>
 #include <mutex>
 #include <queue>
 
@@ -39,6 +40,11 @@ namespace cocaine {
 
 class actor_t;
 
+template<class T>
+struct reverse_priority_queue {
+    typedef std::priority_queue<T, std::vector<T>, std::greater<T>> type;
+};
+
 class locator_t:
     public implementation<io::locator_tag>
 {
@@ -50,16 +56,16 @@ class locator_t:
     typedef io::event_traits<io::locator::refresh>::result_type refresh_result_type;
 
     public:
-        locator_t(context_t& context, io::reactor_t& reactor);
+        locator_t(context_t& context);
 
         virtual
        ~locator_t();
 
         void
-        connect();
+        run();
 
         void
-        disconnect();
+        terminate();
 
         void
         attach(const std::string& name, std::unique_ptr<actor_t>&& service);
@@ -103,12 +109,12 @@ class locator_t:
         const std::unique_ptr<logging::log_t> m_log;
 
         // For future cluster locator interconnections.
-        io::reactor_t& m_reactor;
+        std::shared_ptr<io::reactor_t> m_reactor;
 
         // Ports available for allocation.
-        std::priority_queue<uint16_t, std::vector<uint16_t>, std::greater<uint16_t>> m_ports;
+        reverse_priority_queue<uint16_t>::type m_ports;
 
-        typedef std::vector<
+        typedef std::deque<
             std::pair<std::string, std::unique_ptr<actor_t>>
         > service_list_t;
 

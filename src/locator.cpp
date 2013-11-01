@@ -36,6 +36,7 @@
 #include "cocaine/detail/group.hpp"
 
 #include "cocaine/logging.hpp"
+#include "cocaine/memory.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 
@@ -50,11 +51,11 @@ using namespace std::placeholders;
 #include "routing.inl"
 #include "synchronization.inl"
 
-locator_t::locator_t(context_t& context, reactor_t& reactor):
+locator_t::locator_t(context_t& context):
     implementation<io::locator_tag>(context, "service/locator"),
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
-    m_reactor(reactor),
+    m_reactor(new reactor_t()),
     m_router(new router_t(*m_log.get()))
 {
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
@@ -71,10 +72,6 @@ locator_t::locator_t(context_t& context, reactor_t& reactor):
     } catch(const storage_error_t& e) {
         throw cocaine::error_t("unable to initialize the routing groups - %s", e.what());
     }
-
-    on<io::locator::resolve>(std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::reports>(std::bind(&locator_t::reports, this));
-    on<io::locator::refresh>(std::bind(&locator_t::refresh, this, _1));
 
     if(!m_context.config.network.ports) {
         return;
@@ -110,76 +107,114 @@ locator_t::~locator_t() {
 }
 
 void
-locator_t::connect() {
-    using namespace boost::asio::ip;
+locator_t::run() {
+    typedef implementation<io::locator_tag> locator_service_t;
 
-    io::udp::endpoint endpoint = {
-        address::from_string(m_context.config.network.group.get()),
-        0
-    };
+    auto dispatch = std::make_unique<locator_service_t>(m_context, "service/locator");
 
-    if(m_context.config.network.gateway) {
-        const io::udp::endpoint bindpoint = { address::from_string("0.0.0.0"), 10054 };
+    dispatch->on<io::locator::resolve>(std::bind(&locator_t::resolve, this, _1));
+    dispatch->on<io::locator::reports>(std::bind(&locator_t::reports, this));
+    dispatch->on<io::locator::refresh>(std::bind(&locator_t::refresh, this, _1));
 
-        m_sink.reset(new io::socket<io::udp>());
+    if(m_context.config.network.group) {
+        using namespace boost::asio::ip;
 
-        if(::bind(m_sink->fd(), bindpoint.data(), bindpoint.size()) != 0) {
-            throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
+        io::udp::endpoint endpoint = {
+            address::from_string(m_context.config.network.group.get()),
+            0
+        };
+
+        if(m_context.config.network.gateway) {
+            const io::udp::endpoint bindpoint = { address::from_string("0.0.0.0"), 10054 };
+
+            m_sink.reset(new io::socket<io::udp>());
+
+            if(::bind(m_sink->fd(), bindpoint.data(), bindpoint.size()) != 0) {
+                throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
+            }
+
+            COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), bindpoint);
+
+            group_req request;
+
+            std::memset(&request, 0, sizeof(request));
+
+            request.gr_interface = 0;
+
+            std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
+
+            if(::setsockopt(m_sink->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
+                throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
+            }
+
+            m_sink_watcher.reset(new ev::io(m_reactor->native()));
+            m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
+            m_sink_watcher->start(m_sink->fd(), ev::READ);
+
+            m_gateway = m_context.get<api::gateway_t>(
+                m_context.config.network.gateway.get().type,
+                m_context,
+                "service/locator",
+                m_context.config.network.gateway.get().args
+            );
         }
 
-        COCAINE_LOG_INFO(m_log, "joining multicast group '%s' on '%s'", endpoint.address(), bindpoint);
+        endpoint.port(10054);
 
-        group_req request;
+        COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
 
-        std::memset(&request, 0, sizeof(request));
+        // NOTE: Connect this UDP socket so that we could send announces via write() instead of sendto().
+        m_announce.reset(new io::socket<io::udp>(endpoint));
 
-        request.gr_interface = 0;
+        const int loop = 0;
+        const int life = IP_DEFAULT_MULTICAST_TTL;
 
-        std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
+        // NOTE: I don't think these calls might fail at all.
+        ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+        ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
 
-        if(::setsockopt(m_sink->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
-            throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
-        }
+        m_announce_timer.reset(new ev::timer(m_reactor->native()));
+        m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
+        m_announce_timer->start(0.0f, 5.0f);
 
-        m_sink_watcher.reset(new ev::io(m_reactor.native()));
-        m_sink_watcher->set<locator_t, &locator_t::on_announce_event>(this);
-        m_sink_watcher->start(m_sink->fd(), ev::READ);
+        m_synchronizer = std::make_shared<synchronize_slot_t>(*this);
 
-        m_gateway = m_context.get<api::gateway_t>(
-            m_context.config.network.gateway.get().type,
-            m_context,
-            "service/locator",
-            m_context.config.network.gateway.get().args
-        );
+        dispatch->on<io::locator::synchronize>(m_synchronizer);
     }
 
-    endpoint.port(10054);
+    // NOTE: Start the locator thread last, so that we won't needlessly send node updates to
+    // the peers which managed to connect during the bootstrap.
 
-    COCAINE_LOG_INFO(m_log, "announcing the node on '%s'", endpoint);
+    const std::vector<io::tcp::endpoint> endpoints = {{
+        boost::asio::ip::address::from_string(m_context.config.network.endpoint),
+        m_context.config.network.locator
+    }};
 
-    // NOTE: Connect this UDP socket so that we could send announces via write() instead of sendto().
-    m_announce.reset(new io::socket<io::udp>(endpoint));
+    COCAINE_LOG_INFO(m_log, "starting the locator service on %s", endpoints.front());
 
-    const int loop = 0;
-    const int life = IP_DEFAULT_MULTICAST_TTL;
+    m_services.emplace_front("locator", std::make_unique<actor_t>(
+        m_context,
+        m_reactor,
+        std::move(dispatch)
+    ));
 
-    // NOTE: I don't think these calls might fail at all.
-    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
-    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
+    m_services.front().second->run(endpoints);
 
-    m_announce_timer.reset(new ev::timer(m_reactor.native()));
-    m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
-    m_announce_timer->start(0.0f, 5.0f);
-
-    m_synchronizer = std::make_shared<synchronize_slot_t>(*this);
-
-    on<io::locator::synchronize>(m_synchronizer);
+    // TODO: Check if this is really needed.
+    m_router->add_local("locator");
 }
 
 void
-locator_t::disconnect() {
-    // Disable the synchronize method.
-    forget<io::locator::synchronize>();
+locator_t::terminate() {
+    m_services.front().second->terminate();
+    m_services.pop_front();
+
+    // TODO: Check if this is really needed.
+    m_router->remove_local("locator");
+
+    if(!m_context.config.network.group) {
+        return;
+    }
 
     // Disconnect all the clients.
     m_synchronizer->shutdown();
@@ -188,16 +223,18 @@ locator_t::disconnect() {
     m_announce_timer.reset();
     m_announce.reset();
 
-    if(m_context.config.network.gateway) {
-        // Purge the routing tables.
-        m_gateway.reset();
-
-        // Disconnect all the routed peers.
-        m_remotes.clear();
-
-        m_sink_watcher.reset();
-        m_sink.reset();
+    if(!m_context.config.network.gateway) {
+        return;
     }
+
+    // Purge the routing tables.
+    m_gateway.reset();
+
+    // Disconnect all the routed peers.
+    m_remotes.clear();
+
+    m_sink_watcher.reset();
+    m_sink.reset();
 }
 
 namespace {
@@ -245,7 +282,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
         service->run(endpoints);
 
-        COCAINE_LOG_INFO(m_log, "service '%s' published on port %d", name, service->location().front().port());
+        COCAINE_LOG_INFO(m_log, "service '%s' published on %d", name, service->location().front());
 
         m_services.emplace_back(name, std::move(service));
     }
@@ -278,7 +315,7 @@ locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
             m_ports.push(endpoints.front().port());
         }
 
-        COCAINE_LOG_INFO(m_log, "service '%s' withdrawn from port %d", name, endpoints.front().port());
+        COCAINE_LOG_INFO(m_log, "service '%s' withdrawn from %d", name, endpoints.front());
 
         // Release the service's actor ownership.
         service = std::move(it->second);
@@ -328,7 +365,9 @@ locator_t::dump() const -> synchronize_result_type {
 
     synchronize_result_type result;
 
-    for(auto it = m_services.begin(); it != m_services.end(); ++it) {
+    // NOTE: the Locator Service is never announced, to avoid really weird clusterfuck, hence the
+    // iteration starts from the second element in the service list.
+    for(auto it = std::next(m_services.begin()); it != m_services.end(); ++it) {
         result[it->first] = it->second->metadata();
     }
 
@@ -441,7 +480,7 @@ locator_t::on_announce_event(ev::io&, int) {
         for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
             try {
                 channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
-                    m_reactor,
+                    *m_reactor,
                     std::make_shared<io::socket<io::tcp>>(*it)
                 );
             } catch(const std::system_error& e) {
@@ -468,7 +507,7 @@ locator_t::on_announce_event(ev::io&, int) {
             std::bind(&locator_t::on_failure, this, key, _1)
         );
 
-        auto timeout = std::make_shared<io::timeout_t>(m_reactor);
+        auto timeout = std::make_shared<io::timeout_t>(*m_reactor);
 
         timeout->bind(
             std::bind(&locator_t::on_timeout, this, key)
@@ -567,7 +606,7 @@ locator_t::on_message(const key_type& key, const message_t& message) {
 
         // NOTE: It is dangerous to remove the channel while the message is still being
         // processed, so we defer it via reactor_t::post().
-        m_reactor.post(deferred_erase_action<decltype(m_remotes)> {
+        m_reactor->post(deferred_erase_action<decltype(m_remotes)> {
             m_remotes,
             key
         });

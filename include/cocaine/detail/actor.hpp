@@ -52,9 +52,6 @@ class actor_t {
         auto
         location() const -> std::vector<io::tcp::endpoint>;
 
-        io::dispatch_t&
-        dispatch();
-
         typedef io::event_traits<io::locator::resolve>::result_type metadata_t;
 
         metadata_t

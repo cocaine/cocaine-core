@@ -298,11 +298,6 @@ actor_t::location() const {
     return endpoints;
 }
 
-dispatch_t&
-actor_t::dispatch() {
-    return *m_prototype;
-}
-
 auto
 actor_t::metadata() const -> metadata_t {
     const auto port = location().front().port();
