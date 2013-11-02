@@ -276,9 +276,10 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
             m_ports.pop();
         }
 
-        const std::vector<io::tcp::endpoint> endpoints = {
-            { boost::asio::ip::address::from_string(m_context.config.network.endpoint), port }
-        };
+        const std::vector<io::tcp::endpoint> endpoints = {{
+            boost::asio::ip::address::from_string(m_context.config.network.endpoint),
+            port
+        }};
 
         service->run(endpoints);
 
