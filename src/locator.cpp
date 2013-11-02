@@ -31,6 +31,7 @@
 #include "cocaine/asio/udp.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/dispatch.hpp"
 
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/group.hpp"
@@ -52,7 +53,6 @@ using namespace std::placeholders;
 #include "synchronization.inl"
 
 locator_t::locator_t(context_t& context):
-    implementation<io::locator_tag>(context, "service/locator"),
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(new reactor_t()),

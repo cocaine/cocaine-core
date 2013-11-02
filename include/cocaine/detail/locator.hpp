@@ -23,8 +23,6 @@
 #define COCAINE_SERVICE_LOCATOR_HPP
 
 #include "cocaine/common.hpp"
-
-#include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
 #include <deque>
@@ -45,9 +43,9 @@ struct reverse_priority_queue {
     typedef std::priority_queue<T, std::vector<T>, std::greater<T>> type;
 };
 
-class locator_t:
-    public implementation<io::locator_tag>
-{
+class locator_t {
+    COCAINE_DECLARE_NONCOPYABLE(locator_t)
+
     typedef std::tuple<std::string, std::string, uint16_t> key_type;
 
     typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
