@@ -31,11 +31,11 @@
 #include "cocaine/asio/udp.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/dispatch.hpp"
 
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/group.hpp"
 
+#include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
@@ -199,18 +199,12 @@ locator_t::run() {
     ));
 
     m_services.front().second->run(endpoints);
-
-    // TODO: Check if this is really needed.
-    m_router->add_local("locator");
 }
 
 void
 locator_t::terminate() {
     m_services.front().second->terminate();
     m_services.pop_front();
-
-    // TODO: Check if this is really needed.
-    m_router->remove_local("locator");
 
     if(!m_context.config.network.group) {
         return;
