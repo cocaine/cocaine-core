@@ -277,7 +277,7 @@ std::string
 locator_t::router_t::groups_t::select_service(const std::string& group_name) const {
     auto group_it = m_groups.find(group_name);
 
-    if(group_it == m_groups.end() || group_it->second.sum() != 0) {
+    if(group_it == m_groups.end() || group_it->second.sum() == 0) {
         return group_name;
     }
 
