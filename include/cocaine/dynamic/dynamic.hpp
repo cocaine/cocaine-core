@@ -39,6 +39,13 @@ struct dynamic_converter {
     // pass
 };
 
+
+namespace detail { namespace dynamic {
+
+    class object_t;
+
+}} // namespace detail::dynamic
+
 class dynamic_t {
 public:
     struct null_t {
@@ -268,6 +275,7 @@ dynamic_t::to() const {
 
 } // namespace cocaine
 
+#include <cocaine/dynamic/object.inl>
 #include <cocaine/dynamic/constructors.hpp>
 #include <cocaine/dynamic/converters.hpp>
 
