@@ -28,7 +28,7 @@ const dynamic_t dynamic_t::empty_array = dynamic_t::array_t();
 const dynamic_t dynamic_t::empty_object = dynamic_t::object_t();
 
 cocaine::dynamic_t&
-detail::dynamic::object_t::at(const std::string& key, cocaine::dynamic_t& def) {
+dynamic_t::object_t::at(const std::string& key, cocaine::dynamic_t& def) {
     auto it = find(key);
     if(it == end()) {
         return def;
@@ -38,7 +38,7 @@ detail::dynamic::object_t::at(const std::string& key, cocaine::dynamic_t& def) {
 }
 
 const cocaine::dynamic_t&
-detail::dynamic::object_t::at(const std::string& key, const cocaine::dynamic_t& def) const {
+dynamic_t::object_t::at(const std::string& key, const cocaine::dynamic_t& def) const {
     auto it = find(key);
     if(it == end()) {
         return def;
@@ -48,7 +48,7 @@ detail::dynamic::object_t::at(const std::string& key, const cocaine::dynamic_t& 
 }
 
 const cocaine::dynamic_t&
-detail::dynamic::object_t::operator[](const std::string& key) const {
+dynamic_t::object_t::operator[](const std::string& key) const {
     return at(key);
 }
 

@@ -39,13 +39,6 @@ struct dynamic_converter {
     // pass
 };
 
-
-namespace detail { namespace dynamic {
-
-    class object_t;
-
-}} // namespace detail::dynamic
-
 class dynamic_t {
 public:
     struct null_t {
@@ -67,8 +60,8 @@ public:
             string_t;
     typedef std::vector<dynamic_t>
             array_t;
-    typedef detail::dynamic::object_t
-            object_t;
+            
+    class object_t;
 
     typedef boost::variant<null_t,
                            bool_t,
