@@ -116,12 +116,12 @@ namespace detail { namespace dynamic {
             // Empty.
         }
 
-        incomplete_wrapper(const incomplete_wrapper& other) {
+        incomplete_wrapper(const incomplete_wrapper&) {
             // Empty.
         }
 
         incomplete_wrapper&
-        operator=(const incomplete_wrapper& other) {
+        operator=(const incomplete_wrapper&) {
             return *this;
         }
 
