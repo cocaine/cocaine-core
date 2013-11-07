@@ -248,7 +248,7 @@ struct dynamic_constructor<std::tuple<Args...>, void> {
         static
         inline
         void
-        convert(const std::tuple<Args2...>& from, dynamic_t::array_t& to) {
+        convert(const std::tuple<Args2...>&, dynamic_t::array_t&) {
             // pass
         }
     };
@@ -279,7 +279,7 @@ struct dynamic_constructor<std::tuple<Args...>, void> {
         static
         inline
         void
-        convert(std::tuple<Args2...>& from, dynamic_t::array_t& to) {
+        convert(std::tuple<Args2...>&, dynamic_t::array_t&) {
             // pass
         }
     };
