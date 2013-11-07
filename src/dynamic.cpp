@@ -104,10 +104,47 @@ struct equals_visitor :
         return m_other.is_null();
     }
 
-    template<class T>
     bool
-    operator()(const T& v) const {
-        return m_other.convertible_to<T>() && m_other.to<T>() == v;
+    operator()(const dynamic_t::bool_t& v) const {
+        return m_other.is_bool() && m_other.as_bool() == v;
+    }
+
+    bool
+    operator()(const dynamic_t::int_t& v) const {
+        if(m_other.is_int()) {
+            return m_other.as_int();
+        } else {
+            return m_other.is_uint() && v >= 0 && static_cast<dynamic_t::uint_t>(v) == m_other.as_uint();
+        }
+    }
+
+    bool
+    operator()(const dynamic_t::uint_t& v) const {
+        if(m_other.is_uint()) {
+            return m_other.as_uint();
+        } else {
+            return m_other.is_int() && m_other.as_int() >= 0 && v == m_other.to<dynamic_t::uint_t>();
+        }
+    }
+
+    bool
+    operator()(const dynamic_t::double_t& v) const {
+        return m_other.is_double() && m_other.as_double() == v;
+    }
+
+    bool
+    operator()(const dynamic_t::string_t& v) const {
+        return m_other.is_string() && m_other.as_string() == v;
+    }
+
+    bool
+    operator()(const dynamic_t::array_t& v) const {
+        return m_other.is_array() && m_other.as_array() == v;
+    }
+
+    bool
+    operator()(const dynamic_t::object_t& v) const {
+        return m_other.is_object() && m_other.as_object() == v;
     }
 
 private:
