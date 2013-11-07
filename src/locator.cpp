@@ -195,7 +195,7 @@ locator_t::run() {
     m_services.emplace_front("locator", std::make_unique<actor_t>(
         m_context,
         m_reactor,
-        std::move(dispatch)
+        std::unique_ptr<dispatch_t>(std::move(dispatch))
     ));
 
     m_services.front().second->run(endpoints);
