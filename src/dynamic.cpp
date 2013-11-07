@@ -71,6 +71,49 @@ private:
     dynamic_t& m_dest;
 };
 
+struct assign_visitor :
+    public boost::static_visitor<>
+{
+    assign_visitor(dynamic_t& dest) :
+        m_dest(dest)
+    {
+        // pass
+    }
+
+    template<class T>
+    void
+    operator()(T& v) const {
+        m_dest = v;
+    }
+
+private:
+    dynamic_t& m_dest;
+};
+
+struct equals_visitor :
+    public boost::static_visitor<bool>
+{
+    equals_visitor(const dynamic_t& other) :
+        m_other(other)
+    {
+        // pass
+    }
+
+    bool
+    operator()(const dynamic_t::null_t&) const {
+        return m_other.is_null();
+    }
+
+    template<class T>
+    bool
+    operator()(const T& v) const {
+        return m_other.convertible_to<T>() && m_other.to<T>() == v;
+    }
+
+private:
+    const dynamic_t& m_other;
+};
+
 dynamic_t::dynamic_t() :
     m_value(null_t())
 {
@@ -91,7 +134,7 @@ dynamic_t::dynamic_t(dynamic_t&& other) :
 
 dynamic_t&
 dynamic_t::operator=(const dynamic_t& other) {
-    m_value = other.m_value;
+    other.apply(assign_visitor(*this));
     return *this;
 }
 
@@ -103,12 +146,12 @@ dynamic_t::operator=(dynamic_t&& other) {
 
 bool
 dynamic_t::operator==(const dynamic_t& other) const {
-    return m_value == other.m_value;
+    return other.apply(equals_visitor(*this));
 }
 
 bool
 dynamic_t::operator!=(const dynamic_t& other) const {
-    return !(m_value == other.m_value);
+    return !other.apply(equals_visitor(*this));
 }
 
 dynamic_t::bool_t
@@ -138,18 +181,18 @@ dynamic_t::as_string() const {
 
 const dynamic_t::array_t&
 dynamic_t::as_array() const {
-    return get<array_t>();
+    return get<detail::dynamic::incomplete_wrapper<array_t>>().get();
 }
 
 const dynamic_t::object_t&
 dynamic_t::as_object() const {
-    return get<object_t>();
+    return get<detail::dynamic::incomplete_wrapper<object_t>>().get();
 }
 
 dynamic_t::string_t&
 dynamic_t::as_string() {
     if(is_null()) {
-        m_value = string_t();
+        *this = string_t();
     }
 
     return get<string_t>();
@@ -158,19 +201,19 @@ dynamic_t::as_string() {
 dynamic_t::array_t&
 dynamic_t::as_array() {
     if(is_null()) {
-        m_value = array_t();
+        *this = array_t();
     }
 
-    return get<array_t>();
+    return get<detail::dynamic::incomplete_wrapper<array_t>>().get();
 }
 
 dynamic_t::object_t&
 dynamic_t::as_object() {
     if(is_null()) {
-        m_value = object_t();
+        *this = object_t();
     }
 
-    return get<object_t>();
+    return get<detail::dynamic::incomplete_wrapper<object_t>>().get();
 }
 
 bool
@@ -205,12 +248,12 @@ dynamic_t::is_string() const {
 
 bool
 dynamic_t::is_array() const {
-    return is<array_t>();
+    return is<detail::dynamic::incomplete_wrapper<array_t>>();
 }
 
 bool
 dynamic_t::is_object() const {
-    return is<object_t>();
+    return is<detail::dynamic::incomplete_wrapper<object_t>>();
 }
 
 struct to_string_visitor :

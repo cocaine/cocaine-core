@@ -149,7 +149,7 @@ struct type_traits<dynamic_t>
             } break;
 
             case msgpack::type::NEGATIVE_INTEGER: {
-                target = object.as<int64_t>();
+                target = object.as<dynamic_t::int_t>();
             } break;
 
             case msgpack::type::BOOLEAN: {

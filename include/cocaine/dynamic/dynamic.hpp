@@ -69,8 +69,8 @@ public:
                            uint_t,
                            double_t,
                            string_t,
-                           array_t,
-                           object_t>
+                           detail::dynamic::incomplete_wrapper<array_t>,
+                           detail::dynamic::incomplete_wrapper<object_t>>
             value_t;
 
     // Just useful constants which may be accessed by a reference from any place of a program.
@@ -110,14 +110,20 @@ public:
 
     template<class Visitor>
     typename Visitor::result_type
-    apply(Visitor& visitor) {
-        return boost::apply_visitor(visitor, m_value);
+    apply(const Visitor& visitor) {
+        return boost::apply_visitor(
+            detail::dynamic::dynamic_visitor_applier<const Visitor&, typename Visitor::result_type>(visitor),
+            m_value
+        );
     }
 
     template<class Visitor>
     typename Visitor::result_type
-    apply(const Visitor& visitor) {
-        return boost::apply_visitor(visitor, m_value);
+    apply(Visitor& visitor) {
+        return boost::apply_visitor(
+            detail::dynamic::dynamic_visitor_applier<Visitor&, typename Visitor::result_type>(visitor),
+            m_value
+        );
     }
 
     template<class Visitor>
@@ -192,7 +198,6 @@ public:
     object_t&
     as_object();
 
-    // it returns bool, but is enabled only for T for which dynamic_converter::result_type is defined
     template<class T>
     typename std::conditional<
         true,
@@ -225,7 +230,7 @@ private:
     }
 
 private:
-    // boost::apply_visitor takes non-constant reference to variable object
+    // Boost::apply_visitor takes non-constant reference to variable object.
     mutable value_t m_value;
 };
 
