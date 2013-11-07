@@ -26,8 +26,8 @@
 #include "cocaine/rpc/slots/blocking.hpp"
 #include "cocaine/rpc/slots/deferred.hpp"
 
+#include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/traversal.hpp"
-#include "cocaine/rpc/tree.hpp"
 
 #include <boost/mpl/apply.hpp>
 #include <boost/mpl/empty.hpp>
@@ -75,7 +75,7 @@ class dispatch_t {
 
         virtual
         auto
-        protocol() const -> const dispatch_tree_t& = 0;
+        protocol() const -> const dispatch_graph_t& = 0;
 
         virtual
         int
@@ -173,7 +173,7 @@ struct implementation:
 
     virtual
     auto
-    protocol() const -> const dispatch_tree_t& {
+    protocol() const -> const dispatch_graph_t& {
         return protograph;
     }
 
@@ -184,7 +184,7 @@ struct implementation:
     }
 
 private:
-    const dispatch_tree_t protograph;
+    const dispatch_graph_t protograph;
 };
 
 } // namespace cocaine

@@ -23,9 +23,9 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
-#include "cocaine/rpc/tree.hpp"
 #include "cocaine/rpc/types.hpp"
 
 namespace cocaine { namespace io {
@@ -56,7 +56,7 @@ struct resolve {
         unsigned int,
      /* A mapping between method slot numbers, method names and state protocol transitions for use
         in dynamic languages like Python or Ruby. */
-        dispatch_tree_t
+        dispatch_graph_t
     > result_type;
 };
 

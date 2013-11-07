@@ -18,43 +18,32 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_DISPATCH_TREE_HPP
-#define COCAINE_IO_DISPATCH_TREE_HPP
+#ifndef COCAINE_IO_DISPATCH_GRAPH_SERIALIZATION_TRAITS_HPP
+#define COCAINE_IO_DISPATCH_GRAPH_SERIALIZATION_TRAITS_HPP
 
-#include <map>
-#include <string>
+#include "cocaine/traits.hpp"
+#include "cocaine/traits/optional.hpp"
 
-#include <boost/optional.hpp>
+#include "cocaine/rpc/graph.hpp"
 
-namespace cocaine {
+namespace cocaine { namespace io {
 
-struct dispatch_tree_t;
-
-namespace aux {
-
-typedef std::map<
-    int,
-    std::tuple<std::string, boost::optional<dispatch_tree_t>>
-> recursion_base_t;
-
-} // namespace aux
-
-struct dispatch_tree_t: public aux::recursion_base_t {
-    typedef aux::recursion_base_t base_type;
-
-    dispatch_tree_t() { }
-    dispatch_tree_t(const dispatch_tree_t& o): base_type(o) { }
-    dispatch_tree_t(dispatch_tree_t&& o): base_type(std::move(o)) { }
-
-    dispatch_tree_t& operator=(const dispatch_tree_t& lhs) {
-        static_cast<base_type&>(*this) = lhs; return *this;
+template<>
+struct type_traits<dispatch_graph_t> {
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer, const dispatch_graph_t& source) {
+        packer << static_cast<const dispatch_graph_t::base_type&>(source);
     }
 
-    dispatch_tree_t& operator=(dispatch_tree_t&& lhs) {
-        static_cast<base_type&>(*this) = std::move(lhs); return *this;
+    static inline
+    void
+    unpack(const msgpack::object& unpacked, dispatch_graph_t& target) {
+        unpacked >> static_cast<dispatch_graph_t::base_type&>(target);
     }
 };
 
-} // namespace cocaine
+}} // namespace cocaine::io
 
 #endif

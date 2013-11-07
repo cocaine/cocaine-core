@@ -21,9 +21,9 @@
 #ifndef COCAINE_IO_PROTOCOL_TRAVERSAL_HPP
 #define COCAINE_IO_PROTOCOL_TRAVERSAL_HPP
 
+#include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
-#include "cocaine/rpc/tree.hpp"
 
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/deref.hpp>
@@ -34,7 +34,7 @@ namespace cocaine { namespace io {
 
 template<class Tag>
 auto
-traverse() -> boost::optional<dispatch_tree_t>;
+traverse() -> boost::optional<dispatch_graph_t>;
 
 namespace aux {
 
@@ -44,7 +44,7 @@ template<class It, class End>
 struct traverse_impl {
     static inline
     void
-    apply(dispatch_tree_t& object) {
+    apply(dispatch_graph_t& object) {
         typedef typename mpl::deref<It>::type event_type;
         typedef event_traits<event_type> traits_type;
 
@@ -61,7 +61,7 @@ template<class End>
 struct traverse_impl<End, End> {
     static inline
     void
-    apply(dispatch_tree_t& /* object */) {
+    apply(dispatch_graph_t& /* object */) {
         // Empty.
     }
 };
@@ -71,8 +71,8 @@ struct traverse_impl<End, End> {
 template<class Tag>
 inline
 auto
-traverse() -> boost::optional<dispatch_tree_t> {
-    dispatch_tree_t result;
+traverse() -> boost::optional<dispatch_graph_t> {
+    dispatch_graph_t result;
 
     aux::traverse_impl<
         typename mpl::begin<typename protocol<Tag>::type>::type,
@@ -85,7 +85,7 @@ traverse() -> boost::optional<dispatch_tree_t> {
 template<>
 inline
 auto
-traverse<recursive_tag>() -> boost::optional<dispatch_tree_t> {
+traverse<recursive_tag>() -> boost::optional<dispatch_graph_t> {
     return boost::none_t();
 }
 
