@@ -323,7 +323,7 @@ struct to_string_visitor :
 
         bool print_coma = false;
         for(size_t i = 0; i < v.size(); ++i) {
-            if (print_coma) {
+            if(print_coma) {
                 result += ",";
             }
             result += v[i].apply(*this);
@@ -339,7 +339,7 @@ struct to_string_visitor :
 
         bool print_coma = false;
         for(auto it = v.begin(); it != v.end(); ++it) {
-            if (print_coma) {
+            if(print_coma) {
                 result += ",";
             }
             result += "\"" + it->first + "\":" + it->second.apply(*this);
