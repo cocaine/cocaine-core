@@ -43,7 +43,7 @@ struct type_traits<boost::optional<T>> {
     unpack(const msgpack::object& unpacked, boost::optional<T>& target) {
         return unpacked.type != msgpack::type::NIL ?
             target = T(), type_traits<T>::unpack(unpacked, *target)
-          : (void)(target = boost::none_t());
+          : (void)(target = boost::none);
     }
 };
 
