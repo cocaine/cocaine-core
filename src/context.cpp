@@ -33,6 +33,9 @@
 
 #include "cocaine/memory.hpp"
 
+#include "cocaine/traits/graph.hpp"
+#include "cocaine/traits/tuple.hpp"
+
 #include <cstring>
 
 #include <boost/filesystem/convenience.hpp>
@@ -42,8 +45,13 @@
 #include <netdb.h>
 
 using namespace cocaine;
+using namespace cocaine::io;
+
+using namespace std::placeholders;
 
 namespace fs = boost::filesystem;
+
+#include "synchronization.inl"
 
 const bool defaults::log_output              = false;
 const float defaults::heartbeat_timeout      = 30.0f;
@@ -127,7 +135,7 @@ config_t::config_t(const std::string& config_path) {
     const int rv = getaddrinfo(hostname, nullptr, &hints, &result);
 
     if(rv != 0) {
-        throw std::system_error(rv, io::gai_category(), "unable to determine the hostname");
+        throw std::system_error(rv, gai_category(), "unable to determine the hostname");
     }
 
     network.hostname = root["locator"].get("hostname", result->ai_canonname).asString();
@@ -216,7 +224,6 @@ context_t::context_t(config_t config_, const std::string& logger):
     // Try to initialize the logger. If this fails, there's no way to report the failure, unfortunately,
     // except printing it to the standart output.
     m_logger = get<api::logger_t>(it->second.type, config, it->second.args);
-    m_locator = std::make_unique<locator_t>(*this);
 
     bootstrap();
 }
@@ -235,7 +242,6 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t
     // NOTE: The context takes the ownership of the passed logger, so it will become invalid at the
     // calling site after this call.
     m_logger = std::move(logger);
-    m_locator = std::make_unique<locator_t>(*this);
 
     bootstrap();
 }
@@ -243,30 +249,183 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t
 context_t::~context_t() {
     auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
 
-    COCAINE_LOG_INFO(blog, "stopping the locators");
+    m_synchronization->shutdown();
+    m_synchronization.reset();
 
-    m_locator->terminate();
+    COCAINE_LOG_INFO(blog, "stopping the service locator");
+
+    m_services.front().second->terminate();
+    m_services.pop_front();
 
     COCAINE_LOG_INFO(blog, "stopping the services");
     
     for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
         detach(it->first);
     }
+
+    // Any services which haven't been explicitly detached by their owners must be terminated here,
+    // because otherwise their threads' destructors will terminate the whole program (13.3.1.3).
+
+    while(!m_services.empty()) {
+        m_services.back().second->terminate();
+        m_services.pop_back();
+    }
+}
+
+namespace {
+
+struct match {
+    template<class T>
+    bool
+    operator()(const T& service) const {
+        return name == service.first;
+    }
+
+    const std::string& name;
+};
+
 }
 
 void
 context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
-    m_locator->attach(name, std::move(service));
+    uint16_t port = 0;
+
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    auto existing = std::find_if(m_services.cbegin(), m_services.cend(), match {
+        name
+    });
+
+    BOOST_VERIFY(existing == m_services.end());
+
+    if(config.network.ports) {
+        if(m_ports.empty()) {
+            throw cocaine::error_t("no ports left for allocation");
+        }
+
+        port = m_ports.top();
+
+        // NOTE: Remove the taken port from the free pool. If, for any reason, this port is unavailable
+        // for binding, it's okay to keep it removed forever.
+        m_ports.pop();
+    }
+
+    const std::vector<io::tcp::endpoint> endpoints = {{
+        boost::asio::ip::address::from_string(config.network.endpoint),
+        port
+    }};
+
+    service->run(endpoints);
+
+    auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
+
+    COCAINE_LOG_INFO(blog, "service '%s' published on %d", name, service->location().front());
+
+    m_services.emplace_back(name, std::move(service));
+
+    if(m_synchronization) {
+        m_synchronization->announce();
+    }
 }
 
 auto
 context_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
-    return m_locator->detach(name);
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    auto it = std::find_if(m_services.begin(), m_services.end(), match {
+        name
+    });
+
+    BOOST_VERIFY(it != m_services.end());
+
+    // Release the service's actor ownership.
+    std::unique_ptr<actor_t> service = std::move(it->second);
+    m_services.erase(it);
+
+    const std::vector<io::tcp::endpoint> endpoints = service->location();
+
+    service->terminate();
+
+    auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
+
+    COCAINE_LOG_INFO(blog, "service '%s' withdrawn from %d", name, endpoints.front());
+
+    if(config.network.ports) {
+        m_ports.push(endpoints.front().port());
+    }
+
+    if(m_synchronization) {
+        m_synchronization->announce();
+    }
+
+    return service;
+}
+
+auto
+context_t::locate(const std::string& name) const -> boost::optional<actor_t&> {
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    auto it = std::find_if(m_services.begin(), m_services.end(), match {
+        name
+    });
+
+    return boost::optional<actor_t&>(it != m_services.end(), *it->second);
+}
+
+struct context_t::memusage_action_t {
+    typedef event_traits<io::locator::reports>::result_type result_type;
+
+    result_type
+    operator()() const;
+
+    const context_t& self;
+};
+
+auto
+context_t::memusage_action_t::operator()() const -> result_type {
+    result_type result;
+
+    std::lock_guard<std::mutex> guard(self.m_mutex);
+
+    for(auto it = self.m_services.begin(); it != self.m_services.end(); ++it) {
+        io::locator::reports::usage_report_type report;
+
+        // Get the usage counters from the service's actor.
+        const auto source = it->second->counters();
+
+        for(auto channel = source.footprints.begin(); channel != source.footprints.end(); ++channel) {
+            auto& endpoint = channel->first;
+            auto  consumed = channel->second;
+
+            // Convert I/O endpoints to endpoint tuples. That's the only reason why this function
+            // exists at all, as opposed to returning the counters as is.
+            report.insert({
+                io::locator::endpoint_tuple_type(endpoint.address().to_string(), endpoint.port()),
+                consumed
+            });
+        }
+
+        result[it->first] = std::make_tuple(source.sessions, report);
+    }
+
+    return result;
 }
 
 void
 context_t::bootstrap() {
     auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
+
+    if(config.network.ports) {
+        uint16_t min, max;
+
+        std::tie(min, max) = config.network.ports.get();
+
+        COCAINE_LOG_INFO(blog, "%u ports available, %u through %u", max - min, min, max);
+
+        while(min != max) {
+            m_ports.push(--max);
+        }
+    }
 
     COCAINE_LOG_INFO(
         blog,
@@ -276,22 +435,22 @@ context_t::bootstrap() {
     );
 
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
-        auto reactor = std::make_shared<io::reactor_t>();
+        auto reactor = std::make_shared<reactor_t>();
 
         COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
 
         try {
-            attach(it->first, std::make_unique<actor_t>(
+            attach(it->first, std::make_unique<actor_t>(*this, reactor, get<api::service_t>(
+                it->second.type,
                 *this,
-                reactor,
-                get<api::service_t>(
-                    it->second.type,
-                    *this,
-                    *reactor,
-                    cocaine::format("service/%s", it->first),
-                    it->second.args
-                )
-            ));
+                *reactor,
+                cocaine::format("service/%s", it->first),
+                it->second.args
+            )));
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(blog, "unable to initialize service '%s' - %s - [%d] %s", it->first, e.what(),
+                e.code().value(), e.code().message());
+            throw;
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(blog, "unable to initialize service '%s' - %s", it->first, e.what());
             throw;
@@ -301,12 +460,38 @@ context_t::bootstrap() {
         }
     }
 
-    COCAINE_LOG_INFO(blog, "starting the locators");
+    // NOTE: Start the locator thread last, so that we won't needlessly send node updates to
+    // the peers which managed to connect during the bootstrap.
+
+    const std::vector<io::tcp::endpoint> endpoints = {{
+        boost::asio::ip::address::from_string(config.network.endpoint),
+        config.network.locator
+    }};
+
+    COCAINE_LOG_INFO(blog, "starting the service locator on %s", endpoints.front());
+
+    auto reactor = std::make_shared<reactor_t>();
+    auto locator = std::make_unique<locator_t>(*this, *reactor);
+
+    m_synchronization = std::make_shared<synchronization_t>(*this);
+
+    // NOTE: Some of the locator methods are better implemented in the Context, to avoid unnecessary
+    // copying intermediate structures around.
+
+    locator->on<io::locator::synchronize>(m_synchronization);
+    locator->on<io::locator::reports>(memusage_action_t { *this });
+
+    m_services.emplace_front("locator", std::make_unique<actor_t>(
+        *this,
+        reactor,
+        std::move(locator)
+    ));
 
     try {
-        m_locator->run();
+        m_services.front().second->run(endpoints);
     } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(blog, "unable to initialize the locator - %s - [%d] %s", e.what(), e.code().value(), e.code().message());
+        COCAINE_LOG_ERROR(blog, "unable to initialize the locator - %s - [%d] %s", e.what(),
+            e.code().value(), e.code().message());
         throw;
     } catch(const std::exception& e) {
         COCAINE_LOG_ERROR(blog, "unable to initialize the locator - %s", e.what());

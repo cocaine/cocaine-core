@@ -167,9 +167,7 @@ class locator_t::router_t {
 
 group_index_t::group_index_t() :
     m_sum(0)
-{
-    // Empty.
-}
+{ }
 
 group_index_t::group_index_t(const std::map<std::string, unsigned int>& group) :
     m_used_weights(group.size(), 0),
@@ -297,9 +295,7 @@ locator_t::router_t::groups_t::select_service(const std::string& group_name) con
 
 locator_t::router_t::router_t(logging::log_t& log):
     m_groups(log, *this)
-{
-    // Empty.
-}
+{ }
 
 void
 locator_t::router_t::add_local(const std::string& name) {

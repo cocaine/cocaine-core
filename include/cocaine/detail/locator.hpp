@@ -23,11 +23,10 @@
 #define COCAINE_SERVICE_LOCATOR_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/dispatch.hpp"
 #include "cocaine/messages.hpp"
 
-#include <deque>
 #include <mutex>
-#include <queue>
 
 namespace ev {
     struct io;
@@ -36,53 +35,28 @@ namespace ev {
 
 namespace cocaine {
 
-class actor_t;
-
-template<class T>
-struct reverse_priority_queue {
-    typedef std::priority_queue<T, std::vector<T>, std::greater<T>> type;
-};
-
-class locator_t {
-    COCAINE_DECLARE_NONCOPYABLE(locator_t)
-
-    typedef std::tuple<std::string, std::string, uint16_t> key_type;
-
-    typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
-    typedef io::event_traits<io::locator::synchronize>::result_type synchronize_result_type;
-    typedef io::event_traits<io::locator::reports>::result_type reports_result_type;
-    typedef io::event_traits<io::locator::refresh>::result_type refresh_result_type;
-
+class locator_t:
+    public implementation<io::locator_tag>
+{
     public:
-        locator_t(context_t& context);
+        locator_t(context_t& context, io::reactor_t& reactor);
 
         virtual
        ~locator_t();
 
+    private:
         void
-        run();
+        connect();
 
-        void
-        terminate();
-
-        void
-        attach(const std::string& name, std::unique_ptr<actor_t>&& service);
+        typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
+        typedef io::event_traits<io::locator::synchronize>::result_type synchronize_result_type;
+        typedef io::event_traits<io::locator::refresh>::result_type refresh_result_type;
 
         auto
-        detach(const std::string& name) -> std::unique_ptr<actor_t>;
+        resolve(const std::string& name) const -> resolve_result_type;
 
-    private:
-        resolve_result_type
-        resolve(const std::string& name) const;
-
-        synchronize_result_type
-        dump() const;
-
-        reports_result_type
-        reports() const;
-
-        refresh_result_type
-        refresh(const std::string& name);
+        auto
+        refresh(const std::string& name) -> refresh_result_type;
 
         // Cluster I/O
 
@@ -91,6 +65,8 @@ class locator_t {
 
         void
         on_announce_timer(ev::timer&, int);
+
+        typedef std::tuple<std::string, std::string, uint16_t> key_type;
 
         void
         on_message(const key_type& key, const io::message_t& message);
@@ -106,30 +82,12 @@ class locator_t {
 
         const std::unique_ptr<logging::log_t> m_log;
 
-        // For future cluster locator interconnections.
-        std::shared_ptr<io::reactor_t> m_reactor;
-
-        // Ports available for allocation.
-        reverse_priority_queue<uint16_t>::type m_ports;
-
-        typedef std::deque<
-            std::pair<std::string, std::unique_ptr<actor_t>>
-        > service_list_t;
-
-        // These are the instances of all the configured services, stored as a vector of pairs to
-        // preserve the initialization order.
-        service_list_t m_services;
-
-        // As, for example, the Node Service can manipulate service list from its actor thread, the
-        // service list access should be synchronized.
-        mutable std::mutex m_services_mutex;
+        // For cluster interconnections.
+        io::reactor_t& m_reactor;
 
         // Announce receiver.
         std::unique_ptr<io::socket<io::udp>> m_sink;
         std::unique_ptr<ev::io> m_sink_watcher;
-
-        // Remote gateway.
-        std::unique_ptr<api::gateway_t> m_gateway;
 
         struct remote_t {
             std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
@@ -140,14 +98,12 @@ class locator_t {
         // disambiguate between different runtime instances on the same host.
         std::map<key_type, remote_t> m_remotes;
 
+        // Remote gateway.
+        std::unique_ptr<api::gateway_t> m_gateway;
+
         // Announce emitter.
         std::unique_ptr<io::socket<io::udp>> m_announce;
         std::unique_ptr<ev::timer> m_announce_timer;
-
-        struct synchronize_slot_t;
-
-        // Synchronizing slot.
-        std::shared_ptr<synchronize_slot_t> m_synchronizer;
 
         class router_t;
 

@@ -26,6 +26,9 @@
 
 #include "json/json.h"
 
+#include <mutex>
+#include <queue>
+
 #include <boost/optional.hpp>
 
 namespace cocaine {
@@ -111,10 +114,17 @@ public:
 // Context
 
 class actor_t;
-class locator_t;
+
+template<class T>
+struct reverse_priority_queue {
+    typedef std::priority_queue<T, std::vector<T>, std::greater<T>> type;
+};
 
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
+
+    struct memusage_action_t;
+    struct synchronization_t;
 
     public:
         context_t(config_t config, const std::string& logger);
@@ -129,18 +139,21 @@ class context_t {
 
         // Logging
 
-        logging::logger_concept_t&
-        logger() {
+        auto
+        logger() -> logging::logger_concept_t& {
             return *m_logger;
         }
 
-        // Locator
+        // Services
 
         void
         attach(const std::string& name, std::unique_ptr<actor_t>&& service);
 
         auto
         detach(const std::string& name) -> std::unique_ptr<actor_t>;
+
+        auto
+        locate(const std::string& name) const -> boost::optional<actor_t&>;
 
     public:
         const config_t config;
@@ -158,9 +171,24 @@ class context_t {
         // first without a logger, unfortunately.
         std::unique_ptr<logging::logger_concept_t> m_logger;
 
-        // NOTE: This is the magic service locator service. Has to be started first, stopped last,
-        // and always listens on a well-known port.
-        std::unique_ptr<locator_t> m_locator;
+        // Ports available for allocation.
+        reverse_priority_queue<uint16_t>::type m_ports;
+
+        typedef std::deque<
+            std::pair<std::string, std::unique_ptr<actor_t>>
+        > service_list_t;
+
+        // These are the instances of all the configured services, stored as a vector of pairs to
+        // preserve the initialization order.
+        service_list_t m_services;
+
+        // As, for example, the Node Service can manipulate service list from its actor thread, the
+        // service list access should be synchronized.
+        mutable std::mutex m_mutex;
+
+        // Synchronization object is responsible for tracking remote clients and sending them service
+        // configuration updates when necessary.
+        std::shared_ptr<synchronization_t> m_synchronization;
 };
 
 template<class Category, typename... Args>
