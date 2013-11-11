@@ -484,7 +484,7 @@ context_t::bootstrap() {
     m_services.emplace_front("locator", std::make_unique<actor_t>(
         *this,
         reactor,
-        std::move(locator)
+        std::unique_ptr<dispatch_t>(std::move(locator))
     ));
 
     try {
