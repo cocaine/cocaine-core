@@ -38,9 +38,9 @@ class node_t:
         virtual
        ~node_t();
 
-        virtual dispatch_t& prototype() {
-            return *this;
-        }
+        virtual
+        dispatch_t&
+        prototype();
 
     private:
         Json::Value

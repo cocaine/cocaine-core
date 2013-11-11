@@ -35,9 +35,9 @@ class logging_t:
     public:
         logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
 
-        virtual dispatch_t& prototype() {
-            return *this;
-        }
+        virtual
+        dispatch_t&
+        prototype();
 };
 
 }} // namespace cocaine::service

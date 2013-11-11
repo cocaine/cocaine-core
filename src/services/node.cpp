@@ -31,7 +31,9 @@
 
 #include <tuple>
 
+using namespace cocaine::io;
 using namespace cocaine::service;
+
 using namespace std::placeholders;
 
 namespace {
@@ -40,7 +42,7 @@ typedef std::map<std::string, std::string> runlist_t;
 
 }
 
-node_t::node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
+node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, const Json::Value& args):
     api::service_t(context, reactor, name, args),
     implementation<io::node_tag>(context, name),
     m_context(context),
@@ -86,6 +88,11 @@ node_t::~node_t() {
     }
 
     m_apps.clear();
+}
+
+dispatch_t&
+node_t::prototype() {
+    return *this;
 }
 
 Json::Value

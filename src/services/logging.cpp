@@ -26,10 +26,12 @@
 
 #include "cocaine/traits/enum.hpp"
 
+using namespace cocaine::io;
 using namespace cocaine::service;
+
 using namespace std::placeholders;
 
-logging_t::logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
+logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& name, const Json::Value& args):
     api::service_t(context, reactor, name, args),
     implementation<io::logging_tag>(context, name)
 {
@@ -41,3 +43,7 @@ logging_t::logging_t(context_t& context, io::reactor_t& reactor, const std::stri
     on<io::logging::verbosity>(std::bind(&logger_concept_t::verbosity, logger));
 }
 
+dispatch_t&
+logging_t::prototype() {
+    return *this;
+}

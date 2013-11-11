@@ -25,10 +25,12 @@
 #include "cocaine/context.hpp"
 #include "cocaine/messages.hpp"
 
+using namespace cocaine::io;
 using namespace cocaine::service;
+
 using namespace std::placeholders;
 
-storage_t::storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
+storage_t::storage_t(context_t& context, reactor_t& reactor, const std::string& name, const Json::Value& args):
     api::service_t(context, reactor, name, args),
     implementation<io::storage_tag>(context, name)
 {
@@ -38,4 +40,9 @@ storage_t::storage_t(context_t& context, io::reactor_t& reactor, const std::stri
     on<io::storage::write>(std::bind(&api::storage_t::write, storage, _1, _2, _3, _4));
     on<io::storage::remove>(std::bind(&api::storage_t::remove, storage, _1, _2));
     on<io::storage::find>(std::bind(&api::storage_t::find, storage, _1, _2));
+}
+
+dispatch_t&
+storage_t::prototype() {
+    return *this;
 }
