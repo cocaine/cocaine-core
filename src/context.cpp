@@ -51,6 +51,7 @@ using namespace std::placeholders;
 
 namespace fs = boost::filesystem;
 
+#include "report.inl"
 #include "synchronization.inl"
 
 const bool defaults::log_output              = false;
@@ -370,45 +371,6 @@ context_t::locate(const std::string& name) const -> boost::optional<actor_t&> {
     });
 
     return boost::optional<actor_t&>(it != m_services.end(), *it->second);
-}
-
-struct context_t::memusage_action_t {
-    typedef event_traits<io::locator::reports>::result_type result_type;
-
-    result_type
-    operator()() const;
-
-    const context_t& self;
-};
-
-auto
-context_t::memusage_action_t::operator()() const -> result_type {
-    result_type result;
-
-    std::lock_guard<std::mutex> guard(self.m_mutex);
-
-    for(auto it = self.m_services.begin(); it != self.m_services.end(); ++it) {
-        io::locator::reports::usage_report_type report;
-
-        // Get the usage counters from the service's actor.
-        const auto source = it->second->counters();
-
-        for(auto channel = source.footprints.begin(); channel != source.footprints.end(); ++channel) {
-            auto& endpoint = channel->first;
-            auto  consumed = channel->second;
-
-            // Convert I/O endpoints to endpoint tuples. That's the only reason why this function
-            // exists at all, as opposed to returning the counters as is.
-            report.insert({
-                io::locator::endpoint_tuple_type(endpoint.address().to_string(), endpoint.port()),
-                consumed
-            });
-        }
-
-        result[it->first] = std::make_tuple(source.sessions, report);
-    }
-
-    return result;
 }
 
 void
