@@ -46,12 +46,12 @@ struct dispatch_graph_t: public aux::recursion_base_t {
     dispatch_graph_t(const dispatch_graph_t& o): base_type(o) { }
     dispatch_graph_t(dispatch_graph_t&& o): base_type(std::move(o)) { }
 
-    dispatch_graph_t& operator=(const dispatch_graph_t& lhs) {
-        static_cast<base_type&>(*this) = lhs; return *this;
+    dispatch_graph_t& operator=(const dispatch_graph_t& rhs) {
+        static_cast<base_type&>(*this) = rhs; return *this;
     }
 
-    dispatch_graph_t& operator=(dispatch_graph_t&& lhs) {
-        static_cast<base_type&>(*this) = std::move(lhs); return *this;
+    dispatch_graph_t& operator=(dispatch_graph_t&& rhs) {
+        static_cast<base_type&>(*this) = std::move(rhs); return *this;
     }
 };
 
