@@ -20,61 +20,77 @@
 
 #include "cocaine/rpc/slots/deferred.hpp"
 
-using namespace cocaine::detail;
+using namespace cocaine;
+using namespace cocaine::io::detail;
 
-state_t::state_t():
-    m_packer(m_buffer),
-    m_completed(false),
-    m_failed(false)
-{ }
+struct shared_state_t::result_visitor_t:
+    public boost::static_visitor<void>
+{
+    result_visitor_t(const api::stream_ptr_t& upstream_):
+        upstream(upstream_)
+    { }
 
-void
-state_t::abort(int code, const std::string& reason) {
-    std::lock_guard<std::mutex> guard(m_mutex);
+    void
+    operator()(const value_type& value) const {
+        if(value.size) {
+            upstream->write(value.blob, value.size);
 
-    if(m_completed) {
-        return;
-    }
-
-    m_code = code;
-    m_reason = reason;
-
-    if(m_upstream) {
-        m_upstream->error(m_code, m_reason);
-        m_upstream->close();
-    }
-
-    m_failed = true;
-}
-
-void
-state_t::close() {
-    std::lock_guard<std::mutex> guard(m_mutex);
-
-    if(m_completed) {
-        return;
-    }
-
-    if(m_upstream) {
-        m_upstream->close();
-    }
-
-    m_completed = true;
-}
-
-void
-state_t::attach(const api::stream_ptr_t& upstream) {
-    std::lock_guard<std::mutex> guard(m_mutex);
-
-    m_upstream = upstream;
-
-    if(m_completed || m_failed) {
-        if(m_completed) {
-            m_upstream->write(m_buffer.data(), m_buffer.size());
-        } else if(m_failed) {
-            m_upstream->error(m_code, m_reason);
+            // This memory was allocated by msgpack::sbuffer and has to be freed.
+            free(value.blob);
         }
 
-        m_upstream->close();
+        upstream->close();
+    }
+
+    void
+    operator()(const error_type& error) const {
+        upstream->error(error.code, error.reason);
+        upstream->close();
+    }
+
+    void
+    operator()(const empty_type&) const {
+        upstream->close();
+    }
+
+private:
+    const api::stream_ptr_t& upstream;
+};
+
+void
+shared_state_t::abort(int code, const std::string& reason) {
+    std::lock_guard<std::mutex> guard(mutex);
+
+    if(!result.empty()) return;
+
+    result = error_type { code, reason };
+    flush();
+}
+
+void
+shared_state_t::close() {
+    std::lock_guard<std::mutex> guard(mutex);
+
+    if(!result.empty()) return;
+
+    result = empty_type();
+    flush();
+}
+
+void
+shared_state_t::attach(const api::stream_ptr_t& upstream_) {
+    std::lock_guard<std::mutex> guard(mutex);
+
+    upstream = upstream_;
+
+    if(!result.empty()) {
+        flush();
+    }
+}
+
+void
+shared_state_t::flush() {
+    if(upstream) {
+        boost::apply_visitor(result_visitor_t(upstream), result);
     }
 }

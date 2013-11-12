@@ -25,6 +25,8 @@
 
 #include <mutex>
 
+#include <boost/variant/variant.hpp>
+
 namespace cocaine { namespace io {
 
 // Deferred slot
@@ -53,100 +55,102 @@ struct deferred_slot:
 } // namespace io
 
 namespace detail {
-    struct state_t {
-        state_t();
 
-        template<class T>
-        void
-        write(const T& value) {
-            std::lock_guard<std::mutex> guard(m_mutex);
+struct shared_state_t {
+    template<class T>
+    void
+    write(const T& value) {
+        std::lock_guard<std::mutex> guard(mutex);
 
-            if(m_completed) {
-                return;
-            }
+        if(!result.empty()) return;
 
-            io::type_traits<T>::pack(m_packer, value);
+        msgpack::sbuffer buffer;
+        msgpack::packer<msgpack::sbuffer> packer(buffer);
 
-            if(m_upstream) {
-                m_upstream->write(m_buffer.data(), m_buffer.size());
-                m_upstream->close();
-            }
+        io::type_traits<T>::pack(packer, value);
 
-            m_completed = true;
-        }
+        result = value_type { buffer.size(), buffer.release() };
+        flush();
+    }
 
-        void
-        abort(int code, const std::string& reason);
+    void
+    abort(int code, const std::string& reason);
 
-        void
-        close();
+    void
+    close();
 
-        void
-        attach(const api::stream_ptr_t& upstream);
+    void
+    attach(const api::stream_ptr_t& upstream);
 
-    private:
-        msgpack::sbuffer m_buffer;
-        msgpack::packer<msgpack::sbuffer> m_packer;
+private:
+    void
+    flush();
 
-        int m_code;
-        std::string m_reason;
+private:
+    struct value_type { size_t size; char * blob; };
+    struct error_type { int code; std::string reason; };
+    struct empty_type { };
 
-        bool m_completed,
-             m_failed;
+    boost::variant<value_type, error_type, empty_type> result;
 
-        api::stream_ptr_t m_upstream;
-        std::mutex m_mutex;
-    };
-}
+    struct result_visitor_t;
+
+    // The upstream might be attached during state method invocation, so it has to be synchronized
+    // with a mutex - the atomicicity guarantee of the shared_ptr is not enough.
+    api::stream_ptr_t upstream;
+    std::mutex        mutex;
+};
+
+}} // namespace io::detail
 
 template<class T>
 struct deferred {
     deferred():
-        m_state(new detail::state_t())
+        state(new io::detail::shared_state_t())
     { }
 
     void
     attach(const api::stream_ptr_t& upstream) {
-        m_state->attach(upstream);
+        state->attach(upstream);
     }
 
     void
     write(const T& value) {
-        m_state->write(value);
+        state->write(value);
     }
 
     void
     abort(int code, const std::string& reason) {
-        m_state->abort(code, reason);
+        state->abort(code, reason);
     }
 
 private:
-    const std::shared_ptr<detail::state_t> m_state;
+    const std::shared_ptr<io::detail::shared_state_t> state;
 };
 
 template<>
 struct deferred<void> {
     deferred():
-        m_state(new detail::state_t())
+        state(new io::detail::shared_state_t())
     { }
 
     void
     attach(const api::stream_ptr_t& upstream) {
-        m_state->attach(upstream);
+        state->attach(upstream);
     }
 
     void
     close() {
-        m_state->close();
+        state->close();
     }
 
     void
     abort(int code, const std::string& reason) {
-        m_state->abort(code, reason);
+        state->abort(code, reason);
     }
 
 private:
-    const std::shared_ptr<detail::state_t> m_state;
+    const std::shared_ptr<io::detail::shared_state_t> state;
 };
 
 } // namespace cocaine
