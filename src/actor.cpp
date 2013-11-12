@@ -345,8 +345,8 @@ struct heartbeat_slot_t:
     operator()(const msgpack::object& /* unpacked */, const api::stream_ptr_t& upstream) {
         upstream->write(uuid.data(), uuid.size());
 
-        // Recursive protocol transition. If the service is destroyed, then we simply
-        // return an empty protocol dispatch, which is just fine.
+        // Recursive protocol transition. If the service is destroyed, then we simply return an empty
+        // protocol dispatch, which is just fine.
         return self.lock();
     };
 
