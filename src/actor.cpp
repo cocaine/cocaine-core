@@ -378,8 +378,8 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
 
     typedef implementation<io::presence_tag> presence_service_t;
 
-    auto session = std::make_shared<session_t>(std::move(ptr), m_prototype);
     auto service = std::make_shared<presence_service_t>(m_context, "service/presence");
+    auto session = std::make_shared<session_t>(std::move(ptr), m_prototype);
 
     service->on<io::presence::heartbeat>(std::make_shared<heartbeat_slot_t>(
         m_context.config.network.uuid,
