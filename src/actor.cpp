@@ -351,7 +351,7 @@ struct heartbeat_slot_t:
 
 private:
     const std::string& uuid;
-    const std::shared_ptr<dispatch_t>& self;
+    const std::shared_ptr<dispatch_t> self;
 };
 
 }
@@ -386,7 +386,7 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
     ));
 
     session->downstreams.insert({ 0, std::make_shared<session_t::downstream_t>(
-        service,
+        std::move(service),
         std::make_shared<upstream_t>(session, 0)
     )});
 
