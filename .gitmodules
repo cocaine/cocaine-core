@@ -1,3 +1,6 @@
 [submodule "foreign/backward-cpp"]
 	path = foreign/backward-cpp
 	url = git://github.com/bombela/backward-cpp.git
+[submodule "foreign/rapidjson"]
+	path = foreign/rapidjson
+	url = git://github.com/andrusha97/rapidjson.git
