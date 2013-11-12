@@ -52,8 +52,6 @@ struct deferred_slot:
     }
 };
 
-} // namespace io
-
 namespace detail {
 
 struct shared_state_t {
