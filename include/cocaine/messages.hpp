@@ -30,6 +30,39 @@
 
 namespace cocaine { namespace io {
 
+// Service presence control protocol
+
+namespace presence {
+
+struct heartbeat {
+    typedef presence_tag  tag;
+    typedef recursive_tag transition_type;
+
+    static
+    const char*
+    alias() {
+        return "heartbeat";
+    }
+
+    typedef
+     /* The UUID of the node, to detect the event of restart. */
+        std::string
+    result_type;
+};
+
+}
+
+template<>
+struct protocol<presence_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        presence::heartbeat
+    > type;
+};
+
 // Service locator interface
 
 namespace locator {
@@ -39,7 +72,9 @@ typedef std::tuple<std::string, uint16_t> endpoint_tuple_type;
 struct resolve {
     typedef locator_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "resolve";
     }
 
@@ -63,7 +98,9 @@ struct resolve {
 struct synchronize {
     typedef locator_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "synchronize";
     }
 
@@ -77,7 +114,9 @@ struct synchronize {
 struct reports {
     typedef locator_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "reports";
     }
 
@@ -95,7 +134,9 @@ struct reports {
 struct refresh {
     typedef locator_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "refresh";
     }
 
@@ -105,7 +146,7 @@ struct refresh {
     > tuple_type;
 };
 
-}
+} // namespace locator
 
 template<>
 struct protocol<locator_tag> {
@@ -180,7 +221,7 @@ struct choke {
     typedef rpc_tag tag;
 };
 
-}
+} // namespace rpc
 
 template<>
 struct protocol<rpc_tag> {
@@ -209,7 +250,9 @@ struct write {
     // Specifies that this slot doesn't switch the protocol dispatch.
     typedef recursive_tag transition_type;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "write";
     }
 
@@ -223,12 +266,14 @@ struct write {
 struct close {
     typedef streaming_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "close";
     }
 };
 
-}
+} // namespace streaming
 
 template<>
 struct protocol<streaming_tag> {
@@ -252,7 +297,9 @@ struct enqueue {
     // Allow clients to stream data into the apps.
     typedef streaming_tag transition_type;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "enqueue";
     }
 
@@ -273,12 +320,14 @@ struct enqueue {
 struct info {
     typedef app_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "info";
     }
 };
 
-}
+} // namespace app
 
 template<>
 struct protocol<app_tag> {
@@ -301,7 +350,9 @@ using cocaine::logging::priorities;
 struct emit {
     typedef logging_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "emit";
     }
 
@@ -321,7 +372,9 @@ struct emit {
 struct verbosity {
     typedef logging_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "verbosity";
     }
 
@@ -331,7 +384,7 @@ struct verbosity {
     result_type;
 };
 
-}
+} // namespace logging
 
 template<>
 struct protocol<logging_tag> {
@@ -352,7 +405,9 @@ namespace storage {
 struct read {
     typedef storage_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "read";
     }
 
@@ -374,7 +429,9 @@ struct read {
 struct write {
     typedef storage_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "write";
     }
 
@@ -394,7 +451,9 @@ struct write {
 struct remove {
     typedef storage_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "remove";
     }
 
@@ -410,7 +469,9 @@ struct remove {
 struct find {
     typedef storage_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "find";
     }
 
@@ -428,7 +489,7 @@ struct find {
     result_type;
 };
 
-}
+} // namespace storage
 
 template<>
 struct protocol<storage_tag> {
@@ -451,7 +512,9 @@ namespace node {
 struct start_app {
     typedef node_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "start_app";
     }
 
@@ -465,7 +528,9 @@ struct start_app {
 struct pause_app {
     typedef node_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "pause_app";
     }
 
@@ -478,12 +543,14 @@ struct pause_app {
 struct list {
     typedef node_tag tag;
 
-    static const char* alias() {
+    static
+    const char*
+    alias() {
         return "list";
     }
 };
 
-}
+} // namespace node
 
 template<>
 struct protocol<node_tag> {

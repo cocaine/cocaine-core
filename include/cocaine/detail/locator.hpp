@@ -77,6 +77,9 @@ class locator_t:
         void
         on_timeout(const key_type& key);
 
+        void
+        on_lifetap(const key_type& key);
+
     private:
         context_t& m_context;
 
@@ -91,6 +94,9 @@ class locator_t:
 
         struct remote_t {
             std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
+
+            // Remote node timers.
+            std::shared_ptr<io::timeout_t> lifetap;
             std::shared_ptr<io::timeout_t> timeout;
         };
 

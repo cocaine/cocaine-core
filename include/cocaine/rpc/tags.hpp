@@ -41,6 +41,7 @@ struct app_tag;
 struct locator_tag;
 struct logging_tag;
 struct node_tag;
+struct presence_tag;
 struct rpc_tag;
 struct storage_tag;
 struct streaming_tag;

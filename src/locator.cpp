@@ -222,76 +222,85 @@ locator_t::on_announce_event(ev::io&, int) {
         return;
     }
 
-    if(m_remotes.find(key) == m_remotes.end()) {
-        std::string uuid;
-        std::string hostname;
-        uint16_t    port;
-
-        std::tie(uuid, hostname, port) = key;
-
-        COCAINE_LOG_INFO(m_log, "discovered node '%s' on '%s:%d'", uuid, hostname, port);
-
-        std::vector<io::tcp::endpoint> endpoints;
-
-        try {
-            endpoints = io::resolver<io::tcp>::query(hostname, port);
-        } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to resolve node '%s' endpoints - [%d] %s", uuid, e.code().value(),
-                e.code().message());
-
-            return;
-        }
-
-        std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
-
-        for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
-            try {
-                channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
-                    m_reactor,
-                    std::make_shared<io::socket<io::tcp>>(*it)
-                );
-            } catch(const std::system_error& e) {
-                COCAINE_LOG_WARNING(m_log, "unable to connect to node '%s' via endpoint '%s' - [%d] %s", uuid, *it,
-                    e.code().value(), e.code().message());
-
-                continue;
-            }
-
-            break;
-        }
-
-        if(!channel) {
-            COCAINE_LOG_ERROR(m_log, "unable to connect to node '%s'", hostname);
-            return;
-        }
-
-        channel->rd->bind(
-            std::bind(&locator_t::on_message, this, key, _1),
-            std::bind(&locator_t::on_failure, this, key, _1)
-        );
-
-        channel->wr->bind(
-            std::bind(&locator_t::on_failure, this, key, _1)
-        );
-
-        auto timeout = std::make_shared<io::timeout_t>(m_reactor);
-
-        timeout->bind(
-            std::bind(&locator_t::on_timeout, this, key)
-        );
-
-        m_remotes[key] = remote_t {
-            channel,
-            timeout
-        };
-
-        channel->wr->write<io::locator::synchronize>(0UL);
+    if(m_remotes.find(key) != m_remotes.end()) {
+        return;
     }
 
-    COCAINE_LOG_DEBUG(m_log, "resetting the heartbeat timeout for node '%s'", std::get<0>(key));
+    std::string uuid;
+    std::string hostname;
+    uint16_t    port;
 
-    m_remotes[key].timeout->stop();
-    m_remotes[key].timeout->start(60.0f);
+    std::tie(uuid, hostname, port) = key;
+
+    COCAINE_LOG_INFO(m_log, "discovered node '%s' on '%s:%d'", uuid, hostname, port);
+
+    std::vector<io::tcp::endpoint> endpoints;
+
+    try {
+        endpoints = io::resolver<io::tcp>::query(hostname, port);
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to resolve node '%s' endpoints - [%d] %s", uuid, e.code().value(),
+            e.code().message());
+        return;
+    }
+
+    std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
+
+    for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
+        try {
+            channel = std::make_shared<io::channel<io::socket<io::tcp>>>(
+                m_reactor,
+                std::make_shared<io::socket<io::tcp>>(*it)
+            );
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_WARNING(m_log, "unable to connect to node '%s' via endpoint '%s' - [%d] %s", uuid, *it,
+                e.code().value(), e.code().message());
+            continue;
+        }
+
+        break;
+    }
+
+    if(!channel) {
+        COCAINE_LOG_ERROR(m_log, "unable to connect to node '%s'", hostname);
+        return;
+    }
+
+    channel->rd->bind(
+        std::bind(&locator_t::on_message, this, key, _1),
+        std::bind(&locator_t::on_failure, this, key, _1)
+    );
+
+    channel->wr->bind(
+        std::bind(&locator_t::on_failure, this, key, _1)
+    );
+
+    auto timeout = std::make_shared<io::timeout_t>(m_reactor);
+
+    timeout->bind(
+        std::bind(&locator_t::on_timeout, this, key)
+    );
+
+    // Give the node 60 seconds to respond.
+    timeout->start(60.0f);
+
+    auto lifetap = std::make_shared<io::timeout_t>(m_reactor);
+
+    lifetap->bind(
+        std::bind(&locator_t::on_lifetap, this, key)
+    );
+
+    // Poke the remote node every 5 seconds.
+    lifetap->start(0.0f, 5.0f);
+
+    m_remotes[key] = remote_t {
+        channel,
+        lifetap,
+        timeout
+    };
+
+    // Start the synchronization.
+    channel->wr->write<io::locator::synchronize>(1UL);
 }
 
 void
@@ -340,48 +349,65 @@ locator_t::on_message(const key_type& key, const message_t& message) {
 
     std::tie(uuid, std::ignore, std::ignore) = key;
 
-    switch(message.id()) {
-    case event_traits<io::rpc::chunk>::id: {
-        std::string chunk;
+    switch(message.band()) {
+    case 0UL: {
+        switch(message.id()) {
+        case event_traits<io::rpc::chunk>::id: {
+            COCAINE_LOG_DEBUG(m_log, "resetting heartbeat timeout for node '%s' to 60 seconds", uuid);
 
-        message.as<io::rpc::chunk>(chunk);
+            m_remotes[uuid].timeout->stop();
+            m_remotes[uuid].timeout->start(60.0f);
+        } break;
 
-        msgpack::unpacked unpacked;
-        msgpack::unpack(&unpacked, chunk.data(), chunk.size());
-
-        auto dump = unpacked.get().as<synchronize_result_type>();
-        auto diff = m_router->update_remote(uuid, dump);
-
-        for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
-            m_gateway->cleanup(uuid, it->first);
-        }
-
-        for(auto it = diff.first.begin(); it != diff.first.end(); ++it) {
-            m_gateway->consume(uuid, it->first, it->second);
+        default:
+            COCAINE_LOG_ERROR(m_log, "dropped unknown type %d presence control message", message.id());
         }
     } break;
 
-    case event_traits<io::rpc::error>::id:
-    case event_traits<io::rpc::choke>::id: {
-        COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
+    case 1UL: {
+        switch(message.id()) {
+        case event_traits<io::rpc::chunk>::id: {
+            std::string chunk;
 
-        auto removed = m_router->remove_remote(uuid);
+            message.as<io::rpc::chunk>(chunk);
 
-        for(auto it = removed.begin(); it != removed.end(); ++it) {
-            m_gateway->cleanup(uuid, it->first);
+            msgpack::unpacked unpacked;
+            msgpack::unpack(&unpacked, chunk.data(), chunk.size());
+
+            auto dump = unpacked.get().as<synchronize_result_type>();
+            auto diff = m_router->update_remote(uuid, dump);
+
+            for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
+                m_gateway->cleanup(uuid, it->first);
+            }
+
+            for(auto it = diff.first.begin(); it != diff.first.end(); ++it) {
+                m_gateway->consume(uuid, it->first, it->second);
+            }
+        } break;
+
+        case event_traits<io::rpc::error>::id:
+        case event_traits<io::rpc::choke>::id: {
+            COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
+
+            auto removed = m_router->remove_remote(uuid);
+
+            for(auto it = removed.begin(); it != removed.end(); ++it) {
+                m_gateway->cleanup(uuid, it->first);
+            }
+
+            // NOTE: It is dangerous to remove the channel while the message is still being
+            // processed, so we defer it via reactor_t::post().
+            m_reactor.post(deferred_erase_action<decltype(m_remotes)> {
+                m_remotes,
+                key
+            });
+        } break;
+
+        default:
+            COCAINE_LOG_ERROR(m_log, "dropped unknown type %d synchronization message", message.id());
         }
-
-        // NOTE: It is dangerous to remove the channel while the message is still being
-        // processed, so we defer it via reactor_t::post().
-        m_reactor.post(deferred_erase_action<decltype(m_remotes)> {
-            m_remotes,
-            key
-        });
-    } break;
-
-    default:
-        COCAINE_LOG_ERROR(m_log, "dropped unknown type %d synchronization message", message.id());
-    }
+    }}
 }
 
 void
@@ -422,4 +448,15 @@ locator_t::on_timeout(const key_type& key) {
 
     // NOTE: Safe to do since timeouts are not related to I/O.
     m_remotes.erase(key);
+}
+
+void
+locator_t::on_lifetap(const key_type& key) {
+    std::string uuid;
+
+    std::tie(uuid, std::ignore, std::ignore) = key;
+
+    COCAINE_LOG_DEBUG(m_log, "requesting a heartbeat from node '%s'", uuid);
+
+    m_remotes[uuid].channel->wr->write<io::presence::heartbeat>(0UL);
 }
