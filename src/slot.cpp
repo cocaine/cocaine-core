@@ -24,7 +24,7 @@
 #include <boost/variant/apply_visitor.hpp>
 
 using namespace cocaine;
-using namespace cocaine::io::detail;
+using namespace cocaine::io::aux;
 
 struct shared_state_t::result_visitor_t:
     public boost::static_visitor<void>

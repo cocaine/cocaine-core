@@ -53,7 +53,7 @@ struct deferred_slot:
     }
 };
 
-namespace detail {
+namespace aux {
 
 struct shared_state_t {
     template<class T>
@@ -92,7 +92,7 @@ private:
 
 private:
     struct unassigned { };
-    struct value_type { size_t size; char * blob; };
+    struct value_type { size_t size; char* blob; };
     struct error_type { int code; std::string reason; };
     struct empty_type { };
 
@@ -111,7 +111,7 @@ private:
 template<class T>
 struct deferred {
     deferred():
-        state(new io::detail::shared_state_t())
+        state(new io::aux::shared_state_t())
     { }
 
     void
@@ -130,13 +130,13 @@ struct deferred {
     }
 
 private:
-    const std::shared_ptr<io::detail::shared_state_t> state;
+    const std::shared_ptr<io::aux::shared_state_t> state;
 };
 
 template<>
 struct deferred<void> {
     deferred():
-        state(new io::detail::shared_state_t())
+        state(new io::aux::shared_state_t())
     { }
 
     void
@@ -155,7 +155,7 @@ struct deferred<void> {
     }
 
 private:
-    const std::shared_ptr<io::detail::shared_state_t> state;
+    const std::shared_ptr<io::aux::shared_state_t> state;
 };
 
 } // namespace cocaine
