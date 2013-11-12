@@ -131,7 +131,7 @@ dispatch_t::on(const F& callable, typename std::enable_if<!aux::is_slot<F>::valu
         Event
     >::type slot_type;
 
-    on<Event>(std::make_shared<slot_type>(callable));
+    on<Event>(std::make_shared<slot_type>(callable, std::shared_ptr<dispatch_t>()));
 }
 
 template<class Event>
@@ -151,8 +151,15 @@ dispatch_t::on(const std::shared_ptr<detail::slot_concept_t>& ptr) {
 template<class Event>
 void
 dispatch_t::forget() {
+    const int id = event_traits<Event>::id;
+
     std::lock_guard<std::mutex> guard(m_mutex);
-    m_slots.erase(event_traits<Event>::id);
+
+    if(m_slots.find(id) == m_slots.end()) {
+        throw cocaine::error_t("slot %d does not exist", id);
+    }
+
+    m_slots.erase(id);
 }
 
 } // namespace io
