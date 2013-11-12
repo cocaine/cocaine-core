@@ -34,6 +34,11 @@ struct shared_state_t::result_visitor_t:
     { }
 
     void
+    operator()(const unassigned&) const {
+        // Empty.
+    }
+
+    void
     operator()(const value_type& value) const {
         if(value.size) {
             upstream->write(value.blob, value.size);
@@ -64,7 +69,7 @@ void
 shared_state_t::abort(int code, const std::string& reason) {
     std::lock_guard<std::mutex> guard(mutex);
 
-    if(!result.empty()) return;
+    if(!boost::get<unassigned>(&result)) return;
 
     result = error_type { code, reason };
     flush();
@@ -74,7 +79,7 @@ void
 shared_state_t::close() {
     std::lock_guard<std::mutex> guard(mutex);
 
-    if(!result.empty()) return;
+    if(!boost::get<unassigned>(&result)) return;
 
     result = empty_type();
     flush();
@@ -84,9 +89,11 @@ void
 shared_state_t::attach(const api::stream_ptr_t& upstream_) {
     std::lock_guard<std::mutex> guard(mutex);
 
+    BOOST_ASSERT(!upstream && upstream_);
+
     upstream = upstream_;
 
-    if(!result.empty()) {
+    if(!boost::get<unassigned>(&result)) {
         flush();
     }
 }

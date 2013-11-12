@@ -25,6 +25,7 @@
 
 #include <mutex>
 
+#include <boost/variant/get.hpp>
 #include <boost/variant/variant.hpp>
 
 namespace cocaine { namespace io {
@@ -60,7 +61,7 @@ struct shared_state_t {
     write(const T& value) {
         std::lock_guard<std::mutex> guard(mutex);
 
-        if(!result.empty()) return;
+        if(!boost::get<unassigned>(&result)) return;
 
         msgpack::sbuffer buffer;
         msgpack::packer<msgpack::sbuffer> packer(buffer);
@@ -90,11 +91,12 @@ private:
     flush();
 
 private:
+    struct unassigned { };
     struct value_type { size_t size; char * blob; };
     struct error_type { int code; std::string reason; };
     struct empty_type { };
 
-    boost::variant<value_type, error_type, empty_type> result;
+    boost::variant<unassigned, value_type, error_type, empty_type> result;
 
     struct result_visitor_t;
 
