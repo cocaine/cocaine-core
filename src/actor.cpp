@@ -332,23 +332,26 @@ actor_t::counters() const -> counters_t {
 
 namespace {
 
-struct presence_control_t:
-    implementation<io::presence_tag>
+struct heartbeat_slot_t:
+    public basic_slot<io::presence::heartbeat>
 {
-    presence_control_t(context_t& context):
-        implementation<io::presence_tag>(context, "service/presence"),
-        uuid(context.config.network.uuid)
-    {
-        on<io::presence::heartbeat>(std::bind(&presence_control_t::heartbeat, this));
-    }
+    heartbeat_slot_t(const std::string& uuid_, const std::shared_ptr<dispatch_t>& self_):
+        uuid(uuid_),
+        self(self_)
+    { }
 
-    std::string
-    heartbeat() const {
-        return uuid;
-    }
+    virtual
+    std::shared_ptr<dispatch_t>
+    operator()(const msgpack::object& /* unpacked */, const api::stream_ptr_t& upstream) {
+        upstream->write(uuid.data(), uuid.size());
+
+        // Recursive protocol transition.
+        return self;
+    };
 
 private:
     const std::string& uuid;
+    const std::shared_ptr<dispatch_t>& self;
 };
 
 }
@@ -372,10 +375,18 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
         std::bind(&actor_t::on_failure, this, fd, _1)
     );
 
+    typedef implementation<io::presence_tag> presence_service_t;
+
     auto session = std::make_shared<session_t>(std::move(ptr), m_prototype);
+    auto service = std::make_shared<presence_service_t>(m_context, "service/presence");
+
+    service->on<io::presence::heartbeat>(std::make_shared<heartbeat_slot_t>(
+        m_context.config.network.uuid,
+        service
+    ));
 
     session->downstreams.insert({ 0, std::make_shared<session_t::downstream_t>(
-        std::make_shared<presence_control_t>(m_context),
+        service,
         std::make_shared<upstream_t>(session, 0)
     )});
 
