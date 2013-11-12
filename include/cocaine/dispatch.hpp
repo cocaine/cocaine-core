@@ -131,7 +131,7 @@ dispatch_t::on(const F& callable, typename std::enable_if<!aux::is_slot<F>::valu
         Event
     >::type slot_type;
 
-    on<Event>(std::make_shared<slot_type>(callable, std::shared_ptr<dispatch_t>()));
+    on<Event>(std::make_shared<slot_type>(callable));
 }
 
 template<class Event>
