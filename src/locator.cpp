@@ -355,8 +355,8 @@ locator_t::on_message(const key_type& key, const message_t& message) {
         case event_traits<io::rpc::chunk>::id: {
             COCAINE_LOG_DEBUG(m_log, "resetting heartbeat timeout for node '%s' to 60 seconds", uuid);
 
-            m_remotes[uuid].timeout->stop();
-            m_remotes[uuid].timeout->start(60.0f);
+            m_remotes[key].timeout->stop();
+            m_remotes[key].timeout->start(60.0f);
         } break;
 
         default:
@@ -458,5 +458,5 @@ locator_t::on_lifetap(const key_type& key) {
 
     COCAINE_LOG_DEBUG(m_log, "requesting a heartbeat from node '%s'", uuid);
 
-    m_remotes[uuid].channel->wr->write<io::presence::heartbeat>(0UL);
+    m_remotes[key].channel->wr->write<io::presence::heartbeat>(0UL);
 }

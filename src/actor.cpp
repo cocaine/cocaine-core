@@ -330,6 +330,29 @@ actor_t::counters() const -> counters_t {
     return result;
 }
 
+namespace {
+
+struct presence_control_t:
+    implementation<io::presence_tag>
+{
+    presence_control_t(context_t& context):
+        implementation<io::presence_tag>(context, "service/presence"),
+        uuid(context.config.network.uuid)
+    {
+        on<io::presence::heartbeat>(std::bind(&presence_control_t::heartbeat, this));
+    }
+
+    std::string
+    heartbeat() const {
+        return uuid;
+    }
+
+private:
+    const std::string& uuid;
+};
+
+}
+
 void
 actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
     const int fd = socket_->fd();
@@ -350,25 +373,6 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
     );
 
     auto session = std::make_shared<session_t>(std::move(ptr), m_prototype);
-
-    struct presence_control_t:
-        implementation<io::presence_tag>
-    {
-        presence_control_t(context_t& context):
-            implementation<io::presence_tag>(context, "service/presence"),
-            uuid(context.config.network.uuid)
-        {
-            on<io::presence::heartbeat>(std::bind(&presence_control_t::heartbeat, this));
-        }
-
-        std::string
-        heartbeat() const {
-            return uuid;
-        }
-
-    private:
-        const std::string& uuid;
-    };
 
     session->downstreams.insert({ 0, std::make_shared<session_t::downstream_t>(
         std::make_shared<presence_control_t>(m_context),
