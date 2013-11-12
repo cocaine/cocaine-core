@@ -215,8 +215,8 @@ struct function_slot:
         m_callable(callable)
     { }
 
-    R call(const msgpack::object& packed) const {
-        return detail::invoke<tuple_type>::apply(m_callable, packed);
+    R call(const msgpack::object& unpacked) const {
+        return detail::invoke<tuple_type>::apply(m_callable, unpacked);
     }
 
 private:
