@@ -158,9 +158,9 @@ dynamic_t::dynamic_t() :
 }
 
 dynamic_t::dynamic_t(const dynamic_t& other) :
-    m_value(other.m_value)
+    m_value(null_t())
 {
-    // pass
+    other.apply(assign_visitor(*this));
 }
 
 dynamic_t::dynamic_t(dynamic_t&& other) :
