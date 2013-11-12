@@ -30,7 +30,7 @@
 
 namespace cocaine { namespace io {
 
-// Service presence control protocol
+// Service presence control interface
 
 namespace presence {
 
@@ -50,7 +50,7 @@ struct heartbeat {
     result_type;
 };
 
-}
+} // namespace presence
 
 template<>
 struct protocol<presence_tag> {
@@ -287,7 +287,7 @@ struct protocol<streaming_tag> {
     >::type type;
 };
 
-// App service interface
+// App invocation service interface
 
 namespace app {
 
