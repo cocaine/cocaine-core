@@ -67,7 +67,12 @@ struct shared_state_t {
 
         io::type_traits<T>::pack(packer, value);
 
-        result = value_type { buffer.size(), buffer.release() };
+        value_type serialized;
+
+        serialized.size = buffer.size();
+        serialized.blob = buffer.release();
+
+        result = serialized;
         flush();
     }
 
