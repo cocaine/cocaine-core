@@ -91,7 +91,7 @@ struct ignore {
     }
 };
 
-}
+} // namespace
 
 slave_t::slave_t(context_t& context, reactor_t& reactor, const manifest_t& manifest, const profile_t& profile, const std::string& id, engine_t& engine):
     m_context(context),
@@ -583,7 +583,7 @@ struct detach_with {
     const std::string message;
 };
 
-}
+} // namespace
 
 void
 slave_t::terminate(int code, const std::string& reason) {

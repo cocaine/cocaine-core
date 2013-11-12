@@ -67,7 +67,7 @@ struct ignore {
     }
 };
 
-}
+} // namespace
 
 engine_t::engine_t(context_t& context,
                    const std::shared_ptr<reactor_t>& reactor,
@@ -329,7 +329,7 @@ private:
     > m_accumulator;
 };
 
-}
+} // namespace
 
 void
 engine_t::on_control(const message_t& message) {
@@ -430,7 +430,7 @@ min_element_if(It first, It last, Compare compare, Predicate predicate) {
     return result;
 }
 
-}
+} // namespace
 
 void
 engine_t::pump() {

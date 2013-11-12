@@ -58,7 +58,7 @@ const char* describe[] = {
     "DEBUG"
 };
 
-}
+} // namespace
 
 void
 files_t::emit(logging::priorities priority, const std::string& source, const std::string& message) {

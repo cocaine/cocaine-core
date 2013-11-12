@@ -285,7 +285,7 @@ struct match {
     const std::string& name;
 };
 
-}
+} // namespace
 
 void
 context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {

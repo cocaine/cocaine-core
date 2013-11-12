@@ -89,7 +89,7 @@ private:
     const int m_stdout;
 };
 
-}
+} // namespace
 
 process_t::process_t(context_t& context, const std::string& name, const Json::Value& args):
     category_type(context, name, args),

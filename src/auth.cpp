@@ -89,7 +89,7 @@ struct dispose_t {
     }
 };
 
-}
+} // namespace
 
 auth_t::~auth_t() {
     std::for_each(m_keys.begin(), m_keys.end(), dispose_t());

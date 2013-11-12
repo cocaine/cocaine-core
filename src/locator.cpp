@@ -341,7 +341,7 @@ struct deferred_erase_action {
     const key_type  key;
 };
 
-}
+} // namespace
 
 void
 locator_t::on_message(const key_type& key, const message_t& message) {

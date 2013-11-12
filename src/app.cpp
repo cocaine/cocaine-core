@@ -311,7 +311,7 @@ namespace {
                 message.as<Event>(std::forward<Args>(args)...);
             }
         };
-    }
+    } // namespace detail
 
     template<class TypeList>
     struct fold {
@@ -384,7 +384,7 @@ namespace {
         reactor_t& m_reactor;
         tuple_type m_tuple;
     };
-}
+} // namespace
 
 void
 app_t::stop() {

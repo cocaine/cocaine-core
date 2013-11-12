@@ -165,7 +165,7 @@ private:
     stack_t m_alt_stack;
 };
 
-}
+} // namespace
 
 int
 main(int argc, char* argv[]) {

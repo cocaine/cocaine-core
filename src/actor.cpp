@@ -252,7 +252,7 @@ struct named_runnable {
     const std::shared_ptr<reactor_t>& reactor;
 };
 
-}
+} // namespace
 
 void
 actor_t::run(std::vector<tcp::endpoint> endpoints) {
@@ -355,7 +355,7 @@ private:
     const std::weak_ptr<dispatch_t> self;
 };
 
-}
+} // namespace
 
 void
 actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {

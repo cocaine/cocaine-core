@@ -176,7 +176,7 @@ struct intersect {
     }
 };
 
-}
+} // namespace
 
 std::vector<std::string>
 files_t::find(const std::string& collection, const std::vector<std::string>& tags) {

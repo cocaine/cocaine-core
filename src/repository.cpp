@@ -48,7 +48,7 @@ struct lt_dlclose_action {
     }
 };
 
-}
+} // namespace
 
 repository_t::~repository_t() {
     // Destroy all the factories.
@@ -71,7 +71,7 @@ struct validate_t {
     }
 };
 
-}
+} // namespace
 
 void
 repository_t::load(const std::string& path_) {
