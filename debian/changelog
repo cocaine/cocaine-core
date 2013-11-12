@@ -1,3 +1,25 @@
+cocaine-core (0.12.0.0) unstable; urgency=low
+
+  * Protocol transitions. Service protocols can now specify state transitions
+    to support dispatch hierarchies. For example, storage protocol can
+    implement a write_stream() method, which switches to stream protocol on
+    invocation, or Chrono Service can implement a cancellable_timeout() method
+    by switching to a cancellable protocol.
+  * App streaming interface. Clients can stream data chunks into the app now,
+    as opposed to sending a single request chunk along with the enqueue()
+    method invocation.
+  * Locator is now a proper service, without any special treatment. Local
+    service management is a responsibility of the Context.
+  * Remote node presence is now controlled via a Service Presence Control
+    protocol, which is always dispatched on every connection on Stream 0. This
+    is a breaking change, as the clients have to base user stream indexing on
+    one instead of zero.
+  * Bugfix: the hostname can now be configured manually, in case something is
+    broken with the local resolver.
+  * Bugfix: a more reasonable default value for grow-threshold.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 12 Nov 2013 17:40:29 +0400
+
 cocaine-core (0.11.0.0) unstable; urgency=low
 
   * Docker (http://docker.io) containerization support.
