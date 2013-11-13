@@ -18,13 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_STORAGE_SERVICE_HPP
-#define COCAINE_STORAGE_SERVICE_HPP
+#ifndef COCAINE_STORAGE_SERVICE_INTERFACE_HPP
+#define COCAINE_STORAGE_SERVICE_INTERFACE_HPP
 
-#include "cocaine/api/service.hpp"
-#include "cocaine/api/storage.hpp"
-
-#include "cocaine/dispatch.hpp"
 #include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
@@ -137,21 +133,5 @@ struct protocol<storage_tag> {
 };
 
 }} // namespace cocaine::io
-
-namespace cocaine { namespace service {
-
-class storage_t:
-    public api::service_t,
-    public implementation<io::storage_tag>
-{
-    public:
-        storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
-
-        virtual
-        dispatch_t&
-        prototype();
-};
-
-}} // namespace cocaine::service
 
 #endif

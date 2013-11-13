@@ -18,12 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_NODE_SERVICE_HPP
-#define COCAINE_NODE_SERVICE_HPP
+#ifndef COCAINE_NODE_SERVICE_INTERFACE_HPP
+#define COCAINE_NODE_SERVICE_INTERFACE_HPP
 
-#include "cocaine/api/service.hpp"
-
-#include "cocaine/dispatch.hpp"
 #include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
@@ -163,47 +160,5 @@ struct protocol<node_tag> {
 };
 
 }} // namespace cocaine::io
-
-namespace cocaine { namespace service {
-
-class node_t:
-    public api::service_t,
-    public implementation<io::node_tag>
-{
-    public:
-        node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
-
-        virtual
-       ~node_t();
-
-        virtual
-        dispatch_t&
-        prototype();
-
-    private:
-        Json::Value
-        on_start_app(const std::map<std::string, std::string>& runlist);
-
-        Json::Value
-        on_pause_app(const std::vector<std::string>& applist);
-
-        Json::Value
-        on_list() const;
-
-    private:
-        context_t& m_context;
-
-        const std::unique_ptr<logging::log_t> m_log;
-
-        typedef std::map<
-            std::string,
-            std::shared_ptr<app_t>
-        > app_map_t;
-
-        // Apps.
-        app_map_t m_apps;
-};
-
-}} // namespace cocaine::service
 
 #endif

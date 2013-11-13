@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/services/node.hpp"
+#include "cocaine/detail/services/node.hpp"
 
 #include "cocaine/api/storage.hpp"
 

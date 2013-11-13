@@ -18,31 +18,29 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/logging.hpp"
+#ifndef COCAINE_LOGGING_SERVICE_HPP
+#define COCAINE_LOGGING_SERVICE_HPP
 
-#include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
+#include "cocaine/api/service.hpp"
 
-#include "cocaine/traits/enum.hpp"
+#include "cocaine/dispatch.hpp"
 
-using namespace cocaine::io;
-using namespace cocaine::service;
+#include "cocaine/services/logging.hpp"
 
-using namespace std::placeholders;
+namespace cocaine { namespace service {
 
-logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& name, const Json::Value& args):
-    api::service_t(context, reactor, name, args),
-    implementation<io::logging_tag>(context, name)
+class logging_t:
+    public api::service_t,
+    public implementation<io::logging_tag>
 {
-    auto logger = std::ref(context.logger());
+    public:
+        logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
 
-    using cocaine::logging::logger_concept_t;
+        virtual
+        dispatch_t&
+        prototype();
+};
 
-    on<io::logging::emit>(std::bind(&logger_concept_t::emit, logger, _1, _2, _3));
-    on<io::logging::verbosity>(std::bind(&logger_concept_t::verbosity, logger));
-}
+}} // namespace cocaine::service
 
-dispatch_t&
-logging_t::prototype() {
-    return *this;
-}
+#endif

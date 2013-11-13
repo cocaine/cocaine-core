@@ -18,12 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_LOGGING_SERVICE_HPP
-#define COCAINE_LOGGING_SERVICE_HPP
+#ifndef COCAINE_LOGGING_SERVICE_INTERFACE_HPP
+#define COCAINE_LOGGING_SERVICE_INTERFACE_HPP
 
-#include "cocaine/api/service.hpp"
-
-#include "cocaine/dispatch.hpp"
 #include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
@@ -86,21 +83,5 @@ struct protocol<logging_tag> {
 };
 
 }} // namespace cocaine::io
-
-namespace cocaine { namespace service {
-
-class logging_t:
-    public api::service_t,
-    public implementation<io::logging_tag>
-{
-    public:
-        logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
-
-        virtual
-        dispatch_t&
-        prototype();
-};
-
-}} // namespace cocaine::service
 
 #endif

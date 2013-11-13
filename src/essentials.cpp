@@ -24,11 +24,10 @@
 #include "cocaine/detail/gateways/adhoc.hpp"
 #include "cocaine/detail/loggers/files.hpp"
 #include "cocaine/detail/loggers/syslog.hpp"
+#include "cocaine/detail/services/logging.hpp"
+#include "cocaine/detail/services/node.hpp"
+#include "cocaine/detail/services/storage.hpp"
 #include "cocaine/detail/storages/files.hpp"
-
-#include "cocaine/services/logging.hpp"
-#include "cocaine/services/node.hpp"
-#include "cocaine/services/storage.hpp"
 
 #include "cocaine/detail/essentials.hpp"
 
