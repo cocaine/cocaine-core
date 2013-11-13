@@ -37,6 +37,8 @@ class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
 
     public:
+        struct session_t;
+
         actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::dispatch_t>&& prototype);
         actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t>&& service);
 
@@ -84,9 +86,6 @@ class actor_t {
         const std::shared_ptr<io::reactor_t> m_reactor;
 
         // Actor I/O sessions
-
-        struct session_t;
-        struct upstream_t;
 
         std::map<
             int,

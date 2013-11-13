@@ -48,8 +48,44 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
+namespace {
+
+template<class Tag>
+class torrent {
+    struct states {
+        enum values: int { active, sealed };
+    };
+
+    // NOTE: Sealed streams ignore any messages. At some point it might change to some kind of
+    // exception or some other explicit way to show that the operation won't be completed.
+    typename states::values state;
+
+    const std::shared_ptr<actor_t::session_t> session;
+    const uint64_t tag;
+
+public:
+    torrent(const std::shared_ptr<actor_t::session_t>& session_, uint64_t tag_):
+        state(states::active),
+        session(session_),
+        tag(tag_)
+    { }
+
+    template<class Event, typename... Args>
+    void
+    send(Args&&... args);
+
+    template<class Event, typename... Args>
+    void
+    seal(Args&&... args);
+};
+
+} // namespace
+
 struct actor_t::session_t {
     friend class actor_t;
+
+    // TODO: Friend class templates don't work here for some reason, find out why.
+    friend class torrent<io::rpc_tag>;
 
     session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<dispatch_t>& prototype_):
         ptr(std::move(ptr_)),
@@ -63,143 +99,155 @@ struct actor_t::session_t {
 
 private:
     void
-    invoke(const message_t& message, const std::shared_ptr<session_t>& self) {
-        std::shared_ptr<downstream_t> downstream;
-
-        {
-            std::lock_guard<std::mutex> guard(mutex);
-
-            auto it = downstreams.find(message.band());
-
-            if(it == downstreams.end()) {
-                std::tie(it, std::ignore) = downstreams.insert({ message.band(), std::make_shared<downstream_t>(
-                    prototype,
-                    std::make_shared<upstream_t>(self, message.band())
-                )});
-            }
-
-            // NOTE: The downstream pointer is copied here so that if the slot decides to close the
-            // downstream, it won't destroy it inside the downstream_t::invoke(). Instead, it will
-            // be destroyed when this function scope is exited, liberating us from thinking of some
-            // voodoo magic to handle it.
-            downstream = it->second;
-        }
-
-        downstream->invoke(message);
-    }
+    invoke(const message_t& message, const std::shared_ptr<session_t>& self);
 
     void
-    destroy() {
-        std::lock_guard<std::mutex> guard(mutex);
-
-        // This closes all the downstreams.
-        downstreams.clear();
-
-        // NOTE: This invalidates the internal channel pointer, but the wrapping lockable state
-        // might still be accessible via upstreams in other threads.
-        ptr.reset();
-    }
+    revoke();
 
 private:
     std::unique_ptr<io::channel<io::socket<io::tcp>>> ptr;
     std::mutex mutex;
 
-    // Root dispatch
-
+    // Root dispatch.
     const std::shared_ptr<dispatch_t> prototype;
 
-    // Downstreams
+    struct upstream_t;
+    struct downstream_t;
 
-    struct downstream_t {
-        downstream_t(const std::shared_ptr<dispatch_t>& d, const std::shared_ptr<upstream_t>& u):
-            dispatch(d),
-            upstream(u)
-        { }
-
-        void
-        invoke(const message_t& message);
-
-        // Active protocol for this downstream.
-        std::shared_ptr<dispatch_t> dispatch;
-
-        // As of now, all clients are considered using the single streaming protocol, so upstreams
-        // don't change when the downstream protocol is switched over.
-        std::shared_ptr<upstream_t> upstream;
-    };
-
+    // Streams.
     std::map<uint64_t, std::shared_ptr<downstream_t>> downstreams;
 };
 
-struct actor_t::upstream_t:
+struct actor_t::session_t::upstream_t:
+    public torrent<io::rpc_tag>,
     public api::stream_t
 {
     upstream_t(const std::shared_ptr<session_t>& session, uint64_t tag):
-        m_state(state::open),
-        m_session(session),
-        m_tag(tag)
+        torrent<io::rpc_tag>(session, tag)
     { }
 
     virtual
     void
     write(const char* chunk, size_t size) {
-        std::lock_guard<std::mutex> guard(m_session->mutex);
-
-        if(m_state == state::open && m_session->ptr) {
-            m_session->ptr->wr->write<rpc::chunk>(m_tag, literal { chunk, size });
-        }
+        send<rpc::chunk>(literal { chunk, size });
     }
 
     virtual
     void
     error(int code, const std::string& reason) {
-        std::lock_guard<std::mutex> guard(m_session->mutex);
-
-        if(m_state == state::open && m_session->ptr) {
-            m_session->ptr->wr->write<rpc::error>(m_tag, code, reason);
-        }
+        send<rpc::error>(code, reason);
     }
 
     virtual
     void
     close() {
-        std::lock_guard<std::mutex> guard(m_session->mutex);
+        seal<rpc::choke>();
+    }
+};
 
-        if(m_state == state::open) {
-            if(m_session->ptr) {
-                m_session->ptr->wr->write<rpc::choke>(m_tag);
-            }
+struct actor_t::session_t::downstream_t {
+    downstream_t(const std::shared_ptr<dispatch_t>& dispatch_, const std::shared_ptr<upstream_t>& upstream_):
+        dispatch(dispatch_),
+        upstream(upstream_)
+    { }
 
-            // Destroys the session with the given tag in the stream, so that new requests might
-            // reuse the tag in the future.
-            m_session->detach(m_tag);
-
-            m_state = state::closed;
+    void
+    invoke(const message_t& message) {
+        try {
+            if(!dispatch)
+                // TODO: COCAINE-82 changes to 'client' error category.
+                throw cocaine::error_t("downstream has been closed");
+            dispatch = dispatch->invoke(message, upstream);
+        } catch(const std::exception& e) {
+            // TODO: COCAINE-82 changes to a category-based exception serialization.
+            upstream->error(invocation_error, e.what());
+            upstream->close();
         }
     }
 
-private:
-    struct state {
-        enum value: int { open, closed };
-    };
+    // Active protocol for this downstream.
+    std::shared_ptr<dispatch_t> dispatch;
 
-    // Upstream state.
-    state::value m_state;
-
-    const std::shared_ptr<session_t> m_session;
-    const uint64_t m_tag;
+    // As of now, all clients are considered using the single streaming protocol, so upstreams
+    // don't change when the downstream protocol is switched over.
+    std::shared_ptr<upstream_t> upstream;
 };
 
 void
-actor_t::session_t::downstream_t::invoke(const message_t& message) {
-    try {
-        if(!dispatch)
-            // TODO: COCAINE-82 changes to 'client' error category.
-            throw cocaine::error_t("downstream has been closed");
-        dispatch = dispatch->invoke(message, upstream);
-    } catch(const std::exception& e) {
-        // TODO: COCAINE-82 changes to a category-based exception serialization.
-        upstream->error(invocation_error, e.what());
-        upstream->close();
+actor_t::session_t::invoke(const message_t& message, const std::shared_ptr<session_t>& self) {
+    std::shared_ptr<downstream_t> downstream;
+
+    {
+        std::lock_guard<std::mutex> guard(mutex);
+
+        auto it = downstreams.find(message.band());
+
+        if(it == downstreams.end()) {
+            std::tie(it, std::ignore) = downstreams.insert({ message.band(), std::make_shared<downstream_t>(
+                prototype,
+                std::make_shared<upstream_t>(self, message.band())
+            )});
+        }
+
+        // NOTE: The downstream pointer is copied here so that if the slot decides to close the
+        // downstream, it won't destroy it inside the downstream_t::invoke(). Instead, it will
+        // be destroyed when this function scope is exited, liberating us from thinking of some
+        // voodoo magic to handle it.
+        downstream = it->second;
+    }
+
+    downstream->invoke(message);
+}
+
+void
+actor_t::session_t::revoke() {
+    std::lock_guard<std::mutex> guard(mutex);
+
+    // This closes all the downstreams.
+    downstreams.clear();
+
+    // NOTE: This invalidates and closes the internal channel pointer, but the session itself
+    // might still be accessible via upstreams in other threads, but that's okay.
+    ptr.reset();
+}
+
+template<class Tag>
+template<class Event, typename... Args>
+void
+torrent<Tag>::send(Args&&... args) {
+    static_assert(
+        boost::mpl::contains<typename protocol<Tag>::type, Event>::value,
+        "event has not been registered with the protocol"
+    );
+
+    std::lock_guard<std::mutex> guard(session->mutex);
+
+    if(state == states::active && session->ptr) {
+        session->ptr->wr->write<Event>(tag, std::forward<Args>(args)...);
+    }
+}
+
+template<class Tag>
+template<class Event, typename... Args>
+void
+torrent<Tag>::seal(Args&&... args) {
+    static_assert(
+        boost::mpl::contains<typename protocol<Tag>::type, Event>::value,
+        "event has not been registered with the protocol"
+    );
+
+    std::lock_guard<std::mutex> guard(session->mutex);
+
+    if(state == states::active) {
+        if(session->ptr) {
+            session->ptr->wr->write<Event>(tag, std::forward<Args>(args)...);
+        }
+
+        // Destroys the session with the given tag in the stream, so that new requests might reuse
+        // the torrent tag in the future.
+        session->detach(tag);
+
+        state = states::sealed;
     }
 }
 
@@ -228,7 +276,7 @@ actor_t::~actor_t() {
 
     for(auto it = m_sessions.cbegin(); it != m_sessions.cend(); ++it) {
         // Synchronously close the channels.
-        it->second->destroy();
+        it->second->revoke();
     }
 }
 
@@ -388,7 +436,7 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
 
     session->downstreams.insert({ 0, std::make_shared<session_t::downstream_t>(
         std::move(service),
-        std::make_shared<upstream_t>(session, 0)
+        std::make_shared<session_t::upstream_t>(session, 0)
     )});
 
     m_sessions[fd] = std::move(session);
@@ -419,7 +467,7 @@ actor_t::on_failure(int fd, const std::error_code& ec) {
     }
 
     // This destroys the channel but not the wrapping lockable state.
-    it->second->destroy();
+    it->second->revoke();
 
     // This doesn't guarantee that the wrapping lockable state will be deleted, as it can be shared
     // with other threads via upstreams, but it's fine since the channel is destroyed.
