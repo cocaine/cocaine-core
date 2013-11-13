@@ -18,11 +18,10 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/logging.hpp"
+#include "cocaine/services/logging.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/messages.hpp"
 
 #include "cocaine/traits/enum.hpp"
 

@@ -87,7 +87,7 @@ class dispatch_t {
         name() const;
 
     private:
-        const std::unique_ptr<cocaine::logging::log_t> m_log;
+        const std::unique_ptr<logging::log_t> m_log;
 
         typedef std::map<
             int,

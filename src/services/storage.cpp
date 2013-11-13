@@ -18,12 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/storage.hpp"
-
-#include "cocaine/api/storage.hpp"
+#include "cocaine/services/storage.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/messages.hpp"
 
 using namespace cocaine::io;
 using namespace cocaine::service;

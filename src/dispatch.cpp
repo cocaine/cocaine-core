@@ -29,7 +29,7 @@ using namespace cocaine;
 using namespace cocaine::io;
 
 dispatch_t::dispatch_t(context_t& context, const std::string& name):
-    m_log(new cocaine::logging::log_t(context, name)),
+    m_log(new logging::log_t(context, name)),
     m_name(name)
 { }
 

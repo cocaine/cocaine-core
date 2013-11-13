@@ -26,6 +26,67 @@
 #include "cocaine/dispatch.hpp"
 #include "cocaine/rpc/tags.hpp"
 
+namespace cocaine { namespace io {
+
+struct logging_tag;
+
+namespace logging {
+
+using cocaine::logging::priorities;
+
+struct emit {
+    typedef logging_tag tag;
+
+    static
+    const char*
+    alias() {
+        return "emit";
+    }
+
+    typedef boost::mpl::list<
+     /* Log level for this message. Generally, you are not supposed to send messages with log
+        levels higher than the current verbosity. */
+        priorities,
+     /* Message source. Messages originating from the user code should be tagged with
+        'app/<name>' so that they could be routed separately. */
+        std::string,
+     /* Log message. Some meaningful string, with no explicit limits on its length, although
+        underlying loggers might silently truncate it. */
+        std::string
+    > tuple_type;
+};
+
+struct verbosity {
+    typedef logging_tag tag;
+
+    static
+    const char*
+    alias() {
+        return "verbosity";
+    }
+
+    typedef
+     /* The current verbosity level of the of the core logging sink. */
+        priorities
+    result_type;
+};
+
+} // namespace logging
+
+template<>
+struct protocol<logging_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        logging::emit,
+        logging::verbosity
+    > type;
+};
+
+}} // namespace cocaine::io
+
 namespace cocaine { namespace service {
 
 class logging_t:

@@ -44,6 +44,8 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include "cocaine/services/node.hpp"
+
 #include "cocaine/traits/json.hpp"
 #include "cocaine/traits/literal.hpp"
 

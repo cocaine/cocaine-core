@@ -18,14 +18,13 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/node.hpp"
+#include "cocaine/services/node.hpp"
 
 #include "cocaine/api/storage.hpp"
 
 #include "cocaine/app.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/messages.hpp"
 
 #include "cocaine/traits/json.hpp"
 
