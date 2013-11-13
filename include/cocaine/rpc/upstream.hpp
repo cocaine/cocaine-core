@@ -36,7 +36,7 @@ class upstream_t {
 
     // NOTE: Sealed streams ignore any messages. At some point it might change to some kind of
     // exception or some other explicit way to show that the operation won't be completed.
-    typename states::values state;
+    states::values state;
 
     const std::shared_ptr<session_t> session;
     const uint64_t tag;

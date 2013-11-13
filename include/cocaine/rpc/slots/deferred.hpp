@@ -25,13 +25,16 @@
 
 #include <mutex>
 
+#include <boost/variant/apply_visitor.hpp>
 #include <boost/variant/get.hpp>
 #include <boost/variant/static_visitor.hpp>
 #include <boost/variant/variant.hpp>
 
-namespace cocaine { namespace io {
+namespace cocaine {
 
-template<typename> struct deferred;
+template<class T> struct deferred;
+
+namespace io {
 
 // Deferred slot
 
@@ -67,6 +70,10 @@ struct unassigned { };
 
 template<class T>
 struct value_type {
+    value_type(const T& result_):
+        result(result_)
+    { }
+
     T result;
 };
 
@@ -105,7 +112,7 @@ struct enable_write {
 
         if(!boost::get<unassigned>(&impl->result)) return;
 
-        impl->result = { value };
+        impl->result = value_type<T>(value);
         impl->flush();
     }
 };
@@ -147,6 +154,8 @@ struct shared_state:
             flush();
         }
     }
+
+    friend struct enable_write<T, shared_state<T>>;
 
 private:
     void
