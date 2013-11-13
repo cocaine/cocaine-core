@@ -26,7 +26,6 @@
 #include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
-#include "cocaine/rpc/types.hpp"
 
 namespace Json {
     class Value;
