@@ -23,6 +23,8 @@
 
 #include "cocaine/rpc/tags.hpp"
 
+#include "cocaine/services/streaming.hpp"
+
 namespace cocaine { namespace io {
 
 struct app_tag;

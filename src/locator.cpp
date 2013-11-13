@@ -39,6 +39,9 @@
 
 #include "cocaine/rpc/channel.hpp"
 
+#include "cocaine/services/presence.hpp"
+#include "cocaine/services/streaming.hpp"
+
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/tuple.hpp"
 
@@ -352,7 +355,7 @@ locator_t::on_message(const key_type& key, const message_t& message) {
     switch(message.band()) {
     case 0UL: {
         switch(message.id()) {
-        case event_traits<io::rpc::chunk>::id: {
+        case event_traits<io::streaming<std::string>::chunk>::id: {
             COCAINE_LOG_DEBUG(m_log, "resetting heartbeat timeout for node '%s' to 60 seconds", uuid);
 
             m_remotes[key].timeout->stop();
@@ -366,15 +369,11 @@ locator_t::on_message(const key_type& key, const message_t& message) {
 
     case 1UL: {
         switch(message.id()) {
-        case event_traits<io::rpc::chunk>::id: {
-            std::string chunk;
+        case event_traits<io::streaming<synchronize_result_type>::chunk>::id: {
+            synchronize_result_type dump;
 
-            message.as<io::rpc::chunk>(chunk);
+            message.as<io::streaming<synchronize_result_type>::chunk>(dump);
 
-            msgpack::unpacked unpacked;
-            msgpack::unpack(&unpacked, chunk.data(), chunk.size());
-
-            auto dump = unpacked.get().as<synchronize_result_type>();
             auto diff = m_router->update_remote(uuid, dump);
 
             for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
@@ -386,8 +385,8 @@ locator_t::on_message(const key_type& key, const message_t& message) {
             }
         } break;
 
-        case event_traits<io::rpc::error>::id:
-        case event_traits<io::rpc::choke>::id: {
+        case event_traits<io::streaming<synchronize_result_type>::error>::id:
+        case event_traits<io::streaming<synchronize_result_type>::choke>::id: {
             COCAINE_LOG_INFO(m_log, "node '%s' has been shut down", uuid);
 
             auto removed = m_router->remove_remote(uuid);

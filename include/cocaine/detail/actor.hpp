@@ -26,9 +26,9 @@
 #include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/tcp.hpp"
 
-#include "cocaine/messages.hpp"
-
 #include "cocaine/rpc/session.hpp"
+
+#include "cocaine/services/locator.hpp"
 
 #include <list>
 #include <thread>

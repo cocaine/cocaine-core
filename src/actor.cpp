@@ -32,9 +32,10 @@
 #include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
-#include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/upstream.hpp"
+
+#include "cocaine/services/presence.hpp"
 
 #include "cocaine/traits/literal.hpp"
 
@@ -255,7 +256,7 @@ struct heartbeat_slot_t:
     virtual
     std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& /* unpacked */, const std::shared_ptr<upstream_t>& upstream) {
-        upstream->send<io::streaming<std::string>::write>(uuid);
+        upstream->send<io::streaming<std::string>::chunk>(uuid);
 
         // Recursive protocol transition. If the service is destroyed, then we simply return an empty
         // protocol dispatch, which is just fine.

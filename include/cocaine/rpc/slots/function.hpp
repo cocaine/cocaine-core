@@ -22,11 +22,12 @@
 #define COCAINE_IO_FUNCTION_SLOT_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/slot.hpp"
 #include "cocaine/rpc/tags.hpp"
+
+#include "cocaine/services/streaming.hpp"
 
 #include "cocaine/traits.hpp"
 

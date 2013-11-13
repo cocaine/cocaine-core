@@ -114,7 +114,7 @@ struct app_service_t:
     };
 
     struct write_slot_t:
-        public basic_slot<io::streaming<std::string>::write>
+        public basic_slot<io::streaming<std::string>::chunk>
     {
         write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
             self(self_)
@@ -147,7 +147,7 @@ struct app_service_t:
         virtual
         void
         write(const char* chunk, size_t size) {
-            upstream->send<io::streaming<std::string>::write>(literal { chunk, size });
+            upstream->send<io::streaming<std::string>::chunk>(literal { chunk, size });
         }
 
         virtual
@@ -159,7 +159,7 @@ struct app_service_t:
         virtual
         void
         close() {
-            upstream->seal<io::streaming<std::string>::close>();
+            upstream->seal<io::streaming<std::string>::choke>();
         }
 
     private:
@@ -188,8 +188,8 @@ private:
 
         auto service = std::make_shared<streaming_service_t>(context, name(), downstream);
 
-        service->on<io::streaming<std::string>::write>(std::make_shared<write_slot_t>(service));
-        service->on<io::streaming<std::string>::close>(std::bind(&streaming_service_t::close, service));
+        service->on<io::streaming<std::string>::chunk>(std::make_shared<write_slot_t>(service));
+        service->on<io::streaming<std::string>::choke>(std::bind(&streaming_service_t::close, service));
 
         return service;
     }

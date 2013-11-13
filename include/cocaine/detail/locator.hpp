@@ -24,7 +24,8 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/dispatch.hpp"
-#include "cocaine/messages.hpp"
+
+#include "cocaine/services/locator.hpp"
 
 #include <mutex>
 

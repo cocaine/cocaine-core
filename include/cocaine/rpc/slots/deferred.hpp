@@ -182,19 +182,19 @@ private:
 
         void
         operator()(const value_type<T>& value) const {
-            upstream->send<typename io::streaming<T>::write>(value.result);
-            upstream->seal<typename io::streaming<T>::close>();
+            upstream->send<typename io::streaming<T>::chunk>(value.result);
+            upstream->seal<typename io::streaming<T>::choke>();
         }
 
         void
         operator()(const error_type& error) const {
             upstream->send<typename io::streaming<T>::error>(error.code, error.reason);
-            upstream->seal<typename io::streaming<T>::close>();
+            upstream->seal<typename io::streaming<T>::choke>();
         }
 
         void
         operator()(const empty_type&) const {
-            upstream->seal<typename io::streaming<T>::close>();
+            upstream->seal<typename io::streaming<T>::choke>();
         }
 
     private:

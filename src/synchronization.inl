@@ -52,7 +52,7 @@ context_t::synchronization_t::synchronization_t(context_t& self_):
 
 std::shared_ptr<dispatch_t>
 context_t::synchronization_t::operator()(const msgpack::object& /* unpacked */, const std::shared_ptr<upstream_t>& upstream) {
-    upstream->send<io::streaming<result_type>::write>(dump());
+    upstream->send<io::streaming<result_type>::chunk>(dump());
 
     // Save this upstream for the future notifications.
     upstreams.push_back(upstream);
@@ -66,14 +66,14 @@ context_t::synchronization_t::announce() {
     result_type message = dump();
 
     for(auto it = upstreams.begin(); it != upstreams.end(); ++it) {
-        (*it)->send<io::streaming<result_type>::write>(message);
+        (*it)->send<io::streaming<result_type>::chunk>(message);
     }
 }
 
 void
 context_t::synchronization_t::shutdown() {
     for(auto it = upstreams.begin(); it != upstreams.end(); ++it) {
-        (*it)->seal<io::streaming<result_type>::close>();
+        (*it)->seal<io::streaming<result_type>::choke>();
     }
 
     upstreams.clear();

@@ -18,47 +18,46 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_TAGS_HPP
-#define COCAINE_IO_TAGS_HPP
+#ifndef COCAINE_PRESENCE_SERVICE_INTERFACE_HPP
+#define COCAINE_PRESENCE_SERVICE_INTERFACE_HPP
 
-#include "cocaine/rpc/protocol.hpp"
+#include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
 
-// Value tags
+struct presence_tag;
 
-template<class T>
-struct optional;
+namespace presence {
 
-template<class T, T Default>
-struct optional_with_default;
+struct heartbeat {
+    typedef presence_tag  tag;
+    typedef recursive_tag transition_type;
 
-// Protocol tags
+    static
+    const char*
+    alias() {
+        return "heartbeat";
+    }
 
-struct recursive_tag;
-
-namespace detail {
-
-template<class T>
-struct is_required<optional<T>>:
-    public std::false_type
-{ };
-
-template<class T, T Default>
-struct is_required<optional_with_default<T, Default>>:
-    public std::false_type
-{ };
-
-template<class T>
-struct unwrap_type<optional<T>> {
-    typedef T type;
+    typedef
+     /* The UUID of the node, to detect the event of restart. */
+        std::string
+    result_type;
 };
 
-template<class T, T Default>
-struct unwrap_type<optional_with_default<T, Default>> {
-    typedef T type;
+} // namespace presence
+
+template<>
+struct protocol<presence_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        presence::heartbeat
+    > type;
 };
 
-}}} // namespace cocaine::io::detail
+}} // namespace cocaine::io
 
 #endif

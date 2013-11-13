@@ -44,8 +44,8 @@ struct blocking_slot:
     virtual
     std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
-        upstream->send<typename io::streaming<upstream_type>::write>(this->call(unpacked));
-        upstream->seal<typename io::streaming<upstream_type>::close>();
+        upstream->send<typename io::streaming<upstream_type>::chunk>(this->call(unpacked));
+        upstream->seal<typename io::streaming<upstream_type>::choke>();
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();
@@ -77,7 +77,7 @@ struct blocking_slot<void, Event>:
         this->call(unpacked);
 
         // This is needed so that service clients could detect operation completion.
-        upstream->seal<typename io::streaming<upstream_type>::close>();
+        upstream->seal<typename io::streaming<upstream_type>::choke>();
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();

@@ -18,88 +18,76 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_MESSAGES_HPP
-#define COCAINE_IO_MESSAGES_HPP
+#ifndef COCAINE_STREAMING_SERVICE_INTERFACE_HPP
+#define COCAINE_STREAMING_SERVICE_INTERFACE_HPP
 
 #include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
 
-struct rpc_tag;
+template<class T>
+struct streaming_tag;
 
-namespace rpc {
-
-struct handshake {
-    typedef rpc_tag tag;
-
-    typedef boost::mpl::list<
-        /* peer id */ std::string
-    > tuple_type;
-};
-
-struct heartbeat {
-    typedef rpc_tag tag;
-};
-
-struct terminate {
-    typedef rpc_tag tag;
-
-    enum code: int {
-        normal = 1,
-        abnormal
-    };
-
-    typedef boost::mpl::list<
-        /* code */   code,
-        /* reason */ std::string
-    > tuple_type;
-};
-
-struct invoke {
-    typedef rpc_tag tag;
-
-    typedef boost::mpl::list<
-        /* event */ std::string
-    > tuple_type;
-};
+template<class T>
+struct streaming {
 
 struct chunk {
-    typedef rpc_tag tag;
+    typedef streaming_tag<T> tag;
+
+    // Specifies that this slot doesn't switch the protocol dispatch.
+    typedef recursive_tag transition_type;
+
+    static
+    const char*
+    alias() {
+        return "write";
+    }
 
     typedef boost::mpl::list<
-        /* chunk */ std::string
+     /* Some chunk of data to be sent to the service. */
+        T
     > tuple_type;
 };
 
 struct error {
-    typedef rpc_tag tag;
+    typedef streaming_tag<T> tag;
+
+    static
+    const char*
+    alias() {
+        return "error";
+    }
 
     typedef boost::mpl::list<
-        /* code */   int,
-        /* reason */ std::string
+     /* Error code. */
+        int,
+     /* Human-readable error description. */
+        std::string
     > tuple_type;
 };
 
 struct choke {
-    typedef rpc_tag tag;
+    typedef streaming_tag<T> tag;
+
+    static
+    const char*
+    alias() {
+        return "close";
+    }
 };
 
-} // namespace rpc
+}; // struct streaming
 
-template<>
-struct protocol<rpc_tag> {
+template<class T>
+struct protocol<streaming_tag<T>> {
     typedef boost::mpl::int_<
         1
     >::type version;
 
-    typedef boost::mpl::list<
-        rpc::handshake,
-        rpc::heartbeat,
-        rpc::terminate,
-        rpc::invoke,
-        rpc::chunk,
-        rpc::error,
-        rpc::choke
+    typedef typename boost::mpl::list<
+        typename streaming<T>::chunk,
+        typename streaming<T>::error,
+        typename streaming<T>::choke
     >::type type;
 };
 
