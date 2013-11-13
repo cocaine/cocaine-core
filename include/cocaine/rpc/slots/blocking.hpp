@@ -37,8 +37,7 @@ struct blocking_slot:
     typedef typename parent_type::upstream_type upstream_type;
 
     blocking_slot(callable_type callable):
-        parent_type(callable),
-        m_packer(m_buffer)
+        parent_type(callable)
     { }
 
     virtual
@@ -50,10 +49,6 @@ struct blocking_slot:
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();
     }
-
-private:
-    msgpack::sbuffer m_buffer;
-    msgpack::packer<msgpack::sbuffer> m_packer;
 };
 
 // Blocking slot specialization for void functions
