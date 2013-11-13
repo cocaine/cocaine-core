@@ -19,9 +19,10 @@
 */
 
 #include "cocaine/detail/isolates/process.hpp"
-#include "cocaine/detail/archive.hpp"
 
 #include "cocaine/api/storage.hpp"
+
+#include "cocaine/detail/archive.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

@@ -34,18 +34,18 @@ class upstream_t {
         enum values: int { active, sealed };
     };
 
-    // NOTE: Sealed streams ignore any messages. At some point it might change to some kind of
-    // exception or some other explicit way to show that the operation won't be completed.
+    // NOTE: Sealed streams ignore any messages. At some point it might change to an explicit way
+    // to show that the operation won't be completed.
     states::values state;
 
     const std::shared_ptr<session_t> session;
-    const uint64_t tag;
+    const uint64_t index;
 
 public:
-    upstream_t(const std::shared_ptr<session_t>& session_, uint64_t tag_):
+    upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_):
         state(states::active),
         session(session_),
-        tag(tag_)
+        index(index_)
     { }
 
     template<class Event, typename... Args>
@@ -63,7 +63,7 @@ upstream_t::send(Args&&... args) {
     std::lock_guard<std::mutex> guard(session->mutex);
 
     if(state == states::active && session->ptr) {
-        session->ptr->wr->write<Event>(tag, std::forward<Args>(args)...);
+        session->ptr->wr->write<Event>(index, std::forward<Args>(args)...);
     }
 }
 
@@ -74,12 +74,12 @@ upstream_t::seal(Args&&... args) {
 
     if(state == states::active) {
         if(session->ptr) {
-            session->ptr->wr->write<Event>(tag, std::forward<Args>(args)...);
+            session->ptr->wr->write<Event>(index, std::forward<Args>(args)...);
         }
 
-        // Destroys the session with the given tag in the stream, so that new requests might reuse
-        // the upstream tag in the future.
-        session->detach(tag);
+        // Destroys the stream with the given index in the channel, so that new requests might reuse
+        // it in the future. This stream will become sealed.
+        session->detach(index);
 
         state = states::sealed;
     }

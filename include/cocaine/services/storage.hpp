@@ -21,9 +21,12 @@
 #ifndef COCAINE_STORAGE_SERVICE_INTERFACE_HPP
 #define COCAINE_STORAGE_SERVICE_INTERFACE_HPP
 
+#include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
+
+// Storage service interface
 
 struct storage_tag;
 

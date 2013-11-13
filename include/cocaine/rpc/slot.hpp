@@ -25,8 +25,6 @@
 
 namespace cocaine { namespace io { namespace detail {
 
-// Slot basics
-
 struct slot_concept_t {
     slot_concept_t(const std::string& name):
         m_name(name)

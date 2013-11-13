@@ -21,9 +21,11 @@
 #ifndef COCAINE_LOGGING_SERVICE_INTERFACE_HPP
 #define COCAINE_LOGGING_SERVICE_INTERFACE_HPP
 
-#include "cocaine/rpc/tags.hpp"
+#include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
+
+// Logging service interface
 
 struct logging_tag;
 

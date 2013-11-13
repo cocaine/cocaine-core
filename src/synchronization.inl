@@ -18,6 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "cocaine/traits/graph.hpp"
+#include "cocaine/traits/tuple.hpp"
+
 struct context_t::synchronization_t:
     public basic_slot<io::locator::synchronize>
 {

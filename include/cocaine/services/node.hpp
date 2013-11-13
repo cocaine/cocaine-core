@@ -21,11 +21,14 @@
 #ifndef COCAINE_NODE_SERVICE_INTERFACE_HPP
 #define COCAINE_NODE_SERVICE_INTERFACE_HPP
 
+#include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
 
 #include "cocaine/services/streaming.hpp"
 
 namespace cocaine { namespace io {
+
+// App invocation service interface
 
 struct app_tag;
 
@@ -85,6 +88,8 @@ struct protocol<app_tag> {
         app::info
     > type;
 };
+
+// Node service interface
 
 struct node_tag;
 

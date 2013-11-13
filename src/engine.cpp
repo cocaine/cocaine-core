@@ -44,7 +44,6 @@
 #include "cocaine/rpc/channel.hpp"
 
 #include "cocaine/traits/json.hpp"
-#include "cocaine/traits/literal.hpp"
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/median.hpp>

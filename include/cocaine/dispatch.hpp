@@ -182,7 +182,7 @@ struct implementation:
 
     virtual
     auto
-    protocol() const -> const dispatch_graph_t& {
+    protocol() const -> const io::dispatch_graph_t& {
         return graph;
     }
 
@@ -193,7 +193,7 @@ struct implementation:
     }
 
 private:
-    const dispatch_graph_t graph;
+    const io::dispatch_graph_t graph;
 };
 
 } // namespace cocaine

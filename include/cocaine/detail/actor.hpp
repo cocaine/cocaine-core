@@ -23,7 +23,6 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/rpc/session.hpp"

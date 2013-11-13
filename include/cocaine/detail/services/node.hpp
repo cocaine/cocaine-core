@@ -22,6 +22,7 @@
 #define COCAINE_NODE_SERVICE_HPP
 
 #include "cocaine/api/service.hpp"
+#include "cocaine/api/storage.hpp"
 
 #include "cocaine/dispatch.hpp"
 

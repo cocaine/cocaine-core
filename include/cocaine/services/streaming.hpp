@@ -21,9 +21,11 @@
 #ifndef COCAINE_STREAMING_SERVICE_INTERFACE_HPP
 #define COCAINE_STREAMING_SERVICE_INTERFACE_HPP
 
-#include "cocaine/rpc/tags.hpp"
+#include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
+
+// Streaming service interface template
 
 template<class T>
 struct streaming_tag;

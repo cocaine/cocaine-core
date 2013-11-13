@@ -26,7 +26,7 @@
 
 #include <boost/optional.hpp>
 
-namespace cocaine {
+namespace cocaine { namespace io {
 
 struct dispatch_graph_t;
 
@@ -55,6 +55,6 @@ struct dispatch_graph_t: public aux::recursion_base_t {
     }
 };
 
-} // namespace cocaine
+}} // namespace cocaine::io
 
 #endif

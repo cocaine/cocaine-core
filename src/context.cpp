@@ -33,9 +33,6 @@
 
 #include "cocaine/memory.hpp"
 
-#include "cocaine/traits/graph.hpp"
-#include "cocaine/traits/tuple.hpp"
-
 #include <cstring>
 
 #include <boost/filesystem/convenience.hpp>
@@ -441,7 +438,7 @@ context_t::bootstrap() {
     // copying intermediate structures around.
 
     locator->on<io::locator::synchronize>(m_synchronization);
-    locator->on<io::locator::reports>(memusage_action_t { *this });
+    // locator->on<io::locator::reports>(memusage_action_t { *this });
 
     m_services.emplace_front("locator", std::make_unique<actor_t>(
         *this,

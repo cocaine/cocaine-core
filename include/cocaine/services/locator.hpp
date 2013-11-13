@@ -22,9 +22,11 @@
 #define COCAINE_LOCATOR_SERVICE_INTERFACE_HPP
 
 #include "cocaine/rpc/graph.hpp"
-#include "cocaine/rpc/tags.hpp"
+#include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
+
+// Service locator interface
 
 struct locator_tag;
 

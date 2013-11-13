@@ -21,12 +21,10 @@
 #include "cocaine/detail/actor.hpp"
 
 #include "cocaine/api/service.hpp"
-#include "cocaine/api/stream.hpp"
 
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/connector.hpp"
 #include "cocaine/asio/reactor.hpp"
-#include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/dispatch.hpp"
@@ -36,8 +34,7 @@
 #include "cocaine/rpc/upstream.hpp"
 
 #include "cocaine/services/presence.hpp"
-
-#include "cocaine/traits/literal.hpp"
+#include "cocaine/services/streaming.hpp"
 
 #if defined(__linux__)
     #include <sys/prctl.h>

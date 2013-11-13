@@ -21,9 +21,12 @@
 #ifndef COCAINE_PRESENCE_SERVICE_INTERFACE_HPP
 #define COCAINE_PRESENCE_SERVICE_INTERFACE_HPP
 
+#include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
+
+// Service presence control interface
 
 struct presence_tag;
 
