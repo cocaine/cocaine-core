@@ -23,6 +23,7 @@
 #include "cocaine/api/driver.hpp"
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/isolate.hpp"
+#include "cocaine/api/stream.hpp"
 
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/reactor.hpp"
@@ -44,6 +45,7 @@
 #include "cocaine/rpc/channel.hpp"
 
 #include "cocaine/traits/json.hpp"
+#include "cocaine/traits/literal.hpp"
 
 #include <tuple>
 
@@ -57,20 +59,27 @@ using namespace cocaine::io;
 
 namespace fs = boost::filesystem;
 
-struct app_t::service_t:
+namespace {
+
+struct app_service_t:
     public implementation<io::app_tag>
 {
     struct streaming_service_t:
-        public implementation<io::streaming_tag>
+        public implementation<io::streaming_tag<std::string>>
     {
-        streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& d):
-            implementation<io::streaming_tag>(context, name),
-            downstream(d)
+        streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& downstream_):
+            implementation<io::streaming_tag<std::string>>(context, name),
+            downstream(downstream_)
         { }
 
         void
         write(const std::string& chunk) {
             downstream->write(chunk.data(), chunk.size());
+        }
+
+        void
+        error(int code, const std::string& reason) {
+            downstream->error(code, reason);
         }
 
         void
@@ -85,25 +94,25 @@ struct app_t::service_t:
     struct enqueue_slot_t:
         public basic_slot<io::app::enqueue>
     {
-        enqueue_slot_t(app_t::service_t& self_):
+        enqueue_slot_t(app_service_t& self_):
             self(self_)
         { }
 
         virtual
         std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
+        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
             return io::detail::invoke<event_traits<app::enqueue>::tuple_type>::apply(
-                boost::bind(&service_t::enqueue, &self, upstream, _1, _2),
+                boost::bind(&app_service_t::enqueue, &self, upstream, _1, _2),
                 unpacked
             );
         }
 
     private:
-        app_t::service_t& self;
+        app_service_t& self;
     };
 
     struct write_slot_t:
-        public basic_slot<io::streaming::write>
+        public basic_slot<io::streaming<std::string>::write>
     {
         write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
             self(self_)
@@ -111,7 +120,7 @@ struct app_t::service_t:
 
         virtual
         std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& unpacked, const api::stream_ptr_t& /* upstream */) {
+        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
             auto service = self.lock();
 
             io::detail::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
@@ -126,7 +135,36 @@ struct app_t::service_t:
         const std::weak_ptr<streaming_service_t> self;
     };
 
-    service_t(context_t& context_, const std::string& name_, app_t& app_):
+    struct stream_adapter_t:
+        public api::stream_t
+    {
+        stream_adapter_t(const std::shared_ptr<upstream_t>& upstream_):
+            upstream(upstream_)
+        { }
+
+        virtual
+        void
+        write(const char* chunk, size_t size) {
+            upstream->send<io::streaming<std::string>::write>(literal { chunk, size });
+        }
+
+        virtual
+        void
+        error(int code, const std::string& reason) {
+            upstream->send<io::streaming<std::string>::error>(code, reason);
+        }
+
+        virtual
+        void
+        close() {
+            upstream->seal<io::streaming<std::string>::close>();
+        }
+
+    private:
+        const std::shared_ptr<upstream_t>& upstream;
+    };
+
+    app_service_t(context_t& context_, const std::string& name_, app_t& app_):
         implementation<io::app_tag>(context_, cocaine::format("service/%1%", name_)),
         context(context_),
         app(app_)
@@ -137,19 +175,19 @@ struct app_t::service_t:
 
 private:
     std::shared_ptr<dispatch_t>
-    enqueue(const api::stream_ptr_t& upstream, const std::string& event, const std::string& tag) {
+    enqueue(const std::shared_ptr<upstream_t>& upstream, const std::string& event, const std::string& tag) {
         api::stream_ptr_t downstream;
 
         if(tag.empty()) {
-            downstream = app.enqueue(api::event_t(event), upstream);
+            downstream = app.enqueue(api::event_t(event), std::make_shared<stream_adapter_t>(upstream));
         } else {
-            downstream = app.enqueue(api::event_t(event), upstream, tag);
+            downstream = app.enqueue(api::event_t(event), std::make_shared<stream_adapter_t>(upstream), tag);
         }
 
         auto service = std::make_shared<streaming_service_t>(context, name(), downstream);
 
-        service->on<io::streaming::write>(std::make_shared<write_slot_t>(service));
-        service->on<io::streaming::close>(std::bind(&streaming_service_t::close, service));
+        service->on<io::streaming<std::string>::write>(std::make_shared<write_slot_t>(service));
+        service->on<io::streaming<std::string>::close>(std::bind(&streaming_service_t::close, service));
 
         return service;
     }
@@ -158,6 +196,8 @@ private:
     context_t& context;
     app_t& app;
 };
+
+} // namespace
 
 app_t::app_t(context_t& context, const std::string& name, const std::string& profile):
     m_context(context),
@@ -256,7 +296,7 @@ app_t::start() {
     m_context.attach(m_manifest->name, std::make_unique<actor_t>(
         m_context,
         std::make_shared<reactor_t>(),
-        std::unique_ptr<dispatch_t>(new app_t::service_t(m_context, m_manifest->name, *this))
+        std::unique_ptr<dispatch_t>(new app_service_t(m_context, m_manifest->name, *this))
     ));
 
     COCAINE_LOG_INFO(m_log, "the engine has started");

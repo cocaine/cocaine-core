@@ -26,7 +26,6 @@
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/connector.hpp"
 #include "cocaine/asio/reactor.hpp"
-#include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/tcp.hpp"
 
 #include "cocaine/context.hpp"
@@ -35,7 +34,7 @@
 #include "cocaine/memory.hpp"
 #include "cocaine/messages.hpp"
 
-#include "cocaine/rpc/channel.hpp"
+#include "cocaine/rpc/upstream.hpp"
 
 #include "cocaine/traits/literal.hpp"
 
@@ -48,104 +47,15 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-namespace {
+class session_t::downstream_t {
+    // Active protocol for this downstream.
+    std::shared_ptr<dispatch_t> dispatch;
 
-template<class Tag>
-class torrent {
-    struct states {
-        enum values: int { active, sealed };
-    };
-
-    // NOTE: Sealed streams ignore any messages. At some point it might change to some kind of
-    // exception or some other explicit way to show that the operation won't be completed.
-    typename states::values state;
-
-    const std::shared_ptr<actor_t::session_t> session;
-    const uint64_t tag;
+    // As of now, all clients are considered using the streaming protocol template, and it means that
+    // upstreams don't change when the downstream protocol is switched over.
+    std::shared_ptr<upstream_t> upstream;
 
 public:
-    torrent(const std::shared_ptr<actor_t::session_t>& session_, uint64_t tag_):
-        state(states::active),
-        session(session_),
-        tag(tag_)
-    { }
-
-    template<class Event, typename... Args>
-    void
-    send(Args&&... args);
-
-    template<class Event, typename... Args>
-    void
-    seal(Args&&... args);
-};
-
-} // namespace
-
-struct actor_t::session_t {
-    friend class actor_t;
-
-    // TODO: Friend class templates don't work here for some reason, find out why.
-    friend class torrent<io::rpc_tag>;
-
-    session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<dispatch_t>& prototype_):
-        ptr(std::move(ptr_)),
-        prototype(prototype_)
-    { }
-
-    void
-    detach(uint64_t tag) {
-        downstreams.erase(tag);
-    }
-
-private:
-    void
-    invoke(const message_t& message, const std::shared_ptr<session_t>& self);
-
-    void
-    revoke();
-
-private:
-    std::unique_ptr<io::channel<io::socket<io::tcp>>> ptr;
-    std::mutex mutex;
-
-    // Root dispatch.
-    const std::shared_ptr<dispatch_t> prototype;
-
-    struct upstream_t;
-    struct downstream_t;
-
-    // Streams.
-    std::map<uint64_t, std::shared_ptr<downstream_t>> downstreams;
-};
-
-struct actor_t::session_t::upstream_t:
-    public torrent<io::rpc_tag>,
-    public api::stream_t
-{
-    upstream_t(const std::shared_ptr<session_t>& session, uint64_t tag):
-        torrent<io::rpc_tag>(session, tag)
-    { }
-
-    virtual
-    void
-    write(const char* chunk, size_t size) {
-        send<rpc::chunk>(literal { chunk, size });
-    }
-
-    virtual
-    void
-    error(int code, const std::string& reason) {
-        send<rpc::error>(code, reason);
-    }
-
-    virtual
-    void
-    close() {
-        seal<rpc::choke>();
-    }
-};
-
-struct actor_t::session_t::downstream_t {
     downstream_t(const std::shared_ptr<dispatch_t>& dispatch_, const std::shared_ptr<upstream_t>& upstream_):
         dispatch(dispatch_),
         upstream(upstream_)
@@ -153,28 +63,17 @@ struct actor_t::session_t::downstream_t {
 
     void
     invoke(const message_t& message) {
-        try {
-            if(!dispatch)
-                // TODO: COCAINE-82 changes to 'client' error category.
-                throw cocaine::error_t("downstream has been closed");
-            dispatch = dispatch->invoke(message, upstream);
-        } catch(const std::exception& e) {
-            // TODO: COCAINE-82 changes to a category-based exception serialization.
-            upstream->error(invocation_error, e.what());
-            upstream->close();
+        if(!dispatch) {
+            // TODO: COCAINE-82 changes to 'client' error category.
+            throw cocaine::error_t("downstream has been closed");
         }
+
+        dispatch = dispatch->invoke(message, upstream);
     }
-
-    // Active protocol for this downstream.
-    std::shared_ptr<dispatch_t> dispatch;
-
-    // As of now, all clients are considered using the single streaming protocol, so upstreams
-    // don't change when the downstream protocol is switched over.
-    std::shared_ptr<upstream_t> upstream;
 };
 
 void
-actor_t::session_t::invoke(const message_t& message, const std::shared_ptr<session_t>& self) {
+session_t::invoke(const message_t& message, const std::shared_ptr<session_t>& self) {
     std::shared_ptr<downstream_t> downstream;
 
     {
@@ -196,11 +95,16 @@ actor_t::session_t::invoke(const message_t& message, const std::shared_ptr<sessi
         downstream = it->second;
     }
 
-    downstream->invoke(message);
+    try {
+        downstream->invoke(message);
+    } catch(...) {
+        // In case of an unexpected error, disconnect the client. TODO: add logging.
+        revoke();
+    }
 }
 
 void
-actor_t::session_t::revoke() {
+session_t::revoke() {
     std::lock_guard<std::mutex> guard(mutex);
 
     // This closes all the downstreams.
@@ -209,46 +113,6 @@ actor_t::session_t::revoke() {
     // NOTE: This invalidates and closes the internal channel pointer, but the session itself
     // might still be accessible via upstreams in other threads, but that's okay.
     ptr.reset();
-}
-
-template<class Tag>
-template<class Event, typename... Args>
-void
-torrent<Tag>::send(Args&&... args) {
-    static_assert(
-        boost::mpl::contains<typename protocol<Tag>::type, Event>::value,
-        "event has not been registered with the protocol"
-    );
-
-    std::lock_guard<std::mutex> guard(session->mutex);
-
-    if(state == states::active && session->ptr) {
-        session->ptr->wr->write<Event>(tag, std::forward<Args>(args)...);
-    }
-}
-
-template<class Tag>
-template<class Event, typename... Args>
-void
-torrent<Tag>::seal(Args&&... args) {
-    static_assert(
-        boost::mpl::contains<typename protocol<Tag>::type, Event>::value,
-        "event has not been registered with the protocol"
-    );
-
-    std::lock_guard<std::mutex> guard(session->mutex);
-
-    if(state == states::active) {
-        if(session->ptr) {
-            session->ptr->wr->write<Event>(tag, std::forward<Args>(args)...);
-        }
-
-        // Destroys the session with the given tag in the stream, so that new requests might reuse
-        // the torrent tag in the future.
-        session->detach(tag);
-
-        state = states::sealed;
-    }
 }
 
 actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::unique_ptr<dispatch_t>&& prototype):
@@ -390,8 +254,8 @@ struct heartbeat_slot_t:
 
     virtual
     std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& /* unpacked */, const api::stream_ptr_t& upstream) {
-        upstream->write(uuid.data(), uuid.size());
+    operator()(const msgpack::object& /* unpacked */, const std::shared_ptr<upstream_t>& upstream) {
+        upstream->send<io::streaming<std::string>::write>(uuid);
 
         // Recursive protocol transition. If the service is destroyed, then we simply return an empty
         // protocol dispatch, which is just fine.
@@ -436,7 +300,7 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
 
     session->downstreams.insert({ 0, std::make_shared<session_t::downstream_t>(
         std::move(service),
-        std::make_shared<session_t::upstream_t>(session, 0)
+        std::make_shared<upstream_t>(session, 0)
     )});
 
     m_sessions[fd] = std::move(session);

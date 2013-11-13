@@ -28,6 +28,10 @@
 #include "cocaine/rpc/tags.hpp"
 #include "cocaine/rpc/types.hpp"
 
+namespace Json {
+    class Value;
+}
+
 namespace cocaine { namespace io {
 
 // Service presence control interface
@@ -240,12 +244,12 @@ struct protocol<rpc_tag> {
     >::type type;
 };
 
-// Streaming interface
+// Streaming interface template
 
-namespace streaming {
+template<class T> struct streaming {
 
 struct write {
-    typedef streaming_tag tag;
+    typedef streaming_tag<T> tag;
 
     // Specifies that this slot doesn't switch the protocol dispatch.
     typedef recursive_tag transition_type;
@@ -257,14 +261,30 @@ struct write {
     }
 
     typedef boost::mpl::list<
-     /* Some chunk of data to be sent to the app. By convention, it is expected to be serialized
-        with MessagePack, but obviously you can send whatever you want. */
+     /* Some chunk of data to be sent to the service. */
+        T
+    > tuple_type;
+};
+
+struct error {
+    typedef streaming_tag<T> tag;
+
+    static
+    const char*
+    alias() {
+        return "error";
+    }
+
+    typedef boost::mpl::list<
+     /* Error code. */
+        int,
+     /* Human-readable error description. */
         std::string
     > tuple_type;
 };
 
 struct close {
-    typedef streaming_tag tag;
+    typedef streaming_tag<T> tag;
 
     static
     const char*
@@ -273,17 +293,18 @@ struct close {
     }
 };
 
-} // namespace streaming
+}; // struct streaming
 
-template<>
-struct protocol<streaming_tag> {
+template<class T>
+struct protocol<streaming_tag<T>> {
     typedef boost::mpl::int_<
         1
     >::type version;
 
-    typedef boost::mpl::list<
-        streaming::write,
-        streaming::close
+    typedef typename boost::mpl::list<
+        typename streaming<T>::write,
+        typename streaming<T>::error,
+        typename streaming<T>::close
     >::type type;
 };
 
@@ -295,7 +316,7 @@ struct enqueue {
     typedef app_tag tag;
 
     // Allow clients to stream data into the apps.
-    typedef streaming_tag transition_type;
+    typedef streaming_tag<std::string> transition_type;
 
     static
     const char*
@@ -313,7 +334,7 @@ struct enqueue {
 
     typedef
      /* Some other arbitrary sequence of bytes, streamed back to the client in chunks. */
-        raw_t
+        std::string
     result_type;
 };
 
@@ -325,6 +346,11 @@ struct info {
     alias() {
         return "info";
     }
+
+    typedef
+     /* Various runtime information about the running app. */
+        Json::Value
+    result_type;
 };
 
 } // namespace app
@@ -523,6 +549,11 @@ struct start_app {
         per-app basis. */
         std::map<std::string, std::string>
     > tuple_type;
+
+    typedef
+     /* Operation outcome. */
+        Json::Value
+    result_type;
 };
 
 struct pause_app {
@@ -538,6 +569,11 @@ struct pause_app {
      /* A list of app names to suspend. Errors are reported on a per-app basis, as well. */
         std::vector<std::string>
     > tuple_type;
+
+    typedef
+     /* Operation outcome. */
+        Json::Value
+    result_type;
 };
 
 struct list {
@@ -548,6 +584,11 @@ struct list {
     alias() {
         return "list";
     }
+
+    typedef
+     /* A list of running app names. */
+        Json::Value
+    result_type;
 };
 
 } // namespace node

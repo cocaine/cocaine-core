@@ -22,10 +22,13 @@
 #define COCAINE_IO_FUNCTION_SLOT_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/slot.hpp"
 #include "cocaine/rpc/tags.hpp"
+
+#include "cocaine/traits.hpp"
 
 #include <functional>
 
@@ -199,6 +202,7 @@ struct function_slot:
     public basic_slot<Event>
 {
     typedef typename event_traits<Event>::tuple_type tuple_type;
+    typedef typename event_traits<Event>::result_type upstream_type;
 
     typedef typename mpl::transform<
         tuple_type,

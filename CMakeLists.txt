@@ -114,7 +114,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/services/storage
     src/session
     src/slave
-    src/slot
     src/storages/files
     src/unique_id)
 

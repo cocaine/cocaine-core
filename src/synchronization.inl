@@ -21,11 +21,13 @@
 struct context_t::synchronization_t:
     public basic_slot<io::locator::synchronize>
 {
+    typedef io::event_traits<io::locator::synchronize>::result_type result_type;
+
     synchronization_t(context_t& self);
 
     virtual
     std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream);
+    operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream);
 
     void
     announce();
@@ -34,29 +36,23 @@ struct context_t::synchronization_t:
     shutdown();
 
 private:
-    void
-    dump(const api::stream_ptr_t& upstream);
+    auto
+    dump() const -> result_type;
 
 private:
-    msgpack::sbuffer buffer;
-    msgpack::packer<msgpack::sbuffer> packer;
-
     context_t& self;
 
-    std::vector<api::stream_ptr_t> upstreams;
+    // Remote clients for future updates.
+    std::vector<std::shared_ptr<upstream_t>> upstreams;
 };
 
 context_t::synchronization_t::synchronization_t(context_t& self_):
-    packer(buffer),
     self(self_)
 { }
 
 std::shared_ptr<dispatch_t>
-context_t::synchronization_t::operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-    io::detail::invoke<event_traits<io::locator::synchronize>::tuple_type>::apply(
-        std::bind(&synchronization_t::dump, this, upstream),
-        unpacked
-    );
+context_t::synchronization_t::operator()(const msgpack::object& /* unpacked */, const std::shared_ptr<upstream_t>& upstream) {
+    upstream->send<io::streaming<result_type>::write>(dump());
 
     // Save this upstream for the future notifications.
     upstreams.push_back(upstream);
@@ -67,26 +63,33 @@ context_t::synchronization_t::operator()(const msgpack::object& unpacked, const 
 
 void
 context_t::synchronization_t::announce() {
-    std::for_each(upstreams.begin(), upstreams.end(), std::bind(&synchronization_t::dump, this, _1));
+    result_type message = dump();
+
+    for(auto it = upstreams.begin(); it != upstreams.end(); ++it) {
+        (*it)->send<io::streaming<result_type>::write>(message);
+    }
 }
 
 void
 context_t::synchronization_t::shutdown() {
-    std::for_each(upstreams.begin(), upstreams.end(), std::bind(&api::stream_t::close, _1));
-}
-
-void
-context_t::synchronization_t::dump(const api::stream_ptr_t& upstream) {
-    buffer.clear();
-
-    std::lock_guard<std::mutex> guard(self.m_mutex);
-
-    packer.pack_map(self.m_services.size());
-
-    for(auto it = self.m_services.begin(); it != self.m_services.end(); ++it) {
-        packer << it->first;
-        packer << it->second->metadata();
+    for(auto it = upstreams.begin(); it != upstreams.end(); ++it) {
+        (*it)->seal<io::streaming<result_type>::close>();
     }
 
-    upstream->write(buffer.data(), buffer.size());
+    upstreams.clear();
+}
+
+auto
+context_t::synchronization_t::dump() const -> result_type {
+    result_type result;
+
+    {
+        std::lock_guard<std::mutex> guard(self.m_mutex);
+
+        for(auto it = self.m_services.begin(); it != self.m_services.end(); ++it) {
+            result[it->first] = it->second->metadata();
+        }
+    }
+
+    return result;
 }

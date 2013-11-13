@@ -29,7 +29,7 @@ using namespace cocaine;
 using namespace cocaine::io;
 
 dispatch_t::dispatch_t(context_t& context, const std::string& name):
-    m_log(new logging::log_t(context, name)),
+    m_log(new cocaine::logging::log_t(context, name)),
     m_name(name)
 { }
 
@@ -38,7 +38,7 @@ dispatch_t::~dispatch_t() {
 }
 
 std::shared_ptr<dispatch_t>
-dispatch_t::invoke(const io::message_t& message, const api::stream_ptr_t& upstream) const {
+dispatch_t::invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const {
     slot_map_t::mapped_type slot;
 
     {

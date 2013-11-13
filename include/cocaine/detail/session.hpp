@@ -18,15 +18,14 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_SESSION_HPP
-#define COCAINE_SESSION_HPP
+#ifndef COCAINE_ENGINE_SESSION_HPP
+#define COCAINE_ENGINE_SESSION_HPP
 
 #include "cocaine/common.hpp"
 
 #include "cocaine/api/event.hpp"
 #include "cocaine/api/stream.hpp"
 
-#include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"
 #include "cocaine/asio/writable_stream.hpp"

@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_TYPE_TAGS_HPP
-#define COCAINE_IO_TYPE_TAGS_HPP
+#ifndef COCAINE_IO_TAGS_HPP
+#define COCAINE_IO_TAGS_HPP
 
 #include "cocaine/rpc/protocol.hpp"
 
@@ -44,6 +44,8 @@ struct node_tag;
 struct presence_tag;
 struct rpc_tag;
 struct storage_tag;
+
+template<class T>
 struct streaming_tag;
 
 namespace detail {

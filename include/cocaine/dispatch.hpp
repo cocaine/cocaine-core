@@ -32,9 +32,11 @@
 #include <boost/mpl/apply.hpp>
 #include <boost/mpl/empty.hpp>
 
-namespace cocaine { namespace io {
+namespace cocaine {
 
-namespace aux {
+class upstream_t;
+
+namespace io { namespace aux {
 
 template<class T>
 struct is_slot:
@@ -71,7 +73,7 @@ class dispatch_t {
 
     public:
         std::shared_ptr<dispatch_t>
-        invoke(const message_t& message, const api::stream_ptr_t& upstream) const;
+        invoke(const message_t& message, const std::shared_ptr<upstream_t>& upstream) const;
 
         virtual
         auto
@@ -170,7 +172,7 @@ struct implementation:
 {
     implementation(context_t& context, const std::string& name):
         dispatch_t(context, name),
-        protograph(io::traverse<Tag>().get())
+        graph(io::traverse<Tag>().get())
     {
         static_assert(
             !boost::mpl::empty<typename io::protocol<Tag>::type>::value,
@@ -181,7 +183,7 @@ struct implementation:
     virtual
     auto
     protocol() const -> const dispatch_graph_t& {
-        return protograph;
+        return graph;
     }
 
     virtual
@@ -191,7 +193,7 @@ struct implementation:
     }
 
 private:
-    const dispatch_graph_t protograph;
+    const dispatch_graph_t graph;
 };
 
 } // namespace cocaine

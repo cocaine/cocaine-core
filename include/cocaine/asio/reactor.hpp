@@ -36,6 +36,10 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 
+#ifdef EV_ERROR
+    #undef EV_ERROR
+#endif
+
 #include <ev++.h>
 
 #if defined(__clang__)

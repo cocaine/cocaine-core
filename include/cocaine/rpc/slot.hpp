@@ -21,9 +21,7 @@
 #ifndef COCAINE_IO_SLOT_HPP
 #define COCAINE_IO_SLOT_HPP
 
-#include "cocaine/api/stream.hpp"
-
-#include "cocaine/traits.hpp"
+#include "cocaine/rpc/upstream.hpp"
 
 namespace cocaine { namespace io { namespace detail {
 
@@ -41,7 +39,7 @@ struct slot_concept_t {
 
     virtual
     std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) = 0;
+    operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) = 0;
 
 public:
     std::string

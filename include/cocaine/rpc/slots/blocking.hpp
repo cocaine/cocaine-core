@@ -32,7 +32,9 @@ struct blocking_slot:
     public function_slot<R, Event>
 {
     typedef function_slot<R, Event> parent_type;
+
     typedef typename parent_type::callable_type callable_type;
+    typedef typename parent_type::upstream_type upstream_type;
 
     blocking_slot(callable_type callable):
         parent_type(callable),
@@ -41,13 +43,9 @@ struct blocking_slot:
 
     virtual
     std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
-        type_traits<R>::pack(m_packer, this->call(unpacked));
-
-        upstream->write(m_buffer.data(), m_buffer.size());
-        upstream->close();
-
-        m_buffer.clear();
+    operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
+        upstream->send<typename io::streaming<upstream_type>::write>(this->call(unpacked));
+        upstream->seal<typename io::streaming<upstream_type>::close>();
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();
@@ -65,7 +63,9 @@ struct blocking_slot<void, Event>:
     public function_slot<void, Event>
 {
     typedef function_slot<void, Event> parent_type;
+
     typedef typename parent_type::callable_type callable_type;
+    typedef typename parent_type::upstream_type upstream_type;
 
     blocking_slot(callable_type callable):
         parent_type(callable)
@@ -73,11 +73,11 @@ struct blocking_slot<void, Event>:
 
     virtual
     std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& unpacked, const api::stream_ptr_t& upstream) {
+    operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
         this->call(unpacked);
 
         // This is needed so that service clients could detect operation completion.
-        upstream->close();
+        upstream->seal<typename io::streaming<upstream_type>::close>();
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();
