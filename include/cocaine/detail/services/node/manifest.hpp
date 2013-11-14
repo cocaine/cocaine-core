@@ -23,13 +23,13 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/detail/cached.hpp"
+#include "cocaine/dynamic/dynamic.hpp"
 
-#include "json/json.h"
 
 namespace cocaine { namespace engine {
 
 struct manifest_t:
-    cached<Json::Value>
+    cached<dynamic_t>
 {
     manifest_t(context_t& context, const std::string& name);
 

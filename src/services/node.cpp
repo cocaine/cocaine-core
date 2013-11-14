@@ -28,6 +28,7 @@
 
 #include <tuple>
 
+using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
@@ -87,16 +88,12 @@ node_t::~node_t() {
     m_apps.clear();
 }
 
-<<<<<<< HEAD
 dispatch_t&
 node_t::prototype() {
     return *this;
 }
 
-Json::Value
-=======
 dynamic_t
->>>>>>> Kill JsonCpp with fire.
 node_t::on_start_app(const runlist_t& runlist) {
     dynamic_t::object_t result;
 
