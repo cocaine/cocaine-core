@@ -36,10 +36,6 @@ struct manifest_t:
     // The application name.
     std::string name;
 
-    // A configuration map for drivers, similar to the generic one found
-    // in the config_t structure.
-    config_t::component_map_t drivers;
-
     // The application engine's endpoint name.
     std::string endpoint;
 

@@ -30,9 +30,6 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     cached<Json::Value>(context, "manifests", name_),
     name(name_)
 {
-    // TODO: Validate driver availability.
-    drivers = config_t::parse((*this)["drivers"]);
-
     endpoint = cocaine::format("%s/%s.%d", context.config.path.runtime, name, ::getpid());
 
     auto vars = get("environment", Json::Value(Json::objectValue));
