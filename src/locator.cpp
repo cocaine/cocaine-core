@@ -253,7 +253,7 @@ private:
 
         // NOTE: It is dangerous to remove the channel while the message is still being processed,
         // so we defer it via reactor_t::post().
-        self.m_reactor.post(deferred_erase_action<decltype(m_remotes)> {
+        self.m_reactor.post(deferred_erase_action<decltype(self.m_remotes)> {
             self.m_remotes,
             node
         });
