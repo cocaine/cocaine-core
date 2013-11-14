@@ -108,14 +108,14 @@ struct message_t {
     }
 
 public:
-    uint32_t
-    id() const {
-        return m_object.via.array.ptr[0].as<uint32_t>();
-    }
-
     uint64_t
     band() const {
-        return m_object.via.array.ptr[1].as<uint64_t>();
+        return m_object.via.array.ptr[0].as<uint64_t>();
+    }
+
+    uint32_t
+    id() const {
+        return m_object.via.array.ptr[1].as<uint32_t>();
     }
 
     const msgpack::object&

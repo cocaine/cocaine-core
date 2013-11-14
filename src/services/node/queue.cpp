@@ -18,45 +18,16 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ARCHIVE_HPP
-#define COCAINE_ARCHIVE_HPP
+#include "cocaine/detail/services/node/queue.hpp"
+#include "cocaine/detail/services/node/session.hpp"
 
-#include "cocaine/common.hpp"
+using namespace cocaine::engine;
 
-struct archive;
-
-namespace cocaine {
-
-struct archive_error_t:
-    public std::runtime_error
-{
-    archive_error_t(archive* source);
-};
-
-class archive_t {
-    public:
-        archive_t(context_t& context, const std::string& archive);
-       ~archive_t();
-
-        void
-        deploy(const std::string& prefix);
-
-    public:
-        std::string
-        type() const;
-
-    private:
-        static
-        void
-        extract(archive* source, archive* target);
-
-    private:
-        const std::unique_ptr<logging::log_t> m_log;
-
-        // The source archive.
-        archive* m_archive;
-};
-
-} // namespace cocaine
-
-#endif
+void
+session_queue_t::push(const_reference session) {
+    if(session->event.policy.urgent) {
+        emplace_front(session);
+    } else {
+        emplace_back(session);
+    }
+}

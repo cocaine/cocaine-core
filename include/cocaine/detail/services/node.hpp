@@ -24,6 +24,8 @@
 #include "cocaine/api/service.hpp"
 #include "cocaine/api/storage.hpp"
 
+#include "cocaine/detail/services/node/forwards.hpp"
+
 #include "cocaine/dispatch.hpp"
 
 #include "cocaine/services/node.hpp"

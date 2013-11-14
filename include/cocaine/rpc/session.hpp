@@ -27,7 +27,9 @@
 
 namespace cocaine {
 
-class session_t {
+class session_t:
+    public std::enable_shared_from_this<session_t>
+{
     std::unique_ptr<io::channel<io::socket<io::tcp>>> ptr;
     std::mutex mutex;
 
@@ -41,13 +43,6 @@ class session_t {
 
     std::map<uint64_t, std::shared_ptr<downstream_t>> downstreams;
 
-private:
-    void
-    invoke(const io::message_t& message, const std::shared_ptr<session_t>& self);
-
-    void
-    revoke();
-
 public:
     friend class actor_t;
     friend class upstream_t;
@@ -58,9 +53,13 @@ public:
     { }
 
     void
-    detach(uint64_t tag) {
-        downstreams.erase(tag);
-    }
+    invoke(const io::message_t& message);
+
+    void
+    revoke();
+
+    void
+    detach(uint64_t index);
 };
 
 } // namespace cocaine

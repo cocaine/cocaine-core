@@ -33,9 +33,6 @@
 
 #include "cocaine/rpc/upstream.hpp"
 
-#include "cocaine/services/presence.hpp"
-#include "cocaine/services/streaming.hpp"
-
 #if defined(__linux__)
     #include <sys/prctl.h>
 #endif
@@ -62,7 +59,7 @@ public:
     void
     invoke(const message_t& message) {
         if(!dispatch) {
-            // TODO: COCAINE-82 changes to 'client' error category.
+            // TODO: COCAINE-82 adds 'client' error category.
             throw cocaine::error_t("downstream has been closed");
         }
 
@@ -71,18 +68,19 @@ public:
 };
 
 void
-session_t::invoke(const message_t& message, const std::shared_ptr<session_t>& self) {
+session_t::invoke(const message_t& message) {
     std::shared_ptr<downstream_t> downstream;
 
     {
         std::lock_guard<std::mutex> guard(mutex);
 
-        auto it = downstreams.find(message.band());
+        auto index = message.band();
+        auto it    = downstreams.find(index);
 
         if(it == downstreams.end()) {
-            std::tie(it, std::ignore) = downstreams.insert({ message.band(), std::make_shared<downstream_t>(
+            std::tie(it, std::ignore) = downstreams.insert({ index, std::make_shared<downstream_t>(
                 prototype,
-                std::make_shared<upstream_t>(self, message.band())
+                std::make_shared<upstream_t>(shared_from_this(), index)
             )});
         }
 
@@ -111,6 +109,11 @@ session_t::revoke() {
     // NOTE: This invalidates and closes the internal channel pointer, but the session itself
     // might still be accessible via upstreams in other threads, but that's okay.
     ptr.reset();
+}
+
+void
+session_t::detach(uint64_t index) {
+    downstreams.erase(index);
 }
 
 actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::unique_ptr<dispatch_t>&& prototype):
@@ -240,33 +243,6 @@ actor_t::counters() const -> counters_t {
     return result;
 }
 
-namespace {
-
-struct heartbeat_slot_t:
-    public basic_slot<io::presence::heartbeat>
-{
-    heartbeat_slot_t(const std::string& uuid_, const std::shared_ptr<dispatch_t>& self_):
-        uuid(uuid_),
-        self(self_)
-    { }
-
-    virtual
-    std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& /* unpacked */, const std::shared_ptr<upstream_t>& upstream) {
-        upstream->send<io::streaming<std::string>::chunk>(uuid);
-
-        // Recursive protocol transition. If the service is destroyed, then we simply return an empty
-        // protocol dispatch, which is just fine.
-        return self.lock();
-    };
-
-private:
-    const std::string& uuid;
-    const std::weak_ptr<dispatch_t> self;
-};
-
-} // namespace
-
 void
 actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
     const int fd = socket_->fd();
@@ -286,22 +262,7 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
         std::bind(&actor_t::on_failure, this, fd, _1)
     );
 
-    typedef implementation<io::presence_tag> presence_service_t;
-
-    auto service = std::make_shared<presence_service_t>(m_context, "service/presence");
-    auto session = std::make_shared<session_t>(std::move(ptr), m_prototype);
-
-    service->on<io::presence::heartbeat>(std::make_shared<heartbeat_slot_t>(
-        m_context.config.network.uuid,
-        service
-    ));
-
-    session->downstreams.insert({ 0, std::make_shared<session_t::downstream_t>(
-        std::move(service),
-        std::make_shared<upstream_t>(session, 0)
-    )});
-
-    m_sessions[fd] = std::move(session);
+    m_sessions[fd] = std::make_shared<session_t>(std::move(ptr), m_prototype);
 }
 
 void
@@ -310,7 +271,7 @@ actor_t::on_message(int fd, const message_t& message) {
 
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->invoke(message, it->second);
+    it->second->invoke(message);
 }
 
 void

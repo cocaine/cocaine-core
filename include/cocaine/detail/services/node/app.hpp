@@ -22,6 +22,7 @@
 #define COCAINE_APP_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/detail/services/node/forwards.hpp"
 
 #include "json/json.h"
 
@@ -72,15 +73,6 @@ class app_t {
 
         std::shared_ptr<engine::engine_t> m_engine;
         std::unique_ptr<std::thread> m_thread;
-
-        // Drivers
-
-        typedef std::map<
-            std::string,
-            std::shared_ptr<api::driver_t>
-        > driver_map_t;
-
-        driver_map_t m_drivers;
 };
 
 } // namespace cocaine

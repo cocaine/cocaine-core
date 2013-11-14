@@ -18,22 +18,21 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/slave.hpp"
-
-#include "cocaine/api/event.hpp"
-#include "cocaine/api/stream.hpp"
+#include "cocaine/detail/services/node/slave.hpp"
 
 #include "cocaine/asio/reactor.hpp"
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/detail/engine.hpp"
-#include "cocaine/detail/manifest.hpp"
-#include "cocaine/detail/profile.hpp"
-#include "cocaine/detail/session.hpp"
+#include "cocaine/detail/services/node/engine.hpp"
+#include "cocaine/detail/services/node/event.hpp"
+#include "cocaine/detail/services/node/manifest.hpp"
+#include "cocaine/detail/services/node/messages.hpp"
+#include "cocaine/detail/services/node/profile.hpp"
+#include "cocaine/detail/services/node/session.hpp"
+#include "cocaine/detail/services/node/stream.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 

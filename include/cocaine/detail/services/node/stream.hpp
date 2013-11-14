@@ -18,16 +18,50 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/queue.hpp"
-#include "cocaine/detail/session.hpp"
+#ifndef COCAINE_APP_STREAM_HPP
+#define COCAINE_APP_STREAM_HPP
 
-using namespace cocaine::engine;
+#include "cocaine/common.hpp"
 
-void
-session_queue_t::push(const_reference session) {
-    if(session->event.policy.urgent) {
-        emplace_front(session);
-    } else {
-        emplace_back(session);
+namespace cocaine { namespace api {
+
+struct stream_t {
+    virtual
+   ~stream_t() {
+        // Empty.
     }
-}
+
+    virtual
+    void
+    write(const char* chunk, size_t size) = 0;
+
+    virtual
+    void
+    error(int code, const std::string& reason) = 0;
+
+    virtual
+    void
+    close() = 0;
+};
+
+typedef std::shared_ptr<stream_t> stream_ptr_t;
+
+struct null_stream_t:
+    public stream_t
+{
+    virtual
+    void
+    write(const char*, size_t) { }
+
+    virtual
+    void
+    error(int, const std::string&) { }
+
+    virtual
+    void
+    close() { }
+};
+
+}} // namespace cocaine::api
+
+#endif

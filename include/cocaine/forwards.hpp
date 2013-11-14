@@ -22,95 +22,84 @@
 #define COCAINE_FORWARDS_HPP
 
 namespace cocaine {
-    // Runtime configuration.
-    struct config_t;
 
-    // Runtime context.
-    class context_t;
+struct config_t;
+class context_t;
 
-    // App container.
-    class app_t;
+} // namespace cocaine
 
-    namespace api {
-        struct driver_t;
-        struct gateway_t;
-        struct isolate_t;
-        struct logger_t;
-        struct service_t;
-        struct storage_t;
+namespace cocaine { namespace api {
 
-        struct event_t;
-        struct stream_t;
-    }
+struct gateway_t;
+struct isolate_t;
+struct logger_t;
+struct service_t;
+struct storage_t;
 
-    namespace engine {
-        // App configuration.
-        struct manifest_t;
-        struct profile_t;
+}} // namespace cocaine::api
 
-        // App engine.
-        class engine_t;
-    }
+namespace cocaine { namespace io {
 
-    namespace io {
-        struct local;
-        struct tcp;
-        struct udp;
+struct local;
+struct tcp;
+struct udp;
 
-        template<class>
-        struct socket;
+template<class>
+struct socket;
 
-        template<class>
-        struct acceptor;
+template<class>
+struct acceptor;
 
-        // I/O privimites
+// I/O privimites
 
-        struct reactor_t;
+struct reactor_t;
 
-        template<class>
-        struct connector;
+template<class>
+struct connector;
 
-        template<class>
-        struct readable_stream;
+template<class>
+struct readable_stream;
 
-        template<class>
-        struct writable_stream;
+template<class>
+struct writable_stream;
 
-        struct timeout_t;
+struct timeout_t;
 
-        // RPC primitives
+// RPC primitives
 
-        template<class>
-        struct protocol;
+template<class>
+struct protocol;
 
-        struct message_t;
+struct message_t;
 
-        class dispatch_t;
+class dispatch_t;
 
-        // Messaging
+// Messaging
 
-        template<class>
-        struct encoder;
+template<class>
+struct encoder;
 
-        template<class>
-        struct decoder;
+template<class>
+struct decoder;
 
-        template<class>
-        struct channel;
-    }
+template<class>
+struct channel;
 
-    namespace logging {
-        enum priorities: int {
-            ignore,
-            error,
-            warning,
-            info,
-            debug
-        };
+}} // namespace cocaine::io
 
-        struct logger_concept_t;
-        struct log_t;
-    }
-}
+namespace cocaine { namespace logging {
+
+enum priorities: int {
+    ignore,
+    error,
+    warning,
+    info,
+    debug
+};
+
+struct logger_concept_t;
+struct log_t;
+
+}} // namespace cocaine::logging
 
 #endif

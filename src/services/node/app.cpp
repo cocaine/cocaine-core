@@ -18,12 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/app.hpp"
+#include "cocaine/detail/services/node/app.hpp"
 
-#include "cocaine/api/driver.hpp"
-#include "cocaine/api/event.hpp"
 #include "cocaine/api/isolate.hpp"
-#include "cocaine/api/stream.hpp"
 
 #include "cocaine/asio/acceptor.hpp"
 #include "cocaine/asio/reactor.hpp"
@@ -33,14 +30,17 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/detail/actor.hpp"
-#include "cocaine/detail/engine.hpp"
-#include "cocaine/detail/manifest.hpp"
-#include "cocaine/detail/profile.hpp"
+
+#include "cocaine/detail/services/node/engine.hpp"
+#include "cocaine/detail/services/node/event.hpp"
+#include "cocaine/detail/services/node/manifest.hpp"
+#include "cocaine/detail/services/node/messages.hpp"
+#include "cocaine/detail/services/node/profile.hpp"
+#include "cocaine/detail/services/node/stream.hpp"
 
 #include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
-#include "cocaine/messages.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 
@@ -246,49 +246,6 @@ void
 app_t::start() {
     COCAINE_LOG_INFO(m_log, "starting the engine");
 
-    auto drivers = driver_map_t();
-
-    if(!m_manifest->drivers.empty()) {
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "starting %llu %s",
-            m_manifest->drivers.size(),
-            m_manifest->drivers.size() == 1 ? "driver" : "drivers"
-        );
-
-        api::category_traits<api::driver_t>::ptr_type driver;
-
-        for(auto it = m_manifest->drivers.begin(); it != m_manifest->drivers.end(); ++it) {
-            const std::string name = cocaine::format(
-                "%s/%s",
-                m_manifest->name,
-                it->first
-            );
-
-            COCAINE_LOG_DEBUG(m_log, "starting driver '%s', type: %s", it->first, it->second.type);
-
-            try {
-                driver = m_context.get<api::driver_t>(
-                    it->second.type,
-                    m_context,
-                    m_engine->reactor(),
-                    *this,
-                    name,
-                    it->second.args
-                );
-            } catch(const cocaine::error_t& e) {
-                throw cocaine::error_t("unable to initialize the '%s' driver - %s", name, e.what());
-            } catch(...) {
-                throw cocaine::error_t("unable to initialize the '%s' driver - unknown exception", name);
-            }
-
-            drivers[it->first] = std::move(driver);
-        }
-    }
-
-    // We can safely swap the current driver set now.
-    m_drivers.swap(drivers);
-
     // Start the engine thread.
     m_thread.reset(new std::thread(std::bind(&engine_t::run, m_engine)));
 
@@ -448,12 +405,6 @@ app_t::stop() {
     m_thread->join();
     m_thread.reset();
 
-    // NOTE: Stop the drivers, so that there won't be any open
-    // sockets and so on while the engine is stopped.
-    m_drivers.clear();
-
-    // NOTE: Destroy the engine last, because it holds the only
-    // reference to the reactor which drivers use.
     m_engine.reset();
 
     COCAINE_LOG_INFO(m_log, "the engine has stopped");
@@ -482,10 +433,6 @@ app_t::info() const {
     }
 
     info["profile"] = m_profile->name;
-
-    for(auto it = m_drivers.begin(); it != m_drivers.end(); ++it) {
-        info["drivers"][it->first] = it->second->info();
-    }
 
     return info;
 }

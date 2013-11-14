@@ -88,32 +88,30 @@ SET_TARGET_PROPERTIES(json PROPERTIES
 ADD_LIBRARY(cocaine-core SHARED
     src/actor
     src/api
-    src/app
-    src/archive
     src/context
     ${LIBCRYPTO_SOURCES}
     src/dispatch
-    src/drivers/fs
-    src/drivers/time
-    src/engine
     src/essentials
     src/group
     src/gateways/adhoc
-    src/isolates/process
-    src/isolates/spooler
+    src/isolates/process.cpp
+    src/isolates/process/archive
+    src/isolates/process/spooler
     src/locator
     src/loggers/files
     src/loggers/syslog
     src/logging
-    src/manifest
-    src/profile
-    src/queue
     src/repository
     src/services/logging
-    src/services/node
+    src/services/node.cpp
+    src/services/node/app
+    src/services/node/engine
+    src/services/node/manifest
+    src/services/node/profile
+    src/services/node/queue
+    src/services/node/session
+    src/services/node/slave
     src/services/storage
-    src/session
-    src/slave
     src/storages/files
     src/unique_id)
 

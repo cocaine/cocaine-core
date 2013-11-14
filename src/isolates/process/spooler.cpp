@@ -22,7 +22,7 @@
 
 #include "cocaine/api/storage.hpp"
 
-#include "cocaine/detail/archive.hpp"
+#include "cocaine/detail/isolates/archive.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

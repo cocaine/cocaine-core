@@ -18,7 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/manifest.hpp"
+#include "cocaine/detail/services/node/manifest.hpp"
+
 #include "cocaine/traits/json.hpp"
 
 #include <unistd.h>

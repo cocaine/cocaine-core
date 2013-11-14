@@ -18,50 +18,29 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_STREAM_API_HPP
-#define COCAINE_STREAM_API_HPP
+#ifndef COCAINE_NODE_FORWARDS_HPP
+#define COCAINE_NODE_FORWARDS_HPP
 
-#include "cocaine/common.hpp"
+namespace cocaine {
+
+class app_t;
+
+} // namespace cocaine
 
 namespace cocaine { namespace api {
 
-struct stream_t {
-    virtual
-   ~stream_t() {
-        // Empty.
-    }
-
-    virtual
-    void
-    write(const char* chunk, size_t size) = 0;
-
-    virtual
-    void
-    error(int code, const std::string& reason) = 0;
-
-    virtual
-    void
-    close() = 0;
-};
-
-typedef std::shared_ptr<stream_t> stream_ptr_t;
-
-struct null_stream_t:
-    public stream_t
-{
-    virtual
-    void
-    write(const char*, size_t) { }
-
-    virtual
-    void
-    error(int, const std::string&) { }
-
-    virtual
-    void
-    close() { }
-};
+struct event_t;
+struct stream_t;
 
 }} // namespace cocaine::api
+
+namespace cocaine { namespace engine {
+
+class engine_t;
+
+struct manifest_t;
+struct profile_t;
+
+}} // namespace cocaine::engine
 
 #endif

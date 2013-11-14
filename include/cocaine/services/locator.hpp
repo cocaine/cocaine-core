@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_LOCATOR_SERVICE_INTERFACE_HPP
-#define COCAINE_LOCATOR_SERVICE_INTERFACE_HPP
+#ifndef COCAINE_SERVICE_LOCATOR_INTERFACE_HPP
+#define COCAINE_SERVICE_LOCATOR_INTERFACE_HPP
 
 #include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/protocol.hpp"

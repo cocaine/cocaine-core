@@ -25,7 +25,7 @@
 
 namespace cocaine { namespace io {
 
-// Streaming service interface template
+// Streaming service interface
 
 template<class T>
 struct streaming_tag;
@@ -35,9 +35,7 @@ struct streaming {
 
 struct chunk {
     typedef streaming_tag<T> tag;
-
-    // Specifies that this slot doesn't switch the protocol dispatch.
-    typedef recursive_tag transition_type;
+    typedef recursive_tag    transition_type;
 
     static
     const char*

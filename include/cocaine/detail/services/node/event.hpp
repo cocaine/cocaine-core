@@ -18,49 +18,45 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_PRESENCE_SERVICE_INTERFACE_HPP
-#define COCAINE_PRESENCE_SERVICE_INTERFACE_HPP
+#ifndef COCAINE_APP_EVENT_HPP
+#define COCAINE_APP_EVENT_HPP
 
-#include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/tags.hpp"
+#include "cocaine/common.hpp"
 
-namespace cocaine { namespace io {
+namespace cocaine { namespace api {
 
-// Service presence control interface
+struct policy_t {
+    policy_t():
+        urgent(false),
+        timeout(0.0f),
+        deadline(0.0f)
+    { }
 
-struct presence_tag;
+    policy_t(bool urgent_, double timeout_, double deadline_):
+        urgent(urgent_),
+        timeout(timeout_),
+        deadline(deadline_)
+    { }
 
-namespace presence {
-
-struct heartbeat {
-    typedef presence_tag  tag;
-    typedef recursive_tag transition_type;
-
-    static
-    const char*
-    alias() {
-        return "heartbeat";
-    }
-
-    typedef
-     /* The UUID of the node, to detect the event of restart. */
-        std::string
-    result_type;
+    bool urgent;
+    double timeout;
+    double deadline;
 };
 
-} // namespace presence
+struct event_t {
+    event_t(const std::string& name_):
+        name(name_)
+    { }
 
-template<>
-struct protocol<presence_tag> {
-    typedef boost::mpl::int_<
-        1
-    >::type version;
+    event_t(const std::string& name_, policy_t policy_):
+        name(name_),
+        policy(policy_)
+    { }
 
-    typedef boost::mpl::list<
-        presence::heartbeat
-    > type;
+    const std::string name;
+    const policy_t policy;
 };
 
-}} // namespace cocaine::io
+}} // namespace cocaine::api
 
 #endif

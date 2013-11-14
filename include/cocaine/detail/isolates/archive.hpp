@@ -18,44 +18,45 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_TIME_DRIVER_HPP
-#define COCAINE_TIME_DRIVER_HPP
+#ifndef COCAINE_PROCESS_ISOLATE_ARCHIVE_HPP
+#define COCAINE_PROCESS_ISOLATE_ARCHIVE_HPP
 
-#include "cocaine/api/driver.hpp"
+#include "cocaine/common.hpp"
 
-// TODO: Either forward or wrap libev types.
-#include "cocaine/asio/reactor.hpp"
+struct archive;
 
-namespace cocaine { namespace driver {
+namespace cocaine {
 
-class recurring_timer_t:
-    public api::driver_t
+struct archive_error_t:
+    public std::runtime_error
 {
-    public:
-        recurring_timer_t(context_t& context, io::reactor_t& reactor, app_t& app, const std::string& name, const Json::Value& args);
-
-        virtual
-       ~recurring_timer_t();
-
-        virtual
-        Json::Value
-        info() const;
-
-    private:
-        void
-        on_event(ev::timer&, int);
-
-    protected:
-        const std::unique_ptr<logging::log_t> m_log;
-
-        app_t& m_app;
-
-        const std::string m_event;
-        const double m_interval;
-
-        ev::timer m_watcher;
+    archive_error_t(archive* source);
 };
 
-}} // namespace cocaine::driver
+class archive_t {
+    public:
+        archive_t(context_t& context, const std::string& archive);
+       ~archive_t();
+
+        void
+        deploy(const std::string& prefix);
+
+    public:
+        std::string
+        type() const;
+
+    private:
+        static
+        void
+        extract(archive* source, archive* target);
+
+    private:
+        const std::unique_ptr<logging::log_t> m_log;
+
+        // The source archive.
+        archive* m_archive;
+};
+
+} // namespace cocaine
 
 #endif

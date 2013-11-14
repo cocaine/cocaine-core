@@ -18,8 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/drivers/fs.hpp"
-#include "cocaine/detail/drivers/time.hpp"
 #include "cocaine/detail/isolates/process.hpp"
 #include "cocaine/detail/gateways/adhoc.hpp"
 #include "cocaine/detail/loggers/files.hpp"
@@ -33,8 +31,6 @@
 
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
-    repository.insert<driver::fs_t>("fs");
-    repository.insert<driver::recurring_timer_t>("time");
     repository.insert<isolate::process_t>("process");
     repository.insert<gateway::adhoc_t>("adhoc");
     repository.insert<logger::files_t>("files");

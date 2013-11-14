@@ -27,8 +27,6 @@
 
 #include "cocaine/services/locator.hpp"
 
-#include <mutex>
-
 namespace ev {
     struct io;
     struct timer;
@@ -36,9 +34,17 @@ namespace ev {
 
 namespace cocaine {
 
+class session_t;
+
 class locator_t:
     public implementation<io::locator_tag>
 {
+    public:
+        typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
+        typedef io::event_traits<io::locator::refresh>::result_type refresh_result_type;
+
+        typedef std::tuple<std::string, std::string, uint16_t> node_id_t;
+
     public:
         locator_t(context_t& context, io::reactor_t& reactor);
 
@@ -48,10 +54,6 @@ class locator_t:
     private:
         void
         connect();
-
-        typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
-        typedef io::event_traits<io::locator::synchronize>::result_type synchronize_result_type;
-        typedef io::event_traits<io::locator::refresh>::result_type refresh_result_type;
 
         auto
         resolve(const std::string& name) const -> resolve_result_type;
@@ -67,19 +69,13 @@ class locator_t:
         void
         on_announce_timer(ev::timer&, int);
 
-        typedef std::tuple<std::string, std::string, uint16_t> key_type;
+        // Synchronization
 
         void
-        on_message(const key_type& key, const io::message_t& message);
+        on_message(const node_id_t& node, const io::message_t& message);
 
         void
-        on_failure(const key_type& key, const std::error_code& ec);
-
-        void
-        on_timeout(const key_type& key);
-
-        void
-        on_lifetap(const key_type& key);
+        on_failure(const node_id_t& node, const std::error_code& ec);
 
     private:
         context_t& m_context;
@@ -93,17 +89,11 @@ class locator_t:
         std::unique_ptr<io::socket<io::udp>> m_sink;
         std::unique_ptr<ev::io> m_sink_watcher;
 
-        struct remote_t {
-            std::shared_ptr<io::channel<io::socket<io::tcp>>> channel;
+        class remote_client_t;
 
-            // Remote node timers.
-            std::shared_ptr<io::timeout_t> lifetap;
-            std::shared_ptr<io::timeout_t> timeout;
-        };
-
-        // These are remote channels indexed by endpoint and uuid. The uuid is required to easily
+        // These are remote sessions indexed by endpoint and uuid. The uuid is required to easily
         // disambiguate between different runtime instances on the same host.
-        std::map<key_type, remote_t> m_remotes;
+        std::map<node_id_t, std::shared_ptr<session_t>> m_remotes;
 
         // Remote gateway.
         std::unique_ptr<api::gateway_t> m_gateway;
