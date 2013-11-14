@@ -222,8 +222,8 @@ class locator_t::remote_client_t:
 
     // Remote node identification
 
-    const node_id_t    node;
-    const std::string& uuid;
+    const remote_id_t node;
+    const std::string uuid;
 
 private:
     void
@@ -260,8 +260,8 @@ private:
     }
 
 public:
-    remote_client_t(locator_t& self_, node_id_t node_):
-        implementation<io::streaming_tag<synchronize_result_type>>(self.m_context, "service/locator"),
+    remote_client_t(locator_t& self_, const remote_id_t& node_):
+        implementation<io::streaming_tag<synchronize_result_type>>(self_.m_context, self_.name()),
         self(self_),
         node(node_),
         uuid(std::get<0>(node))
@@ -289,14 +289,18 @@ locator_t::on_announce_event(ev::io&, int) {
     }
 
     msgpack::unpacked unpacked;
-    node_id_t node;
 
     try {
         msgpack::unpack(&unpacked, buffers, size);
-        unpacked.get() >> node;
     } catch(const msgpack::unpack_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
         return;
+    }
+
+    remote_id_t node;
+
+    try {
+        unpacked.get() >> node;
     } catch(const msgpack::type_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to decode an announce");
         return;
@@ -370,7 +374,7 @@ locator_t::on_announce_timer(ev::timer&, int) {
     msgpack::sbuffer buffer;
     msgpack::packer<msgpack::sbuffer> packer(buffer);
 
-    packer << node_id_t(
+    packer << remote_id_t(
         m_context.config.network.uuid,
         m_context.config.network.hostname,
         m_context.config.network.locator
@@ -388,7 +392,7 @@ locator_t::on_announce_timer(ev::timer&, int) {
 }
 
 void
-locator_t::on_message(const node_id_t& node, const message_t& message) {
+locator_t::on_message(const remote_id_t& node, const message_t& message) {
     auto it = m_remotes.find(node);
 
     if(it == m_remotes.end()) {
@@ -399,7 +403,7 @@ locator_t::on_message(const node_id_t& node, const message_t& message) {
 }
 
 void
-locator_t::on_failure(const node_id_t& node, const std::error_code& ec) {
+locator_t::on_failure(const remote_id_t& node, const std::error_code& ec) {
     std::string uuid;
 
     std::tie(uuid, std::ignore, std::ignore) = node;

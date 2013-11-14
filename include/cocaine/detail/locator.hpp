@@ -43,7 +43,7 @@ class locator_t:
         typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
         typedef io::event_traits<io::locator::refresh>::result_type refresh_result_type;
 
-        typedef std::tuple<std::string, std::string, uint16_t> node_id_t;
+        typedef std::tuple<std::string, std::string, uint16_t> remote_id_t;
 
     public:
         locator_t(context_t& context, io::reactor_t& reactor);
@@ -72,10 +72,10 @@ class locator_t:
         // Synchronization
 
         void
-        on_message(const node_id_t& node, const io::message_t& message);
+        on_message(const remote_id_t& node, const io::message_t& message);
 
         void
-        on_failure(const node_id_t& node, const std::error_code& ec);
+        on_failure(const remote_id_t& node, const std::error_code& ec);
 
     private:
         context_t& m_context;
@@ -93,7 +93,7 @@ class locator_t:
 
         // These are remote sessions indexed by endpoint and uuid. The uuid is required to easily
         // disambiguate between different runtime instances on the same host.
-        std::map<node_id_t, std::shared_ptr<session_t>> m_remotes;
+        std::map<remote_id_t, std::shared_ptr<session_t>> m_remotes;
 
         // Remote gateway.
         std::unique_ptr<api::gateway_t> m_gateway;
