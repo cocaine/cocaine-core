@@ -21,20 +21,20 @@
 #ifndef COCAINE_NODE_SERVICE_HPP
 #define COCAINE_NODE_SERVICE_HPP
 
+#include "cocaine/detail/services/node/forwards.hpp"
+
 #include "cocaine/api/service.hpp"
 #include "cocaine/api/storage.hpp"
 
-#include "cocaine/detail/services/node/forwards.hpp"
-
 #include "cocaine/dispatch.hpp"
 
-#include "cocaine/services/node.hpp"
+#include "cocaine/idl/node.hpp"
 
 namespace cocaine { namespace service {
 
 class node_t:
     public api::service_t,
-    public implementation<io::node_tag>
+    public implements<io::node_tag>
 {
     public:
         node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);

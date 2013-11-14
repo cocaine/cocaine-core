@@ -22,6 +22,7 @@
 #define COCAINE_STREAMING_SERVICE_INTERFACE_HPP
 
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
 

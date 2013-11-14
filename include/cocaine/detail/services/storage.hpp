@@ -26,13 +26,13 @@
 
 #include "cocaine/dispatch.hpp"
 
-#include "cocaine/services/storage.hpp"
+#include "cocaine/idl/storage.hpp"
 
 namespace cocaine { namespace service {
 
 class storage_t:
     public api::service_t,
-    public implementation<io::storage_tag>
+    public implements<io::storage_tag>
 {
     public:
         storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);

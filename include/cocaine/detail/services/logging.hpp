@@ -25,13 +25,13 @@
 
 #include "cocaine/dispatch.hpp"
 
-#include "cocaine/services/logging.hpp"
+#include "cocaine/idl/logging.hpp"
 
 namespace cocaine { namespace service {
 
 class logging_t:
     public api::service_t,
-    public implementation<io::logging_tag>
+    public implements<io::logging_tag>
 {
     public:
         logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);

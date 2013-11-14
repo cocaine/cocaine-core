@@ -24,7 +24,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-#include "cocaine/services/locator.hpp"
+// TODO: Drop this.
+#include "cocaine/idl/locator.hpp"
 
 #include "json/json.h"
 

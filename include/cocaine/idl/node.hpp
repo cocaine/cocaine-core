@@ -21,10 +21,10 @@
 #ifndef COCAINE_NODE_SERVICE_INTERFACE_HPP
 #define COCAINE_NODE_SERVICE_INTERFACE_HPP
 
+#include "cocaine/idl/streaming.hpp"
+
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/tags.hpp"
-
-#include "cocaine/services/streaming.hpp"
 
 namespace cocaine { namespace io {
 

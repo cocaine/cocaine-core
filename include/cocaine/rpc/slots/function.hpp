@@ -23,11 +23,11 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/idl/streaming.hpp"
+
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/slot.hpp"
 #include "cocaine/rpc/tags.hpp"
-
-#include "cocaine/services/streaming.hpp"
 
 #include "cocaine/traits.hpp"
 

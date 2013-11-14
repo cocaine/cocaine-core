@@ -25,7 +25,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/dispatch.hpp"
 
-#include "cocaine/services/locator.hpp"
+#include "cocaine/idl/locator.hpp"
 
 namespace ev {
     struct io;
@@ -37,7 +37,7 @@ namespace cocaine {
 class session_t;
 
 class locator_t:
-    public implementation<io::locator_tag>
+    public implements<io::locator_tag>
 {
     public:
         typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;

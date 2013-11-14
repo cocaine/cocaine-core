@@ -25,9 +25,10 @@
 
 #include "cocaine/asio/tcp.hpp"
 
-#include "cocaine/rpc/session.hpp"
+// TODO: Drop this.
+#include "cocaine/idl/locator.hpp"
 
-#include "cocaine/services/locator.hpp"
+#include "cocaine/rpc/session.hpp"
 
 #include <list>
 #include <thread>

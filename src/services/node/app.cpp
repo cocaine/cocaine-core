@@ -39,19 +39,22 @@
 #include "cocaine/detail/services/node/stream.hpp"
 
 #include "cocaine/dispatch.hpp"
+
+#include "cocaine/idl/node.hpp"
+
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
 #include "cocaine/rpc/channel.hpp"
-
-#include "cocaine/services/node.hpp"
 
 #include "cocaine/traits/json.hpp"
 #include "cocaine/traits/literal.hpp"
 
 #include <tuple>
 
+#define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/bind.hpp>
+
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
@@ -64,15 +67,20 @@ namespace fs = boost::filesystem;
 namespace {
 
 struct app_service_t:
-    public implementation<io::app_tag>
+    public implements<io::app_tag>
 {
     struct streaming_service_t:
-        public implementation<io::streaming_tag<std::string>>
+        public implements<io::streaming_tag<std::string>>
     {
         streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& downstream_):
-            implementation<io::streaming_tag<std::string>>(context, name),
+            implements<io::streaming_tag<std::string>>(context, name),
             downstream(downstream_)
-        { }
+        {
+            using namespace std::placeholders;
+
+            on<io::streaming<std::string>::error>(std::bind(&streaming_service_t::error, this, _1, _2));
+            on<io::streaming<std::string>::choke>(std::bind(&streaming_service_t::close, this));
+        }
 
         void
         write(const std::string& chunk) {
@@ -82,6 +90,7 @@ struct app_service_t:
         void
         error(int code, const std::string& reason) {
             downstream->error(code, reason);
+            downstream->close();
         }
 
         void
@@ -104,7 +113,7 @@ struct app_service_t:
         std::shared_ptr<dispatch_t>
         operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
             return io::detail::invoke<event_traits<app::enqueue>::tuple_type>::apply(
-                boost::bind(&app_service_t::enqueue, &self, upstream, _1, _2),
+                boost::bind(&app_service_t::enqueue, &self, upstream, boost::arg<1>(), boost::arg<2>()),
                 unpacked
             );
         }
@@ -126,7 +135,7 @@ struct app_service_t:
             auto service = self.lock();
 
             io::detail::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
-                boost::bind(&streaming_service_t::write, service.get(), _1),
+                boost::bind(&streaming_service_t::write, service.get(), boost::arg<1>()),
                 unpacked
             );
 
@@ -167,7 +176,7 @@ struct app_service_t:
     };
 
     app_service_t(context_t& context_, const std::string& name_, app_t& app_):
-        implementation<io::app_tag>(context_, cocaine::format("service/%1%", name_)),
+        implements<io::app_tag>(context_, cocaine::format("service/%1%", name_)),
         context(context_),
         app(app_)
     {
@@ -189,7 +198,6 @@ private:
         auto service = std::make_shared<streaming_service_t>(context, name(), downstream);
 
         service->on<io::streaming<std::string>::chunk>(std::make_shared<write_slot_t>(service));
-        service->on<io::streaming<std::string>::choke>(std::bind(&streaming_service_t::close, service));
 
         return service;
     }

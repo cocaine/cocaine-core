@@ -167,10 +167,10 @@ dispatch_t::forget() {
 } // namespace io
 
 template<class Tag>
-struct implementation:
+struct implements:
     public io::dispatch_t
 {
-    implementation(context_t& context, const std::string& name):
+    implements(context_t& context, const std::string& name):
         dispatch_t(context, name),
         graph(io::traverse<Tag>().get())
     {

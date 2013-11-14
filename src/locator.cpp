@@ -34,13 +34,13 @@
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/group.hpp"
 
+#include "cocaine/idl/streaming.hpp"
+
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 #include "cocaine/rpc/session.hpp"
-
-#include "cocaine/services/streaming.hpp"
 
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/tuple.hpp"
@@ -58,7 +58,7 @@ typedef io::event_traits<io::locator::synchronize>::result_type synchronize_resu
 #include "routing.inl"
 
 locator_t::locator_t(context_t& context, reactor_t& reactor):
-    implementation<io::locator_tag>(context, "service/locator"),
+    implements<io::locator_tag>(context, "service/locator"),
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor),
@@ -219,7 +219,7 @@ struct deferred_erase_action {
 } // namespace
 
 class locator_t::remote_client_t:
-    public implementation<io::streaming_tag<synchronize_result_type>>
+    public implements<io::streaming_tag<synchronize_result_type>>
 {
     locator_t& impl;
 
@@ -290,7 +290,7 @@ public:
     };
 
     remote_client_t(locator_t& impl_, const remote_id_t& node_):
-        implementation<protocol_tag>(impl_.m_context, impl_.name()),
+        implements<protocol_tag>(impl_.m_context, impl_.name()),
         impl(impl_),
         node(node_),
         uuid(std::get<0>(node))

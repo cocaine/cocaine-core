@@ -41,7 +41,7 @@ typedef std::map<std::string, std::string> runlist_t;
 
 node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, const Json::Value& args):
     api::service_t(context, reactor, name, args),
-    implementation<io::node_tag>(context, name),
+    implements<io::node_tag>(context, name),
     m_context(context),
     m_log(new logging::log_t(context, name))
 {
