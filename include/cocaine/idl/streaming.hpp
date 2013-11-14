@@ -44,10 +44,11 @@ struct chunk {
         return "write";
     }
 
-    typedef boost::mpl::list<
-     /* Some chunk of data to be sent to the service. */
-        T
-    > tuple_type;
+    typedef typename std::conditional<
+        boost::mpl::is_sequence<T>::value,
+        T,
+        boost::mpl::list<T>
+    >::type tuple_type;
 };
 
 struct error {
