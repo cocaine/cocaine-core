@@ -19,17 +19,17 @@
 */
 
 struct context_t::memusage_action_t {
-    typedef event_traits<io::locator::reports>::result_type result_type;
+    typedef event_traits<io::locator::reports>::result_type upstream_type;
 
-    result_type
-    operator()() const;
+    auto
+    operator()() const -> upstream_type;
 
     const context_t& self;
 };
 
 auto
-context_t::memusage_action_t::operator()() const -> result_type {
-    result_type result;
+context_t::memusage_action_t::operator()() const -> upstream_type {
+    upstream_type value;
 
     std::lock_guard<std::mutex> guard(self.m_mutex);
 
@@ -51,8 +51,8 @@ context_t::memusage_action_t::operator()() const -> result_type {
             });
         }
 
-        result[it->first] = std::make_tuple(source.sessions, report);
+        value[it->first] = std::make_tuple(source.sessions, report);
     }
 
-    return result;
+    return value;
 }

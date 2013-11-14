@@ -263,7 +263,6 @@ private:
     }
 
 public:
-    typedef io::streaming_tag<synchronize_result_type> protocol_tag;
     typedef io::streaming<synchronize_result_type> protocol_type;
 
     struct announce_slot_t:
@@ -290,7 +289,7 @@ public:
     };
 
     remote_client_t(locator_t& impl_, const remote_id_t& node_):
-        implements<protocol_tag>(impl_.m_context, impl_.name()),
+        implements<io::streaming_tag<synchronize_result_type>>(impl_.m_context, impl_.name()),
         impl(impl_),
         node(node_),
         uuid(std::get<0>(node))

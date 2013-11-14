@@ -47,6 +47,40 @@ namespace cocaine { namespace io {
 // It might be a better idea to do that via the type_traits<Args...> template, but such kind of
 // template argument pack expanding is not yet supported by GCC 4.4, which we use on Ubuntu Lucid.
 
+namespace aux {
+
+// NOTE: This was supposed to be in traits/tuple.hpp, but that would've created a circular include
+// dependency, which is not that great at all.
+
+template<size_t... Indices>
+struct tuple_traits_impl {
+    template<class TypeList, class Stream, typename... Args>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer, const std::tuple<Args...>& source) {
+        type_traits<TypeList>::pack(packer, std::get<Indices>(source)...);
+    }
+
+    template<class TypeList, typename... Args>
+    static inline
+    void
+    unpack(const msgpack::object& unpacked, std::tuple<Args...>& target) {
+        type_traits<TypeList>::unpack(unpacked, std::get<Indices>(target)...);
+    }
+};
+
+template<size_t N, size_t... Indices>
+struct make_tuple_traits {
+    typedef typename make_tuple_traits<N - 1, N - 1, Indices...>::type type;
+};
+
+template<size_t... Indices>
+struct make_tuple_traits<0, Indices...> {
+    typedef tuple_traits_impl<Indices...> type;
+};
+
+} // namespace aux
+
 template<class T>
 struct type_traits<
     T,
@@ -65,6 +99,7 @@ struct type_traits<
         boost::mpl::lambda<detail::unwrap_type<boost::mpl::arg<1>>>
     >::type sequence_type;
 
+public:
     template<class Stream, typename... Args>
     static inline
     void
@@ -76,6 +111,17 @@ struct type_traits<
 
         // Recursively pack every sequence element.
         pack_sequence<typename boost::mpl::begin<sequence_type>::type>(packer, sequence...);
+    }
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer, const typename tuple::fold<sequence_type>::type& tuple) {
+        typedef typename aux::make_tuple_traits<
+            boost::mpl::size<sequence_type>::value
+        >::type traits_type;
+
+        traits_type::template pack<sequence_type>(packer, tuple);
     }
 
     template<typename... Args>
@@ -99,6 +145,16 @@ struct type_traits<
 
         // Recursively unpack every tuple element while validating the types.
         unpack_sequence<typename boost::mpl::begin<sequence_type>::type>(object.via.array.ptr, sequence...);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& object, typename tuple::fold<sequence_type>& tuple) {
+        typedef typename aux::make_tuple_traits<
+            boost::mpl::size<sequence_type>::value
+        >::type traits_type;
+
+        traits_type::template unpack<sequence_type>(object, tuple);
     }
 
 private:

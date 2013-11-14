@@ -70,11 +70,11 @@ struct unassigned { };
 
 template<class T>
 struct value_type {
-    value_type(const T& result_):
-        result(result_)
+    value_type(const T& value_):
+        value(value_)
     { }
 
-    T result;
+    T value;
 };
 
 template<>
@@ -181,8 +181,8 @@ private:
         }
 
         void
-        operator()(const value_type<T>& value) const {
-            upstream->send<typename io::streaming<T>::chunk>(value.result);
+        operator()(const value_type<T>& result) const {
+            upstream->send<typename io::streaming<T>::chunk>(result.value);
             upstream->seal<typename io::streaming<T>::choke>();
         }
 

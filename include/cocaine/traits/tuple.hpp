@@ -30,53 +30,22 @@ namespace cocaine { namespace io {
 
 // Tuple serialization
 
-namespace aux {
-
-template<size_t... Indices>
-struct splat_impl {
-    template<class TypeList, class Stream, typename... Args>
-    static inline
-    void
-    pack(msgpack::packer<Stream>& packer, const std::tuple<Args...>& source) {
-        type_traits<TypeList>::pack(packer, std::get<Indices>(source)...);
-    }
-
-    template<class TypeList, typename... Args>
-    static inline
-    void
-    unpack(const msgpack::object& unpacked, std::tuple<Args...>& target) {
-        type_traits<TypeList>::unpack(unpacked, std::get<Indices>(target)...);
-    }
-};
-
-template<size_t N, size_t... Indices>
-struct splat {
-    typedef typename splat<N - 1, N - 1, Indices...>::type type;
-};
-
-template<size_t... Indices>
-struct splat<0, Indices...> {
-    typedef splat_impl<Indices...> type;
-};
-
-} // namespace aux
-
 template<typename... Args>
 struct type_traits<std::tuple<Args...>> {
+    typedef typename aux::make_tuple_traits<sizeof...(Args)>::type traits_type;
     typedef typename tuple::unfold<Args...>::type sequence_type;
-    typedef typename aux::splat<sizeof...(Args)>::type splat_type;
 
     template<class Stream>
     static inline
     void
     pack(msgpack::packer<Stream>& packer, const std::tuple<Args...>& source) {
-        splat_type::template pack<sequence_type>(packer, source);
+        traits_type::template pack<sequence_type>(packer, source);
     }
 
     static inline
     void
     unpack(const msgpack::object& unpacked, std::tuple<Args...>& target) {
-        splat_type::template unpack<sequence_type>(unpacked, target);
+        traits_type::template unpack<sequence_type>(unpacked, target);
     }
 };
 
