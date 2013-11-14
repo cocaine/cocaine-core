@@ -36,6 +36,9 @@ struct tcp {
 
         // Enable TCP_NODELAY option to boost the performance a little.
         ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
+
+        // Enable keepalive probes.
+        ::setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &enable, sizeof(enable));
     }
 };
 
