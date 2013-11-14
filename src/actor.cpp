@@ -93,7 +93,7 @@ session_t::invoke(const message_t& message) {
 
     try {
         downstream->invoke(message);
-    } catch(...) {
+    } catch(const std::exception& e) {
         // In case of an unexpected error, disconnect the client. TODO: add logging.
         revoke();
     }

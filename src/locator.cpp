@@ -45,6 +45,9 @@
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/tuple.hpp"
 
+#define BOOST_BIND_NO_PLACEHOLDERS
+#include <boost/bind/bind.hpp>
+
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -218,7 +221,7 @@ struct deferred_erase_action {
 class locator_t::remote_client_t:
     public implementation<io::streaming_tag<synchronize_result_type>>
 {
-    locator_t& self;
+    locator_t& impl;
 
     // Remote node identification
 
@@ -228,47 +231,70 @@ class locator_t::remote_client_t:
 private:
     void
     announce(const synchronize_result_type& dump) {
-        COCAINE_LOG_INFO(self.m_log, "node '%s' has been updated", uuid);
+        COCAINE_LOG_INFO(impl.m_log, "node '%s' has been updated", uuid);
 
-        auto diff = self.m_router->update_remote(uuid, dump);
+        auto diff = impl.m_router->update_remote(uuid, dump);
 
         for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
-            self.m_gateway->cleanup(uuid, it->first);
+            impl.m_gateway->cleanup(uuid, it->first);
         }
 
         for(auto it = diff.first.begin(); it != diff.first.end(); ++it) {
-            self.m_gateway->consume(uuid, it->first, it->second);
+            impl.m_gateway->consume(uuid, it->first, it->second);
         }
     }
 
     void
     shutdown() {
-        COCAINE_LOG_INFO(self.m_log, "node '%s' has been shut down", uuid);
+        COCAINE_LOG_INFO(impl.m_log, "node '%s' has been shut down", uuid);
 
-        auto removed = self.m_router->remove_remote(uuid);
+        auto removed = impl.m_router->remove_remote(uuid);
 
         for(auto it = removed.begin(); it != removed.end(); ++it) {
-            self.m_gateway->cleanup(uuid, it->first);
+            impl.m_gateway->cleanup(uuid, it->first);
         }
 
         // NOTE: It is dangerous to remove the channel while the message is still being processed,
         // so we defer it via reactor_t::post().
-        self.m_reactor.post(deferred_erase_action<decltype(self.m_remotes)> {
-            self.m_remotes,
+        impl.m_reactor.post(deferred_erase_action<decltype(impl.m_remotes)> {
+            impl.m_remotes,
             node
         });
     }
 
 public:
-    remote_client_t(locator_t& self_, const remote_id_t& node_):
-        implementation<io::streaming_tag<synchronize_result_type>>(self_.m_context, self_.name()),
-        self(self_),
+    typedef io::streaming_tag<synchronize_result_type> protocol_tag;
+    typedef io::streaming<synchronize_result_type> protocol_type;
+
+    struct announce_slot_t:
+        public basic_slot<protocol_type::chunk>
+    {
+        announce_slot_t(const std::shared_ptr<remote_client_t>& impl_):
+            impl(impl_)
+        { }
+
+        std::shared_ptr<dispatch_t>
+        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
+            auto service = impl.lock();
+
+            io::detail::invoke<event_traits<protocol_type::chunk>::tuple_type>::apply(
+                boost::bind(&remote_client_t::announce, service.get(), boost::arg<1>()),
+                unpacked
+            );
+
+            return service;
+        }
+
+    private:
+        const std::weak_ptr<remote_client_t> impl;
+    };
+
+    remote_client_t(locator_t& impl_, const remote_id_t& node_):
+        implementation<protocol_tag>(impl_.m_context, impl_.name()),
+        impl(impl_),
         node(node_),
         uuid(std::get<0>(node))
     {
-        typedef io::streaming<synchronize_result_type> protocol_type;
-
-        on<protocol_type::chunk>(std::bind(&remote_client_t::announce, this, _1));
         on<protocol_type::choke>(std::bind(&remote_client_t::shutdown, this));
     }
 };
@@ -359,14 +385,19 @@ locator_t::on_announce_event(ev::io&, int) {
         std::bind(&locator_t::on_failure, this, node, _1)
     );
 
-    // Start the synchronization.
+    // Start the synchronization
+
     channel->wr->write<io::locator::synchronize>(0UL);
 
-    // Spawn the synchronization session.
-    m_remotes[node] = std::make_shared<session_t>(
-        std::move(channel),
-        std::make_shared<remote_client_t>(*this, node)
+    auto service = std::make_shared<remote_client_t>(*this, node);
+
+    service->on<remote_client_t::protocol_type::chunk>(
+        std::make_shared<remote_client_t::announce_slot_t>(service)
     );
+
+    // Spawn the synchronization session
+
+    m_remotes[node] = std::make_shared<session_t>(std::move(channel), std::move(service));
 }
 
 void
