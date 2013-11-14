@@ -31,8 +31,6 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
-#include "cocaine/rpc/upstream.hpp"
-
 #if defined(__linux__)
     #include <sys/prctl.h>
 #endif
@@ -41,80 +39,6 @@ using namespace cocaine;
 using namespace cocaine::io;
 
 using namespace std::placeholders;
-
-class session_t::downstream_t {
-    // Active protocol for this downstream.
-    std::shared_ptr<dispatch_t> dispatch;
-
-    // As of now, all clients are considered using the streaming protocol template, and it means that
-    // upstreams don't change when the downstream protocol is switched over.
-    std::shared_ptr<upstream_t> upstream;
-
-public:
-    downstream_t(const std::shared_ptr<dispatch_t>& dispatch_, const std::shared_ptr<upstream_t>& upstream_):
-        dispatch(dispatch_),
-        upstream(upstream_)
-    { }
-
-    void
-    invoke(const message_t& message) {
-        if(!dispatch) {
-            // TODO: COCAINE-82 adds 'client' error category.
-            throw cocaine::error_t("downstream has been closed");
-        }
-
-        dispatch = dispatch->invoke(message, upstream);
-    }
-};
-
-void
-session_t::invoke(const message_t& message) {
-    std::shared_ptr<downstream_t> downstream;
-
-    {
-        std::lock_guard<std::mutex> guard(mutex);
-
-        auto index = message.band();
-        auto it    = downstreams.find(index);
-
-        if(it == downstreams.end()) {
-            std::tie(it, std::ignore) = downstreams.insert({ index, std::make_shared<downstream_t>(
-                prototype,
-                std::make_shared<upstream_t>(shared_from_this(), index)
-            )});
-        }
-
-        // NOTE: The downstream pointer is copied here so that if the slot decides to close the
-        // downstream, it won't destroy it inside the downstream_t::invoke(). Instead, it will
-        // be destroyed when this function scope is exited, liberating us from thinking of some
-        // voodoo magic to handle it.
-        downstream = it->second;
-    }
-
-    try {
-        downstream->invoke(message);
-    } catch(const std::exception& e) {
-        // In case of an unexpected error, disconnect the client. TODO: add logging.
-        revoke();
-    }
-}
-
-void
-session_t::revoke() {
-    std::lock_guard<std::mutex> guard(mutex);
-
-    // This closes all the downstreams.
-    downstreams.clear();
-
-    // NOTE: This invalidates and closes the internal channel pointer, but the session itself
-    // might still be accessible via upstreams in other threads, but that's okay.
-    ptr.reset();
-}
-
-void
-session_t::detach(uint64_t index) {
-    downstreams.erase(index);
-}
 
 actor_t::actor_t(context_t& context, std::shared_ptr<reactor_t> reactor, std::unique_ptr<dispatch_t>&& prototype):
     m_context(context),
@@ -140,7 +64,7 @@ actor_t::~actor_t() {
     m_prototype.reset();
 
     for(auto it = m_sessions.cbegin(); it != m_sessions.cend(); ++it) {
-        // Synchronously close the channels.
+        // Synchronously close the connections.
         it->second->revoke();
     }
 }
@@ -276,12 +200,10 @@ actor_t::on_message(int fd, const message_t& message) {
 
 void
 actor_t::on_failure(int fd, const std::error_code& ec) {
-    auto it = m_sessions.find(fd);
-
-    if(it == m_sessions.end()) {
+    if(m_sessions.find(fd) == m_sessions.end()) {
         // TODO: COCAINE-75 fixes this via cancellation.
-        // Check whether the channel actually exists, in case multiple errors were queued up in the
-        // reactor and it was already dropped.
+        // Check whether the connection actually exists, in case multiple errors were queued up in
+        // the reactor and it was already dropped.
         return;
     } else if(ec) {
         COCAINE_LOG_ERROR(m_log, "client on fd %d has disappeared - [%d] %s", fd, ec.value(), ec.message());
@@ -289,10 +211,9 @@ actor_t::on_failure(int fd, const std::error_code& ec) {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
     }
 
-    // This destroys the channel but not the wrapping lockable state.
-    it->second->revoke();
-
-    // This doesn't guarantee that the wrapping lockable state will be deleted, as it can be shared
-    // with other threads via upstreams, but it's fine since the channel is destroyed.
-    m_sessions.erase(it);
+    // This destroys the connection but not necessarily the session itself, as it might be still in
+    // use by shared upstreams even in other threads. In other words, this doesn't guarantee that the
+    // session will be actually deleted, but it's fine, since the connection is closed anyway.
+    m_sessions[fd]->revoke();
+    m_sessions.erase(fd);
 }

@@ -254,8 +254,8 @@ private:
             impl.m_gateway->cleanup(uuid, it->first);
         }
 
-        // NOTE: It is dangerous to remove the channel while the message is still being processed,
-        // so we defer it via reactor_t::post().
+        // NOTE: It is dangerous to disconnect the remote while the message is still being
+        // processed, so we defer it via reactor_t::post().
         impl.m_reactor.post(deferred_erase_action<decltype(impl.m_remotes)> {
             impl.m_remotes,
             node
@@ -397,7 +397,10 @@ locator_t::on_announce_event(ev::io&, int) {
 
     // Spawn the synchronization session
 
-    m_remotes[node] = std::make_shared<session_t>(std::move(channel), std::move(service));
+    m_remotes[node] = std::make_shared<session_t>(
+        std::move(channel),
+        std::move(service)
+    );
 }
 
 void
@@ -439,7 +442,9 @@ locator_t::on_failure(const remote_id_t& node, const std::error_code& ec) {
 
     std::tie(uuid, std::ignore, std::ignore) = node;
 
-    if(ec) {
+    if(m_remotes.find(node) == m_remotes.end()) {
+        return;
+    } else if(ec) {
         COCAINE_LOG_WARNING(m_log, "node '%s' has unexpectedly disconnected - [%d] %s", uuid, ec.value(), ec.message());
     } else {
         COCAINE_LOG_WARNING(m_log, "node '%s' has unexpectedly disconnected", uuid);
@@ -451,6 +456,6 @@ locator_t::on_failure(const remote_id_t& node, const std::error_code& ec) {
         m_gateway->cleanup(uuid, it->first);
     }
 
-    // Safe to do since errors are queued up.
+    m_remotes[node]->revoke();
     m_remotes.erase(node);
 }
