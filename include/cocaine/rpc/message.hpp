@@ -23,7 +23,7 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/traits/typelist.hpp"
+#include "cocaine/traits/tuple.hpp"
 
 #include <system_error>
 

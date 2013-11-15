@@ -169,7 +169,7 @@ namespace detail {
             #endif
 
             // NOTE: In cases when the callable is nullary or every parameter is optional, this
-            // comparison becomes tautological and emits dead code.
+            // comparison becomes tautological and emits dead code (unsigned < 0).
             // This is a known compiler bug: http://llvm.org/bugs/show_bug.cgi?id=8682
             if(unpacked.via.array.size < required) {
                 throw cocaine::error_t(
