@@ -30,6 +30,7 @@
 #include "cocaine/rpc/tags.hpp"
 
 #include "cocaine/traits.hpp"
+#include "cocaine/traits/enum.hpp"
 
 #include <functional>
 

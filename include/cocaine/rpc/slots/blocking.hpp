@@ -46,9 +46,9 @@ struct blocking_slot:
         try {
             upstream->send<typename io::streaming<upstream_type>::chunk>(this->call(unpacked));
         } catch(const std::system_error& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(e.code().value(), e.code().message());
+            upstream->send<typename io::streaming<upstream_type>::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(invocation_error, e.what());
+            upstream->send<typename io::streaming<upstream_type>::error>(invocation_error, std::string(e.what()));
         }
 
         upstream->seal<typename io::streaming<upstream_type>::choke>();
@@ -79,9 +79,9 @@ struct blocking_slot<void, Event>:
         try {
             this->call(unpacked);
         } catch(const std::system_error& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(e.code().value(), e.code().message());
+            upstream->send<typename io::streaming<upstream_type>::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(invocation_error, e.what());
+            upstream->send<typename io::streaming<upstream_type>::error>(invocation_error, std::string(e.what()));
         }
 
         // This is needed so that service clients could detect operation completion.

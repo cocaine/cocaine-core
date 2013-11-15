@@ -60,10 +60,10 @@ struct deferred_slot:
             // This cast is needed to ensure the correct deferred type.
             static_cast<expected_type>(this->call(unpacked)).attach(upstream);
         } catch(const std::system_error& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(e.code().value(), e.code().message());
+            upstream->send<typename io::streaming<upstream_type>::error>(e.code().value(), std::string(e.code().message()));
             upstream->seal<typename io::streaming<upstream_type>::choke>();
         } catch(const std::exception& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(invocation_error, e.what());
+            upstream->send<typename io::streaming<upstream_type>::error>(invocation_error, std::string(e.what()));
             upstream->seal<typename io::streaming<upstream_type>::choke>();
         }
 
