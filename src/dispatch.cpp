@@ -47,10 +47,8 @@ dispatch_t::invoke(const io::message_t& message, const std::shared_ptr<upstream_
         auto it = m_slots.find(message.id());
 
         if(it == m_slots.end()) {
-            COCAINE_LOG_WARNING(m_log, "dropping an unknown type %d: %s message", message.id(), message.args());
-
-            // TODO: COCAINE-82 changes this to a 'client' error category.
-            throw cocaine::error_t("unknown message type");
+            // TODO: COCAINE-82 adds a 'client' error category.
+            throw cocaine::error_t("unknown type %d message", message.id());
         }
 
         // NOTE: The slot pointer is copied here so that the handling code could unregister the slot
@@ -63,10 +61,10 @@ dispatch_t::invoke(const io::message_t& message, const std::shared_ptr<upstream_
     try {
         return (*slot)(message.args(), upstream);
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to process type %d message using slot '%s' - %s", message.id(), slot->name(), e.what());
-
-        // TODO: COCAINE-82 changes this to rethrow with a 'server' error category.
-        throw;
+        // TODO: COCAINE-82 adds a 'server' error category.
+        // This happens only if the underlying slot miserably failed to manage its own exceptions.
+        // In such case, the client is disconnected to prevent any further damage.
+        throw cocaine::error_t("unable to process message '%s' - %s", slot->name(), e.what());
     }
 }
 

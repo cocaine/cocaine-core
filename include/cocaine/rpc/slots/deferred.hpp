@@ -56,8 +56,16 @@ struct deferred_slot:
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
         typedef deferred<upstream_type> expected_type;
 
-        // This cast is needed to ensure the correct deferred type.
-        static_cast<expected_type>(this->call(unpacked)).attach(upstream);
+        try {
+            // This cast is needed to ensure the correct deferred type.
+            static_cast<expected_type>(this->call(unpacked)).attach(upstream);
+        } catch(const std::system_error& e) {
+            upstream->send<typename io::streaming<upstream_type>::error>(e.code().value(), e.code().message());
+            upstream->seal<typename io::streaming<upstream_type>::choke>();
+        } catch(const std::exception& e) {
+            upstream->send<typename io::streaming<upstream_type>::error>(invocation_error, e.what());
+            upstream->seal<typename io::streaming<upstream_type>::choke>();
+        }
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();

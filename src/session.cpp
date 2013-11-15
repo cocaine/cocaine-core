@@ -44,7 +44,7 @@ public:
     void
     invoke(const message_t& message) {
         if(!dispatch) {
-            // TODO: COCAINE-82 adds 'client' error category.
+            // TODO: COCAINE-82 adds a 'client' error category.
             throw cocaine::error_t("downstream has been deactivated");
         }
 
