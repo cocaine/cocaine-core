@@ -112,7 +112,7 @@ struct app_service_t:
         virtual
         std::shared_ptr<dispatch_t>
         operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
-            return io::detail::invoke<event_traits<app::enqueue>::tuple_type>::apply(
+            return io::invoke<event_traits<app::enqueue>::tuple_type>::apply(
                 boost::bind(&app_service_t::enqueue, &self, upstream, boost::arg<1>(), boost::arg<2>()),
                 unpacked
             );
@@ -134,7 +134,7 @@ struct app_service_t:
         operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
             auto service = self.lock();
 
-            io::detail::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
+            io::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
                 boost::bind(&streaming_service_t::write, service.get(), boost::arg<1>()),
                 unpacked
             );

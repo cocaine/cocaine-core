@@ -44,160 +44,148 @@ namespace cocaine { namespace io {
 
 namespace mpl = boost::mpl;
 
-namespace detail {
-    template<class F, class = void>
-    struct result_of {
-        typedef typename std::result_of<F>::type type;
-    };
+namespace aux {
 
+template<class T>
+struct unpack_impl {
+    template<class ArgumentIterator>
+    static inline
+    ArgumentIterator
+    apply(ArgumentIterator it, ArgumentIterator end, T& argument) {
+        BOOST_VERIFY(it != end);
+
+        try {
+            type_traits<T>::unpack(*it++, argument);
+        } catch(const msgpack::type_error& e) {
+            throw cocaine::error_t("argument type mismatch");
+        }
+
+        return it;
+    }
+};
+
+template<class T>
+struct unpack_impl<optional<T>> {
+    template<class ArgumentIterator>
+    static inline
+    ArgumentIterator
+    apply(ArgumentIterator it, ArgumentIterator end, T& argument) {
+        if(it != end) {
+            return unpack_impl<T>::apply(it, end, argument);
+        } else {
+            argument = T();
+        }
+
+        return it;
+    }
+};
+
+template<class T, T Default>
+struct unpack_impl<optional_with_default<T, Default>> {
+    typedef T type;
+
+    template<class ArgumentIterator>
+    static inline
+    ArgumentIterator
+    apply(ArgumentIterator it, ArgumentIterator end, T& argument) {
+        if(it != end) {
+            return unpack_impl<T>::apply(it, end, argument);
+        } else {
+            argument = Default;
+        }
+
+        return it;
+    }
+};
+
+template<class It, class End>
+struct invoke_impl {
+    template<class F, class ArgumentIterator, typename... Args>
+    static inline
+    typename result_of<F>::type
+    apply(const F& callable, ArgumentIterator it, ArgumentIterator end, Args&&... args) {
+        typedef typename mpl::deref<It>::type argument_type;
+        typename detail::unwrap_type<argument_type>::type argument;
+
+        it = unpack_impl<argument_type>::apply(it, end, argument);
+
+        return invoke_impl<typename mpl::next<It>::type, End>::apply(
+            callable,
+            it,
+            end,
+            std::forward<Args>(args)...,
+            std::move(argument)
+        );
+    }
+};
+
+template<class End>
+struct invoke_impl<End, End> {
+    template<class F, class ArgumentIterator, typename... Args>
+    static inline
+    typename result_of<F>::type
+    apply(const F& callable, ArgumentIterator, ArgumentIterator, Args&&... args) {
+        return callable(std::forward<Args>(args)...);
+    }
+};
+
+} // namespace aux
+
+#if defined(__GNUC__) && !defined(HAVE_GCC46)
+    #pragma GCC diagnostic ignored "-Wtype-limits"
+#endif
+
+template<class Sequence>
+struct invoke {
     template<class F>
-    struct result_of<
-        F,
-        typename depend<typename F::result_type>::type
-    >
-    {
-        typedef typename F::result_type type;
-    };
+    static inline
+    typename result_of<F>::type
+    apply(const F& callable, const msgpack::object& unpacked) {
+        const size_t required = mpl::count_if<
+            Sequence,
+            mpl::lambda<detail::is_required<mpl::arg<1>>>
+        >::value;
 
-    template<class T>
-    struct unpack {
-        template<class ArgumentIterator>
-        static inline
-        ArgumentIterator
-        apply(ArgumentIterator it, ArgumentIterator end, T& argument) {
-            BOOST_VERIFY(it != end);
-
-            try {
-                type_traits<T>::unpack(*it++, argument);
-            } catch(const msgpack::type_error& e) {
-                throw cocaine::error_t("argument type mismatch");
-            }
-
-            return it;
+        if(unpacked.type != msgpack::type::ARRAY) {
+            throw cocaine::error_t("argument sequence type mismatch");
         }
-    };
 
-    template<class T>
-    struct unpack<optional<T>> {
-        template<class ArgumentIterator>
-        static inline
-        ArgumentIterator
-        apply(ArgumentIterator it, ArgumentIterator end, T& argument) {
-            if(it != end) {
-                return unpack<T>::apply(it, end, argument);
-            } else {
-                argument = T();
-            }
+        #if defined(__clang__)
+            #pragma clang diagnostic push
+            #pragma clang diagnostic ignored "-Wtautological-compare"
+        #elif defined(__GNUC__) && defined(HAVE_GCC46)
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wtype-limits"
+        #endif
 
-            return it;
-        }
-    };
-
-    template<class T, T Default>
-    struct unpack<optional_with_default<T, Default>> {
-        typedef T type;
-
-        template<class ArgumentIterator>
-        static inline
-        ArgumentIterator
-        apply(ArgumentIterator it, ArgumentIterator end, T& argument) {
-            if(it != end) {
-                return unpack<T>::apply(it, end, argument);
-            } else {
-                argument = Default;
-            }
-
-            return it;
-        }
-    };
-
-    template<class It, class End>
-    struct invoke_impl {
-        template<class F, class ArgumentIterator, typename... Args>
-        static inline
-        typename result_of<F>::type
-        apply(const F& callable, ArgumentIterator it, ArgumentIterator end, Args&&... args) {
-            typedef typename mpl::deref<It>::type argument_type;
-            typename detail::unwrap_type<argument_type>::type argument;
-
-            it = unpack<argument_type>::apply(it, end, argument);
-
-            return invoke_impl<typename mpl::next<It>::type, End>::apply(
-                callable,
-                it,
-                end,
-                std::forward<Args>(args)...,
-                std::move(argument)
+        // NOTE: In cases when the callable is nullary or every parameter is optional, this
+        // comparison becomes tautological and emits dead code (unsigned < 0).
+        // This is a known compiler bug: http://llvm.org/bugs/show_bug.cgi?id=8682
+        if(unpacked.via.array.size < required) {
+            throw cocaine::error_t(
+                "argument sequence length mismatch - expected at least %d, got %d",
+                required,
+                unpacked.via.array.size
             );
         }
-    };
 
-    template<class End>
-    struct invoke_impl<End, End> {
-        template<class F, class ArgumentIterator, typename... Args>
-        static inline
-        typename result_of<F>::type
-        apply(const F& callable, ArgumentIterator, ArgumentIterator, Args&&... args) {
-            return callable(std::forward<Args>(args)...);
-        }
-    };
+        #if defined(__clang__)
+            #pragma clang diagnostic pop
+        #elif defined(__GNUC__) && defined(HAVE_GCC46)
+            #pragma GCC diagnostic pop
+        #endif
 
-    #if defined(__GNUC__) && !defined(HAVE_GCC46)
-        #pragma GCC diagnostic ignored "-Wtype-limits"
-    #endif
+        typedef typename mpl::begin<Sequence>::type begin;
+        typedef typename mpl::end<Sequence>::type end;
 
-    template<class Sequence>
-    struct invoke {
-        template<class F>
-        static inline
-        typename result_of<F>::type
-        apply(const F& callable, const msgpack::object& unpacked) {
-            const size_t required = mpl::count_if<
-                Sequence,
-                mpl::lambda<is_required<mpl::arg<1>>>
-            >::value;
+        const std::vector<msgpack::object> args(
+            unpacked.via.array.ptr,
+            unpacked.via.array.ptr + unpacked.via.array.size
+        );
 
-            if(unpacked.type != msgpack::type::ARRAY) {
-                throw cocaine::error_t("argument sequence type mismatch");
-            }
-
-            #if defined(__clang__)
-                #pragma clang diagnostic push
-                #pragma clang diagnostic ignored "-Wtautological-compare"
-            #elif defined(__GNUC__) && defined(HAVE_GCC46)
-                #pragma GCC diagnostic push
-                #pragma GCC diagnostic ignored "-Wtype-limits"
-            #endif
-
-            // NOTE: In cases when the callable is nullary or every parameter is optional, this
-            // comparison becomes tautological and emits dead code (unsigned < 0).
-            // This is a known compiler bug: http://llvm.org/bugs/show_bug.cgi?id=8682
-            if(unpacked.via.array.size < required) {
-                throw cocaine::error_t(
-                    "argument sequence length mismatch - expected at least %d, got %d",
-                    required,
-                    unpacked.via.array.size
-                );
-            }
-
-            #if defined(__clang__)
-                #pragma clang diagnostic pop
-            #elif defined(__GNUC__) && defined(HAVE_GCC46)
-                #pragma GCC diagnostic pop
-            #endif
-
-            typedef typename mpl::begin<Sequence>::type begin;
-            typedef typename mpl::end<Sequence>::type end;
-
-            const std::vector<msgpack::object> args(
-                unpacked.via.array.ptr,
-                unpacked.via.array.ptr + unpacked.via.array.size
-            );
-
-            return invoke_impl<begin, end>::apply(callable, args.begin(), args.end());
-        }
-    };
-}
+        return aux::invoke_impl<begin, end>::apply(callable, args.begin(), args.end());
+    }
+};
 
 template<class R, class Event>
 struct function_slot:
@@ -223,7 +211,7 @@ struct function_slot:
 
     R
     call(const msgpack::object& unpacked) const {
-        return detail::invoke<tuple_type>::apply(callable, unpacked);
+        return invoke<tuple_type>::apply(callable, unpacked);
     }
 
 private:

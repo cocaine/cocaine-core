@@ -71,7 +71,7 @@ class actor_t {
 
     private:
         void
-        on_connection(const std::shared_ptr<io::socket<io::tcp>>& socket);
+        on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket);
 
         void
         on_message(int fd, const io::message_t& message);

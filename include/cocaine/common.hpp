@@ -53,4 +53,27 @@
 #include "cocaine/exceptions.hpp"
 #include "cocaine/forwards.hpp"
 
+namespace cocaine {
+
+template<class T>
+struct depend {
+    typedef void type;
+};
+
+template<class F, class = void>
+struct result_of {
+    typedef typename std::result_of<F>::type type;
+};
+
+template<class F>
+struct result_of<
+    F,
+    typename depend<typename F::result_type>::type
+>
+{
+    typedef typename F::result_type type;
+};
+
+} // namespace cocaine
+
 #endif

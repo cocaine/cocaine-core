@@ -23,6 +23,8 @@
 
 #include "cocaine/tuple.hpp"
 
+#include "cocaine/rpc/tags.hpp"
+
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>
 #include <boost/mpl/distance.hpp>
@@ -48,129 +50,114 @@ struct extends {
     typedef protocol<Tag> parent_type;
 };
 
-namespace detail {
-    template<class T>
-    struct depend {
-        typedef void type;
+namespace aux {
+
+// Type enumaration
+
+template<class Protocol, class = void>
+struct flatten {
+    typedef typename Protocol::type type;
+};
+
+template<class Protocol>
+struct flatten<
+    Protocol,
+    typename depend<typename Protocol::parent_type>::type
+>
+{
+    typedef typename mpl::joint_view<
+        typename flatten<typename Protocol::parent_type>::type,
+        typename Protocol::type
+    >::type type;
+};
+
+template<class Event>
+struct enumerate {
+    typedef protocol<typename Event::tag> protocol_type;
+    typedef typename flatten<protocol_type>::type hierarchy_type;
+
+    static_assert(
+        mpl::contains<hierarchy_type, Event>::value,
+        "event has not been registered within its hierarchy"
+    );
+
+    typedef typename mpl::distance<
+        typename mpl::begin<hierarchy_type>::type,
+        typename mpl::find<hierarchy_type, Event>::type
+    >::type type;
+};
+
+// Argument typelist extraction
+
+template<class Event, class = void>
+struct tuple_type {
+    typedef mpl::list<> type;
+};
+
+template<class Event>
+struct tuple_type<
+    Event,
+    typename depend<typename Event::tuple_type>::type
+>
+{
+    typedef typename Event::tuple_type type;
+};
+
+// Transition type extraction
+
+template<class Event, class = void>
+struct transition_type {
+    typedef void type;
+};
+
+template<class Event>
+struct transition_type<
+    Event,
+    typename depend<typename Event::transition_type>::type
+>
+{
+    typedef typename Event::transition_type type;
+};
+
+// Result type or typelist extraction
+
+template<class Event, class = void>
+struct result_type {
+    typedef void type;
+};
+
+template<class Event>
+struct result_type<
+    Event,
+    typename depend<typename Event::result_type>::type
+>
+{
+    template<class Result, class = void>
+    struct fold {
+        typedef Result type;
     };
 
-    // Type enumeration
-
-    template<class Protocol, class = void>
-    struct flatten {
-        typedef typename Protocol::type type;
-    };
-
-    template<class Protocol>
-    struct flatten<
-        Protocol,
-        typename depend<typename Protocol::parent_type>::type
+    template<class Result>
+    struct fold<
+        Result,
+        typename std::enable_if<mpl::is_sequence<Result>::value>::type
     >
     {
-        typedef typename mpl::joint_view<
-            typename flatten<typename Protocol::parent_type>::type,
-            typename Protocol::type
-        >::type type;
+        typedef typename tuple::fold<Result>::type type;
     };
 
-    template<class Event>
-    struct enumerate {
-        typedef protocol<typename Event::tag> protocol_type;
-        typedef typename flatten<protocol_type>::type hierarchy_type;
+    typedef typename fold<typename Event::result_type>::type type;
+};
 
-        static_assert(
-            mpl::contains<hierarchy_type, Event>::value,
-            "event has not been registered within its hierarchy"
-        );
-
-        typedef typename mpl::distance<
-            typename mpl::begin<hierarchy_type>::type,
-            typename mpl::find<hierarchy_type, Event>::type
-        >::type type;
-    };
-
-    // Argument traits
-
-    template<class T>
-    struct is_required:
-        public std::true_type
-    { };
-
-    template<class T>
-    struct unwrap_type {
-        typedef T type;
-    };
-
-    // Argument typelist extraction
-
-    template<class Event, class = void>
-    struct tuple_type {
-        typedef mpl::list<> type;
-    };
-
-    template<class Event>
-    struct tuple_type<
-        Event,
-        typename depend<typename Event::tuple_type>::type
-    >
-    {
-        typedef typename Event::tuple_type type;
-    };
-
-    // Transition type extraction
-
-    template<class Event, class = void>
-    struct transition_type {
-        typedef void type;
-    };
-
-    template<class Event>
-    struct transition_type<
-        Event,
-        typename depend<typename Event::transition_type>::type
-    >
-    {
-        typedef typename Event::transition_type type;
-    };
-
-    // Result type or typelist extraction
-
-    template<class Event, class = void>
-    struct result_type {
-        typedef void type;
-    };
-
-    template<class Event>
-    struct result_type<
-        Event,
-        typename depend<typename Event::result_type>::type
-    >
-    {
-        template<class Result, class = void>
-        struct fold {
-            typedef Result type;
-        };
-
-        template<class Result>
-        struct fold<
-            Result,
-            typename std::enable_if<mpl::is_sequence<Result>::value>::type
-        >
-        {
-            typedef typename tuple::fold<Result>::type type;
-        };
-
-        typedef typename fold<typename Event::result_type>::type type;
-    };
-}
+} // namespace aux
 
 template<class Event>
 struct event_traits {
-    enum constants { id = detail::enumerate<Event>::type::value };
+    enum constants { id = aux::enumerate<Event>::type::value };
 
-    typedef typename detail::tuple_type<Event>::type tuple_type;
-    typedef typename detail::transition_type<Event>::type transition_type;
-    typedef typename detail::result_type<Event>::type result_type;
+    typedef typename aux::tuple_type<Event>::type tuple_type;
+    typedef typename aux::transition_type<Event>::type transition_type;
+    typedef typename aux::result_type<Event>::type result_type;
 };
 
 }}

@@ -126,10 +126,8 @@ struct select<deferred<R>> {
 template<class Event, class F>
 void
 dispatch_t::on(const F& callable, typename std::enable_if<!aux::is_slot<F>::value>::type*) {
-    typedef typename detail::result_of<F>::type result_type;
-
     typedef typename boost::mpl::apply<
-        aux::select<result_type>,
+        aux::select<typename result_of<F>::type>,
         Event
     >::type slot_type;
 

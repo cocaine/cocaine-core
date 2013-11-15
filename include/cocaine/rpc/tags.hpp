@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_TAGS_HPP
 #define COCAINE_IO_TAGS_HPP
 
-#include "cocaine/rpc/protocol.hpp"
+#include <type_traits>
 
 namespace cocaine { namespace io {
 
@@ -40,6 +40,11 @@ struct recursive_tag;
 namespace detail {
 
 template<class T>
+struct is_required:
+    public std::true_type
+{ };
+
+template<class T>
 struct is_required<optional<T>>:
     public std::false_type
 { };
@@ -48,6 +53,11 @@ template<class T, T Default>
 struct is_required<optional_with_default<T, Default>>:
     public std::false_type
 { };
+
+template<class T>
+struct unwrap_type {
+    typedef T type;
+};
 
 template<class T>
 struct unwrap_type<optional<T>> {

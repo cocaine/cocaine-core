@@ -101,7 +101,7 @@ actor_t::run(std::vector<tcp::endpoint> endpoints) {
             std::make_unique<acceptor<tcp>>(*it)
         );
 
-        m_connectors.back().bind(std::bind(&actor_t::on_connection, this, _1));
+        m_connectors.back().bind(std::bind(&actor_t::on_connect, this, _1));
     }
 
     m_thread.reset(new std::thread(named_runnable {
@@ -168,7 +168,7 @@ actor_t::counters() const -> counters_t {
 }
 
 void
-actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
+actor_t::on_connect(const std::shared_ptr<io::socket<tcp>>& socket_) {
     const int fd = socket_->fd();
 
     BOOST_ASSERT(m_channels.find(fd) == m_channels.end());

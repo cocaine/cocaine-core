@@ -263,10 +263,10 @@ private:
     }
 
 public:
-    typedef io::streaming<synchronize_result_type> protocol_type;
+    typedef io::streaming<synchronize_result_type> protocol;
 
     struct announce_slot_t:
-        public basic_slot<protocol_type::chunk>
+        public basic_slot<protocol::chunk>
     {
         announce_slot_t(const std::shared_ptr<remote_client_t>& impl_):
             impl(impl_)
@@ -276,7 +276,7 @@ public:
         operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
             auto service = impl.lock();
 
-            io::detail::invoke<event_traits<protocol_type::chunk>::tuple_type>::apply(
+            io::invoke<event_traits<protocol::chunk>::tuple_type>::apply(
                 boost::bind(&remote_client_t::announce, service.get(), boost::arg<1>()),
                 unpacked
             );
@@ -294,7 +294,7 @@ public:
         node(node_),
         uuid(std::get<0>(node))
     {
-        on<protocol_type::choke>(std::bind(&remote_client_t::shutdown, this));
+        on<protocol::choke>(std::bind(&remote_client_t::shutdown, this));
     }
 };
 
@@ -390,7 +390,7 @@ locator_t::on_announce_event(ev::io&, int) {
 
     auto service = std::make_shared<remote_client_t>(*this, node);
 
-    service->on<remote_client_t::protocol_type::chunk>(
+    service->on<remote_client_t::protocol::chunk>(
         std::make_shared<remote_client_t::announce_slot_t>(service)
     );
 
