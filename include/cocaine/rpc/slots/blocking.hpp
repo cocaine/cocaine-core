@@ -36,6 +36,8 @@ struct blocking_slot:
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::upstream_type upstream_type;
 
+    typedef io::streaming<upstream_type> protocol;
+
     blocking_slot(callable_type callable):
         parent_type(callable)
     { }
@@ -44,11 +46,11 @@ struct blocking_slot:
     std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
         try {
-            upstream->send<typename io::streaming<upstream_type>::chunk>(this->call(unpacked));
+            upstream->send<typename protocol::chunk>(this->call(unpacked));
         } catch(const std::system_error& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(e.code().value(), std::string(e.code().message()));
+            upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(invocation_error, std::string(e.what()));
+            upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
 
         upstream->seal<typename io::streaming<upstream_type>::choke>();
@@ -69,6 +71,8 @@ struct blocking_slot<void, Event>:
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::upstream_type upstream_type;
 
+    typedef io::streaming<upstream_type> protocol;
+
     blocking_slot(callable_type callable):
         parent_type(callable)
     { }
@@ -79,9 +83,9 @@ struct blocking_slot<void, Event>:
         try {
             this->call(unpacked);
         } catch(const std::system_error& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(e.code().value(), std::string(e.code().message()));
+            upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(invocation_error, std::string(e.what()));
+            upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
 
         // This is needed so that service clients could detect operation completion.

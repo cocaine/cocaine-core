@@ -47,6 +47,8 @@ struct deferred_slot:
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::upstream_type upstream_type;
 
+    typedef io::streaming<upstream_type> protocol;
+
     deferred_slot(callable_type callable):
         parent_type(callable)
     { }
@@ -60,11 +62,11 @@ struct deferred_slot:
             // This cast is needed to ensure the correct deferred type.
             static_cast<expected_type>(this->call(unpacked)).attach(upstream);
         } catch(const std::system_error& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(e.code().value(), std::string(e.code().message()));
-            upstream->seal<typename io::streaming<upstream_type>::choke>();
+            upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
+            upstream->seal<typename protocol::choke>();
         } catch(const std::exception& e) {
-            upstream->send<typename io::streaming<upstream_type>::error>(invocation_error, std::string(e.what()));
-            upstream->seal<typename io::streaming<upstream_type>::choke>();
+            upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
+            upstream->seal<typename protocol::choke>();
         }
 
         // Return an empty protocol dispatch.
