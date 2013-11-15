@@ -195,7 +195,17 @@ actor_t::on_message(int fd, const message_t& message) {
 
     BOOST_ASSERT(it != m_sessions.end());
 
-    it->second->invoke(message);
+    try {
+        it->second->invoke(message);
+    } catch(const std::exception& e) {
+        COCAINE_LOG_ERROR(m_log, "dropping client on fd %d: %s", fd, e.what());
+
+        // NOTE: This destroys the connection but not necessarily the session itself, as it might be
+        // still in use by shared upstreams even in other threads. In other words, this doesn't guarantee
+        // that the session will be actually deleted, but it's fine, since the connection is closed.
+        it->second->revoke();
+        m_sessions.erase(it);
+    }
 }
 
 void
@@ -211,9 +221,6 @@ actor_t::on_failure(int fd, const std::error_code& ec) {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
     }
 
-    // This destroys the connection but not necessarily the session itself, as it might be still in
-    // use by shared upstreams even in other threads. In other words, this doesn't guarantee that the
-    // session will be actually deleted, but it's fine, since the connection is closed anyway.
     m_sessions[fd]->revoke();
     m_sessions.erase(fd);
 }

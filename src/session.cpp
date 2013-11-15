@@ -45,7 +45,7 @@ public:
     invoke(const message_t& message) {
         if(!dispatch) {
             // TODO: COCAINE-82 adds 'client' error category.
-            throw cocaine::error_t("downstream has been closed");
+            throw cocaine::error_t("downstream has been deactivated");
         }
 
         dispatch = dispatch->invoke(message, upstream);
@@ -76,12 +76,7 @@ session_t::invoke(const message_t& message) {
         downstream = it->second;
     }
 
-    try {
-        downstream->invoke(message);
-    } catch(const std::exception& e) {
-        // In case of an unexpected error, disconnect the client. TODO: add logging.
-        revoke();
-    }
+    downstream->invoke(message);
 }
 
 void

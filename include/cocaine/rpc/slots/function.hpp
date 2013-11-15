@@ -216,16 +216,17 @@ struct function_slot:
 
     typedef std::function<function_type> callable_type;
 
-    function_slot(callable_type callable):
-        m_callable(callable)
+    function_slot(callable_type callable_):
+        callable(callable_)
     { }
 
-    R call(const msgpack::object& unpacked) const {
-        return detail::invoke<tuple_type>::apply(m_callable, unpacked);
+    R
+    call(const msgpack::object& unpacked) const {
+        return detail::invoke<tuple_type>::apply(callable, unpacked);
     }
 
 private:
-    const callable_type m_callable;
+    const callable_type callable;
 };
 
 }} // namespace cocaine::io
