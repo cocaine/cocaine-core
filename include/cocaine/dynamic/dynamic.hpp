@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_DYNAMIC_OBJECT_HPP
-#define COCAINE_DYNAMIC_OBJECT_HPP
+#ifndef COCAINE_DYNAMIC_TYPE_HPP
+#define COCAINE_DYNAMIC_TYPE_HPP
 
 #include <vector>
 #include <utility>
@@ -280,4 +280,4 @@ lexical_cast<std::string, cocaine::dynamic_t>(const cocaine::dynamic_t&);
 
 } // namespace boost
 
-#endif // COCAINE_DYNAMIC_HPP
+#endif // COCAINE_DYNAMIC_TYPE_HPP
