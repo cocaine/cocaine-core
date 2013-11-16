@@ -52,7 +52,7 @@ struct extends {
 
 namespace aux {
 
-// Type enumaration
+// Message enumeration
 
 template<class Protocol, class = void>
 struct flatten {
@@ -87,23 +87,7 @@ struct enumerate {
     >::type type;
 };
 
-// Argument typelist extraction
-
-template<class Event, class = void>
-struct tuple_type {
-    typedef mpl::list<> type;
-};
-
-template<class Event>
-struct tuple_type<
-    Event,
-    typename depend<typename Event::tuple_type>::type
->
-{
-    typedef typename Event::tuple_type type;
-};
-
-// Transition type extraction
+// Dependent type extraction
 
 template<class Event, class = void>
 struct transition_type {
@@ -111,15 +95,19 @@ struct transition_type {
 };
 
 template<class Event>
-struct transition_type<
-    Event,
-    typename depend<typename Event::transition_type>::type
->
-{
+struct transition_type<Event, typename depend<typename Event::transition_type>::type> {
     typedef typename Event::transition_type type;
 };
 
-// Result type or typelist extraction
+template<class Event, class = void>
+struct tuple_type {
+    typedef mpl::list<> type;
+};
+
+template<class Event>
+struct tuple_type<Event, typename depend<typename Event::tuple_type>::type> {
+    typedef typename Event::tuple_type type;
+};
 
 template<class Event, class = void>
 struct result_type {
@@ -127,11 +115,7 @@ struct result_type {
 };
 
 template<class Event>
-struct result_type<
-    Event,
-    typename depend<typename Event::result_type>::type
->
-{
+struct result_type<Event, typename depend<typename Event::result_type>::type> {
     template<class Result, class = void>
     struct fold {
         typedef Result type;
@@ -155,8 +139,8 @@ template<class Event>
 struct event_traits {
     enum constants { id = aux::enumerate<Event>::type::value };
 
-    typedef typename aux::tuple_type<Event>::type tuple_type;
     typedef typename aux::transition_type<Event>::type transition_type;
+    typedef typename aux::tuple_type<Event>::type tuple_type;
     typedef typename aux::result_type<Event>::type result_type;
 };
 
