@@ -34,11 +34,10 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
 
     environment = as_object().at("environment", dynamic_t::object_t()).to<std::map<std::string, std::string>>();
 
-    auto slave = as_object().find("slave");
-    if(slave == as_object().end()) {
-        throw cocaine::error_t("app runnable object has not been specified");
+    if(as_object().find("slave") != as_object().end()) {
+        executable = as_object().at("slave").as_string();
     } else {
-        executable = slave->second.as_string();
+        throw cocaine::error_t("app runnable object has not been specified");
     }
 
     // TODO: Ability to choose app bindpoint.

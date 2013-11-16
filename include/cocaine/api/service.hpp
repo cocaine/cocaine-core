@@ -22,8 +22,8 @@
 #define COCAINE_SERVICE_API_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/dynamic.hpp"
 #include "cocaine/repository.hpp"
-#include "cocaine/dynamic/dynamic.hpp"
 
 namespace cocaine { namespace api {
 

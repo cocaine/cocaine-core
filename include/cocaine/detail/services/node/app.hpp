@@ -22,8 +22,9 @@
 #define COCAINE_APP_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/dynamic.hpp"
+
 #include "cocaine/detail/services/node/forwards.hpp"
-#include "cocaine/dynamic/dynamic.hpp"
 
 #include <thread>
 

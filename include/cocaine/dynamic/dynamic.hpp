@@ -60,7 +60,7 @@ public:
             string_t;
     typedef std::vector<dynamic_t>
             array_t;
-            
+
     class object_t;
 
     typedef boost::variant<null_t,

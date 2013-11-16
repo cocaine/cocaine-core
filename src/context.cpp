@@ -55,141 +55,147 @@ namespace fs = boost::filesystem;
 
 namespace {
 
-    struct dynamic_reader {
-        void
-        Null() {
-            m_stack.emplace(dynamic_t::null);
+struct dynamic_reader_t {
+    void
+    Null() {
+        m_stack.emplace(dynamic_t::null);
+    }
+
+    void
+    Bool(bool v) {
+        m_stack.emplace(v);
+    }
+
+    void
+    Int(int v) {
+        m_stack.emplace(v);
+    }
+
+    void
+    Uint(unsigned v) {
+        m_stack.emplace(dynamic_t::uint_t(v));
+    }
+
+    void
+    Int64(int64_t v) {
+        m_stack.emplace(v);
+    }
+
+    void
+    Uint64(uint64_t v) {
+        m_stack.emplace(dynamic_t::uint_t(v));
+    }
+
+    void
+    Double(double v) {
+        m_stack.emplace(v);
+    }
+
+    void
+    String(const char* data, size_t size, bool) {
+        m_stack.emplace(dynamic_t::string_t(data, size));
+    }
+
+    void
+    StartObject() {
+        // Empty.
+    }
+
+    void
+    EndObject(size_t size) {
+        dynamic_t::object_t object;
+
+        for(size_t i = 0; i < size; ++i) {
+            dynamic_t value = std::move(m_stack.top());
+            m_stack.pop();
+
+            std::string key = std::move(m_stack.top().as_string());
+            m_stack.pop();
+
+            object[key] = std::move(value);
         }
 
-        void
-        Bool(bool v) {
-            m_stack.emplace(v);
+        m_stack.emplace(std::move(object));
+    }
+
+    void
+    StartArray() {
+        // Empty.
+    }
+
+    void
+    EndArray(size_t size) {
+        dynamic_t::array_t array(size);
+
+        for(size_t i = size; i != 0; --i) {
+            array[i - 1] = std::move(m_stack.top());
+            m_stack.pop();
         }
 
-        void
-        Int(int v) {
-            m_stack.emplace(v);
+        m_stack.emplace(std::move(array));
+    }
+
+    dynamic_t
+    Result() {
+        return std::move(m_stack.top());
+    }
+
+private:
+    std::stack<dynamic_t> m_stack;
+};
+
+struct rapidjson_ifstream_t {
+    rapidjson_ifstream_t(fs::ifstream* backend) :
+        m_backend(backend)
+    {
+        // Empty.
+    }
+
+    char
+    Peek() const {
+        int next = m_backend->peek();
+        if(next == std::char_traits<char>::eof()) {
+            return '\0';
+        } else {
+            return next;
         }
+    }
 
-        void
-        Uint(unsigned v) {
-            m_stack.emplace(dynamic_t::uint_t(v));
+    char
+    Take() {
+        int next = m_backend->get();
+        if(next == std::char_traits<char>::eof()) {
+            return '\0';
+        } else {
+            return next;
         }
+    }
 
-        void
-        Int64(int64_t v) {
-            m_stack.emplace(v);
-        }
+    size_t
+    Tell() const {
+        return m_backend->gcount();
+    }
 
-        void
-        Uint64(uint64_t v) {
-            m_stack.emplace(dynamic_t::uint_t(v));
-        }
+    char*
+    PutBegin() {
+        assert(false);
+        return 0;
+    }
 
-        void
-        Double(double v) {
-            m_stack.emplace(v);
-        }
+    void
+    Put(char) {
+        assert(false);
+    }
 
-        void
-        String(const char* data, size_t size, bool) {
-            m_stack.emplace(dynamic_t::string_t(data, size));
-        }
+    size_t
+    PutEnd(char*) {
+        assert(false);
+        return 0;
+    }
 
-        void
-        StartObject() {
-            // Empty.
-        }
-
-        void
-        EndObject(size_t size) {
-            dynamic_t::object_t object;
-            for(size_t i = 0; i < size; ++i) {
-                dynamic_t value = std::move(m_stack.top());
-                m_stack.pop();
-                std::string key = std::move(m_stack.top().as_string());
-                m_stack.pop();
-                object[key] = std::move(value);
-            }
-            m_stack.emplace(std::move(object));
-        }
-
-        void
-        StartArray() {
-            // Empty.
-        }
-
-        void
-        EndArray(size_t size) {
-            dynamic_t::array_t array(size);
-            for(size_t i = size; i != 0; --i) {
-                array[i - 1] = std::move(m_stack.top());
-                m_stack.pop();
-            }
-            m_stack.emplace(std::move(array));
-        }
-
-        dynamic_t
-        Result() {
-            return std::move(m_stack.top());
-        }
-
-    private:
-        std::stack<dynamic_t> m_stack;
-    };
-
-    struct rapidjson_ifstream {
-        rapidjson_ifstream(fs::ifstream *backend) :
-            m_backend(backend)
-        {
-            // Empty.
-        }
-
-        char
-        Peek() const {
-            int next = m_backend->peek();
-            if(next == std::char_traits<char>::eof()) {
-                return '\0';
-            } else {
-                return next;
-            }
-        }
-
-        char
-        Take() {
-            int next = m_backend->get();
-            if(next == std::char_traits<char>::eof()) {
-                return '\0';
-            } else {
-                return next;
-            }
-        }
-
-        size_t
-        Tell() const {
-            return m_backend->gcount();
-        }
-
-        char*
-        PutBegin() {
-            assert(false);
-            return 0;
-        }
-
-        void
-        Put(char) {
-            assert(false);
-        }
-
-        size_t
-        PutEnd(char*) {
-            assert(false);
-            return 0;
-        }
-
-    private:
-        fs::ifstream *m_backend;
-    };
+private:
+    fs::ifstream* m_backend;
+};
 
 } // namespace
 
@@ -216,6 +222,20 @@ const uint16_t defaults::max_port            = 61000;
 
 // Config
 
+template<>
+struct dynamic_converter<cocaine::config_t::component_t, void> {
+    typedef cocaine::config_t::component_t result_type;
+
+    static
+    result_type
+    convert(const dynamic_t& from) {
+        return cocaine::config_t::component_t {
+            from.as_object().at("type", "unspecified").as_string(),
+            from.as_object().at("args", dynamic_t::empty_object)
+        };
+    }
+};
+
 config_t::config_t(const std::string& config_path) {
     path.config = config_path;
 
@@ -233,8 +253,8 @@ config_t::config_t(const std::string& config_path) {
 
     rapidjson::MemoryPoolAllocator<> json_allocator;
     rapidjson::Reader json_reader(&json_allocator);
-    rapidjson_ifstream config_stream(&stream);
-    dynamic_reader config_constructor;
+    rapidjson_ifstream_t config_stream(&stream);
+    dynamic_reader_t config_constructor;
 
     if(!json_reader.Parse<rapidjson::kParseDefaultFlags>(config_stream, config_constructor)) {
         if(json_reader.HasParseError()) {
@@ -246,20 +266,20 @@ config_t::config_t(const std::string& config_path) {
 
     const dynamic_t root(config_constructor.Result());
 
-    const auto &paths_config = root.as_object().at("paths", dynamic_t::empty_object).as_object();
+    const auto &path_config    = root.as_object().at("paths", dynamic_t::empty_object).as_object();
     const auto &locator_config = root.as_object().at("locator", dynamic_t::empty_object).as_object();
     const auto &network_config = root.as_object().at("network", dynamic_t::empty_object).as_object();
 
     // Validation
 
-    if(root.as_object().at("version", 0).to<int>() != 2) {
+    if(root.as_object().at("version", 0).to<unsigned int>() != 2) {
         throw cocaine::error_t("the configuration file version is invalid");
     }
 
     // Paths
 
-    path.plugins = paths_config.at("plugins", defaults::plugins_path).as_string();
-    path.runtime = paths_config.at("runtime", defaults::runtime_path).as_string();
+    path.plugins = path_config.at("plugins", defaults::plugins_path).as_string();
+    path.runtime = path_config.at("runtime", defaults::runtime_path).as_string();
 
     const auto runtime_path_status = fs::status(path.runtime);
 
@@ -302,6 +322,7 @@ config_t::config_t(const std::string& config_path) {
 
     // WARNING: Now only arrays of two items are allowed.
     auto ports = locator_config.find("port-range");
+
     if(ports != locator_config.end()) {
         network.ports = ports->second.to<std::tuple<uint16_t, uint16_t>>();
     }
@@ -323,7 +344,7 @@ config_t::config_t(const std::string& config_path) {
 
     // Component configuration
 
-    loggers  = root.as_object().at("loggers", dynamic_t::empty_object).to<config_t::component_map_t>();
+    loggers  = root.as_object().at("loggers",  dynamic_t::empty_object).to<config_t::component_map_t>();
     services = root.as_object().at("services", dynamic_t::empty_object).to<config_t::component_map_t>();
     storages = root.as_object().at("storages", dynamic_t::empty_object).to<config_t::component_map_t>();
 }

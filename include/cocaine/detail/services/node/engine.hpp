@@ -25,10 +25,11 @@
 
 #include "cocaine/api/isolate.hpp"
 
+#include "cocaine/dynamic.hpp"
+
 #include "cocaine/detail/atomic.hpp"
 #include "cocaine/detail/services/node/forwards.hpp"
 #include "cocaine/detail/services/node/queue.hpp"
-#include "cocaine/dynamic/dynamic.hpp"
 
 #include <mutex>
 

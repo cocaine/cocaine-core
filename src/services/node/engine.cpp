@@ -338,7 +338,6 @@ engine_t::on_control(const message_t& message) {
     switch(message.id()) {
     case event_traits<control::report>::id: {
         collector_t collector;
-        dynamic_t::object_t info;
 
         size_t active = std::count_if(
             m_pool.cbegin(),
@@ -346,17 +345,25 @@ engine_t::on_control(const message_t& message) {
             std::bind<bool>(std::ref(collector), _1)
         );
 
+        dynamic_t::object_t info;
+
         info["load-median"] = dynamic_t::uint_t(collector.median());
+
         info["queue"] = dynamic_t::object_t({
             {"capacity", dynamic_t::uint_t(m_profile.queue_limit)},
             {"depth", dynamic_t::uint_t(m_queue.size())}
         });
-        info["sessions"] = dynamic_t::object_t({{"pending", dynamic_t::uint_t(collector.sum())}});
+
+        info["sessions"] = dynamic_t::object_t({
+            {"pending", dynamic_t::uint_t(collector.sum())}
+        });
+
         info["slaves"] = dynamic_t::object_t({
             {"active", dynamic_t::uint_t(active)},
             {"capacity", dynamic_t::uint_t(m_profile.pool_limit)},
             {"idle", dynamic_t::uint_t(m_pool.size() - active)}
         });
+
         info["state"] = std::string(describe[static_cast<int>(m_state)]);
 
         m_channel->wr->write<control::info>(0UL, dynamic_t(info));

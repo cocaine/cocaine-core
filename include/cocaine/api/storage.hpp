@@ -22,9 +22,9 @@
 #define COCAINE_STORAGE_API_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/dynamic.hpp"
 #include "cocaine/repository.hpp"
 #include "cocaine/traits.hpp"
-#include "cocaine/dynamic/dynamic.hpp"
 
 #include <mutex>
 #include <sstream>

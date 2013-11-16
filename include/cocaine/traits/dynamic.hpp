@@ -22,6 +22,7 @@
 #define COCAINE_DYNAMIC_TYPE_TRAITS_HPP
 
 #include <cocaine/traits.hpp>
+
 #include <cocaine/dynamic/dynamic.hpp>
 
 namespace cocaine { namespace io {

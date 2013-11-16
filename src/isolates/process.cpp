@@ -29,8 +29,8 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
-#include <system_error>
 #include <iostream>
+#include <system_error>
 
 #include <boost/filesystem/operations.hpp>
 
@@ -91,51 +91,48 @@ private:
 };
 
 #ifdef COCAINE_ALLOW_CGROUPS
-struct cgroup_configurator :
+struct cgroup_configurator_t:
     public boost::static_visitor<>
 {
-    cgroup_configurator(cgroup_controller *ctl,
-                        const char *name,
-                        const char *par,
-                        const std::shared_ptr<logging::log_t> &log) :
+    cgroup_configurator(cgroup_controller* ctl, const char* name, const char* parameter, const std::shared_ptr<logging::log_t>& log):
         m_ctl(ctl),
         m_name(name),
-        m_par(par),
+        m_parameter(parameter),
         m_log(log),
-    {
-        // pass
+    { }
+
+    void
+    operator()(const dynamic_t::bool_t& value) const {
+        cgroup_add_value_bool(m_ctl, m_parameter, value);
     }
 
     void
-    operator()(const dynamic_t::bool_t& v) const {
-        cgroup_add_value_bool(m_ctl, m_par, v);
+    operator()(const dynamic_t::int_t& value) const {
+        cgroup_add_value_int64(m_ctl, m_parameter, value);
     }
 
     void
-    operator()(const dynamic_t::int_t& v) const {
-        cgroup_add_value_int64(m_ctl, m_par, v);
+    operator()(const dynamic_t::uint_t& value) const {
+        cgroup_add_value_uint64(m_ctl, m_parameter, value);
     }
 
     void
-    operator()(const dynamic_t::uint_t& v) const {
-        cgroup_add_value_uint64(m_ctl, m_par, v);
-    }
-
-    void
-    operator()(const dynamic_t::string_t& v) const {
-        cgroup_add_value_string(m_ctl, m_par, v.c_str())
+    operator()(const dynamic_t::string_t& value) const {
+        cgroup_add_value_string(m_ctl, m_parameter, value.c_str())
     }
 
     template<class T>
     void
-    operator()(const T& v) const {
-        COCAINE_LOG_WARNING(m_log, "cgroup controller '%s' parameter '%s' type is not supported", m_name, m_par);
+    operator()(const T& value) const {
+        COCAINE_LOG_WARNING(m_log, "cgroup controller '%s' parameter '%s' type is not supported", m_name, m_parameter);
     }
 
 private:
-    cgroup_controller *m_ctl;
-    const char *m_name;
-    const char *m_par;
+    cgroup_controller* m_ctl;
+
+    const char* m_name;
+    const char* m_parameter;
+
     const std::shared_ptr<logging::log_t> &m_log;
 };
 #endif

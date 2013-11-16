@@ -22,12 +22,11 @@
 #define COCAINE_GATEWAY_API_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/dynamic.hpp"
 #include "cocaine/repository.hpp"
 
 // TODO: Drop this.
 #include "cocaine/idl/locator.hpp"
-
-#include "cocaine/dynamic/dynamic.hpp"
 
 namespace cocaine { namespace api {
 

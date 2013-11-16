@@ -45,6 +45,7 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     // Isolation
 
     const auto& isolate_config = as_object().at("isolate", dynamic_t::empty_object).as_object();
+
     isolate = {
         isolate_config.at("type", "process").as_string(),
         isolate_config.at("args", dynamic_t::empty_object)
