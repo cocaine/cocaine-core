@@ -222,6 +222,8 @@ const uint16_t defaults::max_port            = 61000;
 
 // Config
 
+namespace cocaine {
+
 template<>
 struct dynamic_converter<cocaine::config_t::component_t, void> {
     typedef cocaine::config_t::component_t result_type;
@@ -235,6 +237,8 @@ struct dynamic_converter<cocaine::config_t::component_t, void> {
         };
     }
 };
+
+} // namespace cocaine
 
 config_t::config_t(const std::string& config_path) {
     path.config = config_path;
