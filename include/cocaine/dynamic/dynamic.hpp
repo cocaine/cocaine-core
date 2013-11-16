@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_DYNAMIC_HPP
-#define COCAINE_DYNAMIC_HPP
+#ifndef COCAINE_DYNAMIC_OBJECT_HPP
+#define COCAINE_DYNAMIC_OBJECT_HPP
 
 #include <vector>
 #include <utility>
