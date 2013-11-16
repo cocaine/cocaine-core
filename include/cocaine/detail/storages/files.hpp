@@ -31,7 +31,7 @@ class files_t:
     public api::storage_t
 {
     public:
-        files_t(context_t& context, const std::string& name, const Json::Value& args);
+        files_t(context_t& context, const std::string& name, const dynamic_t& args);
 
         virtual
        ~files_t();

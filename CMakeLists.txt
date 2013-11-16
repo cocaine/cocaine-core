@@ -65,7 +65,7 @@ INCLUDE_DIRECTORIES(
     ${LIBLTDL_INCLUDE_DIRS})
 
 INCLUDE_DIRECTORIES(BEFORE
-    ${PROJECT_SOURCE_DIR}/foreign/jsoncpp-0.6.0-rc2/include
+    ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include
     ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
     ${PROJECT_SOURCE_DIR}/include)
 
@@ -77,20 +77,13 @@ LINK_DIRECTORIES(
     ${LIBARCHIVE_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
 
-ADD_LIBRARY(json
-    foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_value
-    foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_reader
-    foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_writer)
-
-SET_TARGET_PROPERTIES(json PROPERTIES
-    COMPILE_FLAGS "-fPIC")
-
 ADD_LIBRARY(cocaine-core SHARED
     src/actor
     src/api
     src/context
     ${LIBCRYPTO_SOURCES}
     src/dispatch
+    src/dynamic
     src/essentials
     src/group
     src/gateways/adhoc
@@ -123,7 +116,6 @@ TARGET_LINK_LIBRARIES(cocaine-core
     ${LIBCGROUP_LIBRARY}
     ${LIBCRYPTO_LIBRARY}
     ev
-    json
     ltdl
     msgpack
     ${LIBUUID_LIBRARY})
@@ -151,14 +143,12 @@ INSTALL(
     TARGETS
         cocaine-core
         cocaine-runtime
-        json
     RUNTIME DESTINATION bin COMPONENT runtime
     LIBRARY DESTINATION ${COCAINE_LIBDIR} COMPONENT runtime
-    ARCHIVE DESTINATION ${COCAINE_LIBDIR} COMPONENT developement)
+    ARCHIVE DESTINATION ${COCAINE_LIBDIR} COMPONENT development)
 
 INSTALL(
     DIRECTORY
         include/
-        foreign/jsoncpp-0.6.0-rc2/include/
     DESTINATION include
     COMPONENT development)

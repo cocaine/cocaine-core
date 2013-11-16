@@ -20,32 +20,28 @@
 
 #include "cocaine/detail/services/node/manifest.hpp"
 
-#include "cocaine/traits/json.hpp"
+#include "cocaine/traits/dynamic.hpp"
 
 #include <unistd.h>
 
 using namespace cocaine::engine;
 
 manifest_t::manifest_t(context_t& context, const std::string& name_):
-    cached<Json::Value>(context, "manifests", name_),
+    cached<dynamic_t>(context, "manifests", name_),
     name(name_)
 {
     endpoint = cocaine::format("%s/%s.%d", context.config.path.runtime, name, ::getpid());
 
-    auto vars = get("environment", Json::Value(Json::objectValue));
-    auto keys = vars.getMemberNames();
+    environment = as_object().at("environment", dynamic_t::object_t()).to<std::map<std::string, std::string>>();
 
-    for(auto it = keys.cbegin(); it != keys.cend(); ++it) {
-        environment[*it] = vars[*it].asString();
-    }
-
-    if(!isMember("slave")) {
+    auto slave = as_object().find("slave");
+    if(slave == as_object().end()) {
         throw cocaine::error_t("app runnable object has not been specified");
+    } else {
+        executable = slave->second.as_string();
     }
-
-    executable = get("slave", "unspecified").asString();
 
     // TODO: Ability to choose app bindpoint.
-    local = get("local", false).asBool();
+    local = as_object().at("local", false).as_bool();
 }
 

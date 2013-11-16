@@ -35,7 +35,7 @@ class storage_t:
     public implements<io::storage_tag>
 {
     public:
-        storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
+        storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
 
         virtual
         dispatch_t&

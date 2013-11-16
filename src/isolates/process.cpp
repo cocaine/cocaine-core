@@ -30,6 +30,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <system_error>
+#include <iostream>
 
 #include <boost/filesystem/operations.hpp>
 
@@ -89,14 +90,64 @@ private:
     const int m_stdout;
 };
 
-} // namespace
+#ifdef COCAINE_ALLOW_CGROUPS
+struct cgroup_configurator :
+    public boost::static_visitor<>
+{
+    cgroup_configurator(cgroup_controller *ctl,
+                        const char *name,
+                        const char *par,
+                        const std::shared_ptr<logging::log_t> &log) :
+        m_ctl(ctl),
+        m_name(name),
+        m_par(par),
+        m_log(log),
+    {
+        // pass
+    }
 
-process_t::process_t(context_t& context, const std::string& name, const Json::Value& args):
+    void
+    operator()(const dynamic_t::bool_t& v) const {
+        cgroup_add_value_bool(m_ctl, m_par, v);
+    }
+
+    void
+    operator()(const dynamic_t::int_t& v) const {
+        cgroup_add_value_int64(m_ctl, m_par, v);
+    }
+
+    void
+    operator()(const dynamic_t::uint_t& v) const {
+        cgroup_add_value_uint64(m_ctl, m_par, v);
+    }
+
+    void
+    operator()(const dynamic_t::string_t& v) const {
+        cgroup_add_value_string(m_ctl, m_par, v.c_str())
+    }
+
+    template<class T>
+    void
+    operator()(const T& v) const {
+        COCAINE_LOG_WARNING(m_log, "cgroup controller '%s' parameter '%s' type is not supported", m_name, m_par);
+    }
+
+private:
+    cgroup_controller *m_ctl;
+    const char *m_name;
+    const char *m_par;
+    const std::shared_ptr<logging::log_t> &m_log;
+};
+#endif
+
+}
+
+process_t::process_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
     m_context(context),
     m_log(new logging::log_t(context, name)),
     m_name(name),
-    m_working_directory(fs::path(args.get("spool", "/var/spool/cocaine").asString()) / name)
+    m_working_directory(fs::path(args.as_object().at("spool", "/var/spool/cocaine").as_string()) / name)
 {
 #ifdef COCAINE_ALLOW_CGROUPS
     int rv = 0;
@@ -110,48 +161,22 @@ process_t::process_t(context_t& context, const std::string& name, const Json::Va
     // TODO: Check if it changes anything.
     cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());
 
-    Json::Value::Members controllers(args.getMemberNames());
-
-    for(auto c = controllers.begin(); c != controllers.end(); ++c) {
-        Json::Value cfg(args[*c]);
-
-        if(!cfg.isObject() || cfg.empty()) {
+    for(auto c = args.as_object().begin(); c != args.as_object().end(); ++c) {
+        if(!c->second.is_object() || c->second.as_object().empty()) {
             continue;
         }
 
-        cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->c_str());
+        cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->first.c_str());
 
-        Json::Value::Members parameters(cfg.getMemberNames());
-
-        for(auto p = parameters.begin(); p != parameters.end(); ++p) {
-            switch(cfg[*p].type()) {
-            case Json::stringValue: {
-                cgroup_add_value_string(ctl, p->c_str(), cfg[*p].asCString());
-            } break;
-
-            case Json::intValue: {
-                cgroup_add_value_int64(ctl, p->c_str(), cfg[*p].asInt());
-            } break;
-
-            case Json::uintValue: {
-                cgroup_add_value_uint64(ctl, p->c_str(), cfg[*p].asUInt());
-            } break;
-
-            case Json::booleanValue: {
-                cgroup_add_value_bool(ctl, p->c_str(), cfg[*p].asBool());
-            } break;
-
-            default:
-                COCAINE_LOG_WARNING(m_log, "cgroup controller '%s' parameter '%s' type is not supported", *c, *p);
-                continue;
-            }
+        for(auto p = c->second.as_object().begin(); p != c->second.as_object().end(); ++p) {
+            p->second.apply(cgroup_configurator(ctl, c->first.c_str(), p->first.c_str(), m_log));
 
             COCAINE_LOG_DEBUG(
                 m_log,
                 "setting cgroup controller '%s' parameter '%s' to '%s'",
-                *c,
-                *p,
-                boost::lexical_cast<std::string>(cfg[*p])
+                c->first,
+                p->first,
+                boost::lexical_cast<std::string>(p->second)
             );
         }
     }

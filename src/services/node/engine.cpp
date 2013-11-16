@@ -43,7 +43,8 @@
 
 #include "cocaine/rpc/channel.hpp"
 
-#include "cocaine/traits/json.hpp"
+#include "cocaine/traits/dynamic.hpp"
+#include "cocaine/traits/literal.hpp"
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/median.hpp>
@@ -337,7 +338,7 @@ engine_t::on_control(const message_t& message) {
     switch(message.id()) {
     case event_traits<control::report>::id: {
         collector_t collector;
-        Json::Value info(Json::objectValue);
+        dynamic_t::object_t info;
 
         size_t active = std::count_if(
             m_pool.cbegin(),
@@ -345,16 +346,20 @@ engine_t::on_control(const message_t& message) {
             std::bind<bool>(std::ref(collector), _1)
         );
 
-        info["load-median"] = static_cast<Json::LargestUInt>(collector.median());
-        info["queue"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.queue_limit);
-        info["queue"]["depth"] = static_cast<Json::LargestUInt>(m_queue.size());
-        info["sessions"]["pending"] = static_cast<Json::LargestUInt>(collector.sum());
-        info["slaves"]["active"] = static_cast<Json::LargestUInt>(active);
-        info["slaves"]["capacity"] = static_cast<Json::LargestUInt>(m_profile.pool_limit);
-        info["slaves"]["idle"] = static_cast<Json::LargestUInt>(m_pool.size() - active);
-        info["state"] = describe[static_cast<int>(m_state)];
+        info["load-median"] = dynamic_t::uint_t(collector.median());
+        info["queue"] = dynamic_t::object_t({
+            {"capacity", dynamic_t::uint_t(m_profile.queue_limit)},
+            {"depth", dynamic_t::uint_t(m_queue.size())}
+        });
+        info["sessions"] = dynamic_t::object_t({{"pending", dynamic_t::uint_t(collector.sum())}});
+        info["slaves"] = dynamic_t::object_t({
+            {"active", dynamic_t::uint_t(active)},
+            {"capacity", dynamic_t::uint_t(m_profile.pool_limit)},
+            {"idle", dynamic_t::uint_t(m_pool.size() - active)}
+        });
+        info["state"] = std::string(describe[static_cast<int>(m_state)]);
 
-        m_channel->wr->write<control::info>(0UL, info);
+        m_channel->wr->write<control::info>(0UL, dynamic_t(info));
     } break;
 
     case event_traits<control::terminate>::id: {

@@ -35,7 +35,7 @@ class process_t:
     public api::isolate_t
 {
     public:
-        process_t(context_t& context, const std::string& name, const Json::Value& args);
+        process_t(context_t& context, const std::string& name, const dynamic_t& args);
 
         virtual
        ~process_t();

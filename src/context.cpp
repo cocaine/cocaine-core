@@ -41,6 +41,8 @@
 
 #include <netdb.h>
 
+#include <rapidjson/reader.h>
+
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -50,6 +52,146 @@ namespace fs = boost::filesystem;
 
 #include "report.inl"
 #include "synchronization.inl"
+
+namespace {
+
+    struct dynamic_reader {
+        void
+        Null() {
+            m_stack.emplace(dynamic_t::null);
+        }
+
+        void
+        Bool(bool v) {
+            m_stack.emplace(v);
+        }
+
+        void
+        Int(int v) {
+            m_stack.emplace(v);
+        }
+
+        void
+        Uint(unsigned v) {
+            m_stack.emplace(dynamic_t::uint_t(v));
+        }
+
+        void
+        Int64(int64_t v) {
+            m_stack.emplace(v);
+        }
+
+        void
+        Uint64(uint64_t v) {
+            m_stack.emplace(dynamic_t::uint_t(v));
+        }
+
+        void
+        Double(double v) {
+            m_stack.emplace(v);
+        }
+
+        void
+        String(const char* data, size_t size, bool) {
+            m_stack.emplace(dynamic_t::string_t(data, size));
+        }
+
+        void
+        StartObject() {
+            // Empty.
+        }
+
+        void
+        EndObject(size_t size) {
+            dynamic_t::object_t object;
+            for(size_t i = 0; i < size; ++i) {
+                dynamic_t value = std::move(m_stack.top());
+                m_stack.pop();
+                std::string key = std::move(m_stack.top().as_string());
+                m_stack.pop();
+                object[key] = std::move(value);
+            }
+            m_stack.emplace(std::move(object));
+        }
+
+        void
+        StartArray() {
+            // Empty.
+        }
+
+        void
+        EndArray(size_t size) {
+            dynamic_t::array_t array(size);
+            for(size_t i = size; i != 0; --i) {
+                array[i - 1] = std::move(m_stack.top());
+                m_stack.pop();
+            }
+            m_stack.emplace(std::move(array));
+        }
+
+        dynamic_t
+        Result() {
+            return std::move(m_stack.top());
+        }
+
+    private:
+        std::stack<dynamic_t> m_stack;
+    };
+
+    struct rapidjson_ifstream {
+        rapidjson_ifstream(fs::ifstream *backend) :
+            m_backend(backend)
+        {
+            // Empty.
+        }
+
+        char
+        Peek() const {
+            int next = m_backend->peek();
+            if(next == std::char_traits<char>::eof()) {
+                return '\0';
+            } else {
+                return next;
+            }
+        }
+
+        char
+        Take() {
+            int next = m_backend->get();
+            if(next == std::char_traits<char>::eof()) {
+                return '\0';
+            } else {
+                return next;
+            }
+        }
+
+        size_t
+        Tell() const {
+            return m_backend->gcount();
+        }
+
+        char*
+        PutBegin() {
+            assert(false);
+            return 0;
+        }
+
+        void
+        Put(char) {
+            assert(false);
+        }
+
+        size_t
+        PutEnd(char*) {
+            assert(false);
+            return 0;
+        }
+
+    private:
+        fs::ifstream *m_backend;
+    };
+
+} // namespace
 
 const bool defaults::log_output              = false;
 const float defaults::heartbeat_timeout      = 30.0f;
@@ -89,23 +231,35 @@ config_t::config_t(const std::string& config_path) {
         throw cocaine::error_t("unable to read the configuration file");
     }
 
-    Json::Reader reader(Json::Features::strictMode());
-    Json::Value root;
+    rapidjson::MemoryPoolAllocator<> json_allocator;
+    rapidjson::Reader json_reader(&json_allocator);
+    rapidjson_ifstream config_stream(&stream);
+    dynamic_reader config_constructor;
 
-    if(!reader.parse(stream, root)) {
-        throw cocaine::error_t("the configuration file is corrupted - %s", reader.getFormattedErrorMessages());
+    if(!json_reader.Parse<rapidjson::kParseDefaultFlags>(config_stream, config_constructor)) {
+        if(json_reader.HasParseError()) {
+            throw cocaine::error_t("the configuration file is corrupted - %s", json_reader.GetParseError());
+        } else {
+            throw cocaine::error_t("the configuration file is corrupted");
+        }
     }
+
+    const dynamic_t root(config_constructor.Result());
+
+    const auto &paths_config = root.as_object().at("paths", dynamic_t::empty_object).as_object();
+    const auto &locator_config = root.as_object().at("locator", dynamic_t::empty_object).as_object();
+    const auto &network_config = root.as_object().at("network", dynamic_t::empty_object).as_object();
 
     // Validation
 
-    if(root.get("version", 0).asUInt() != 2) {
+    if(root.as_object().at("version", 0).to<int>() != 2) {
         throw cocaine::error_t("the configuration file version is invalid");
     }
 
     // Paths
 
-    path.plugins = root["paths"].get("plugins", defaults::plugins_path).asString();
-    path.runtime = root["paths"].get("runtime", defaults::runtime_path).asString();
+    path.plugins = paths_config.at("plugins", defaults::plugins_path).as_string();
+    path.runtime = paths_config.at("runtime", defaults::runtime_path).as_string();
 
     const auto runtime_path_status = fs::status(path.runtime);
 
@@ -136,63 +290,42 @@ config_t::config_t(const std::string& config_path) {
         throw std::system_error(rv, gai_category(), "unable to determine the hostname");
     }
 
-    network.hostname = root["locator"].get("hostname", result->ai_canonname).asString();
+    network.hostname = locator_config.at("hostname", std::string(result->ai_canonname)).as_string();
     network.uuid     = unique_id_t().string();
 
     freeaddrinfo(result);
 
     // Locator configuration
 
-    network.endpoint = root["locator"].get("endpoint", defaults::endpoint).asString();
-    network.locator = root["locator"].get("port", defaults::locator_port).asUInt();
+    network.endpoint = locator_config.at("endpoint", defaults::endpoint).as_string();
+    network.locator = locator_config.at("port", defaults::locator_port).to<uint16_t>();
 
-    if(!root["locator"]["port-range"].empty()) {
-        network.ports = std::make_tuple(
-            root["locator"]["port-range"].get(0u, defaults::min_port).asUInt(),
-            root["locator"]["port-range"].get(1u, defaults::max_port).asUInt()
-        );
+    // WARNING: Now only arrays of two items are allowed.
+    auto ports = locator_config.find("port-range");
+    if(ports != locator_config.end()) {
+        network.ports = ports->second.to<std::tuple<uint16_t, uint16_t>>();
     }
 
     // Cluster configuration
 
-    if(!root["network"].empty()) {
-        if(!root["network"]["group"].empty()) {
-            network.group = root["network"]["group"].asString();
+    if(!network_config.empty()) {
+        if(network_config.count("group") == 1) {
+            network.group = network_config["group"].as_string();
         }
 
-        if(!root["network"]["gateway"].empty()) {
+        if(network_config.count("gateway") == 1) {
             network.gateway = {
-                root["network"]["gateway"].get("type", "adhoc").asString(),
-                root["network"]["gateway"]["args"]
+                network_config["gateway"].as_object().at("type", "adhoc").as_string(),
+                network_config["gateway"].as_object().at("args", dynamic_t::empty_object)
             };
         }
     }
 
     // Component configuration
 
-    loggers  = parse(root["loggers"]);
-    services = parse(root["services"]);
-    storages = parse(root["storages"]);
-}
-
-config_t::component_map_t
-config_t::parse(const Json::Value& config) {
-    component_map_t components;
-
-    if(config.empty()) {
-        return components;
-    }
-
-    const Json::Value::Members names(config.getMemberNames());
-
-    for(auto it = names.begin(); it != names.end(); ++it) {
-        components[*it] = {
-            config[*it].get("type", "unspecified").asString(),
-            config[*it]["args"]
-        };
-    }
-
-    return components;
+    loggers  = root.as_object().at("loggers", dynamic_t::empty_object).to<config_t::component_map_t>();
+    services = root.as_object().at("services", dynamic_t::empty_object).to<config_t::component_map_t>();
+    storages = root.as_object().at("storages", dynamic_t::empty_object).to<config_t::component_map_t>();
 }
 
 int

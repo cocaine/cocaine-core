@@ -71,7 +71,7 @@ struct info {
 
     typedef
      /* Various runtime information about the running app. */
-        Json::Value
+        dynamic_t
     result_type;
 };
 
@@ -112,7 +112,7 @@ struct start_app {
 
     typedef
      /* Operation outcome. */
-        Json::Value
+        dynamic_t
     result_type;
 };
 
@@ -132,7 +132,7 @@ struct pause_app {
 
     typedef
      /* Operation outcome. */
-        Json::Value
+        dynamic_t
     result_type;
 };
 
@@ -147,7 +147,7 @@ struct list {
 
     typedef
      /* A list of running app names. */
-        Json::Value
+        dynamic_t
     result_type;
 };
 

@@ -24,9 +24,9 @@
 
 using namespace cocaine::logger;
 
-syslog_t::syslog_t(const config_t& config, const Json::Value& args):
+syslog_t::syslog_t(const config_t& config, const dynamic_t& args):
     category_type(config, args),
-    m_identity(args["identity"].asString())
+    m_identity(args.as_object().at("identity", "").as_string())
 {
     if(m_identity.empty()) {
         throw cocaine::error_t("no syslog identity has been specified");

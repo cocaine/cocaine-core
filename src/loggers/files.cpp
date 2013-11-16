@@ -29,11 +29,11 @@
 
 using namespace cocaine::logger;
 
-files_t::files_t(const config_t& config, const Json::Value& args):
+files_t::files_t(const config_t& config, const dynamic_t& args):
     category_type(config, args),
     m_file(nullptr)
 {
-    const std::string path = args["path"].asString();
+    const std::string path = args.as_object()["path"].as_string();
 
     m_file = std::fopen(path.c_str(), "a");
 

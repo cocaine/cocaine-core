@@ -23,8 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/detail/services/node/forwards.hpp"
-
-#include "json/json.h"
+#include "cocaine/dynamic/dynamic.hpp"
 
 #include <thread>
 
@@ -43,7 +42,7 @@ class app_t {
         void
         stop();
 
-        Json::Value
+        dynamic_t
         info() const;
 
         // Scheduling

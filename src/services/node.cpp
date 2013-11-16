@@ -24,10 +24,11 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/traits/json.hpp"
+#include "cocaine/traits/dynamic.hpp"
 
 #include <tuple>
 
+using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
@@ -39,7 +40,7 @@ typedef std::map<std::string, std::string> runlist_t;
 
 } // namespace
 
-node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, const Json::Value& args):
+node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, const dynamic_t& args):
     api::service_t(context, reactor, name, args),
     implements<io::node_tag>(context, name),
     m_context(context),
@@ -49,7 +50,7 @@ node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, 
     on<io::node::pause_app>(std::bind(&node_t::on_pause_app, this, _1));
     on<io::node::list>(std::bind(&node_t::on_list, this));
 
-    const auto runlist_id = args.get("runlist", "default").asString();
+    const auto runlist_id = args.as_object().at("runlist", "default").as_string();
 
     // It's here to keep the reference alive.
     const auto storage = api::storage(m_context, "core");
@@ -92,9 +93,9 @@ node_t::prototype() {
     return *this;
 }
 
-Json::Value
+dynamic_t
 node_t::on_start_app(const runlist_t& runlist) {
-    Json::Value result(Json::objectValue);
+    dynamic_t::object_t result;
 
     for(auto it = runlist.begin(); it != runlist.end(); ++it) {
         if(m_apps.find(it->first) != m_apps.end()) {
@@ -113,7 +114,7 @@ node_t::on_start_app(const runlist_t& runlist) {
             });
         } catch(const cocaine::error_t& e) {
             COCAINE_LOG_ERROR(m_log, "unable to initialize the '%s' app - %s", it->first, e.what());
-            result[it->first] = e.what();
+            result[it->first] = std::string(e.what());
             continue;
         }
 
@@ -122,19 +123,19 @@ node_t::on_start_app(const runlist_t& runlist) {
         } catch(const cocaine::error_t& e) {
             COCAINE_LOG_ERROR(m_log, "unable to start the '%s' app - %s", it->first, e.what());
             m_apps.erase(app);
-            result[it->first] = e.what();
+            result[it->first] = std::string(e.what());
             continue;
         }
 
         result[it->first] = "the app has been started";
     }
 
-    return result;
+    return std::move(result);
 }
 
-Json::Value
+dynamic_t
 node_t::on_pause_app(const std::vector<std::string>& applist) {
-    Json::Value result(Json::objectValue);
+    dynamic_t::object_t result;
 
     for(auto it = applist.begin(); it != applist.end(); ++it) {
         auto app = m_apps.find(*it);
@@ -152,16 +153,16 @@ node_t::on_pause_app(const std::vector<std::string>& applist) {
         result[*it] = "the app has been stopped";
     }
 
-    return result;
+    return std::move(result);
 }
 
-Json::Value
+dynamic_t
 node_t::on_list() const {
-    Json::Value result(Json::arrayValue);
+    dynamic_t::array_t result;
 
     for(auto it = m_apps.begin(); it != m_apps.end(); ++it) {
-        result.append(it->first);
+        result.push_back(it->first);
     }
 
-    return result;
+    return std::move(result);
 }
