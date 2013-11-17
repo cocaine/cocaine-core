@@ -116,12 +116,6 @@ private:
     ConstVisitor m_const_visitor;
 };
 
-template<class T>
-struct my_decay {
-    typedef typename std::remove_reference<T>::type unref;
-    typedef typename std::remove_cv<unref>::type type;
-};
-
 }}} // namespace cocaine::detail::dynamic
 
 #endif // COCAINE_DYNAMIC_DETAIL_HPP

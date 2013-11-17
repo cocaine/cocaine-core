@@ -52,7 +52,8 @@ template<class From>
 struct dynamic_constructor<
     From,
     typename std::enable_if<std::is_integral<From>::value && std::is_unsigned<From>::value>::type
-> {
+>
+{
     static const bool enable = true;
 
     static inline
@@ -66,7 +67,8 @@ template<class From>
 struct dynamic_constructor<
     From,
     typename std::enable_if<std::is_integral<From>::value && std::is_signed<From>::value>::type
-> {
+>
+{
     static const bool enable = true;
 
     static inline
@@ -80,7 +82,8 @@ template<class From>
 struct dynamic_constructor<
     From,
     typename std::enable_if<std::is_enum<From>::value>::type
-> {
+>
+{
     static const bool enable = true;
 
     static inline
@@ -94,7 +97,8 @@ template<class From>
 struct dynamic_constructor<
     From,
     typename std::enable_if<std::is_floating_point<From>::value>::type
-> {
+>
+{
     static const bool enable = true;
 
     static inline
@@ -151,7 +155,8 @@ template<class T>
 struct dynamic_constructor<
     std::vector<T>,
     typename std::enable_if<!std::is_same<T, dynamic_t>::value>::type
-> {
+>
+{
     static const bool enable = true;
 
     static inline
@@ -325,7 +330,8 @@ template<class T>
 struct dynamic_constructor<
     std::map<std::string, T>,
     typename std::enable_if<!std::is_same<T, dynamic_t>::value>::type
-> {
+>
+{
     static const bool enable = true;
 
     static inline

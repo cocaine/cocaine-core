@@ -65,7 +65,8 @@ template<class To>
 struct dynamic_converter<
     To,
     typename std::enable_if<std::is_arithmetic<To>::value>::type
-> {
+>
+{
     typedef To result_type;
 
     static inline
@@ -91,7 +92,8 @@ template<class To>
 struct dynamic_converter<
     To,
     typename std::enable_if<std::is_enum<To>::value>::type
-> {
+>
+{
     typedef To result_type;
 
     static inline

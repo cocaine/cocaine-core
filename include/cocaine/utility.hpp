@@ -18,39 +18,39 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_COMMON_HPP
-#define COCAINE_COMMON_HPP
+#ifndef COCAINE_UTILITY_HPP
+#define COCAINE_UTILITY_HPP
 
-#include "cocaine/platform.hpp"
+#include <type_traits>
 
-#if !defined(__clang__) && !defined(HAVE_GCC46)
-    #define nullptr __null
-#endif
+namespace cocaine {
 
-#include <cstdint>
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
+template<class T>
+struct depend {
+    typedef void type;
+};
 
-#define BOOST_FILESYSTEM_VERSION 3
-#define BOOST_FILESYSTEM_NO_DEPRECATED
+template<class F, class = void>
+struct result_of {
+    typedef typename std::result_of<F>::type type;
+};
 
-#if !defined(COCAINE_DEBUG)
-    #define BOOST_DISABLE_ASSERTS
-#endif
+template<class F>
+struct result_of<
+    F,
+    typename depend<typename F::result_type>::type
+>
+{
+    typedef typename F::result_type type;
+};
 
-#include <boost/assert.hpp>
-#include <boost/version.hpp>
+template<class T>
+struct pristine {
+    typedef typename std::remove_cv<
+        typename std::remove_reference<T>::type
+    >::type type;
+};
 
-#define COCAINE_DECLARE_NONCOPYABLE(type)   \
-    type(const type& other) = delete;       \
-                                            \
-    type&                                   \
-    operator=(const type& other) = delete;
-
-#include "cocaine/config.hpp"
-#include "cocaine/exceptions.hpp"
-#include "cocaine/forwards.hpp"
+} // namespace cocaine
 
 #endif

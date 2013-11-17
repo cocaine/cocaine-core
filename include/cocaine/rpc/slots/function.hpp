@@ -32,6 +32,8 @@
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/enum.hpp"
 
+#include "cocaine/utility.hpp"
+
 #include <functional>
 
 #include <boost/function_types/function_type.hpp>

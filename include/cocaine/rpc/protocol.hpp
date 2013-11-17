@@ -21,9 +21,10 @@
 #ifndef COCAINE_IO_PROTOCOL_HPP
 #define COCAINE_IO_PROTOCOL_HPP
 
-#include "cocaine/tuple.hpp"
-
 #include "cocaine/rpc/tags.hpp"
+
+#include "cocaine/tuple.hpp"
+#include "cocaine/utility.hpp"
 
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>

@@ -21,6 +21,8 @@
 #ifndef COCAINE_DYNAMIC_TYPE_HPP
 #define COCAINE_DYNAMIC_TYPE_HPP
 
+#include "cocaine/utility.hpp"
+
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -84,7 +86,7 @@ public:
     template<class T>
     dynamic_t(
         T&& from,
-        typename std::enable_if<dynamic_constructor<typename detail::dynamic::my_decay<T>::type>::enable>::type* = 0
+        typename std::enable_if<dynamic_constructor<typename pristine<T>::type>::enable>::type* = 0
     );
 
     dynamic_t&
@@ -94,7 +96,7 @@ public:
     operator=(dynamic_t&& other);
 
     template<class T>
-    typename std::enable_if<dynamic_constructor<typename detail::dynamic::my_decay<T>::type>::enable, dynamic_t&>::type
+    typename std::enable_if<dynamic_constructor<typename pristine<T>::type>::enable, dynamic_t&>::type
     operator=(T&& from);
 
     bool
@@ -198,7 +200,7 @@ public:
     convertible_to() const;
 
     template<class T>
-    typename dynamic_converter<typename detail::dynamic::my_decay<T>::type>::result_type
+    typename dynamic_converter<typename pristine<T>::type>::result_type
     to() const;
 
 private:
@@ -228,29 +230,29 @@ private:
 template<class T>
 dynamic_t::dynamic_t(
     T&& from,
-    typename std::enable_if<dynamic_constructor<typename detail::dynamic::my_decay<T>::type>::enable>::type*
+    typename std::enable_if<dynamic_constructor<typename pristine<T>::type>::enable>::type*
 ): m_value(null_t())
 {
-    dynamic_constructor<typename detail::dynamic::my_decay<T>::type>::convert(std::forward<T>(from), m_value);
+    dynamic_constructor<typename pristine<T>::type>::convert(std::forward<T>(from), m_value);
 }
 
 template<class T>
-typename std::enable_if<dynamic_constructor<typename detail::dynamic::my_decay<T>::type>::enable, dynamic_t&>::type
+typename std::enable_if<dynamic_constructor<typename pristine<T>::type>::enable, dynamic_t&>::type
 dynamic_t::operator=(T&& from) {
-    dynamic_constructor<typename detail::dynamic::my_decay<T>::type>::convert(std::forward<T>(from), m_value);
+    dynamic_constructor<typename pristine<T>::type>::convert(std::forward<T>(from), m_value);
     return *this;
 }
 
 template<class T>
 bool
 dynamic_t::convertible_to() const {
-    return dynamic_converter<typename detail::dynamic::my_decay<T>::type>::convertible(*this);
+    return dynamic_converter<typename pristine<T>::type>::convertible(*this);
 }
 
 template<class T>
-typename dynamic_converter<typename detail::dynamic::my_decay<T>::type>::result_type
+typename dynamic_converter<typename pristine<T>::type>::result_type
 dynamic_t::to() const {
-    return dynamic_converter<typename detail::dynamic::my_decay<T>::type>::convert(*this);
+    return dynamic_converter<typename pristine<T>::type>::convert(*this);
 }
 
 } // namespace cocaine

@@ -27,6 +27,7 @@
 #include "cocaine/rpc/tags.hpp"
 
 #include "cocaine/tuple.hpp"
+#include "cocaine/utility.hpp"
 
 #include <type_traits>
 
@@ -180,10 +181,7 @@ private:
     static inline
     void
     pack_sequence(msgpack::packer<Stream>& packer, const Head& head, const Tail&... tail) {
-        // Strip the type.
-        typedef typename std::remove_const<
-            typename std::remove_reference<Head>::type
-        >::type type;
+        typedef typename pristine<Head>::type type;
 
         static_assert(
             std::is_convertible<type, typename boost::mpl::deref<It>::type>::value,
@@ -208,10 +206,7 @@ private:
     static inline
     void
     unpack_sequence(const msgpack::object* packed, Head& head, Tail&... tail) {
-        // Strip the type.
-        typedef typename std::remove_const<
-            typename std::remove_reference<Head>::type
-        >::type type;
+        typedef typename pristine<Head>::type type;
 
         static_assert(
             std::is_convertible<type, typename boost::mpl::deref<It>::type>::value,
