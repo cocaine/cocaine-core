@@ -28,49 +28,37 @@ namespace cocaine {
 class dynamic_t::object_t :
     public std::map<std::string, cocaine::dynamic_t>
 {
-    typedef std::map<std::string, cocaine::dynamic_t>
-            base_type;
+    typedef std::map<std::string, cocaine::dynamic_t> base_type;
+
 public:
     object_t() {
-        // pass
+        // Empty.
     }
 
     template<class InputIt>
-    object_t(InputIt first, InputIt last) :
+    object_t(InputIt first, InputIt last):
         base_type(first, last)
-    {
-        // pass
-    }
+    { }
 
-    object_t(const object_t& other) :
+    object_t(const object_t& other):
         base_type(other)
-    {
-        // pass
-    }
+    { }
 
-    object_t(object_t&& other) :
+    object_t(object_t&& other):
         base_type(std::move(other))
-    {
-        // pass
-    }
+    { }
 
-    object_t(std::initializer_list<value_type> init) :
-        base_type(init)
-    {
-        // pass
-    }
+    object_t(std::initializer_list<value_type> list):
+        base_type(list)
+    { }
 
-    object_t(const base_type& other) :
+    object_t(const base_type& other):
         base_type(other)
-    {
-        // pass
-    }
+    { }
 
-    object_t(base_type&& other) :
+    object_t(base_type&& other):
         base_type(std::move(other))
-    {
-        // pass
-    }
+    { }
 
     object_t&
     operator=(const object_t& other) {

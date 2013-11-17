@@ -28,20 +28,22 @@ const dynamic_t dynamic_t::empty_array = dynamic_t::array_t();
 const dynamic_t dynamic_t::empty_object = dynamic_t::object_t();
 
 cocaine::dynamic_t&
-dynamic_t::object_t::at(const std::string& key, cocaine::dynamic_t& def) {
+dynamic_t::object_t::at(const std::string& key, cocaine::dynamic_t& default_) {
     auto it = find(key);
+
     if(it == end()) {
-        return def;
+        return default_;
     } else {
         return it->second;
     }
 }
 
 const cocaine::dynamic_t&
-dynamic_t::object_t::at(const std::string& key, const cocaine::dynamic_t& def) const {
+dynamic_t::object_t::at(const std::string& key, const cocaine::dynamic_t& default_) const {
     auto it = find(key);
+
     if(it == end()) {
-        return def;
+        return default_;
     } else {
         return it->second;
     }
@@ -52,52 +54,46 @@ dynamic_t::object_t::operator[](const std::string& key) const {
     return at(key);
 }
 
-struct move_visitor :
+struct move_visitor:
     public boost::static_visitor<>
 {
-    move_visitor(dynamic_t& dest) :
-        m_dest(dest)
-    {
-        // pass
-    }
+    move_visitor(dynamic_t& destination):
+        m_destination(destination)
+    { }
 
     template<class T>
     void
     operator()(T& v) const {
-        m_dest = std::move(v);
+        m_destination = std::move(v);
     }
 
 private:
-    dynamic_t& m_dest;
+    dynamic_t& m_destination;
 };
 
-struct assign_visitor :
+struct assign_visitor:
     public boost::static_visitor<>
 {
-    assign_visitor(dynamic_t& dest) :
-        m_dest(dest)
-    {
-        // pass
-    }
+    assign_visitor(dynamic_t& destination):
+        m_destination(destination)
+    { }
 
     template<class T>
     void
     operator()(T& v) const {
-        m_dest = v;
+        m_destination = v;
     }
 
 private:
-    dynamic_t& m_dest;
+    dynamic_t& m_destination;
 };
 
-struct equals_visitor :
+struct equals_visitor:
     public boost::static_visitor<bool>
 {
     equals_visitor(const dynamic_t& other) :
         m_other(other)
-    {
-        // pass
-    }
+    { }
 
     bool
     operator()(const dynamic_t::null_t&) const {
@@ -153,9 +149,7 @@ private:
 
 dynamic_t::dynamic_t() :
     m_value(null_t())
-{
-// pass
-}
+{ }
 
 dynamic_t::dynamic_t(const dynamic_t& other) :
     m_value(null_t())
@@ -293,7 +287,7 @@ dynamic_t::is_object() const {
     return is<detail::dynamic::incomplete_wrapper<object_t>>();
 }
 
-struct to_string_visitor :
+struct to_string_visitor:
     public boost::static_visitor<std::string>
 {
     std::string
@@ -321,13 +315,15 @@ struct to_string_visitor :
     operator()(const dynamic_t::array_t& v) const {
         std::string result = "[";
 
-        bool print_coma = false;
-        for(size_t i = 0; i < v.size(); ++i) {
-            if(print_coma) {
-                result += ",";
-            }
-            result += v[i].apply(*this);
-            print_coma = true;
+        size_t index = 0;
+
+        if(!v.empty()) {
+            result += v[index++].apply(*this);
+        }
+
+        while(index < v.size()) {
+            result += ", ";
+            result += v[index++].apply(*this);
         }
 
         return result + "]";
@@ -337,13 +333,16 @@ struct to_string_visitor :
     operator()(const dynamic_t::object_t& v) const {
         std::string result = "{";
 
-        bool print_coma = false;
-        for(auto it = v.begin(); it != v.end(); ++it) {
-            if(print_coma) {
-                result += ",";
-            }
+        dynamic_t::object_t::const_iterator it = v.begin();
+
+        if(it != v.end()) {
             result += "\"" + it->first + "\":" + it->second.apply(*this);
-            print_coma = true;
+            ++it;
+        }
+
+        for(; it != v.end(); ++it) {
+            result += ", ";
+            result += "\"" + it->first + "\":" + it->second.apply(*this);
         }
 
         return result + "}";

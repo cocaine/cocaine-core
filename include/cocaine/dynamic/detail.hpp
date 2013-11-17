@@ -21,12 +21,8 @@
 #ifndef COCAINE_DYNAMIC_DETAIL_HPP
 #define COCAINE_DYNAMIC_DETAIL_HPP
 
-#include <string>
 #include <map>
-#include <type_traits>
 #include <memory>
-
-#include <boost/variant.hpp>
 
 namespace cocaine {
 
@@ -34,104 +30,98 @@ class dynamic_t;
 
 namespace detail { namespace dynamic {
 
-    // Helps to use STL containers
-    template<class T>
-    class incomplete_wrapper {
-    public:
-        // These *structors are needed just to satisfy requirements of boost::variant.
-        incomplete_wrapper() {
-            // Empty.
-        }
+// Helps to use STL containers
+template<class T>
+class incomplete_wrapper {
+public:
+    // These *structors are needed just to satisfy the requirements of boost::variant.
+    incomplete_wrapper() {
+        // Empty.
+    }
 
-        incomplete_wrapper(const incomplete_wrapper&) {
-            // Empty.
-        }
+    incomplete_wrapper(const incomplete_wrapper&) {
+        // Empty.
+    }
 
-        incomplete_wrapper&
-        operator=(const incomplete_wrapper&) {
-            return *this;
-        }
+    incomplete_wrapper&
+    operator=(const incomplete_wrapper&) {
+        return *this;
+    }
 
-        T&
-        get() {
-            return *m_data;
-        }
+    T&
+    get() {
+        return *m_data;
+    }
 
-        const T&
-        get() const {
-            return *m_data;
-        }
+    const T&
+    get() const {
+        return *m_data;
+    }
 
-        template<class... Args>
-        void
-        set(Args&&... args) {
-            m_data.reset(new T(std::forward<Args>(args)...));
-        }
+    template<class... Args>
+    void
+    set(Args&&... args) {
+        m_data.reset(new T(std::forward<Args>(args)...));
+    }
 
-    private:
-        std::unique_ptr<T> m_data;
-    };
+private:
+    std::unique_ptr<T> m_data;
+};
 
-    template<class Visitor, class Result>
-    struct dynamic_visitor_applier :
-        public boost::static_visitor<Result>
-    {
-        dynamic_visitor_applier(Visitor v) :
-            m_visitor(v)
-        {
-            // pass
-        }
-
-        template<class T>
-        Result
-        operator()(T& v) const {
-            return m_visitor(static_cast<const T&>(v));
-        }
-
-        template<class T>
-        Result
-        operator()(incomplete_wrapper<T>& v) const {
-            return m_visitor(v.get());
-        }
-
-    private:
-        Visitor m_visitor;
-    };
-
-    template<class ConstVisitor, class Result>
-    struct const_visitor_applier :
-        public boost::static_visitor<Result>
-    {
-        const_visitor_applier(ConstVisitor v) :
-            m_const_visitor(v)
-        {
-            // pass
-        }
-
-        template<class T>
-        Result
-        operator()(T& v) const {
-            return m_const_visitor(static_cast<const T&>(v));
-        }
-
-        template<class T>
-        Result
-        operator()(incomplete_wrapper<T>& v) const {
-            return m_const_visitor(static_cast<const T&>(v.get()));
-        }
-
-    private:
-        ConstVisitor m_const_visitor;
-    };
+template<class Visitor, class Result>
+struct dynamic_visitor_applier :
+    public boost::static_visitor<Result>
+{
+    dynamic_visitor_applier(Visitor v) :
+        m_visitor(v)
+    { }
 
     template<class T>
-    struct my_decay {
-        typedef typename std::remove_reference<T>::type unref;
-        typedef typename std::remove_cv<unref>::type type;
-    };
+    Result
+    operator()(T& v) const {
+        return m_visitor(static_cast<const T&>(v));
+    }
 
-}} // namespace detail::dynamic
+    template<class T>
+    Result
+    operator()(incomplete_wrapper<T>& v) const {
+        return m_visitor(v.get());
+    }
 
-} // namespace cocaine
+private:
+    Visitor m_visitor;
+};
+
+template<class ConstVisitor, class Result>
+struct const_visitor_applier :
+    public boost::static_visitor<Result>
+{
+    const_visitor_applier(ConstVisitor v) :
+        m_const_visitor(v)
+    { }
+
+    template<class T>
+    Result
+    operator()(T& v) const {
+        return m_const_visitor(static_cast<const T&>(v));
+    }
+
+    template<class T>
+    Result
+    operator()(incomplete_wrapper<T>& v) const {
+        return m_const_visitor(static_cast<const T&>(v.get()));
+    }
+
+private:
+    ConstVisitor m_const_visitor;
+};
+
+template<class T>
+struct my_decay {
+    typedef typename std::remove_reference<T>::type unref;
+    typedef typename std::remove_cv<unref>::type type;
+};
+
+}}} // namespace cocaine::detail::dynamic
 
 #endif // COCAINE_DYNAMIC_DETAIL_HPP

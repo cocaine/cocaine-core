@@ -27,11 +27,10 @@
 namespace cocaine {
 
 template<>
-struct dynamic_constructor<dynamic_t::null_t, void> {
+struct dynamic_constructor<dynamic_t::null_t> {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(const dynamic_t::null_t& from, dynamic_t::value_t& to) {
         to = from;
@@ -39,11 +38,10 @@ struct dynamic_constructor<dynamic_t::null_t, void> {
 };
 
 template<>
-struct dynamic_constructor<bool, void> {
+struct dynamic_constructor<bool> {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(bool from, dynamic_t::value_t& to) {
         to = dynamic_t::bool_t(from);
@@ -53,15 +51,11 @@ struct dynamic_constructor<bool, void> {
 template<class From>
 struct dynamic_constructor<
     From,
-    typename std::enable_if<
-        std::is_integral<From>::value &&
-        std::is_unsigned<From>::value
-    >::type
+    typename std::enable_if<std::is_integral<From>::value && std::is_unsigned<From>::value>::type
 > {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(From from, dynamic_t::value_t& to) {
         to = dynamic_t::uint_t(from);
@@ -71,15 +65,11 @@ struct dynamic_constructor<
 template<class From>
 struct dynamic_constructor<
     From,
-    typename std::enable_if<
-        std::is_integral<From>::value &&
-        std::is_signed<From>::value
-    >::type
+    typename std::enable_if<std::is_integral<From>::value && std::is_signed<From>::value>::type
 > {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(From from, dynamic_t::value_t& to) {
         to = dynamic_t::int_t(from);
@@ -87,11 +77,13 @@ struct dynamic_constructor<
 };
 
 template<class From>
-struct dynamic_constructor<From, typename std::enable_if<std::is_enum<From>::value>::type> {
+struct dynamic_constructor<
+    From,
+    typename std::enable_if<std::is_enum<From>::value>::type
+> {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(const From& from, dynamic_t::value_t& to) {
         to = dynamic_t::int_t(from);
@@ -99,11 +91,13 @@ struct dynamic_constructor<From, typename std::enable_if<std::is_enum<From>::val
 };
 
 template<class From>
-struct dynamic_constructor<From, typename std::enable_if<std::is_floating_point<From>::value>::type> {
+struct dynamic_constructor<
+    From,
+    typename std::enable_if<std::is_floating_point<From>::value>::type
+> {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(From from, dynamic_t::value_t& to) {
         to = dynamic_t::double_t(from);
@@ -111,31 +105,28 @@ struct dynamic_constructor<From, typename std::enable_if<std::is_floating_point<
 };
 
 template<size_t N>
-struct dynamic_constructor<char[N], void> {
+struct dynamic_constructor<char[N]> {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
-    convert(const char *from, dynamic_t::value_t& to) {
+    convert(const char* from, dynamic_t::value_t& to) {
         to = dynamic_t::string_t();
         boost::get<dynamic_t::string_t>(to).assign(from, N - 1);
     }
 };
 
 template<>
-struct dynamic_constructor<std::string, void> {
+struct dynamic_constructor<std::string> {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(const std::string& from, dynamic_t::value_t& to) {
         to = from;
     }
 
-    static
-    inline
+    static inline
     void
     convert(std::string&& from, dynamic_t::value_t& to) {
         to = dynamic_t::string_t();
@@ -144,12 +135,11 @@ struct dynamic_constructor<std::string, void> {
 };
 
 template<>
-struct dynamic_constructor<dynamic_t::array_t, void> {
+struct dynamic_constructor<dynamic_t::array_t> {
     static const bool enable = true;
 
     template<class Array>
-    static
-    inline
+    static inline
     void
     convert(Array&& from, dynamic_t::value_t& to) {
         to = detail::dynamic::incomplete_wrapper<dynamic_t::array_t>();
@@ -164,68 +154,71 @@ struct dynamic_constructor<
 > {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(const std::vector<T>& from, dynamic_t::value_t& to) {
         dynamic_constructor<dynamic_t::array_t>::convert(dynamic_t::array_t(), to);
-        auto& arr = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
-        arr.reserve(from.size());
+
+        auto& array = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
+        array.reserve(from.size());
+
         for(size_t i = 0; i < from.size(); ++i) {
-            arr.emplace_back(from[i]);
+            array.emplace_back(from[i]);
         }
     }
 
-    static
-    inline
+    static inline
     void
     convert(std::vector<T>&& from, dynamic_t::value_t& to) {
         dynamic_constructor<dynamic_t::array_t>::convert(dynamic_t::array_t(), to);
-        auto& arr = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
-        arr.reserve(from.size());
+
+        auto& array = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
+        array.reserve(from.size());
+
         for(size_t i = 0; i < from.size(); ++i) {
-            arr.emplace_back(std::move(from[i]));
+            array.emplace_back(std::move(from[i]));
         }
     }
 };
 
 template<class T, size_t N>
-struct dynamic_constructor<T[N], void> {
+struct dynamic_constructor<T[N]> {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(const T (&from)[N], dynamic_t::value_t& to) {
         dynamic_constructor<dynamic_t::array_t>::convert(dynamic_t::array_t(), to);
-        auto& arr = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
-        arr.reserve(N);
+
+        auto& array = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
+        array.reserve(N);
+
         for(size_t i = 0; i < N; ++i) {
-            arr.emplace_back(from[i]);
+            array.emplace_back(from[i]);
         }
     }
 
-    static
-    inline
+    static inline
     void
     convert(T (&&from)[N], dynamic_t::value_t& to) {
         dynamic_constructor<dynamic_t::array_t>::convert(dynamic_t::array_t(), to);
-        auto& arr = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
-        arr.reserve(N);
+
+        auto& array = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
+        array.reserve(N);
+
         for(size_t i = 0; i < N; ++i) {
-            arr.emplace_back(std::move(from[i]));
+            array.emplace_back(std::move(from[i]));
         }
     }
 };
 
 template<class... Args>
-struct dynamic_constructor<std::tuple<Args...>, void> {
+struct dynamic_constructor<std::tuple<Args...>> {
     static const bool enable = true;
 
     template<size_t N, size_t I, class... Args2>
     struct copy_tuple_to_vector {
-        static
-        inline
+        static inline
         void
         convert(const std::tuple<Args2...>& from, dynamic_t::array_t& to) {
             to.emplace_back(std::get<I - 1>(from));
@@ -235,8 +228,7 @@ struct dynamic_constructor<std::tuple<Args...>, void> {
 
     template<size_t N, class... Args2>
     struct copy_tuple_to_vector<N, N, Args2...> {
-        static
-        inline
+        static inline
         void
         convert(const std::tuple<Args2...>& from, dynamic_t::array_t& to) {
             to.emplace_back(std::get<N - 1>(from));
@@ -245,18 +237,16 @@ struct dynamic_constructor<std::tuple<Args...>, void> {
 
     template<class... Args2>
     struct copy_tuple_to_vector<0, 1, Args2...> {
-        static
-        inline
+        static inline
         void
         convert(const std::tuple<Args2...>&, dynamic_t::array_t&) {
-            // pass
+            // Empty.
         }
     };
 
     template<size_t N, size_t I, class... Args2>
     struct move_tuple_to_vector {
-        static
-        inline
+        static inline
         void
         convert(std::tuple<Args2...>& from, dynamic_t::array_t& to) {
             to.emplace_back(std::move(std::get<I - 1>(from)));
@@ -266,8 +256,7 @@ struct dynamic_constructor<std::tuple<Args...>, void> {
 
     template<size_t N, class... Args2>
     struct move_tuple_to_vector<N, N, Args2...> {
-        static
-        inline
+        static inline
         void
         convert(std::tuple<Args2...>& from, dynamic_t::array_t& to) {
             to.emplace_back(std::move(std::get<N - 1>(from)));
@@ -276,42 +265,42 @@ struct dynamic_constructor<std::tuple<Args...>, void> {
 
     template<class... Args2>
     struct move_tuple_to_vector<0, 1, Args2...> {
-        static
-        inline
+        static inline
         void
         convert(std::tuple<Args2...>&, dynamic_t::array_t&) {
-            // pass
+            // Empty.
         }
     };
 
-    static
-    inline
+    static inline
     void
     convert(const std::tuple<Args...>& from, dynamic_t::value_t& to) {
         dynamic_constructor<dynamic_t::array_t>::convert(dynamic_t::array_t(), to);
-        auto& arr = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
-        arr.reserve(sizeof...(Args));
-        copy_tuple_to_vector<sizeof...(Args), 1, Args...>::convert(from, arr);
+
+        auto& array = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
+        array.reserve(sizeof...(Args));
+
+        copy_tuple_to_vector<sizeof...(Args), 1, Args...>::convert(from, array);
     }
 
-    static
-    inline
+    static inline
     void
     convert(std::tuple<Args...>&& from, dynamic_t::value_t& to) {
         dynamic_constructor<dynamic_t::array_t>::convert(dynamic_t::array_t(), to);
-        auto& arr = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
-        arr.reserve(sizeof...(Args));
-        move_tuple_to_vector<sizeof...(Args), 1, Args...>::convert(from, arr);
+
+        auto& array = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::array_t>>(to).get();
+        array.reserve(sizeof...(Args));
+
+        move_tuple_to_vector<sizeof...(Args), 1, Args...>::convert(from, array);
     }
 };
 
 template<>
-struct dynamic_constructor<dynamic_t::object_t, void> {
+struct dynamic_constructor<dynamic_t::object_t> {
     static const bool enable = true;
 
     template<class Object>
-    static
-    inline
+    static inline
     void
     convert(Object&& from, dynamic_t::value_t& to) {
         to = detail::dynamic::incomplete_wrapper<dynamic_t::object_t>();
@@ -320,12 +309,11 @@ struct dynamic_constructor<dynamic_t::object_t, void> {
 };
 
 template<>
-struct dynamic_constructor<std::map<std::string, dynamic_t>, void> {
+struct dynamic_constructor<std::map<std::string, dynamic_t>> {
     static const bool enable = true;
 
     template<class Object>
-    static
-    inline
+    static inline
     void
     convert(Object&& from, dynamic_t::value_t& to) {
         to = detail::dynamic::incomplete_wrapper<dynamic_t::object_t>();
@@ -340,52 +328,56 @@ struct dynamic_constructor<
 > {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(const std::map<std::string, T>& from, dynamic_t::value_t& to) {
         dynamic_constructor<dynamic_t::object_t>::convert(dynamic_t::object_t(), to);
-        auto& obj = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::object_t>>(to).get();
+
+        auto& object = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::object_t>>(to).get();
+
         for(auto it = from.begin(); it != from.end(); ++it) {
-            obj.insert(dynamic_t::object_t::value_type(it->first, it->second));
+            object.insert(dynamic_t::object_t::value_type(it->first, it->second));
         }
     }
 
-    static
-    inline
+    static inline
     void
     convert(std::map<std::string, T>&& from, dynamic_t::value_t& to) {
         dynamic_constructor<dynamic_t::object_t>::convert(dynamic_t::object_t(), to);
-        auto& obj = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::object_t>>(to).get();
+
+        auto& object = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::object_t>>(to).get();
+
         for(auto it = from.begin(); it != from.end(); ++it) {
-            obj.insert(dynamic_t::object_t::value_type(it->first, std::move(it->second)));
+            object.insert(dynamic_t::object_t::value_type(it->first, std::move(it->second)));
         }
     }
 };
 
 template<class T>
-struct dynamic_constructor<std::unordered_map<std::string, T>, void> {
+struct dynamic_constructor<std::unordered_map<std::string, T>> {
     static const bool enable = true;
 
-    static
-    inline
+    static inline
     void
     convert(const std::unordered_map<std::string, T>& from, dynamic_t::value_t& to) {
         dynamic_constructor<dynamic_t::object_t>::convert(dynamic_t::object_t(), to);
-        auto& obj = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::object_t>>(to).get();
+
+        auto& object = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::object_t>>(to).get();
+
         for(auto it = from.begin(); it != from.end(); ++it) {
-            obj.insert(it->first, it->second);
+            object.insert(it->first, it->second);
         }
     }
 
-    static
-    inline
+    static inline
     void
     convert(std::unordered_map<std::string, T>&& from, dynamic_t::value_t& to) {
         dynamic_constructor<dynamic_t::object_t>::convert(dynamic_t::object_t(), to);
-        auto& obj = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::object_t>>(to).get();
+
+        auto& object = boost::get<detail::dynamic::incomplete_wrapper<dynamic_t::object_t>>(to).get();
+
         for(auto it = from.begin(); it != from.end(); ++it) {
-            obj.insert(it->first, std::move(it->second));
+            object.insert(it->first, std::move(it->second));
         }
     }
 };

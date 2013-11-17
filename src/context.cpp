@@ -41,7 +41,7 @@
 
 #include <netdb.h>
 
-#include <rapidjson/reader.h>
+#include "rapidjson/reader.h"
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -154,6 +154,7 @@ struct rapidjson_ifstream_t {
     char
     Peek() const {
         int next = m_backend->peek();
+
         if(next == std::char_traits<char>::eof()) {
             return '\0';
         } else {
@@ -164,6 +165,7 @@ struct rapidjson_ifstream_t {
     char
     Take() {
         int next = m_backend->get();
+
         if(next == std::char_traits<char>::eof()) {
             return '\0';
         } else {

@@ -21,9 +21,13 @@
 #ifndef COCAINE_DYNAMIC_TYPE_HPP
 #define COCAINE_DYNAMIC_TYPE_HPP
 
-#include <vector>
+#include <string>
+#include <type_traits>
 #include <utility>
+#include <vector>
+
 #include <boost/lexical_cast.hpp>
+#include <boost/variant.hpp>
 
 #include <cocaine/dynamic/detail.hpp>
 
@@ -35,9 +39,7 @@ struct dynamic_constructor {
 };
 
 template<class To, class = void>
-struct dynamic_converter {
-    // pass
-};
+struct dynamic_converter { };
 
 class dynamic_t {
 public:
@@ -48,32 +50,27 @@ public:
         }
     };
 
-    typedef bool
-            bool_t;
-    typedef int64_t
-            int_t;
-    typedef uint64_t
-            uint_t;
-    typedef double
-            double_t;
-    typedef std::string
-            string_t;
-    typedef std::vector<dynamic_t>
-            array_t;
+    typedef bool                   bool_t;
+    typedef int64_t                int_t;
+    typedef uint64_t               uint_t;
+    typedef double                 double_t;
+    typedef std::string            string_t;
+    typedef std::vector<dynamic_t> array_t;
 
     class object_t;
 
-    typedef boost::variant<null_t,
-                           bool_t,
-                           int_t,
-                           uint_t,
-                           double_t,
-                           string_t,
-                           detail::dynamic::incomplete_wrapper<array_t>,
-                           detail::dynamic::incomplete_wrapper<object_t>>
-            value_t;
+    typedef boost::variant<
+        null_t,
+        bool_t,
+        int_t,
+        uint_t,
+        double_t,
+        string_t,
+        detail::dynamic::incomplete_wrapper<array_t>,
+        detail::dynamic::incomplete_wrapper<object_t>
+    > value_t;
 
-    // Just useful constants which may be accessed by a reference from any place of a program.
+    // Just useful constants which may be accessed by reference from any place of the program.
     static const dynamic_t null;
     static const dynamic_t empty_string;
     static const dynamic_t empty_array;
@@ -81,9 +78,7 @@ public:
 
 public:
     dynamic_t();
-
     dynamic_t(const dynamic_t& other);
-
     dynamic_t(dynamic_t&& other);
 
     template<class T>
@@ -199,11 +194,7 @@ public:
     as_object();
 
     template<class T>
-    typename std::conditional<
-        true,
-        bool,
-        typename dynamic_converter<typename detail::dynamic::my_decay<T>::type>::result_type
-    >::type
+    bool
     convertible_to() const;
 
     template<class T>
@@ -230,7 +221,7 @@ private:
     }
 
 private:
-    // Boost::apply_visitor takes non-constant reference to variable object.
+    // boost::apply_visitor takes non-constant reference to a variant object.
     mutable value_t m_value;
 };
 
@@ -238,7 +229,7 @@ template<class T>
 dynamic_t::dynamic_t(
     T&& from,
     typename std::enable_if<dynamic_constructor<typename detail::dynamic::my_decay<T>::type>::enable>::type*
-) : m_value(null_t())
+): m_value(null_t())
 {
     dynamic_constructor<typename detail::dynamic::my_decay<T>::type>::convert(std::forward<T>(from), m_value);
 }
@@ -251,11 +242,7 @@ dynamic_t::operator=(T&& from) {
 }
 
 template<class T>
-typename std::conditional<
-    true,
-    bool,
-    typename dynamic_converter<typename detail::dynamic::my_decay<T>::type>::result_type
->::type
+bool
 dynamic_t::convertible_to() const {
     return dynamic_converter<typename detail::dynamic::my_decay<T>::type>::convertible(*this);
 }
@@ -268,7 +255,7 @@ dynamic_t::to() const {
 
 } // namespace cocaine
 
-#include <cocaine/dynamic/object.inl>
+#include <cocaine/dynamic/object.hpp>
 #include <cocaine/dynamic/constructors.hpp>
 #include <cocaine/dynamic/converters.hpp>
 
