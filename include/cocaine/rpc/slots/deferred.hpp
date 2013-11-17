@@ -80,11 +80,19 @@ struct unassigned { };
 
 template<class T>
 struct value_type {
-    value_type(const T& value_):
-        value(value_)
-    { }
+    value_type(const T& value_): value(value_) { }
+    value_type(T&& value_): value(std::move(value_)) { }
 
-    T value;
+    value_type(const value_type& o): value(o.value) { }
+    value_type(value_type&& o): value(std::move(o.value)) { }
+
+    value_type&
+    operator=(const value_type& rhs) { value = rhs.value; return *this; }
+
+    value_type&
+    operator=(value_type&& rhs) { value = std::move(rhs.value); return *this; }
+
+    const T value;
 };
 
 template<>
@@ -115,14 +123,14 @@ struct variations<void> {
 template<class T, class Impl>
 struct enable_write {
     void
-    write(const T& value) {
+    write(T&& value) {
         auto impl = static_cast<Impl*>(this);
 
         std::lock_guard<std::mutex> guard(impl->mutex);
 
         if(!boost::get<unassigned>(&impl->result)) return;
 
-        impl->result = value_type<T>(value);
+        impl->result = value_type<T>(std::forward<T>(value));
         impl->flush();
     }
 };
@@ -131,9 +139,11 @@ template<class Impl>
 struct enable_write<void, Impl> { };
 
 template<class T>
-struct shared_state:
-    public enable_write<T, shared_state<T>>
+struct future_state:
+    public enable_write<T, future_state<T>>
 {
+    friend struct enable_write<T, future_state<T>>;
+
     void
     abort(int code, const std::string& reason) {
         std::lock_guard<std::mutex> guard(mutex);
@@ -164,8 +174,6 @@ struct shared_state:
             flush();
         }
     }
-
-    friend struct enable_write<T, shared_state<T>>;
 
 private:
     void
@@ -222,7 +230,7 @@ private:
 template<class T>
 struct deferred {
     deferred():
-        state(new io::aux::shared_state<T>())
+        state(new io::aux::future_state<T>())
     { }
 
     void
@@ -241,13 +249,13 @@ struct deferred {
     }
 
 private:
-    const std::shared_ptr<io::aux::shared_state<T>> state;
+    const std::shared_ptr<io::aux::future_state<T>> state;
 };
 
 template<>
 struct deferred<void> {
     deferred():
-        state(new io::aux::shared_state<void>())
+        state(new io::aux::future_state<void>())
     { }
 
     void
@@ -266,7 +274,7 @@ struct deferred<void> {
     }
 
 private:
-    const std::shared_ptr<io::aux::shared_state<void>> state;
+    const std::shared_ptr<io::aux::future_state<void>> state;
 };
 
 } // namespace cocaine
