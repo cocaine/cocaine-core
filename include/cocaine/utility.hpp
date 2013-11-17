@@ -23,6 +23,11 @@
 
 #include <type_traits>
 
+#if !defined(__clang__) && !defined(HAVE_GCC46)
+    // GCC 4.4 defines std::result_of<T> there.
+    #include <functional>
+#endif
+
 namespace cocaine {
 
 template<class T>
