@@ -6,19 +6,17 @@ SET(COCAINE_VERSION_MAJOR   0)
 SET(COCAINE_VERSION_MINOR   12)
 SET(COCAINE_VERSION_RELEASE 0)
 
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 IF(NOT APPLE)
     OPTION(CGROUPS "Build CGroups support for Process Isolate" ON)
 ELSE()
     OPTION(CGROUPS "Build CGroups support for Process Isolate" OFF)
 ENDIF()
 
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-CONFIGURE_FILE(
-    "${PROJECT_SOURCE_DIR}/config.hpp.in"
-    "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
-
 INCLUDE(cmake/locate_library.cmake)
+
+LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
@@ -34,9 +32,9 @@ FIND_PACKAGE(Boost 1.40.0
 IF(NOT APPLE AND CGROUPS)
     LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
     SET(LIBCGROUP_LIBRARY "cgroup")
-
-    # Enables the CGroup-related code.
-    SET(COCAINE_ALLOW_CGROUPS)
+    SET(COCAINE_ALLOW_CGROUPS TRUE)
+ELSE()
+    SET(COCAINE_ALLOW_CGROUPS FALSE)
 ENDIF()
 
 IF(NOT APPLE)
@@ -45,7 +43,6 @@ IF(NOT APPLE)
     SET(LIBCRYPTO_LIBRARY "crypto")
 ENDIF()
 
-LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
@@ -54,6 +51,10 @@ IF(NOT APPLE)
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
     SET(LIBUUID_LIBRARY "uuid")
 ENDIF()
+
+CONFIGURE_FILE(
+    "${PROJECT_SOURCE_DIR}/config.hpp.in"
+    "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
 
 INCLUDE_DIRECTORIES(
     ${Boost_INCLUDE_DIRS}
