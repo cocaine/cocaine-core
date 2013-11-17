@@ -39,7 +39,7 @@ storage_t::storage_t(context_t& context, reactor_t& reactor, const std::string& 
     on<io::storage::find>(std::bind(&api::storage_t::find, storage, _1, _2));
 }
 
-dispatch_t&
-storage_t::prototype() {
+auto
+storage_t::prototype() -> dispatch_t& {
     return *this;
 }

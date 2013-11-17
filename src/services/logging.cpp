@@ -42,7 +42,7 @@ logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& 
     on<io::logging::verbosity>(std::bind(&logger_concept_t::verbosity, logger));
 }
 
-dispatch_t&
-logging_t::prototype() {
+auto
+logging_t::prototype() -> dispatch_t& {
     return *this;
 }

@@ -88,8 +88,8 @@ node_t::~node_t() {
     m_apps.clear();
 }
 
-dispatch_t&
-node_t::prototype() {
+auto
+node_t::prototype() -> dispatch_t& {
     return *this;
 }
 

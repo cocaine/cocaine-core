@@ -43,8 +43,8 @@ class node_t:
        ~node_t();
 
         virtual
-        dispatch_t&
-        prototype();
+        auto
+        prototype() -> dispatch_t&;
 
     private:
         dynamic_t

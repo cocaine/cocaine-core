@@ -38,8 +38,8 @@ class storage_t:
         storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
 
         virtual
-        dispatch_t&
-        prototype();
+        auto
+        prototype() -> dispatch_t&;
 };
 
 }} // namespace cocaine::service
