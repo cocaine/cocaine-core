@@ -94,11 +94,11 @@ private:
 struct cgroup_configurator_t:
     public boost::static_visitor<>
 {
-    cgroup_configurator(cgroup_controller* ctl, const char* name, const char* parameter, const std::shared_ptr<logging::log_t>& log):
+    cgroup_configurator_t(cgroup_controller* ctl, const char* name, const char* parameter, const std::unique_ptr<logging::log_t>& log):
         m_ctl(ctl),
         m_name(name),
         m_parameter(parameter),
-        m_log(log),
+        m_log(log)
     { }
 
     void
@@ -118,12 +118,12 @@ struct cgroup_configurator_t:
 
     void
     operator()(const dynamic_t::string_t& value) const {
-        cgroup_add_value_string(m_ctl, m_parameter, value.c_str())
+        cgroup_add_value_string(m_ctl, m_parameter, value.c_str());
     }
 
     template<class T>
     void
-    operator()(const T& value) const {
+    operator()(const T& /* value */) const {
         COCAINE_LOG_WARNING(m_log, "cgroup controller '%s' parameter '%s' type is not supported", m_name, m_parameter);
     }
 
@@ -133,7 +133,7 @@ private:
     const char* m_name;
     const char* m_parameter;
 
-    const std::shared_ptr<logging::log_t> &m_log;
+    const std::unique_ptr<logging::log_t> &m_log;
 };
 #endif
 
@@ -166,7 +166,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
         cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->first.c_str());
 
         for(auto p = c->second.as_object().begin(); p != c->second.as_object().end(); ++p) {
-            p->second.apply(cgroup_configurator(ctl, c->first.c_str(), p->first.c_str(), m_log));
+            p->second.apply(cgroup_configurator_t(ctl, c->first.c_str(), p->first.c_str(), m_log));
 
             COCAINE_LOG_DEBUG(
                 m_log,
