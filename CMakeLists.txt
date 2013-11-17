@@ -9,9 +9,9 @@ SET(COCAINE_VERSION_RELEASE 0)
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 IF(NOT APPLE)
-    OPTION(CGROUPS "Build CGroups support for Process Isolate" ON)
+    OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" ON)
 ELSE()
-    OPTION(CGROUPS "Build CGroups support for Process Isolate" OFF)
+    OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" OFF)
 ENDIF()
 
 INCLUDE(cmake/locate_library.cmake)
@@ -29,12 +29,9 @@ FIND_PACKAGE(Boost 1.40.0
         filesystem
         program_options)
 
-IF(NOT APPLE AND CGROUPS)
+IF(COCAINE_ALLOW_CGROUPS)
     LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
     SET(LIBCGROUP_LIBRARY "cgroup")
-    SET(COCAINE_ALLOW_CGROUPS TRUE)
-ELSE()
-    SET(COCAINE_ALLOW_CGROUPS FALSE)
 ENDIF()
 
 IF(NOT APPLE)
