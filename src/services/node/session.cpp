@@ -74,7 +74,7 @@ session_t::downstream_t::~downstream_t() {
 
 void
 session_t::downstream_t::write(const char* chunk, size_t size) {
-    parent->send<rpc::chunk>(literal { chunk, size });
+    parent->send<rpc::chunk>(literal_t { chunk, size });
 }
 
 void

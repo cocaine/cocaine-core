@@ -42,7 +42,7 @@ struct type_traits<char[N]> {
 
 // Specialization to pack character arrays without copying to a std::string first.
 
-struct literal {
+struct literal_t {
     const char * blob;
     const size_t size;
 
@@ -52,11 +52,11 @@ struct literal {
 };
 
 template<>
-struct type_traits<literal> {
+struct type_traits<literal_t> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer, const literal& source) {
+    pack(msgpack::packer<Stream>& packer, const literal_t& source) {
         packer.pack_raw(source.size);
         packer.pack_raw_body(source.blob, source.size);
     }

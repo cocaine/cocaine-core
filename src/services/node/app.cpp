@@ -156,7 +156,7 @@ struct app_service_t:
         virtual
         void
         write(const char* chunk, size_t size) {
-            upstream->send<io::streaming<std::string>::chunk>(literal { chunk, size });
+            upstream->send<io::streaming<std::string>::chunk>(literal_t { chunk, size });
         }
 
         virtual
