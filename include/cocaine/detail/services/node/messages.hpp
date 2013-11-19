@@ -27,7 +27,7 @@ namespace cocaine { namespace io {
 
 struct rpc_tag;
 
-namespace rpc {
+struct rpc {
 
 struct handshake {
     typedef rpc_tag tag;
@@ -84,7 +84,7 @@ struct choke {
     typedef rpc_tag tag;
 };
 
-} // namespace rpc
+}; // struct rpc
 
 template<>
 struct protocol<rpc_tag> {
@@ -100,7 +100,7 @@ struct protocol<rpc_tag> {
         rpc::chunk,
         rpc::error,
         rpc::choke
-    >::type type;
+    >::type messages;
 };
 
 }} // namespace cocaine::io

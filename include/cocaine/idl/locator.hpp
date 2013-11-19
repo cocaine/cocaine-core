@@ -24,15 +24,22 @@
 #include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/protocol.hpp"
 
+#include "cocaine/tuple.hpp"
+
 namespace cocaine { namespace io {
 
 // Service locator interface
 
 struct locator_tag;
 
-namespace locator {
+struct locator {
 
-typedef std::tuple<std::string, uint16_t> endpoint_tuple_type;
+typedef std::tuple<
+ /* Fully-qualified domain name of the service node. */
+    std::string,
+ /* Service port in host byte order. */
+    uint16_t
+> endpoint_tuple_type;
 
 struct resolve {
     typedef locator_tag tag;
@@ -57,7 +64,9 @@ struct resolve {
      /* A mapping between method slot numbers, method names and state protocol transitions for use
         in dynamic languages like Python or Ruby. */
         dispatch_graph_t
-    > result_type;
+    > value_type;
+
+    typedef streaming_tag<value_type> drain_type;
 };
 
 struct synchronize {
@@ -69,11 +78,11 @@ struct synchronize {
         return "synchronize";
     }
 
-    typedef
+    typedef stream_of<
      /* A full dump of all available services on this node. Used by metalocator to aggregate
         node information from the cluster. */
-        std::map<std::string, tuple::fold<resolve::result_type>::type>
-    result_type;
+        std::map<std::string, tuple::fold<resolve::value_type>::type>
+    >::tag drain_type;
 };
 
 struct reports {
@@ -88,12 +97,12 @@ struct reports {
     typedef std::map<
      /* Maps client remote endpoint to the number of streams and memory usage. */
         endpoint_tuple_type, std::tuple<size_t, size_t>
-    > usage_report_type;
+    > usage_type;
 
-    typedef
+    typedef stream_of<
      /* Service I/O usage counters: number of concurrent sessions and memory footprints. */
-        std::map<std::string, std::tuple<size_t, usage_report_type>>
-    result_type;
+        std::map<std::string, std::tuple<size_t, usage_type>>
+    >::tag drain_type;
 };
 
 struct refresh {
@@ -111,7 +120,7 @@ struct refresh {
     > tuple_type;
 };
 
-} // namespace locator
+}; // struct locator
 
 template<>
 struct protocol<locator_tag> {
@@ -124,7 +133,9 @@ struct protocol<locator_tag> {
         locator::synchronize,
         locator::reports,
         locator::refresh
-    > type;
+    > messages;
+
+    typedef locator type;
 };
 
 }} // namespace cocaine::io

@@ -19,22 +19,22 @@
 */
 
 struct context_t::memusage_action_t {
-    typedef event_traits<io::locator::reports>::result_type upstream_type;
+    typedef result_of<io::locator::reports>::type result_type;
 
     auto
-    operator()() const -> upstream_type;
+    operator()() const -> result_type;
 
     const context_t& self;
 };
 
 auto
-context_t::memusage_action_t::operator()() const -> upstream_type {
-    upstream_type value;
+context_t::memusage_action_t::operator()() const -> result_type {
+    result_type result;
 
     std::lock_guard<std::mutex> guard(self.m_mutex);
 
     for(auto it = self.m_services.begin(); it != self.m_services.end(); ++it) {
-        io::locator::reports::usage_report_type report;
+        io::locator::reports::usage_type report;
 
         // Get the usage counters from the service's actor.
         const auto source = it->second->counters();
@@ -51,8 +51,8 @@ context_t::memusage_action_t::operator()() const -> upstream_type {
             });
         }
 
-        value[it->first] = std::make_tuple(source.sessions, report);
+        result[it->first] = std::make_tuple(source.sessions, report);
     }
 
-    return value;
+    return result;
 }

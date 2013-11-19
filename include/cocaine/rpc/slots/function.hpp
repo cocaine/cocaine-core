@@ -131,6 +131,19 @@ struct invoke_impl<End, End> {
     }
 };
 
+template<class Tag>
+struct upstream_impl;
+
+template<class T>
+struct upstream_impl<streaming_tag<T>> {
+    typedef T type;
+};
+
+template<>
+struct upstream_impl<void> {
+    typedef void type;
+};
+
 } // namespace aux
 
 #if defined(__GNUC__) && !defined(HAVE_GCC46)
@@ -194,7 +207,10 @@ struct function_slot:
     public basic_slot<Event>
 {
     typedef typename event_traits<Event>::tuple_type tuple_type;
-    typedef typename event_traits<Event>::result_type upstream_type;
+
+    typedef typename aux::upstream_impl<
+        typename event_traits<Event>::drain_type
+    >::type upstream_type;
 
     typedef typename mpl::transform<
         tuple_type,

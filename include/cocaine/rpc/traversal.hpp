@@ -75,8 +75,8 @@ traverse() -> boost::optional<dispatch_graph_t> {
     dispatch_graph_t result;
 
     aux::traverse_impl<
-        typename mpl::begin<typename protocol<Tag>::type>::type,
-        typename mpl::end<typename protocol<Tag>::type>::type
+        typename mpl::begin<typename protocol<Tag>::messages>::type,
+        typename mpl::end<typename protocol<Tag>::messages>::type
     >::apply(result);
 
     return result;

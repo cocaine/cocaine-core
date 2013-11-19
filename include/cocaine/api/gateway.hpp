@@ -27,6 +27,7 @@
 
 // TODO: Drop this.
 #include "cocaine/idl/locator.hpp"
+#include "cocaine/rpc/result_of.hpp"
 
 namespace cocaine { namespace api {
 
@@ -38,7 +39,7 @@ struct gateway_t {
         // Empty.
     }
 
-    typedef io::event_traits<io::locator::resolve>::result_type metadata_t;
+    typedef result_of<io::locator::resolve>::type metadata_t;
 
     virtual
     metadata_t

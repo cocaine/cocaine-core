@@ -31,7 +31,7 @@ namespace cocaine { namespace service {
 
 class logging_t:
     public api::service_t,
-    public implements<io::logging_tag>
+    public implements<io::log_tag>
 {
     public:
         logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);

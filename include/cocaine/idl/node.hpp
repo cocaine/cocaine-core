@@ -21,10 +21,7 @@
 #ifndef COCAINE_NODE_SERVICE_INTERFACE_HPP
 #define COCAINE_NODE_SERVICE_INTERFACE_HPP
 
-#include "cocaine/idl/streaming.hpp"
-
 #include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
 
@@ -32,7 +29,7 @@ namespace cocaine { namespace io {
 
 struct app_tag;
 
-namespace app {
+struct app {
 
 struct enqueue {
     typedef app_tag tag;
@@ -54,10 +51,10 @@ struct enqueue {
         optional<std::string>
     > tuple_type;
 
-    typedef
+    typedef stream_of<
      /* Some other arbitrary sequence of bytes, streamed back to the client in chunks. */
         std::string
-    result_type;
+    >::tag drain_type;
 };
 
 struct info {
@@ -69,13 +66,13 @@ struct info {
         return "info";
     }
 
-    typedef
+    typedef stream_of<
      /* Various runtime information about the running app. */
         dynamic_t
-    result_type;
+    >::tag drain_type;
 };
 
-} // namespace app
+}; // struct app
 
 template<>
 struct protocol<app_tag> {
@@ -86,14 +83,16 @@ struct protocol<app_tag> {
     typedef boost::mpl::list<
         app::enqueue,
         app::info
-    > type;
+    > messages;
+
+    typedef app type;
 };
 
 // Node service interface
 
 struct node_tag;
 
-namespace node {
+struct node {
 
 struct start_app {
     typedef node_tag tag;
@@ -110,10 +109,10 @@ struct start_app {
         std::map<std::string, std::string>
     > tuple_type;
 
-    typedef
+    typedef stream_of<
      /* Operation outcome. */
         dynamic_t
-    result_type;
+    >::tag drain_type;
 };
 
 struct pause_app {
@@ -130,10 +129,10 @@ struct pause_app {
         std::vector<std::string>
     > tuple_type;
 
-    typedef
+    typedef stream_of<
      /* Operation outcome. */
         dynamic_t
-    result_type;
+    >::tag drain_type;
 };
 
 struct list {
@@ -145,13 +144,13 @@ struct list {
         return "list";
     }
 
-    typedef
+    typedef stream_of<
      /* A list of running app names. */
         dynamic_t
-    result_type;
+    >::tag drain_type;
 };
 
-} // namespace node
+}; // struct node
 
 template<>
 struct protocol<node_tag> {
@@ -163,7 +162,9 @@ struct protocol<node_tag> {
         node::start_app,
         node::pause_app,
         node::list
-    > type;
+    > messages;
+
+    typedef node type;
 };
 
 }} // namespace cocaine::io

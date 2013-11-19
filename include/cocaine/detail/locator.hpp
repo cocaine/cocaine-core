@@ -27,6 +27,8 @@
 
 #include "cocaine/idl/locator.hpp"
 
+#include "cocaine/rpc/result_of.hpp"
+
 namespace ev {
     struct io;
     struct timer;
@@ -40,8 +42,8 @@ class locator_t:
     public implements<io::locator_tag>
 {
     public:
-        typedef io::event_traits<io::locator::resolve>::result_type resolve_result_type;
-        typedef io::event_traits<io::locator::refresh>::result_type refresh_result_type;
+        typedef result_of<io::locator::resolve>::type resolve_result_type;
+        typedef result_of<io::locator::refresh>::type refresh_result_type;
 
         typedef std::tuple<std::string, std::string, uint16_t> remote_id_t;
 

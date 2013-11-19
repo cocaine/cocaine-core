@@ -26,20 +26,19 @@
 #include "cocaine/traits/enum.hpp"
 
 using namespace cocaine::io;
+using namespace cocaine::logging;
 using namespace cocaine::service;
 
 using namespace std::placeholders;
 
 logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& name, const dynamic_t& args):
     api::service_t(context, reactor, name, args),
-    implements<io::logging_tag>(context, name)
+    implements<io::log_tag>(context, name)
 {
     auto logger = std::ref(context.logger());
 
-    using cocaine::logging::logger_concept_t;
-
-    on<io::logging::emit>(std::bind(&logger_concept_t::emit, logger, _1, _2, _3));
-    on<io::logging::verbosity>(std::bind(&logger_concept_t::verbosity, logger));
+    on<io::log::emit>(std::bind(&logger_concept_t::emit, logger, _1, _2, _3));
+    on<io::log::verbosity>(std::bind(&logger_concept_t::verbosity, logger));
 }
 
 auto

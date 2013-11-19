@@ -175,7 +175,7 @@ struct implements:
         graph(io::traverse<Tag>().get())
     {
         static_assert(
-            !boost::mpl::empty<typename io::protocol<Tag>::type>::value,
+            !boost::mpl::empty<typename io::protocol<Tag>::messages>::value,
             "protocol has no registered events"
         );
     }

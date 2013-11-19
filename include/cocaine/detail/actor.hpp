@@ -27,6 +27,7 @@
 
 // TODO: Drop this.
 #include "cocaine/idl/locator.hpp"
+#include "cocaine/rpc/result_of.hpp"
 
 #include "cocaine/rpc/session.hpp"
 
@@ -54,7 +55,7 @@ class actor_t {
         auto
         location() const -> std::vector<io::tcp::endpoint>;
 
-        typedef io::event_traits<io::locator::resolve>::result_type metadata_t;
+        typedef result_of<io::locator::resolve>::type metadata_t;
 
         metadata_t
         metadata() const;

@@ -18,40 +18,39 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_UTILITY_HPP
-#define COCAINE_UTILITY_HPP
+#ifndef COCAINE_IO_RESULT_OF_HPP
+#define COCAINE_IO_RESULT_OF_HPP
 
-#include <type_traits>
-
-#if !defined(__clang__) && !defined(HAVE_GCC46)
-    // GCC 4.4 defines std::result_of<T> there.
-    #include <functional>
-#endif
+#include "cocaine/rpc/protocol.hpp"
 
 #include <boost/mpl/front.hpp>
 #include <boost/mpl/size.hpp>
 
-namespace cocaine {
+namespace cocaine { namespace io { namespace aux {
 
 template<class T>
-struct depend {
+struct result_of_impl;
+
+template<class T>
+struct result_of_impl<streaming_tag<T>> {
+    typedef typename std::conditional<
+        boost::mpl::size<T>::value == 1,
+        typename boost::mpl::front<T>::type,
+        typename tuple::fold<T>::type
+    >::type type;
+};
+
+template<>
+struct result_of_impl<void> {
     typedef void type;
 };
 
-template<class F, class = void>
-struct result_of {
-    typedef typename std::result_of<F>::type type;
-};
+}} // namespace io::aux
 
-template<class F>
-struct result_of<F, typename depend<typename F::result_type>::type> {
-    typedef typename F::result_type type;
-};
-
-template<class T>
-struct pristine {
-    typedef typename std::remove_cv<
-        typename std::remove_reference<T>::type
+template<class Event>
+struct result_of<Event, typename depend<typename Event::tag>::type> {
+    typedef typename io::aux::result_of_impl<
+        typename io::event_traits<Event>::drain_type
     >::type type;
 };
 

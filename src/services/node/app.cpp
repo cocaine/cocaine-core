@@ -66,64 +66,33 @@ namespace fs = boost::filesystem;
 
 namespace {
 
-struct app_service_t:
-    public implements<io::app_tag>
+class streaming_service_t:
+    public implements<io::event_traits<io::app::enqueue>::transition_type>
 {
-    struct streaming_service_t:
-        public implements<io::streaming_tag<std::string>>
-    {
-        streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& downstream_):
-            implements<io::streaming_tag<std::string>>(context, name),
-            downstream(downstream_)
-        {
-            using namespace std::placeholders;
+    const api::stream_ptr_t downstream;
 
-            on<io::streaming<std::string>::error>(std::bind(&streaming_service_t::error, this, _1, _2));
-            on<io::streaming<std::string>::choke>(std::bind(&streaming_service_t::close, this));
-        }
+private:
+    void
+    write(const std::string& chunk) {
+        downstream->write(chunk.data(), chunk.size());
+    }
 
-        void
-        write(const std::string& chunk) {
-            downstream->write(chunk.data(), chunk.size());
-        }
+    void
+    error(int code, const std::string& reason) {
+        downstream->error(code, reason);
+        downstream->close();
+    }
 
-        void
-        error(int code, const std::string& reason) {
-            downstream->error(code, reason);
-            downstream->close();
-        }
+    void
+    close() {
+        downstream->close();
+    }
 
-        void
-        close() {
-            downstream->close();
-        }
-
-    private:
-        const api::stream_ptr_t downstream;
-    };
-
-    struct enqueue_slot_t:
-        public basic_slot<io::app::enqueue>
-    {
-        enqueue_slot_t(app_service_t& self_):
-            self(self_)
-        { }
-
-        virtual
-        std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
-            return io::invoke<event_traits<app::enqueue>::tuple_type>::apply(
-                boost::bind(&app_service_t::enqueue, &self, upstream, boost::arg<1>(), boost::arg<2>()),
-                unpacked
-            );
-        }
-
-    private:
-        app_service_t& self;
-    };
+public:
+    typedef io::protocol<io::event_traits<io::app::enqueue>::transition_type>::type protocol;
 
     struct write_slot_t:
-        public basic_slot<io::streaming<std::string>::chunk>
+        public basic_slot<protocol::chunk>
     {
         write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
             self(self_)
@@ -146,45 +115,73 @@ struct app_service_t:
         const std::weak_ptr<streaming_service_t> self;
     };
 
-    struct stream_adapter_t:
-        public api::stream_t
+    streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& downstream_):
+        implements<io::event_traits<io::app::enqueue>::transition_type>(context, name),
+        downstream(downstream_)
     {
+        using namespace std::placeholders;
+
+        on<protocol::error>(std::bind(&streaming_service_t::error, this, _1, _2));
+        on<protocol::choke>(std::bind(&streaming_service_t::close, this));
+    }
+};
+
+class app_service_t:
+    public implements<io::app_tag>
+{
+    context_t& context;
+    app_t&     app;
+
+private:
+    struct stream_adapter_t: public api::stream_t {
         stream_adapter_t(const std::shared_ptr<upstream_t>& upstream_):
             upstream(upstream_)
         { }
 
+        typedef io::protocol<io::event_traits<io::app::enqueue>::drain_type>::type protocol;
+
         virtual
         void
         write(const char* chunk, size_t size) {
-            upstream->send<io::streaming<std::string>::chunk>(literal_t { chunk, size });
+            upstream->send<protocol::chunk>(literal_t { chunk, size });
         }
 
         virtual
         void
         error(int code, const std::string& reason) {
-            upstream->send<io::streaming<std::string>::error>(code, reason);
+            upstream->send<protocol::error>(code, reason);
         }
 
         virtual
         void
         close() {
-            upstream->seal<io::streaming<std::string>::choke>();
+            upstream->seal<protocol::choke>();
         }
 
     private:
         const std::shared_ptr<upstream_t>& upstream;
     };
 
-    app_service_t(context_t& context_, const std::string& name_, app_t& app_):
-        implements<io::app_tag>(context_, cocaine::format("service/%1%", name_)),
-        context(context_),
-        app(app_)
+    struct enqueue_slot_t:
+        public basic_slot<io::app::enqueue>
     {
-        on<io::app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
-        on<io::app::info>(std::bind(&app_t::info, std::ref(app)));
-    }
+        enqueue_slot_t(app_service_t& self_):
+            self(self_)
+        { }
 
-private:
+        virtual
+        std::shared_ptr<dispatch_t>
+        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
+            return io::invoke<event_traits<io::app::enqueue>::tuple_type>::apply(
+                boost::bind(&app_service_t::enqueue, &self, upstream, boost::arg<1>(), boost::arg<2>()),
+                unpacked
+            );
+        }
+
+    private:
+        app_service_t& self;
+    };
+
     std::shared_ptr<dispatch_t>
     enqueue(const std::shared_ptr<upstream_t>& upstream, const std::string& event, const std::string& tag) {
         api::stream_ptr_t downstream;
@@ -197,14 +194,22 @@ private:
 
         auto service = std::make_shared<streaming_service_t>(context, name(), downstream);
 
-        service->on<io::streaming<std::string>::chunk>(std::make_shared<write_slot_t>(service));
+        service->on<streaming_service_t::protocol::chunk>(
+            std::make_shared<streaming_service_t::write_slot_t>(service)
+        );
 
         return service;
     }
 
-private:
-    context_t& context;
-    app_t& app;
+public:
+    app_service_t(context_t& context_, const std::string& name_, app_t& app_):
+        implements<io::app_tag>(context_, cocaine::format("service/%1%", name_)),
+        context(context_),
+        app(app_)
+    {
+        on<io::app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
+        on<io::app::info>(std::bind(&app_t::info, std::ref(app)));
+    }
 };
 
 } // namespace

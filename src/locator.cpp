@@ -53,7 +53,7 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-typedef io::event_traits<io::locator::synchronize>::result_type synchronize_result_type;
+typedef result_of<io::locator::synchronize>::type synchronize_result_type;
 
 #include "routing.inl"
 
@@ -219,7 +219,7 @@ struct deferred_erase_action {
 } // namespace
 
 class locator_t::remote_client_t:
-    public implements<io::streaming_tag<synchronize_result_type>>
+    public implements<io::event_traits<io::locator::synchronize>::drain_type>
 {
     locator_t& impl;
 
@@ -263,7 +263,7 @@ private:
     }
 
 public:
-    typedef io::streaming<synchronize_result_type> protocol;
+    typedef io::protocol<io::event_traits<io::locator::synchronize>::drain_type>::type protocol;
 
     struct announce_slot_t:
         public basic_slot<protocol::chunk>
@@ -289,7 +289,7 @@ public:
     };
 
     remote_client_t(locator_t& impl_, const remote_id_t& node_):
-        implements<io::streaming_tag<synchronize_result_type>>(impl_.m_context, impl_.name()),
+        implements<io::event_traits<io::locator::synchronize>::drain_type>(impl_.m_context, impl_.name()),
         impl(impl_),
         node(node_),
         uuid(std::get<0>(node))

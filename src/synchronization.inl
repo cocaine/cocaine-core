@@ -24,7 +24,7 @@
 struct context_t::synchronization_t:
     public basic_slot<io::locator::synchronize>
 {
-    typedef io::event_traits<io::locator::synchronize>::result_type upstream_type;
+    typedef result_of<io::locator::synchronize>::type result_type;
 
     synchronization_t(context_t& self);
 
@@ -40,7 +40,7 @@ struct context_t::synchronization_t:
 
 private:
     auto
-    dump() const -> upstream_type;
+    dump() const -> result_type;
 
 private:
     context_t& self;
@@ -55,7 +55,7 @@ context_t::synchronization_t::synchronization_t(context_t& self_):
 
 std::shared_ptr<dispatch_t>
 context_t::synchronization_t::operator()(const msgpack::object& /* unpacked */, const std::shared_ptr<upstream_t>& upstream) {
-    upstream->send<io::streaming<upstream_type>::chunk>(dump());
+    upstream->send<io::streaming<result_type>::chunk>(dump());
 
     // Save this upstream for the future notifications.
     upstreams.push_back(upstream);
@@ -66,31 +66,31 @@ context_t::synchronization_t::operator()(const msgpack::object& /* unpacked */, 
 
 void
 context_t::synchronization_t::announce() {
-    upstream_type value = dump();
+    result_type result = dump();
 
     for(auto it = upstreams.begin(); it != upstreams.end(); ++it) {
-        (*it)->send<io::streaming<upstream_type>::chunk>(value);
+        (*it)->send<io::streaming<result_type>::chunk>(result);
     }
 }
 
 void
 context_t::synchronization_t::shutdown() {
     for(auto it = upstreams.begin(); it != upstreams.end(); ++it) {
-        (*it)->seal<io::streaming<upstream_type>::choke>();
+        (*it)->seal<io::streaming<result_type>::choke>();
     }
 
     upstreams.clear();
 }
 
 auto
-context_t::synchronization_t::dump() const -> upstream_type {
-    upstream_type value;
+context_t::synchronization_t::dump() const -> result_type {
+    result_type result;
 
     std::lock_guard<std::mutex> guard(self.m_mutex);
 
     for(auto it = self.m_services.begin(); it != self.m_services.end(); ++it) {
-        value[it->first] = it->second->metadata();
+        result[it->first] = it->second->metadata();
     }
 
-    return value;
+    return result;
 }

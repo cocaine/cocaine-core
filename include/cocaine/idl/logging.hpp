@@ -27,14 +27,12 @@ namespace cocaine { namespace io {
 
 // Logging service interface
 
-struct logging_tag;
+struct log_tag;
 
-namespace logging {
-
-using cocaine::logging::priorities;
+struct log {
 
 struct emit {
-    typedef logging_tag tag;
+    typedef log_tag tag;
 
     static
     const char*
@@ -45,7 +43,7 @@ struct emit {
     typedef boost::mpl::list<
      /* Log level for this message. Generally, you are not supposed to send messages with log
         levels higher than the current verbosity. */
-        priorities,
+        logging::priorities,
      /* Message source. Messages originating from the user code should be tagged with
         'app/<name>' so that they could be routed separately. */
         std::string,
@@ -56,7 +54,7 @@ struct emit {
 };
 
 struct verbosity {
-    typedef logging_tag tag;
+    typedef log_tag tag;
 
     static
     const char*
@@ -64,24 +62,26 @@ struct verbosity {
         return "verbosity";
     }
 
-    typedef
+    typedef stream_of<
      /* The current verbosity level of the of the core logging sink. */
-        priorities
-    result_type;
+        logging::priorities
+    >::tag drain_type;
 };
 
-} // namespace logging
+}; // struct logging
 
 template<>
-struct protocol<logging_tag> {
+struct protocol<log_tag> {
     typedef boost::mpl::int_<
         1
     >::type version;
 
     typedef boost::mpl::list<
-        logging::emit,
-        logging::verbosity
-    > type;
+        log::emit,
+        log::verbosity
+    > messages;
+
+    typedef log type;
 };
 
 }} // namespace cocaine::io

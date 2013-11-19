@@ -43,7 +43,7 @@ struct protocol;
 
 template<>
 struct protocol<void> {
-    typedef mpl::list<> type;
+    typedef mpl::list<> messages;
 };
 
 template<class Tag>
@@ -57,18 +57,14 @@ namespace aux {
 
 template<class Protocol, class = void>
 struct flatten {
-    typedef typename Protocol::type type;
+    typedef typename Protocol::messages type;
 };
 
 template<class Protocol>
-struct flatten<
-    Protocol,
-    typename depend<typename Protocol::parent_type>::type
->
-{
+struct flatten<Protocol, typename depend<typename Protocol::parent_type>::type> {
     typedef typename mpl::joint_view<
         typename flatten<typename Protocol::parent_type>::type,
-        typename Protocol::type
+        typename Protocol::messages
     >::type type;
 };
 
@@ -111,27 +107,13 @@ struct tuple_type<Event, typename depend<typename Event::tuple_type>::type> {
 };
 
 template<class Event, class = void>
-struct result_type {
+struct drain_type {
     typedef void type;
 };
 
 template<class Event>
-struct result_type<Event, typename depend<typename Event::result_type>::type> {
-    template<class Result, class = void>
-    struct fold {
-        typedef Result type;
-    };
-
-    template<class Result>
-    struct fold<
-        Result,
-        typename std::enable_if<mpl::is_sequence<Result>::value>::type
-    >
-    {
-        typedef typename tuple::fold<Result>::type type;
-    };
-
-    typedef typename fold<typename Event::result_type>::type type;
+struct drain_type<Event, typename depend<typename Event::drain_type>::type> {
+    typedef typename Event::drain_type type;
 };
 
 } // namespace aux
@@ -141,10 +123,11 @@ struct event_traits {
     enum constants { id = aux::enumerate<Event>::type::value };
 
     typedef typename aux::transition_type<Event>::type transition_type;
+
     typedef typename aux::tuple_type<Event>::type tuple_type;
-    typedef typename aux::result_type<Event>::type result_type;
+    typedef typename aux::drain_type<Event>::type drain_type;
 };
 
-}}
+}} // namespace cocaine::io
 
 #endif

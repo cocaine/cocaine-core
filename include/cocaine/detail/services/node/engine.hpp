@@ -40,13 +40,11 @@ namespace ev {
     struct timer;
 }
 
-namespace cocaine {
-
-namespace io {
+namespace cocaine { namespace io {
 
 struct control_tag;
 
-namespace control {
+struct control {
     struct report {
         typedef control_tag tag;
     };
@@ -62,7 +60,7 @@ namespace control {
     struct terminate {
         typedef control_tag tag;
     };
-}
+};
 
 template<>
 struct protocol<control_tag> {
@@ -70,7 +68,7 @@ struct protocol<control_tag> {
         control::report,
         control::info,
         control::terminate
-    >::type type;
+    >::type messages;
 };
 
 } // namespace io

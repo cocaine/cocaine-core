@@ -22,7 +22,6 @@
 #define COCAINE_STORAGE_SERVICE_INTERFACE_HPP
 
 #include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
 
@@ -30,7 +29,7 @@ namespace cocaine { namespace io {
 
 struct storage_tag;
 
-namespace storage {
+struct storage {
 
 struct read {
     typedef storage_tag tag;
@@ -49,11 +48,11 @@ struct read {
         std::string
     > tuple_type;
 
-    typedef
+    typedef stream_of<
      /* The stored value. Typically it will be serialized with msgpack, but it's not a strict
         requirement. But as there's no way to know the format, try to unpack it anyway. */
         std::string
-    result_type;
+    >::tag drain_type;
 };
 
 struct write {
@@ -113,13 +112,13 @@ struct find {
         std::vector<std::string>
     > tuple_type;
 
-    typedef
+    typedef stream_of<
      /* A list of all the keys in the given key namespace. */
         std::vector<std::string>
-    result_type;
+    >::tag drain_type;
 };
 
-} // namespace storage
+}; // struct storage
 
 template<>
 struct protocol<storage_tag> {
@@ -132,7 +131,9 @@ struct protocol<storage_tag> {
         storage::write,
         storage::remove,
         storage::find
-    > type;
+    > messages;
+
+    typedef storage type;
 };
 
 }} // namespace cocaine::io

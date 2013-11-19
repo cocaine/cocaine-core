@@ -23,6 +23,8 @@
 
 #include <type_traits>
 
+#include <boost/mpl/list.hpp>
+
 namespace cocaine { namespace io {
 
 // Value tags
@@ -36,6 +38,14 @@ struct optional_with_default;
 // Protocol tags
 
 struct recursive_tag;
+
+template<class T>
+struct streaming_tag;
+
+template<typename... Types>
+struct stream_of {
+    typedef streaming_tag<boost::mpl::list<Types...>> tag;
+};
 
 namespace detail {
 

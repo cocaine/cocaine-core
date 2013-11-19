@@ -22,14 +22,10 @@
 #define COCAINE_STREAMING_SERVICE_INTERFACE_HPP
 
 #include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {
 
 // Streaming service interface
-
-template<class T>
-struct streaming_tag;
 
 template<class T>
 struct streaming {
@@ -90,7 +86,9 @@ struct protocol<streaming_tag<T>> {
         typename streaming<T>::chunk,
         typename streaming<T>::error,
         typename streaming<T>::choke
-    >::type type;
+    >::type messages;
+
+    typedef streaming<T> type;
 };
 
 }} // namespace cocaine::io
