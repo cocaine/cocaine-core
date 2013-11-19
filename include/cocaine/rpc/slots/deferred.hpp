@@ -56,7 +56,7 @@ struct deferred_slot:
     virtual
     std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
-        typedef deferred<upstream_type> expected_type;
+        typedef deferred<typename result_of<Event>::type> expected_type;
 
         try {
             // This cast is needed to ensure the correct deferred type.
@@ -92,7 +92,7 @@ struct value_type {
     value_type&
     operator=(value_type&& rhs) { value = std::move(rhs.value); return *this; }
 
-    const T value;
+    T value;
 };
 
 template<>
