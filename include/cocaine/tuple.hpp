@@ -24,11 +24,9 @@
 #include <tuple>
 
 #include <boost/mpl/begin.hpp>
-#include <boost/mpl/deque.hpp>
 #include <boost/mpl/deref.hpp>
 #include <boost/mpl/end.hpp>
 #include <boost/mpl/next.hpp>
-#include <boost/mpl/push_back.hpp>
 
 namespace cocaine { namespace tuple {
 
@@ -58,22 +56,6 @@ struct fold_impl<End, End, Args...> {
     typedef std::tuple<Args...> type;
 };
 
-template<class, typename...>
-struct unfold_impl;
-
-template<class TypeList, class Head, typename... Args>
-struct unfold_impl<TypeList, Head, Args...> {
-    typedef typename unfold_impl<
-        typename boost::mpl::push_back<TypeList, Head>::type,
-        Args...
-    >::type type;
-};
-
-template<class TypeList>
-struct unfold_impl<TypeList> {
-    typedef TypeList type;
-};
-
 } // namespace aux
 
 template<typename TypeList>
@@ -81,14 +63,6 @@ struct fold {
     typedef typename aux::fold_impl<
         typename boost::mpl::begin<TypeList>::type,
         typename boost::mpl::end<TypeList>::type
-    >::type type;
-};
-
-template<typename... Args>
-struct unfold {
-    typedef typename aux::unfold_impl<
-        boost::mpl::deque<>,
-        Args...
     >::type type;
 };
 

@@ -222,7 +222,7 @@ private:
 template<typename... Args>
 struct type_traits<std::tuple<Args...>> {
     typedef typename aux::make_tuple_traits<sizeof...(Args)>::type traits_type;
-    typedef typename tuple::unfold<Args...>::type sequence_type;
+    typedef typename itemize<Args...>::type sequence_type;
 
     template<class Stream>
     static inline

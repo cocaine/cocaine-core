@@ -21,9 +21,9 @@
 #ifndef COCAINE_IO_TAGS_HPP
 #define COCAINE_IO_TAGS_HPP
 
-#include <type_traits>
+#include "cocaine/utility.hpp"
 
-#include <boost/mpl/list.hpp>
+#include <type_traits>
 
 namespace cocaine { namespace io {
 
@@ -44,7 +44,7 @@ struct streaming_tag;
 
 template<typename... Types>
 struct stream_of {
-    typedef streaming_tag<boost::mpl::list<Types...>> tag;
+    typedef streaming_tag<typename itemize<Types...>::type> tag;
 };
 
 namespace detail {

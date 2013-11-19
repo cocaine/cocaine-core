@@ -28,11 +28,49 @@
     #include <functional>
 #endif
 
+#include <boost/mpl/deque.hpp>
+#include <boost/mpl/push_back.hpp>
+
 namespace cocaine {
 
 template<class T>
 struct depend {
     typedef void type;
+};
+
+namespace aux {
+
+template<class, typename...>
+struct itemize_impl;
+
+template<class TypeList, class Head, typename... Args>
+struct itemize_impl<TypeList, Head, Args...> {
+    typedef typename itemize_impl<
+        typename boost::mpl::push_back<TypeList, Head>::type,
+        Args...
+    >::type type;
+};
+
+template<class TypeList>
+struct itemize_impl<TypeList> {
+    typedef TypeList type;
+};
+
+} // namespace aux
+
+template<typename... Args>
+struct itemize {
+    typedef typename aux::itemize_impl<
+        boost::mpl::deque<>,
+        Args...
+    >::type type;
+};
+
+template<class T>
+struct pristine {
+    typedef typename std::remove_cv<
+        typename std::remove_reference<T>::type
+    >::type type;
 };
 
 template<class F, class = void>
@@ -43,13 +81,6 @@ struct result_of {
 template<class F>
 struct result_of<F, typename depend<typename F::result_type>::type> {
     typedef typename F::result_type type;
-};
-
-template<class T>
-struct pristine {
-    typedef typename std::remove_cv<
-        typename std::remove_reference<T>::type
-    >::type type;
 };
 
 } // namespace cocaine
