@@ -111,57 +111,55 @@ struct error_type {
 struct empty_type { };
 
 template<class T>
-struct variations {
-    typedef boost::variant<unassigned, value_type<T>, error_type, empty_type> type;
-};
+struct future_state;
 
-template<>
-struct variations<void> {
-    typedef boost::variant<unassigned, error_type, empty_type> type;
-};
+template<class T>
+struct future_state_base {
+    typedef boost::variant<unassigned, value_type<T>, error_type, empty_type> result_type;
+    typedef future_state<T> descendant_type;
 
-template<class T, class Impl>
-struct enable_write {
     void
     write(T&& value) {
-        auto impl = static_cast<Impl*>(this);
+        auto impl = static_cast<descendant_type*>(this);
 
         std::lock_guard<std::mutex> guard(impl->mutex);
 
-        if(!boost::get<unassigned>(&impl->result)) return;
-
-        impl->result = value_type<T>(std::forward<T>(value));
-        impl->flush();
+        if(boost::get<unassigned>(&impl->result)) {
+            impl->result = value_type<T>(std::forward<T>(value));
+            impl->flush();
+        }
     }
 };
 
-template<class Impl>
-struct enable_write<void, Impl> { };
+template<>
+struct future_state_base<void> {
+    typedef boost::variant<unassigned, error_type, empty_type> result_type;
+};
 
 template<class T>
 struct future_state:
-    public enable_write<T, future_state<T>>
+    public future_state_base<T>
 {
-    friend struct enable_write<T, future_state<T>>;
+    friend struct future_state_base<T>;
 
     void
     abort(int code, const std::string& reason) {
         std::lock_guard<std::mutex> guard(mutex);
 
-        if(!boost::get<unassigned>(&result)) return;
-
-        result = error_type(code, reason);
-        flush();
+        if(boost::get<unassigned>(&result)) {
+            result = error_type(code, reason);
+            flush();
+        }
     }
 
     void
     close() {
         std::lock_guard<std::mutex> guard(mutex);
 
-        if(!boost::get<unassigned>(&result)) return;
-
-        result = empty_type();
-        flush();
+        if(boost::get<unassigned>(&result)) {
+            result = empty_type();
+            flush();
+        }
     }
 
     void
@@ -178,13 +176,11 @@ struct future_state:
 private:
     void
     flush() {
-        if(upstream) {
-            boost::apply_visitor(result_visitor_t(upstream), result);
-        }
+        if(upstream) boost::apply_visitor(result_visitor_t(upstream), result);
     }
 
 private:
-    typename variations<T>::type result;
+    typename future_state_base<T>::result_type result;
 
     struct result_visitor_t:
         public boost::static_visitor<void>
