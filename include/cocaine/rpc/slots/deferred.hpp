@@ -60,7 +60,7 @@ struct deferred_slot:
 
         try {
             // This cast is needed to ensure the correct deferred type.
-            static_cast<expected_type>(this->call(unpacked)).state->attach(upstream);
+            (*static_cast<expected_type>(this->call(unpacked)).state).attach(upstream);
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
             upstream->seal<typename protocol::choke>();
@@ -174,18 +174,33 @@ struct future_state:
     }
 
 private:
+    template<class R>
+    struct upstream_type_impl {
+        typedef R type;
+    };
+
+    template<typename... Args>
+    struct upstream_type_impl<std::tuple<Args...>> {
+        typedef typename itemize<Args...>::type type;
+    };
+
     void
     flush() {
-        if(upstream) boost::apply_visitor(result_visitor_t(upstream), result);
+        typedef typename upstream_type_impl<T>::type upstream_type;
+
+        if(upstream) {
+            boost::apply_visitor(result_visitor<upstream_type>(upstream), result);
+        }
     }
 
 private:
     typename future_state_base<T>::result_type result;
 
-    struct result_visitor_t:
+    template<class U>
+    struct result_visitor:
         public boost::static_visitor<void>
     {
-        result_visitor_t(const std::shared_ptr<upstream_t>& upstream_):
+        result_visitor(const std::shared_ptr<upstream_t>& upstream_):
             upstream(upstream_)
         { }
 
@@ -196,19 +211,19 @@ private:
 
         void
         operator()(const value_type<T>& result) const {
-            upstream->send<typename io::streaming<T>::chunk>(result.value);
-            upstream->seal<typename io::streaming<T>::choke>();
+            upstream->send<typename io::streaming<U>::chunk>(result.value);
+            upstream->seal<typename io::streaming<U>::choke>();
         }
 
         void
         operator()(const error_type& error) const {
-            upstream->send<typename io::streaming<T>::error>(error.code, error.reason);
-            upstream->seal<typename io::streaming<T>::choke>();
+            upstream->send<typename io::streaming<U>::error>(error.code, error.reason);
+            upstream->seal<typename io::streaming<U>::choke>();
         }
 
         void
         operator()(const empty_type&) const {
-            upstream->seal<typename io::streaming<T>::choke>();
+            upstream->seal<typename io::streaming<U>::choke>();
         }
 
     private:
