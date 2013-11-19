@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/node/app.hpp"
+#include "cocaine/app.hpp"
 
 #include "cocaine/api/isolate.hpp"
 

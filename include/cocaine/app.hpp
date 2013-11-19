@@ -24,9 +24,23 @@
 #include "cocaine/common.hpp"
 #include "cocaine/dynamic.hpp"
 
-#include "cocaine/detail/services/node/forwards.hpp"
-
 #include <thread>
+
+namespace cocaine { namespace api {
+
+struct event_t;
+struct stream_t;
+
+}} // namespace cocaine::api
+
+namespace cocaine { namespace engine {
+
+class engine_t;
+
+struct manifest_t;
+struct profile_t;
+
+}} // namespace cocaine::engine
 
 namespace cocaine {
 
