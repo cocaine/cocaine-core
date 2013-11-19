@@ -137,7 +137,7 @@ struct dynamic_reader_t {
 
     dynamic_t
     Result() {
-        return std::move(m_stack.top());
+        return m_stack.top();
     }
 
 private:

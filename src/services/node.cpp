@@ -130,7 +130,7 @@ node_t::on_start_app(const runlist_t& runlist) {
         result[it->first] = "the app has been started";
     }
 
-    return std::move(result);
+    return result;
 }
 
 dynamic_t
@@ -153,7 +153,7 @@ node_t::on_pause_app(const std::vector<std::string>& applist) {
         result[*it] = "the app has been stopped";
     }
 
-    return std::move(result);
+    return result;
 }
 
 dynamic_t
@@ -164,5 +164,5 @@ node_t::on_list() const {
         result.push_back(it->first);
     }
 
-    return std::move(result);
+    return result;
 }
