@@ -60,7 +60,7 @@ struct deferred_slot:
 
         try {
             // This cast is needed to ensure the correct deferred type.
-            static_cast<expected_type>(this->call(unpacked)).attach(upstream);
+            static_cast<expected_type>(this->call(unpacked)).state->attach(upstream);
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
             upstream->seal<typename protocol::choke>();
@@ -225,18 +225,16 @@ private:
 
 template<class T>
 struct deferred {
+    template<class R, class Event>
+        friend struct io::deferred_slot;
+
     deferred():
         state(new io::aux::future_state<T>())
     { }
 
     void
-    attach(const std::shared_ptr<upstream_t>& upstream) {
-        state->attach(upstream);
-    }
-
-    void
-    write(const T& value) {
-        state->write(value);
+    write(T&& value) {
+        state->write(std::forward<T>(value));
     }
 
     void
@@ -250,14 +248,12 @@ private:
 
 template<>
 struct deferred<void> {
+    template<class R, class Event>
+        friend struct io::deferred_slot;
+
     deferred():
         state(new io::aux::future_state<void>())
     { }
-
-    void
-    attach(const std::shared_ptr<upstream_t>& upstream) {
-        state->attach(upstream);
-    }
 
     void
     close() {
