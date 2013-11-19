@@ -53,8 +53,6 @@ using namespace cocaine::io;
 
 using namespace std::placeholders;
 
-typedef result_of<io::locator::synchronize>::type synchronize_result_type;
-
 #include "routing.inl"
 
 locator_t::locator_t(context_t& context, reactor_t& reactor):
@@ -230,7 +228,7 @@ class locator_t::remote_client_t:
 
 private:
     void
-    announce(const synchronize_result_type& dump) {
+    announce(const result_of<io::locator::synchronize>::type& dump) {
         COCAINE_LOG_INFO(impl.m_log, "node '%s' has been updated", uuid);
 
         auto diff = impl.m_router->update_remote(uuid, dump);

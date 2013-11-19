@@ -20,6 +20,8 @@
 
 #include <random>
 
+typedef result_of<io::locator::synchronize>::type synchronize_result_type;
+
 namespace routing {
 
 #if defined(__clang__) || defined(HAVE_GCC46)

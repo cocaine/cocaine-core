@@ -23,7 +23,6 @@
 
 #include "cocaine/rpc/tags.hpp"
 
-#include "cocaine/tuple.hpp"
 #include "cocaine/utility.hpp"
 
 #include <boost/mpl/begin.hpp>

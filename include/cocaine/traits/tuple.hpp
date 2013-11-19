@@ -24,12 +24,8 @@
 #include "cocaine/traits.hpp"
 
 #include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/tags.hpp"
 
 #include "cocaine/tuple.hpp"
-#include "cocaine/utility.hpp"
-
-#include <type_traits>
 
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/count_if.hpp>

@@ -21,7 +21,7 @@
 #ifndef COCAINE_ENGINE_INTERFACE_HPP
 #define COCAINE_ENGINE_INTERFACE_HPP
 
-#include "cocaine/rpc/tags.hpp"
+#include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
 

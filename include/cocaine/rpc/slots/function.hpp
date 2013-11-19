@@ -27,12 +27,9 @@
 
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/slot.hpp"
-#include "cocaine/rpc/tags.hpp"
 
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/enum.hpp"
-
-#include "cocaine/utility.hpp"
 
 #include <functional>
 

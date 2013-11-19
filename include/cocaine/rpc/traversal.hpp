@@ -23,7 +23,6 @@
 
 #include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/tags.hpp"
 
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/deref.hpp>

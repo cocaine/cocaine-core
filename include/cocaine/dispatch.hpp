@@ -26,10 +26,7 @@
 #include "cocaine/rpc/slots/blocking.hpp"
 #include "cocaine/rpc/slots/deferred.hpp"
 
-#include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/traversal.hpp"
-
-#include "cocaine/utility.hpp"
 
 #include <boost/mpl/apply.hpp>
 #include <boost/mpl/empty.hpp>

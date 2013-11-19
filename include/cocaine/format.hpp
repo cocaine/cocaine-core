@@ -25,9 +25,7 @@
 
 #include <boost/format.hpp>
 
-namespace cocaine {
-
-namespace aux {
+namespace cocaine { namespace aux {
 
 static inline
 std::string

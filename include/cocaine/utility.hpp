@@ -28,9 +28,6 @@
     #include <functional>
 #endif
 
-#include <boost/mpl/front.hpp>
-#include <boost/mpl/size.hpp>
-
 namespace cocaine {
 
 template<class T>

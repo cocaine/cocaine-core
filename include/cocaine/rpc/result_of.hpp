@@ -23,6 +23,8 @@
 
 #include "cocaine/rpc/protocol.hpp"
 
+#include "cocaine/tuple.hpp"
+
 #include <boost/mpl/front.hpp>
 #include <boost/mpl/size.hpp>
 
