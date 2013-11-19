@@ -24,14 +24,13 @@
 #include "cocaine/utility.hpp"
 
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/variant.hpp>
 
-#include <cocaine/dynamic/detail.hpp>
+#include "cocaine/dynamic/detail.hpp"
 
 namespace cocaine {
 
@@ -257,9 +256,9 @@ dynamic_t::to() const {
 
 } // namespace cocaine
 
-#include <cocaine/dynamic/object.hpp>
-#include <cocaine/dynamic/constructors.hpp>
-#include <cocaine/dynamic/converters.hpp>
+#include "cocaine/dynamic/object.hpp"
+#include "cocaine/dynamic/constructors.hpp"
+#include "cocaine/dynamic/converters.hpp"
 
 namespace boost {
 
