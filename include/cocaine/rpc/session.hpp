@@ -37,7 +37,7 @@ class session_t:
 
     const std::shared_ptr<io::dispatch_t> prototype;
 
-    // Downstreams
+    // Downstreaming
 
     class downstream_t;
 

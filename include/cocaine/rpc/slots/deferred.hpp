@@ -174,33 +174,18 @@ struct future_state:
     }
 
 private:
-    template<class R>
-    struct upstream_type_impl {
-        typedef R type;
-    };
-
-    template<typename... Args>
-    struct upstream_type_impl<std::tuple<Args...>> {
-        typedef typename itemize<Args...>::type type;
-    };
-
     void
     flush() {
-        typedef typename upstream_type_impl<T>::type upstream_type;
-
-        if(upstream) {
-            boost::apply_visitor(result_visitor<upstream_type>(upstream), result);
-        }
+        if(upstream) boost::apply_visitor(result_visitor_t(upstream), result);
     }
 
 private:
     typename future_state_base<T>::result_type result;
 
-    template<class U>
-    struct result_visitor:
+    struct result_visitor_t:
         public boost::static_visitor<void>
     {
-        result_visitor(const std::shared_ptr<upstream_t>& upstream_):
+        result_visitor_t(const std::shared_ptr<upstream_t>& upstream_):
             upstream(upstream_)
         { }
 
@@ -211,19 +196,19 @@ private:
 
         void
         operator()(const value_type<T>& result) const {
-            upstream->send<typename io::streaming<U>::chunk>(result.value);
-            upstream->seal<typename io::streaming<U>::choke>();
+            upstream->send<typename io::streaming<T>::chunk>(result.value);
+            upstream->seal<typename io::streaming<T>::choke>();
         }
 
         void
         operator()(const error_type& error) const {
-            upstream->send<typename io::streaming<U>::error>(error.code, error.reason);
-            upstream->seal<typename io::streaming<U>::choke>();
+            upstream->send<typename io::streaming<T>::error>(error.code, error.reason);
+            upstream->seal<typename io::streaming<T>::choke>();
         }
 
         void
         operator()(const empty_type&) const {
-            upstream->seal<typename io::streaming<U>::choke>();
+            upstream->seal<typename io::streaming<T>::choke>();
         }
 
     private:
