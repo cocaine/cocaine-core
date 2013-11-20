@@ -60,7 +60,7 @@ struct deferred_slot:
 
         try {
             // This cast is needed to ensure the correct deferred type.
-            (*static_cast<expected_type>(this->call(unpacked)).state).attach(upstream);
+            static_cast<expected_type>(this->call(unpacked)).state_impl->attach(upstream);
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
             upstream->seal<typename protocol::choke>();
@@ -216,7 +216,7 @@ private:
     };
 
     // The upstream might be attached during state method invocation, so it has to be synchronized
-    // with a mutex - the atomicicity guarantee of the shared_ptr is not enough.
+    // with a mutex - the atomicicity guarantee of the shared_ptr<T> is not enough.
     std::shared_ptr<upstream_t> upstream;
     std::mutex mutex;
 };
@@ -225,48 +225,52 @@ private:
 
 template<class T>
 struct deferred {
+    typedef io::aux::future_state<T> state_type;
+
     template<class R, class Event>
         friend struct io::deferred_slot;
 
     deferred():
-        state(new io::aux::future_state<T>())
+        state_impl(std::make_shared<state_type>())
     { }
 
     void
     write(T&& value) {
-        state->write(std::forward<T>(value));
+        state_impl->write(std::forward<T>(value));
     }
 
     void
     abort(int code, const std::string& reason) {
-        state->abort(code, reason);
+        state_impl->abort(code, reason);
     }
 
 private:
-    const std::shared_ptr<io::aux::future_state<T>> state;
+    const std::shared_ptr<state_type> state_impl;
 };
 
 template<>
 struct deferred<void> {
+    typedef io::aux::future_state<void> state_type;
+
     template<class R, class Event>
         friend struct io::deferred_slot;
 
     deferred():
-        state(new io::aux::future_state<void>())
+        state_impl(std::make_shared<state_type>())
     { }
 
     void
     close() {
-        state->close();
+        state_impl->close();
     }
 
     void
     abort(int code, const std::string& reason) {
-        state->abort(code, reason);
+        state_impl->abort(code, reason);
     }
 
 private:
-    const std::shared_ptr<io::aux::future_state<void>> state;
+    const std::shared_ptr<state_type> state_impl;
 };
 
 } // namespace cocaine

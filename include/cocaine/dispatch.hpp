@@ -25,6 +25,7 @@
 
 #include "cocaine/rpc/slots/blocking.hpp"
 #include "cocaine/rpc/slots/deferred.hpp"
+#include "cocaine/rpc/slots/streamed.hpp"
 
 #include "cocaine/rpc/traversal.hpp"
 
@@ -117,6 +118,14 @@ struct select<deferred<R>> {
     template<class Event>
     struct apply {
         typedef deferred_slot<deferred<R>, Event> type;
+    };
+};
+
+template<class R>
+struct select<streamed<R>> {
+    template<class Event>
+    struct apply {
+        typedef streamed_slot<streamed<R>, Event> type;
     };
 };
 
