@@ -35,7 +35,7 @@ struct enqueue {
     typedef app_tag tag;
 
     // Allow clients to stream data into the apps.
-    typedef streaming_tag<std::string> transition_type;
+    typedef stream_of<std::string>::tag transition_type;
 
     static
     const char*
