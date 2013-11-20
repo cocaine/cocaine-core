@@ -40,9 +40,14 @@ struct chunk {
         return "write";
     }
 
-    template<class U>
+    template<class U, class = void>
     struct tuple_type_impl {
-        typedef T type;
+        typedef boost::mpl::list<U> type;
+    };
+
+    template<class U>
+    struct tuple_type_impl<U, typename std::enable_if<boost::mpl::is_sequence<U>::value>::type> {
+        typedef U type;
     };
 
     template<typename... Args>
@@ -51,7 +56,7 @@ struct chunk {
     };
 
     // Automatically expand tuple to a typelist, so that it won't look like a tuple with a single
-    // embedded tuple element, i.e. [0, 0, [[42, 3.14, "Death to all humans!"]]].
+    // embedded tuple element, i.e. (0, 0, ((42, 3.14, "Death to all humans!"),)).
     typedef typename tuple_type_impl<T>::type tuple_type;
 };
 
