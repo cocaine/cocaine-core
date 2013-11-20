@@ -198,7 +198,7 @@ actor_t::on_message(int fd, const message_t& message) {
     try {
         it->second->invoke(message);
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(m_log, "dropping client on fd %d: %s", fd, e.what());
+        COCAINE_LOG_ERROR(m_log, "client on fd %d has disconnected - %s", fd, e.what());
 
         // NOTE: This destroys the connection but not necessarily the session itself, as it might be
         // still in use by shared upstreams even in other threads. In other words, this doesn't guarantee
@@ -216,7 +216,7 @@ actor_t::on_failure(int fd, const std::error_code& ec) {
         // the reactor and it was already dropped.
         return;
     } else if(ec) {
-        COCAINE_LOG_ERROR(m_log, "client on fd %d has disappeared - [%d] %s", fd, ec.value(), ec.message());
+        COCAINE_LOG_ERROR(m_log, "client on fd %d has disconnected - [%d] %s", fd, ec.value(), ec.message());
     } else {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
     }
