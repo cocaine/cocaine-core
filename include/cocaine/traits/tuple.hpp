@@ -53,31 +53,24 @@ namespace cocaine { namespace io {
 
 namespace aux {
 
+template<class IndexSequence>
+struct tuple_type_traits_impl;
+
 template<size_t... Indices>
-struct tuple_traits_impl {
-    template<class TypeList, class Stream, typename... Args>
+struct tuple_type_traits_impl<index_sequence<Indices...>> {
+    template<class TypeList, class Stream, class Tuple>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer, const std::tuple<Args...>& source) {
+    pack(msgpack::packer<Stream>& packer, const Tuple& source) {
         type_traits<TypeList>::pack(packer, std::get<Indices>(source)...);
     }
 
-    template<class TypeList, typename... Args>
+    template<class TypeList, class Tuple>
     static inline
     void
-    unpack(const msgpack::object& unpacked, std::tuple<Args...>& target) {
+    unpack(const msgpack::object& unpacked, Tuple& target) {
         type_traits<TypeList>::unpack(unpacked, std::get<Indices>(target)...);
     }
-};
-
-template<size_t N, size_t... Indices>
-struct make_tuple_traits {
-    typedef typename make_tuple_traits<N - 1, N - 1, Indices...>::type type;
-};
-
-template<size_t... Indices>
-struct make_tuple_traits<0, Indices...> {
-    typedef tuple_traits_impl<Indices...> type;
 };
 
 } // namespace aux
@@ -122,9 +115,9 @@ public:
     static inline
     void
     pack(msgpack::packer<Stream>& packer, const typename tuple::fold<sequence_type>::type& tuple) {
-        typedef typename aux::make_tuple_traits<
-            boost::mpl::size<sequence_type>::value
-        >::type traits_type;
+        typedef aux::tuple_type_traits_impl<
+            typename make_index_sequence<boost::mpl::size<sequence_type>::value>::type
+        > traits_type;
 
         traits_type::template pack<sequence_type>(packer, tuple);
     }
@@ -158,9 +151,9 @@ public:
     static inline
     void
     unpack(const msgpack::object& object, typename tuple::fold<sequence_type>& tuple) {
-        typedef typename aux::make_tuple_traits<
-            boost::mpl::size<sequence_type>::value
-        >::type traits_type;
+        typedef aux::tuple_type_traits_impl<
+            typename make_index_sequence<boost::mpl::size<sequence_type>::value>::type
+        > traits_type;
 
         traits_type::template unpack<sequence_type>(object, tuple);
     }
@@ -221,8 +214,11 @@ private:
 
 template<typename... Args>
 struct type_traits<std::tuple<Args...>> {
-    typedef typename aux::make_tuple_traits<sizeof...(Args)>::type traits_type;
     typedef typename itemize<Args...>::type sequence_type;
+
+    typedef aux::tuple_type_traits_impl<
+        typename make_index_sequence<sizeof...(Args)>::type
+    > traits_type;
 
     template<class Stream>
     static inline
