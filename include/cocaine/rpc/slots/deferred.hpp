@@ -51,10 +51,10 @@ struct deferred_slot:
 
         try {
             // This cast is needed to ensure the correct return type.
-            auto object = static_cast<expected_type>(this->call(unpacked));
+            auto value = static_cast<expected_type>(this->call(unpacked));
 
             {
-                auto queue = (*object.queue_impl).synchronize();
+                auto queue = (*value.queue_impl).synchronize();
 
                 // Upstream is attached in a critical section, because it might be already in use
                 // in some other processing thread of the service.
