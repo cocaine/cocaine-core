@@ -163,7 +163,7 @@ private:
     static inline
     void
     pack_sequence(msgpack::packer<Stream>& /* packer */) {
-        return;
+        // Empty.
     }
 
     template<class It, class Stream, class Head, typename... Tail>
@@ -181,14 +181,14 @@ private:
         type_traits<type>::pack(packer, head);
 
         // Recurse to the next element.
-        return pack_sequence<typename boost::mpl::next<It>::type>(packer, tail...);
+        pack_sequence<typename boost::mpl::next<It>::type>(packer, tail...);
     }
 
     template<class It>
     static inline
     void
     unpack_sequence(const msgpack::object* /* packed */) {
-        return;
+        // Empty.
     }
 
     template<class It, class Head, typename... Tail>
@@ -206,7 +206,7 @@ private:
         type_traits<type>::unpack(*packed, head);
 
         // Recurse to the next element.
-        return unpack_sequence<typename boost::mpl::next<It>::type>(++packed, tail...);
+        unpack_sequence<typename boost::mpl::next<It>::type>(++packed, tail...);
     }
 };
 
