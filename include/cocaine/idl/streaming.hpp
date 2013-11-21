@@ -85,7 +85,7 @@ struct error {
 struct choke {
     typedef streaming_tag<T> tag;
 
-    // Specifies that this message should seal the stream.
+    // Specifies that this event should seal the stream.
     typedef std::true_type is_sealing;
 
     static
