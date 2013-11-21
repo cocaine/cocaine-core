@@ -83,6 +83,30 @@ struct result_of<F, typename depend<typename F::result_type>::type> {
     typedef typename F::result_type type;
 };
 
+template<class T, T... N>
+struct integer_sequence {
+    static inline
+    size_t
+    size() {
+        return sizeof...(N);
+    }
+};
+
+template<class T, T N>
+struct make_integer_sequence {
+    template<T I, T... Indices>
+    struct implementation {
+        typedef typename implementation<I - 1, I - 1, Indices...>::type type;
+    };
+
+    template<T... Indices>
+    struct implementation<0, Indices...> {
+        typedef integer_sequence<T, Indices...> type;
+    };
+
+    typedef typename implementation<N>::type type;
+};
+
 } // namespace cocaine
 
 #endif

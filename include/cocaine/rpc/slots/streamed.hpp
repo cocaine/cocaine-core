@@ -23,114 +23,49 @@
 
 #include "cocaine/rpc/slots/deferred.hpp"
 
-namespace cocaine {
-
-template<class T> struct streamed;
-
-namespace io {
-
-// Deferred slot
-
-template<class R, class Event>
-struct streamed_slot:
-    public function_slot<R, Event>
-{
-    typedef function_slot<R, Event> parent_type;
-
-    typedef typename parent_type::callable_type callable_type;
-    typedef typename parent_type::upstream_type upstream_type;
-
-    typedef io::streaming<upstream_type> protocol;
-
-    streamed_slot(callable_type callable):
-        parent_type(callable)
-    { }
-
-    virtual
-    std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
-        typedef streamed<typename result_of<Event>::type> expected_type;
-
-        try {
-            // This cast is needed to ensure the correct streamed type.
-            static_cast<expected_type>(this->call(unpacked)).state_impl->attach(upstream);
-        } catch(const std::system_error& e) {
-            upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
-            upstream->seal<typename protocol::choke>();
-        } catch(const std::exception& e) {
-            upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
-            upstream->seal<typename protocol::choke>();
-        }
-
-        // Return an empty protocol dispatch.
-        return std::shared_ptr<dispatch_t>();
-    }
-};
-
-namespace aux {
+namespace cocaine { namespace io { namespace aux {
 
 template<class Event>
 struct frozen {
+    template<typename... Args>
+    frozen(bool final_, Args&&... args):
+        final(final_),
+        tuple(std::forward<Args>(args)...)
+    { }
+
+    // NOTE: Indicates that this event should seal the upstream.
+    bool final;
+
     // NOTE: If the message cannot be sent right away, simply move the message arguments to a
     // temporary storage and wait for the upstream to be attached.
-    const typename tuple::fold<typename event_traits<Event>::tuple_type>::type tuple;
+    typename tuple::fold<typename event_traits<Event>::tuple_type>::type tuple;
+};
+
+struct frozen_visitor_t:
+    public boost::static_visitor<void>
+{
+    frozen_visitor_t(const std::shared_ptr<upstream_t>& upstream_):
+        upstream(upstream_)
+    { }
+
+    template<class Event>
+    void
+    operator()(const frozen<Event>& event) const {
+        if(!event.final) {
+            upstream->send<Event>(event.tuple);
+        } else {
+            upstream->seal<Event>(event.tuple);
+        }
+    }
+
+private:
+    const std::shared_ptr<upstream_t>& upstream;
 };
 
 template<class T>
-struct stream_state {
+class stream_state {
     typedef io::streaming<T> protocol;
 
-    template<class U>
-    void
-    write(U&& value) {
-        std::lock_guard<std::mutex> guard(mutex);
-
-        operations.emplace_back(frozen<typename protocol::chunk>{std::forward<U>(value)});
-
-        if(upstream) play();
-    }
-
-    void
-    abort(int code, const std::string& reason) {
-        std::lock_guard<std::mutex> guard(mutex);
-
-        operations.emplace_back(frozen<typename protocol::error>{code, reason});
-        operations.emplace_back(frozen<typename protocol::choke>{});
-
-        if(upstream) play();
-    }
-
-    void
-    close() {
-        std::lock_guard<std::mutex> guard(mutex);
-
-        operations.emplace_back(frozen<typename protocol::choke>{});
-
-        if(upstream) play();
-    }
-
-    void
-    attach(const std::shared_ptr<upstream_t>& upstream_) {
-        std::lock_guard<std::mutex> guard(mutex);
-
-        upstream = upstream_;
-
-        if(!operations.empty()) play();
-    }
-
-private:
-    void
-    play() {
-        result_visitor_t visitor(upstream);
-
-        for(auto it = operations.begin(); it != operations.end(); ++it) {
-            boost::apply_visitor(visitor, *it);
-        }
-
-        operations.clear();
-    }
-
-private:
     typedef boost::variant<
         frozen<typename protocol::chunk>,
         frozen<typename protocol::error>,
@@ -140,36 +75,61 @@ private:
     // Operation log.
     std::vector<element_type> operations;
 
-    struct result_visitor_t:
-        public boost::static_visitor<void>
-    {
-        result_visitor_t(const std::shared_ptr<upstream_t>& upstream_):
-            upstream(upstream_)
-        { }
-
-        void
-        operator()(const frozen<typename protocol::chunk>& chunk) const {
-            upstream->send<typename protocol::chunk>(std::get<0>(chunk.tuple));
-        }
-
-        void
-        operator()(const frozen<typename protocol::error>& error) const {
-            upstream->send<typename protocol::error>(std::get<0>(error.tuple), std::get<1>(error.tuple));
-        }
-
-        void
-        operator()(const frozen<typename protocol::choke>&) const {
-            upstream->seal<typename protocol::choke>();
-        }
-
-    private:
-        const std::shared_ptr<upstream_t>& upstream;
-    };
-
     // The upstream might be attached during state method invocation, so it has to be synchronized
     // with a mutex - the atomicicity guarantee of the shared_ptr<T> is not enough.
     std::shared_ptr<upstream_t> upstream;
     std::mutex mutex;
+
+private:
+    void
+    flush() {
+        frozen_visitor_t visitor(upstream);
+
+        for(auto it = operations.begin(); it != operations.end(); ++it) {
+            boost::apply_visitor(visitor, *it);
+        }
+
+        operations.clear();
+    }
+
+public:
+    template<class U>
+    void
+    write(U&& value) {
+        std::lock_guard<std::mutex> guard(mutex);
+
+        operations.emplace_back(frozen<typename protocol::chunk>(false, std::forward<U>(value)));
+
+        if(upstream) flush();
+    }
+
+    void
+    abort(int code, const std::string& reason) {
+        std::lock_guard<std::mutex> guard(mutex);
+
+        operations.emplace_back(frozen<typename protocol::error>(false, code, reason));
+        operations.emplace_back(frozen<typename protocol::choke>(true));
+
+        if(upstream) flush();
+    }
+
+    void
+    close() {
+        std::lock_guard<std::mutex> guard(mutex);
+
+        operations.emplace_back(frozen<typename protocol::choke>(true));
+
+        if(upstream) flush();
+    }
+
+    void
+    attach(const std::shared_ptr<upstream_t>& upstream_) {
+        std::lock_guard<std::mutex> guard(mutex);
+
+        upstream = upstream_;
+
+        if(!operations.empty()) flush();
+    }
 };
 
 }} // namespace io::aux
@@ -178,8 +138,8 @@ template<class T>
 struct streamed {
     typedef io::aux::stream_state<T> state_type;
 
-    template<class R, class Event>
-        friend struct io::streamed_slot;
+    template<template<class> class, class, class>
+        friend struct io::deferred_slot;
 
     streamed():
         state_impl(std::make_shared<state_type>())

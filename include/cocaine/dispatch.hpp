@@ -117,7 +117,7 @@ template<class R>
 struct select<deferred<R>> {
     template<class Event>
     struct apply {
-        typedef deferred_slot<deferred<R>, Event> type;
+        typedef deferred_slot<deferred, deferred<R>, Event> type;
     };
 };
 
@@ -125,7 +125,7 @@ template<class R>
 struct select<streamed<R>> {
     template<class Event>
     struct apply {
-        typedef streamed_slot<streamed<R>, Event> type;
+        typedef deferred_slot<streamed, streamed<R>, Event> type;
     };
 };
 

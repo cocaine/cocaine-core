@@ -38,7 +38,7 @@ namespace io {
 
 // Deferred slot
 
-template<class R, class Event>
+template<template<class> class T, class R, class Event>
 struct deferred_slot:
     public function_slot<R, Event>
 {
@@ -56,10 +56,10 @@ struct deferred_slot:
     virtual
     std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
-        typedef deferred<typename result_of<Event>::type> expected_type;
+        typedef T<typename result_of<Event>::type> expected_type;
 
         try {
-            // This cast is needed to ensure the correct deferred type.
+            // This cast is needed to ensure the correct return type.
             static_cast<expected_type>(this->call(unpacked)).state_impl->attach(upstream);
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
@@ -227,7 +227,7 @@ template<class T>
 struct deferred {
     typedef io::aux::future_state<T> state_type;
 
-    template<class R, class Event>
+    template<template<class> class, class, class>
         friend struct io::deferred_slot;
 
     deferred():
@@ -252,7 +252,7 @@ template<>
 struct deferred<void> {
     typedef io::aux::future_state<void> state_type;
 
-    template<class R, class Event>
+    template<template<class> class, class, class>
         friend struct io::deferred_slot;
 
     deferred():
