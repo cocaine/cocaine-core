@@ -25,8 +25,6 @@
 
 namespace cocaine {
 
-// Interlocked pseudo-pointers.
-
 template<class T, class Lockable = std::mutex>
 struct locked_ptr {
     typedef T        value_type;
