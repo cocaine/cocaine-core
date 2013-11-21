@@ -62,16 +62,17 @@ upstream_t::send(Args&&... args) {
         return;
     }
 
-    if(session->ptr) {
-        session->ptr->wr->write<Event>(index, std::forward<Args>(args)...);
-    }
-
-    if(io::event_traits<Event>::sealing) {
+    if(std::is_same<typename io::event_traits<Event>::transition_type, void>::value) {
         state = states::sealed;
 
-        // Destroys the stream with the given index in the channel, so that new requests might reuse
-        // it in the future. This stream will become sealed.
+        // If the event transition type is void, i.e. the remote dispatch will be destroyed after
+        // receiving this message, then detach the stream with the given index in the channel, so
+        // that new requests might reuse it in the future. This stream will become sealed.
         session->detach(index);
+    }
+
+    if(session->ptr) {
+        session->ptr->wr->write<Event>(index, std::forward<Args>(args)...);
     }
 }
 

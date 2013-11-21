@@ -85,9 +85,6 @@ struct error {
 struct choke {
     typedef streaming_tag<T> tag;
 
-    // Specifies that this event should seal the stream.
-    typedef std::true_type is_sealing;
-
     static
     const char*
     alias() {
