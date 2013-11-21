@@ -46,6 +46,11 @@ struct chunk {
     };
 
     template<class U>
+    struct tuple_type_impl<U, typename std::enable_if<std::is_same<U, void>::value>::type> {
+        typedef boost::mpl::list<> type;
+    };
+
+    template<class U>
     struct tuple_type_impl<U, typename std::enable_if<boost::mpl::is_sequence<U>::value>::type> {
         typedef U type;
     };

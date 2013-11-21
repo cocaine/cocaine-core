@@ -23,8 +23,6 @@
 
 #include "cocaine/rpc/tags.hpp"
 
-#include "cocaine/utility.hpp"
-
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>
 #include <boost/mpl/distance.hpp>

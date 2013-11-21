@@ -21,20 +21,11 @@
 #ifndef COCAINE_IO_DEFERRED_SLOT_HPP
 #define COCAINE_IO_DEFERRED_SLOT_HPP
 
+#include "cocaine/rpc/queue.hpp"
+
 #include "cocaine/rpc/slots/function.hpp"
 
-#include <mutex>
-
-#include <boost/variant/apply_visitor.hpp>
-#include <boost/variant/get.hpp>
-#include <boost/variant/static_visitor.hpp>
-#include <boost/variant/variant.hpp>
-
-namespace cocaine {
-
-template<class T> struct deferred;
-
-namespace io {
+namespace cocaine { namespace io {
 
 // Deferred slot
 
@@ -60,7 +51,15 @@ struct deferred_slot:
 
         try {
             // This cast is needed to ensure the correct return type.
-            static_cast<expected_type>(this->call(unpacked)).state_impl->attach(upstream);
+            auto object = static_cast<expected_type>(this->call(unpacked));
+
+            {
+                std::lock_guard<typename expected_type::queue_type> guard(*object.queue_impl);
+
+                // Upstream is attached in a critical section, because it might be already in use
+                // in some other processing thread of the service.
+                object.queue_impl->attach(upstream);
+            }
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
             upstream->seal<typename protocol::choke>();
@@ -74,203 +73,64 @@ struct deferred_slot:
     }
 };
 
-namespace aux {
-
-struct unassigned { };
-
-template<class T>
-struct value_type {
-    value_type(const T& value_): value(value_) { }
-    value_type(T&& value_): value(std::move(value_)) { }
-
-    value_type(const value_type& o): value(o.value) { }
-    value_type(value_type&& o): value(std::move(o.value)) { }
-
-    value_type&
-    operator=(const value_type& rhs) { value = rhs.value; return *this; }
-
-    value_type&
-    operator=(value_type&& rhs) { value = std::move(rhs.value); return *this; }
-
-    T value;
-};
-
-template<>
-struct value_type<void>;
-
-struct error_type {
-    error_type(int code_, std::string reason_):
-        code(code_),
-        reason(reason_)
-    { }
-
-    int code;
-    std::string reason;
-};
-
-struct empty_type { };
-
-template<class T>
-struct future_state;
-
-template<class T>
-struct future_state_base {
-    typedef boost::variant<unassigned, value_type<T>, error_type, empty_type> result_type;
-    typedef future_state<T> descendant_type;
-
-    void
-    write(T&& value) {
-        auto impl = static_cast<descendant_type*>(this);
-
-        std::lock_guard<std::mutex> guard(impl->mutex);
-
-        if(boost::get<unassigned>(&impl->result)) {
-            impl->result = value_type<T>(std::forward<T>(value));
-            impl->flush();
-        }
-    }
-};
-
-template<>
-struct future_state_base<void> {
-    typedef boost::variant<unassigned, error_type, empty_type> result_type;
-};
-
-template<class T>
-struct future_state:
-    public future_state_base<T>
-{
-    friend struct future_state_base<T>;
-
-    void
-    abort(int code, const std::string& reason) {
-        std::lock_guard<std::mutex> guard(mutex);
-
-        if(boost::get<unassigned>(&result)) {
-            result = error_type(code, reason);
-            flush();
-        }
-    }
-
-    void
-    close() {
-        std::lock_guard<std::mutex> guard(mutex);
-
-        if(boost::get<unassigned>(&result)) {
-            result = empty_type();
-            flush();
-        }
-    }
-
-    void
-    attach(const std::shared_ptr<upstream_t>& upstream_) {
-        std::lock_guard<std::mutex> guard(mutex);
-
-        upstream = upstream_;
-
-        if(!boost::get<unassigned>(&result)) {
-            flush();
-        }
-    }
-
-private:
-    void
-    flush() {
-        if(upstream) boost::apply_visitor(result_visitor_t(upstream), result);
-    }
-
-private:
-    typename future_state_base<T>::result_type result;
-
-    struct result_visitor_t:
-        public boost::static_visitor<void>
-    {
-        result_visitor_t(const std::shared_ptr<upstream_t>& upstream_):
-            upstream(upstream_)
-        { }
-
-        void
-        operator()(const unassigned&) const {
-            // Empty.
-        }
-
-        void
-        operator()(const value_type<T>& result) const {
-            upstream->send<typename io::streaming<T>::chunk>(result.value);
-            upstream->seal<typename io::streaming<T>::choke>();
-        }
-
-        void
-        operator()(const error_type& error) const {
-            upstream->send<typename io::streaming<T>::error>(error.code, error.reason);
-            upstream->seal<typename io::streaming<T>::choke>();
-        }
-
-        void
-        operator()(const empty_type&) const {
-            upstream->seal<typename io::streaming<T>::choke>();
-        }
-
-    private:
-        const std::shared_ptr<upstream_t>& upstream;
-    };
-
-    // The upstream might be attached during state method invocation, so it has to be synchronized
-    // with a mutex - the atomicicity guarantee of the shared_ptr<T> is not enough.
-    std::shared_ptr<upstream_t> upstream;
-    std::mutex mutex;
-};
-
-}} // namespace io::aux
+} // namespace io
 
 template<class T>
 struct deferred {
-    typedef io::aux::future_state<T> state_type;
+    typedef io::message_queue<io::streaming_tag<T>> queue_type;
+    typedef io::streaming<T> protocol;
 
-    template<template<class> class, class, class>
-        friend struct io::deferred_slot;
+    template<template<class> class, class, class> friend struct io::deferred_slot;
 
     deferred():
-        state_impl(std::make_shared<state_type>())
+        queue_impl(std::make_shared<queue_type>())
     { }
 
+    template<class U>
     void
-    write(T&& value) {
-        state_impl->write(std::forward<T>(value));
+    write(U&& value, typename std::enable_if<std::is_convertible<U, T>::value>::type* = nullptr) {
+        std::lock_guard<queue_type> guard(*queue_impl);
+        queue_impl->template append<typename protocol::chunk>(false, std::forward<U>(value));
+        queue_impl->template append<typename protocol::choke>(true);
     }
 
     void
     abort(int code, const std::string& reason) {
-        state_impl->abort(code, reason);
+        std::lock_guard<queue_type> guard(*queue_impl);
+        queue_impl->template append<typename protocol::error>(false, code, reason);
+        queue_impl->template append<typename protocol::choke>(true);
     }
 
 private:
-    const std::shared_ptr<state_type> state_impl;
+    const std::shared_ptr<queue_type> queue_impl;
 };
 
 template<>
 struct deferred<void> {
-    typedef io::aux::future_state<void> state_type;
+    typedef io::message_queue<io::streaming_tag<void>> queue_type;
+    typedef io::streaming<void> protocol;
 
-    template<template<class> class, class, class>
-        friend struct io::deferred_slot;
+    template<template<class> class, class, class> friend struct io::deferred_slot;
 
     deferred():
-        state_impl(std::make_shared<state_type>())
+        queue_impl(std::make_shared<queue_type>())
     { }
 
     void
-    close() {
-        state_impl->close();
+    abort(int code, const std::string& reason) {
+        std::lock_guard<queue_type> guard(*queue_impl);
+        queue_impl->template append<typename protocol::error>(false, code, reason);
+        queue_impl->template append<typename protocol::choke>(true);
     }
 
     void
-    abort(int code, const std::string& reason) {
-        state_impl->abort(code, reason);
+    close() {
+        std::lock_guard<queue_type> guard(*queue_impl);
+        queue_impl->template append<typename protocol::choke>(true);
     }
 
 private:
-    const std::shared_ptr<state_type> state_impl;
+    const std::shared_ptr<queue_type> queue_impl;
 };
 
 } // namespace cocaine

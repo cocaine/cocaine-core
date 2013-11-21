@@ -36,6 +36,7 @@
 #include <boost/function_types/function_type.hpp>
 
 #include <boost/mpl/count_if.hpp>
+#include <boost/mpl/lambda.hpp>
 #include <boost/mpl/push_front.hpp>
 #include <boost/mpl/transform.hpp>
 
