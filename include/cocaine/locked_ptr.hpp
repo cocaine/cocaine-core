@@ -33,6 +33,7 @@ struct locked_ptr {
     typedef Lockable mutex_type;
 
     locked_ptr(value_type& value_, mutex_type& mutex_): value(value_), guard(mutex_) { }
+    locked_ptr(locked_ptr&& o): value(o.value), guard(std::move(o.guard)) { }
 
     T* operator->() { return &value; }
     T& operator* () { return  value; }
@@ -48,6 +49,7 @@ struct locked_ptr<const T, Lockable> {
     typedef Lockable mutex_type;
 
     locked_ptr(const value_type& value_, mutex_type& mutex_): value(value_), guard(mutex_) { }
+    locked_ptr(locked_ptr&& o): value(o.value), guard(std::move(o.guard)) { }
 
     const T* operator->() const { return &value; }
     const T& operator* () const { return  value; }
