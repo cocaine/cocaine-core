@@ -155,7 +155,7 @@ private:
         virtual
         void
         close() {
-            upstream->seal<protocol::choke>();
+            upstream->send<protocol::choke>();
         }
 
     private:

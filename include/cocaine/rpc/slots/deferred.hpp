@@ -62,10 +62,10 @@ struct deferred_slot:
             }
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
-            upstream->seal<typename protocol::choke>();
+            upstream->send<typename protocol::choke>();
         } catch(const std::exception& e) {
             upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
-            upstream->seal<typename protocol::choke>();
+            upstream->send<typename protocol::choke>();
         }
 
         // Return an empty protocol dispatch.

@@ -51,10 +51,6 @@ public:
     template<class Event, typename... Args>
     void
     send(Args&&... args);
-
-    template<class Event, typename... Args>
-    void
-    seal(Args&&... args);
 };
 
 template<class Event, typename... Args>
@@ -62,26 +58,20 @@ void
 upstream_t::send(Args&&... args) {
     std::lock_guard<std::mutex> guard(session->mutex);
 
-    if(state == states::active && session->ptr) {
+    if(state != states::active) {
+        return;
+    }
+
+    if(session->ptr) {
         session->ptr->wr->write<Event>(index, std::forward<Args>(args)...);
     }
-}
 
-template<class Event, typename... Args>
-void
-upstream_t::seal(Args&&... args) {
-    std::lock_guard<std::mutex> guard(session->mutex);
-
-    if(state == states::active) {
-        if(session->ptr) {
-            session->ptr->wr->write<Event>(index, std::forward<Args>(args)...);
-        }
+    if(io::event_traits<Event>::sealing) {
+        state = states::sealed;
 
         // Destroys the stream with the given index in the channel, so that new requests might reuse
         // it in the future. This stream will become sealed.
         session->detach(index);
-
-        state = states::sealed;
     }
 }
 

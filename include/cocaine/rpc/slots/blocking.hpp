@@ -53,7 +53,7 @@ struct blocking_slot:
             upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
 
-        upstream->seal<typename protocol::choke>();
+        upstream->send<typename protocol::choke>();
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();
@@ -89,7 +89,7 @@ struct blocking_slot<void, Event>:
         }
 
         // This is needed anyway so that service clients could detect operation completion.
-        upstream->seal<typename protocol::choke>();
+        upstream->send<typename protocol::choke>();
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();

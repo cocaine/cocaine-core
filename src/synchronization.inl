@@ -76,7 +76,7 @@ context_t::synchronization_t::announce() {
 void
 context_t::synchronization_t::shutdown() {
     for(auto it = upstreams.begin(); it != upstreams.end(); ++it) {
-        (*it)->seal<io::streaming<result_type>::choke>();
+        (*it)->send<io::streaming<result_type>::choke>();
     }
 
     upstreams.clear();

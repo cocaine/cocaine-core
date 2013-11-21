@@ -72,11 +72,7 @@ struct frozen_visitor_t:
     template<class Event>
     void
     operator()(const frozen<Event>& event) const {
-        if(event_traits<Event>::sealing) {
-            upstream->seal<Event>(event.tuple);
-        } else {
-            upstream->send<Event>(event.tuple);
-        }
+        upstream->send<Event>(event.tuple);
     }
 
 private:
@@ -111,15 +107,11 @@ public:
             "event protocol is not supported by the queue"
         );
 
-        if(upstream) {
-            if(event_traits<Event>::sealing) {
-                upstream->seal<Event>(std::forward<Args>(args)...);
-            } else {
-                upstream->send<Event>(std::forward<Args>(args)...);
-            }
-        } else {
-            operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
+        if(!upstream) {
+            return operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
         }
+
+        upstream->send<Event>(std::forward<Args>(args)...);
     }
 
     void
