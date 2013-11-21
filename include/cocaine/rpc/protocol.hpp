@@ -66,7 +66,7 @@ struct flatten<Protocol, typename depend<typename Protocol::parent_type>::type> 
 };
 
 template<class Event>
-struct enumerate {
+struct enumerated {
     typedef protocol<typename Event::tag> protocol_type;
     typedef typename flatten<protocol_type>::type hierarchy_type;
 
@@ -113,11 +113,24 @@ struct drain_type<Event, typename depend<typename Event::drain_type>::type> {
     typedef typename Event::drain_type type;
 };
 
+template<class Event, class = void>
+struct is_sealing {
+    typedef std::false_type type;
+};
+
+template<class Event>
+struct is_sealing<Event, typename depend<typename Event::is_sealing>::type> {
+    typedef typename Event::is_sealing type;
+};
+
 } // namespace aux
 
 template<class Event>
 struct event_traits {
-    enum constants { id = aux::enumerate<Event>::type::value };
+    enum constants {
+        id      = aux::enumerated<Event>::type::value,
+        sealing = aux::is_sealing<Event>::type::value
+    };
 
     typedef typename aux::transition_type<Event>::type transition_type;
 

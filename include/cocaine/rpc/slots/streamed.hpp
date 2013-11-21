@@ -38,22 +38,24 @@ struct streamed {
 
     template<class U>
     void
-    write(U&& value, typename std::enable_if<std::is_convertible<U, T>::value>::type* = nullptr) {
+    write(U&& value,
+          typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type* = nullptr)
+    {
         std::lock_guard<queue_type> guard(*queue_impl);
-        queue_impl->template append<typename protocol::chunk>(false, std::forward<U>(value));
+        queue_impl->template append<typename protocol::chunk>(std::forward<U>(value));
     }
 
     void
     abort(int code, const std::string& reason) {
         std::lock_guard<queue_type> guard(*queue_impl);
-        queue_impl->template append<typename protocol::error>(false, code, reason);
-        queue_impl->template append<typename protocol::choke>(true);
+        queue_impl->template append<typename protocol::error>(code, reason);
+        queue_impl->template append<typename protocol::choke>();
     }
 
     void
     close() {
         std::lock_guard<queue_type> guard(*queue_impl);
-        queue_impl->template append<typename protocol::choke>(true);
+        queue_impl->template append<typename protocol::choke>();
     }
 
 private:

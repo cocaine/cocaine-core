@@ -47,18 +47,20 @@ namespace aux {
 template<class Event>
 struct frozen {
     template<typename... Args>
-    frozen(bool seals_, Args&&... args):
-        seals(seals_),
+    frozen(Event, Args&&... args):
         tuple(std::forward<Args>(args)...)
     { }
-
-    // NOTE: Indicates that this event should seal the upstream.
-    bool seals;
 
     // NOTE: If the event cannot be sent right away, simply move the event arguments to a temporary
     // storage and wait for the upstream to be attached.
     typename tuple::fold<typename event_traits<Event>::tuple_type>::type tuple;
 };
+
+template<class Event, typename... Args>
+frozen<Event>
+make_frozen(Args&&... args) {
+    return frozen<Event>(Event(), std::forward<Args>(args)...);
+}
 
 struct frozen_visitor_t:
     public boost::static_visitor<void>
@@ -70,10 +72,10 @@ struct frozen_visitor_t:
     template<class Event>
     void
     operator()(const frozen<Event>& event) const {
-        if(!event.seals) {
-            upstream->send<Event>(event.tuple);
-        } else {
+        if(event_traits<Event>::sealing) {
             upstream->seal<Event>(event.tuple);
+        } else {
+            upstream->send<Event>(event.tuple);
         }
     }
 
@@ -103,20 +105,20 @@ class message_queue {
 public:
     template<class Event, typename... Args>
     void
-    append(bool seals, Args&&... args) {
+    append(Args&&... args) {
         static_assert(
             std::is_same<typename Event::tag, Tag>::value,
             "event protocol is not supported by the queue"
         );
 
         if(upstream) {
-            if(!seals) {
-                upstream->send<Event>(std::forward<Args>(args)...);
-            } else {
+            if(event_traits<Event>::sealing) {
                 upstream->seal<Event>(std::forward<Args>(args)...);
+            } else {
+                upstream->send<Event>(std::forward<Args>(args)...);
             }
         } else {
-            operations.emplace_back(aux::frozen<Event>(seals, std::forward<Args>(args)...));
+            operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
         }
     }
 

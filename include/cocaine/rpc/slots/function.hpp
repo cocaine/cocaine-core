@@ -175,11 +175,7 @@ struct invoke {
         // comparison becomes tautological and emits dead code (unsigned < 0).
         // This is a known compiler bug: http://llvm.org/bugs/show_bug.cgi?id=8682
         if(unpacked.via.array.size < required) {
-            throw cocaine::error_t(
-                "argument sequence length mismatch - expected at least %d, got %d",
-                required,
-                unpacked.via.array.size
-            );
+            throw cocaine::error_t("argument sequence length mismatch - expected at least %d, got %d", required, unpacked.via.array.size);
         }
 
         #if defined(__clang__)

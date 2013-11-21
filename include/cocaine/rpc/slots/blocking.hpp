@@ -88,7 +88,7 @@ struct blocking_slot<void, Event>:
             upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
 
-        // This is needed so that service clients could detect operation completion.
+        // This is needed anyway so that service clients could detect operation completion.
         upstream->seal<typename protocol::choke>();
 
         // Return an empty protocol dispatch.
