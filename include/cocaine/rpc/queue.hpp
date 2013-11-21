@@ -104,6 +104,11 @@ public:
     template<class Event, typename... Args>
     void
     append(bool seals, Args&&... args) {
+        static_assert(
+            std::is_same<typename Event::tag, Tag>::value,
+            "event protocol is not supported by the queue"
+        );
+
         if(upstream) {
             if(!seals) {
                 upstream->send<Event>(std::forward<Args>(args)...);
