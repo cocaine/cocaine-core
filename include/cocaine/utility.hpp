@@ -83,8 +83,8 @@ struct result_of<F, typename depend<typename F::result_type>::type> {
     typedef typename F::result_type type;
 };
 
-template<class T, T... N>
-struct integer_sequence {
+template<size_t... N>
+struct index_sequence {
     static inline
     size_t
     size() {
@@ -92,19 +92,23 @@ struct integer_sequence {
     }
 };
 
-template<class T, T N>
-struct make_integer_sequence {
-    template<T I, T... Indices>
-    struct implementation {
-        typedef typename implementation<I - 1, I - 1, Indices...>::type type;
-    };
+namespace aux {
 
-    template<T... Indices>
-    struct implementation<0, Indices...> {
-        typedef integer_sequence<T, Indices...> type;
-    };
+template<size_t I, size_t... Indices>
+struct make_index_sequence_impl {
+    typedef typename make_index_sequence_impl<I - 1, I - 1, Indices...>::type type;
+};
 
-    typedef typename implementation<N>::type type;
+template<size_t... Indices>
+struct make_index_sequence_impl<0, Indices...> {
+    typedef index_sequence<Indices...> type;
+};
+
+} // namespace aux
+
+template<size_t N>
+struct make_index_sequence {
+    typedef typename aux::make_index_sequence_impl<N>::type type;
 };
 
 } // namespace cocaine
