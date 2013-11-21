@@ -119,14 +119,14 @@ struct deferred<void> {
     void
     abort(int code, const std::string& reason) {
         std::lock_guard<queue_type> guard(*queue_impl);
-        queue_impl->template append<typename protocol::error>(false, code, reason);
-        queue_impl->template append<typename protocol::choke>(true);
+        queue_impl->append<protocol::error>(false, code, reason);
+        queue_impl->append<protocol::choke>(true);
     }
 
     void
     close() {
         std::lock_guard<queue_type> guard(*queue_impl);
-        queue_impl->template append<typename protocol::choke>(true);
+        queue_impl->append<protocol::choke>(true);
     }
 
 private:
