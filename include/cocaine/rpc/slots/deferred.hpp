@@ -54,18 +54,16 @@ struct deferred_slot:
             auto object = static_cast<expected_type>(this->call(unpacked));
 
             {
-                std::lock_guard<typename expected_type::queue_type> guard(*object.queue_impl);
+                auto queue = (*object.queue_impl).synchronize();
 
                 // Upstream is attached in a critical section, because it might be already in use
                 // in some other processing thread of the service.
-                object.queue_impl->attach(upstream);
+                queue->attach(upstream);
             }
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
-            upstream->send<typename protocol::choke>();
         } catch(const std::exception& e) {
             upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
-            upstream->send<typename protocol::choke>();
         }
 
         // Return an empty protocol dispatch.
@@ -83,7 +81,7 @@ struct deferred {
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
     deferred():
-        queue_impl(std::make_shared<queue_type>())
+        queue_impl(std::make_shared<synchronized<queue_type>>())
     { }
 
     template<class U>
@@ -91,20 +89,19 @@ struct deferred {
     write(U&& value,
           typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type* = nullptr)
     {
-        std::lock_guard<queue_type> guard(*queue_impl);
-        queue_impl->template append<typename protocol::chunk>(std::forward<U>(value));
-        queue_impl->template append<typename protocol::choke>();
+        auto queue = (*queue_impl).synchronize();
+
+        queue->template append<typename protocol::chunk>(std::forward<U>(value));
+        queue->template append<typename protocol::choke>();
     }
 
     void
     abort(int code, const std::string& reason) {
-        std::lock_guard<queue_type> guard(*queue_impl);
-        queue_impl->template append<typename protocol::error>(code, reason);
-        queue_impl->template append<typename protocol::choke>();
+        (*queue_impl)->template append<typename protocol::error>(code, reason);
     }
 
 private:
-    const std::shared_ptr<queue_type> queue_impl;
+    const std::shared_ptr<synchronized<queue_type>> queue_impl;
 };
 
 template<>
@@ -115,24 +112,21 @@ struct deferred<void> {
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
     deferred():
-        queue_impl(std::make_shared<queue_type>())
+        queue_impl(std::make_shared<synchronized<queue_type>>())
     { }
 
     void
     abort(int code, const std::string& reason) {
-        std::lock_guard<queue_type> guard(*queue_impl);
-        queue_impl->append<protocol::error>(code, reason);
-        queue_impl->append<protocol::choke>();
+        (*queue_impl)->append<protocol::error>(code, reason);
     }
 
     void
     close() {
-        std::lock_guard<queue_type> guard(*queue_impl);
-        queue_impl->append<protocol::choke>();
+        (*queue_impl)->append<protocol::choke>();
     }
 
 private:
-    const std::shared_ptr<queue_type> queue_impl;
+    const std::shared_ptr<synchronized<queue_type>> queue_impl;
 };
 
 } // namespace cocaine

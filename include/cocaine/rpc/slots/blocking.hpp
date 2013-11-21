@@ -47,13 +47,12 @@ struct blocking_slot:
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
         try {
             upstream->send<typename protocol::chunk>(this->call(unpacked));
+            upstream->send<typename protocol::choke>();
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
             upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
-
-        upstream->send<typename protocol::choke>();
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();
@@ -82,14 +81,14 @@ struct blocking_slot<void, Event>:
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
         try {
             this->call(unpacked);
+
+            // This is needed anyway so that service clients could detect operation completion.
+            upstream->send<typename protocol::choke>();
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
             upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
-
-        // This is needed anyway so that service clients could detect operation completion.
-        upstream->send<typename protocol::choke>();
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();

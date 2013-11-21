@@ -21,13 +21,14 @@
 #ifndef COCAINE_IO_MESSAGE_QUEUE_HPP
 #define COCAINE_IO_MESSAGE_QUEUE_HPP
 
+#include "cocaine/locked_ptr.hpp"
+
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
 #include "cocaine/tuple.hpp"
 
 #include <deque>
-#include <mutex>
 
 #include <boost/mpl/lambda.hpp>
 #include <boost/mpl/transform.hpp>
@@ -96,7 +97,6 @@ class message_queue {
     // The upstream might be attached during state method invocation, so it has to be synchronized
     // with a mutex - the atomicicity guarantee of the shared_ptr<T> is not enough.
     std::shared_ptr<upstream_t> upstream;
-    std::mutex mutex;
 
 public:
     template<class Event, typename... Args>
@@ -130,10 +130,6 @@ public:
 
         operations.clear();
     }
-
-public:
-    void lock() { mutex.lock(); }
-    void unlock() { mutex.unlock(); }
 };
 
 }} // namespace cocaine::io
