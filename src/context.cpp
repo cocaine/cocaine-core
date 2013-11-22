@@ -454,7 +454,7 @@ context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
         name
     });
 
-    BOOST_VERIFY(existing == m_services.end());
+    BOOST_VERIFY(existing == m_services.cend());
 
     if(config.network.ports) {
         if(m_ports.empty()) {
