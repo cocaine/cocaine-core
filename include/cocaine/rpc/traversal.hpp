@@ -85,7 +85,7 @@ template<>
 inline
 auto
 traverse<recursive_tag>() -> boost::optional<dispatch_graph_t> {
-    return boost::none_t();
+    return boost::none;
 }
 
 }} // namespace cocaine::io
