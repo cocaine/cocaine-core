@@ -22,6 +22,7 @@
 #define COCAINE_IO_DEFERRED_SLOT_HPP
 
 #include "cocaine/rpc/queue.hpp"
+#include "cocaine/rpc/result_of.hpp"
 
 #include "cocaine/rpc/slots/function.hpp"
 
