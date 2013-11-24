@@ -150,7 +150,7 @@ void
 actor_t::execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>> socket) {
     auto fd = socket->fd();
 
-    BOOST_ASSERT(m_sessions->find(fd) == m_sessions->end());
+    BOOST_ASSERT(!m_sessions->count(fd));
 
     auto ptr = std::make_unique<io::channel<io::socket<io::tcp>>>(m_reactor, socket);
 
@@ -189,9 +189,7 @@ actor_t::execution_unit_t::on_message(int fd, const io::message_t& message) {
 
 void
 actor_t::execution_unit_t::on_failure(int fd, const std::error_code& error) {
-    auto it = m_sessions->find(fd);
-
-    if(it == m_sessions->end()) {
+    if(!m_sessions->count(fd)) {
         // TODO: COCAINE-75 fixes this via cancellation.
         // Check whether the connection actually exists, in case multiple errors were queued up in
         // the reactor and it was already dropped.
@@ -202,7 +200,7 @@ actor_t::execution_unit_t::on_failure(int fd, const std::error_code& error) {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
     }
 
-    it->second->revoke();
+    m_sessions->at(fd)->revoke();
     m_sessions->erase(fd);
 }
 
