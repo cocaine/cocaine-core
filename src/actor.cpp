@@ -239,7 +239,7 @@ actor_t::run(std::vector<io::tcp::endpoint> endpoints, unsigned int units) {
         m_connectors.back().bind(std::bind(&actor_t::on_connect, this, std::placeholders::_1));
     }
 
-    while(--units) {
+    while(units--) {
         m_pool.emplace_back(std::make_unique<execution_unit_t>(m_context, m_prototype));
     }
 
