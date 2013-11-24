@@ -62,7 +62,7 @@ dispatch_t::invoke(const io::message_t& message, const std::shared_ptr<upstream_
         return (*slot)(message.args(), upstream);
     } catch(const std::exception& e) {
         // TODO: COCAINE-82 adds a 'server' error category.
-        // This happens only if the underlying slot miserably failed to manage its own exceptions.
+        // This happens only when the underlying slot has miserably failed to manage its exceptions.
         // In such case, the client is disconnected to prevent any further damage.
         throw cocaine::error_t("unable to process message '%s' - %s", slot->name(), e.what());
     }

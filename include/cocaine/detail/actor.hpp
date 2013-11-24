@@ -29,15 +29,17 @@
 #include "cocaine/idl/locator.hpp"
 #include "cocaine/rpc/result_of.hpp"
 
-#include "cocaine/rpc/session.hpp"
-
 #include <list>
-#include <thread>
+
+#define BOOST_BIND_NO_PLACEHOLDERS
+#include <boost/thread/thread.hpp>
 
 namespace cocaine {
 
 class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
+
+    class execution_unit_t;
 
     public:
         actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::dispatch_t>&& prototype);
@@ -46,7 +48,7 @@ class actor_t {
        ~actor_t();
 
         void
-        run(std::vector<io::tcp::endpoint> endpoints);
+        run(std::vector<io::tcp::endpoint> endpoints, unsigned int units = 2);
 
         void
         terminate();
@@ -74,36 +76,25 @@ class actor_t {
         void
         on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket);
 
-        void
-        on_message(int fd, const io::message_t& message);
-
-        void
-        on_failure(int fd, const std::error_code& ec);
-
     private:
         context_t& m_context;
 
         const std::unique_ptr<logging::log_t> m_log;
         const std::shared_ptr<io::reactor_t> m_reactor;
 
-        // Actor I/O sessions
-
-        std::map<
-            int,
-            std::shared_ptr<session_t>
-        > m_sessions;
-
+        // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the
+        // new sessions. In case of secure actors, this might as well be the protocol dispatch to
+        // switch to after the authentication process completes successfully.
         std::shared_ptr<io::dispatch_t> m_prototype;
 
-        // Actor I/O connectors
+        // Execution units. Each unit consists of an event loop and a thread. All the new sessions
+        // are evenly distributed among these units.
+        std::vector<std::unique_ptr<execution_unit_t>> m_pool;
 
-        std::list<
-            io::connector<io::acceptor<io::tcp>>
-        > m_connectors;
-
-        // Execution context
-
-        std::unique_ptr<std::thread> m_thread;
+        // Actor I/O connectors. Actors have a separate thread to accept new connections. The same
+        // thread is also shared with the dispatch whenever it needs an event loop to do something.
+        std::list<io::connector<io::acceptor<io::tcp>>> m_connectors;
+        std::unique_ptr<boost::thread> m_thread;
 };
 
 } // namespace cocaine

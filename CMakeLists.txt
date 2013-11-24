@@ -25,9 +25,10 @@ ENDIF()
 
 FIND_PACKAGE(Boost 1.40.0
     REQUIRED COMPONENTS
-        system
         filesystem
-        program_options)
+        program_options
+        system
+        thread)
 
 IF(COCAINE_ALLOW_CGROUPS)
     LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
@@ -111,6 +112,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     archive
     boost_system-mt
     boost_filesystem-mt
+    boost_thread-mt
     ${LIBCGROUP_LIBRARY}
     ${LIBCRYPTO_LIBRARY}
     ev
