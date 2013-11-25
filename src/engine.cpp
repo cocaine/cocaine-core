@@ -65,14 +65,12 @@ execution_unit_t::~execution_unit_t() {
     m_chamber->join();
     m_chamber.reset();
 
-    auto locked = m_sessions.synchronize();
-
-    for(auto it = locked->cbegin(); it != locked->cend(); ++it) {
+    for(auto it = m_sessions.cbegin(); it != m_sessions.cend(); ++it) {
         // Synchronously close the connections.
         it->second->revoke();
     }
 
-    locked->clear();
+    m_sessions.clear();
 }
 
 void
@@ -84,7 +82,7 @@ void
 execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::dispatch_t>& dispatch) {
     auto fd = socket->fd();
 
-    BOOST_ASSERT(!m_sessions->count(fd));
+    BOOST_ASSERT(!m_sessions.count(fd));
 
     auto ptr = std::make_unique<io::channel<io::socket<io::tcp>>>(*m_reactor, socket);
 
@@ -99,14 +97,14 @@ execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket,
         std::bind(&execution_unit_t::on_failure, this, fd, _1)
     );
 
-    m_sessions->insert({fd, std::make_shared<session_t>(std::move(ptr), dispatch)});
+    m_sessions.insert({fd, std::make_shared<session_t>(std::move(ptr), dispatch)});
 }
 
 void
 execution_unit_t::on_message(int fd, const io::message_t& message) {
-    auto it = m_sessions->find(fd);
+    auto it = m_sessions.find(fd);
 
-    BOOST_ASSERT(it != m_sessions->end());
+    BOOST_ASSERT(it != m_sessions.end());
 
     try {
         it->second->invoke(message);
@@ -117,13 +115,13 @@ execution_unit_t::on_message(int fd, const io::message_t& message) {
         // still in use by shared upstreams even in other threads. In other words, this doesn't guarantee
         // that the session will be actually deleted, but it's fine, since the connection is closed.
         it->second->revoke();
-        m_sessions->erase(it);
+        m_sessions.erase(it);
     }
 }
 
 void
 execution_unit_t::on_failure(int fd, const std::error_code& error) {
-    if(!m_sessions->count(fd)) {
+    if(!m_sessions.count(fd)) {
         // TODO: COCAINE-75 fixes this via cancellation.
         // Check whether the connection actually exists, in case multiple errors were queued up in
         // the reactor and it was already dropped.
@@ -134,6 +132,6 @@ execution_unit_t::on_failure(int fd, const std::error_code& error) {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
     }
 
-    m_sessions->at(fd)->revoke();
-    m_sessions->erase(fd);
+    m_sessions[fd]->revoke();
+    m_sessions.erase(fd);
 }

@@ -36,9 +36,7 @@ class execution_unit_t {
 
     // Connections
 
-    synchronized<
-        std::map<int, std::shared_ptr<session_t>>
-    > m_sessions;
+    std::map<int, std::shared_ptr<session_t>> m_sessions;
 
     // I/O Reactor
 

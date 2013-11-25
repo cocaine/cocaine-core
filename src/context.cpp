@@ -556,7 +556,7 @@ context_t::bootstrap() {
 
     COCAINE_LOG_INFO(blog, "growing the execution unit pool to %d units", pool);
 
-    while(pool--) { m_pool.emplace_back(std::make_unique<execution_unit_t>(*this, "engines")); }
+    while(pool--) { m_pool.emplace_back(std::make_unique<execution_unit_t>(*this, "cocaine/execute")); }
 
     COCAINE_LOG_INFO(
         blog,
