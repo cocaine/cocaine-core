@@ -27,6 +27,7 @@
 #include "cocaine/detail/services/node/forwards.hpp"
 
 #include "cocaine/dispatch.hpp"
+#include "cocaine/locked_ptr.hpp"
 
 #include "cocaine/idl/node.hpp"
 
@@ -67,7 +68,7 @@ class node_t:
         > app_map_t;
 
         // Apps.
-        app_map_t m_apps;
+        synchronized<app_map_t> m_apps;
 };
 
 }} // namespace cocaine::service

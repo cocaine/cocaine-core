@@ -75,17 +75,17 @@ node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, 
 }
 
 node_t::~node_t() {
-    if(m_apps.empty()) {
+    if(m_apps.get().empty()) {
         return;
     }
 
     COCAINE_LOG_INFO(m_log, "stopping the apps");
 
-    for(auto it = m_apps.begin(); it != m_apps.end(); ++it) {
+    for(auto it = m_apps.get().begin(); it != m_apps.get().end(); ++it) {
         it->second->stop();
     }
 
-    m_apps.clear();
+    m_apps.get().clear();
 }
 
 auto
@@ -98,17 +98,18 @@ node_t::on_start_app(const runlist_t& runlist) {
     dynamic_t::object_t result;
 
     for(auto it = runlist.begin(); it != runlist.end(); ++it) {
-        if(m_apps.find(it->first) != m_apps.end()) {
+        if(m_apps->count(it->first)) {
             result[it->first] = "the app is already running";
             continue;
         }
 
         COCAINE_LOG_INFO(m_log, "starting the '%s' app", it->first);
 
-        app_map_t::iterator app;
+        auto locked = m_apps.synchronize();
+        auto app    = locked->end();
 
         try {
-            std::tie(app, std::ignore) = m_apps.insert({
+            std::tie(app, std::ignore) = locked->insert({
                 it->first,
                 std::make_shared<app_t>(m_context, it->first, it->second)
             });
@@ -122,7 +123,7 @@ node_t::on_start_app(const runlist_t& runlist) {
             app->second->start();
         } catch(const cocaine::error_t& e) {
             COCAINE_LOG_ERROR(m_log, "unable to start the '%s' app - %s", it->first, e.what());
-            m_apps.erase(app);
+            locked->erase(app);
             result[it->first] = std::string(e.what());
             continue;
         }
@@ -138,17 +139,18 @@ node_t::on_pause_app(const std::vector<std::string>& applist) {
     dynamic_t::object_t result;
 
     for(auto it = applist.begin(); it != applist.end(); ++it) {
-        auto app = m_apps.find(*it);
-
-        if(app == m_apps.end()) {
+        if(!m_apps->count(*it)) {
             result[*it] = "the app is not running";
             continue;
         }
 
         COCAINE_LOG_INFO(m_log, "stopping the '%s' app", *it);
 
+        auto locked = m_apps.synchronize();
+        auto app    = locked->find(*it);
+
         app->second->stop();
-        m_apps.erase(app);
+        locked->erase(app);
 
         result[*it] = "the app has been stopped";
     }
@@ -160,7 +162,9 @@ dynamic_t
 node_t::on_list() const {
     dynamic_t::array_t result;
 
-    for(auto it = m_apps.begin(); it != m_apps.end(); ++it) {
+    auto locked = m_apps.synchronize();
+
+    for(auto it = locked->begin(); it != locked->end(); ++it) {
         result.push_back(it->first);
     }
 
