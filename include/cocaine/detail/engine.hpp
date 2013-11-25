@@ -18,47 +18,49 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_SESSION_HPP
-#define COCAINE_IO_SESSION_HPP
+#ifndef COCAINE_ENGINE_HPP
+#define COCAINE_ENGINE_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/locked_ptr.hpp"
 
-#include <mutex>
+#include "cocaine/rpc/session.hpp"
+
+#define BOOST_BIND_NO_PLACEHOLDERS
+#include <boost/thread/thread.hpp>
 
 namespace cocaine {
 
-class session_t:
-    public std::enable_shared_from_this<session_t>
-{
-    std::unique_ptr<io::channel<io::socket<io::tcp>>> ptr;
-    std::mutex mutex;
+class execution_unit_t {
+    const std::unique_ptr<logging::log_t> m_log;
 
-    // Root dispatch
+    // Connections
 
-    const std::shared_ptr<io::dispatch_t> prototype;
+    synchronized<
+        std::map<int, std::shared_ptr<session_t>>
+    > m_sessions;
 
-    // Downstreaming
+    // I/O Reactor
 
-    class downstream_t;
-
-    std::map<uint64_t, std::shared_ptr<downstream_t>> downstreams;
+    std::unique_ptr<io::reactor_t> m_reactor;
+    std::unique_ptr<boost::thread> m_chamber;
 
 public:
-    friend class upstream_t;
-
-    session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<io::dispatch_t>& prototype_):
-        ptr(std::move(ptr_)),
-        prototype(prototype_)
-    { }
+    execution_unit_t(context_t& context, const std::string& name);
+   ~execution_unit_t();
 
     void
-    invoke(const io::message_t& message);
+    attach(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::dispatch_t>& dispatch);
+
+private:
+    void
+    on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::dispatch_t>& dispatch);
 
     void
-    revoke();
+    on_message(int fd, const io::message_t& message);
 
     void
-    detach(uint64_t index);
+    on_failure(int fd, const std::error_code& error);
 };
 
 } // namespace cocaine

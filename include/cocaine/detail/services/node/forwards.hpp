@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_NODE_FORWARDS_HPP
-#define COCAINE_NODE_FORWARDS_HPP
+#ifndef COCAINE_APP_FORWARDS_HPP
+#define COCAINE_APP_FORWARDS_HPP
 
 namespace cocaine {
 

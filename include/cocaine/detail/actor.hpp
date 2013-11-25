@@ -48,7 +48,7 @@ class actor_t {
        ~actor_t();
 
         void
-        run(std::vector<io::tcp::endpoint> endpoints, unsigned int units = 2);
+        run(std::vector<io::tcp::endpoint> endpoints);
 
         void
         terminate();
@@ -61,16 +61,6 @@ class actor_t {
 
         metadata_t
         metadata() const;
-
-        struct counters_t {
-            size_t sessions;
-
-            // The number of streams and memory usage per client connection.
-            std::map<io::tcp::endpoint, std::tuple<size_t, size_t>> footprints;
-        };
-
-        counters_t
-        counters() const;
 
     private:
         void
@@ -86,10 +76,6 @@ class actor_t {
         // new sessions. In case of secure actors, this might as well be the protocol dispatch to
         // switch to after the authentication process completes successfully.
         std::shared_ptr<io::dispatch_t> m_prototype;
-
-        // Execution units. Each unit consists of an event loop and a thread. All the new sessions
-        // are evenly distributed among these units.
-        std::vector<std::unique_ptr<execution_unit_t>> m_pool;
 
         // Actor I/O connectors. Actors have a separate thread to accept new connections. The same
         // thread is also shared with the dispatch whenever it needs an event loop to do something.

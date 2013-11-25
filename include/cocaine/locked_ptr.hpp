@@ -82,6 +82,14 @@ struct synchronized {
         return locked_ptr<const T, Lockable>(value, mutex);
     }
 
+    value_type& get() {
+        return value;
+    }
+
+    const value_type& get() const {
+        return value;
+    }
+
 private:
     value_type value;
     mutable mutex_type mutex;

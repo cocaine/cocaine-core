@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/dynamic.hpp"
+#include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
 #include <mutex>
@@ -109,6 +110,7 @@ public:
 // Context
 
 class actor_t;
+class execution_unit_t;
 
 template<class T>
 struct reverse_priority_queue {
@@ -118,7 +120,6 @@ struct reverse_priority_queue {
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
 
-    struct memusage_action_t;
     struct synchronization_t;
 
     public:
@@ -142,13 +143,19 @@ class context_t {
         // Services
 
         void
-        attach(const std::string& name, std::unique_ptr<actor_t>&& service);
+        insert(const std::string& name, std::unique_ptr<actor_t>&& service);
 
         auto
-        detach(const std::string& name) -> std::unique_ptr<actor_t>;
+        remove(const std::string& name) -> std::unique_ptr<actor_t>;
 
         auto
         locate(const std::string& name) const -> boost::optional<actor_t&>;
+
+        // I/O
+
+        void
+        attach(const std::shared_ptr<io::socket<io::tcp>>& ptr,
+               const std::shared_ptr<io::dispatch_t>& dispatch);
 
     public:
         const config_t config;
@@ -174,12 +181,13 @@ class context_t {
         > service_list_t;
 
         // These are the instances of all the configured services, stored as a vector of pairs to
-        // preserve the initialization order.
+        // preserve the initialization order. Synchronized, because services are allowed to start
+        // and stop other services during their lifetime.
         service_list_t m_services;
-
-        // As, for example, the Node Service can manipulate service list from its actor thread, the
-        // service list access should be synchronized.
         mutable std::mutex m_mutex;
+
+        // A pool of execution units - threads responsible for doing all the service invocations.
+        std::vector<std::unique_ptr<execution_unit_t>> m_pool;
 
         // Synchronization object is responsible for tracking remote clients and sending them service
         // configuration updates when necessary.

@@ -27,6 +27,7 @@
 #include "cocaine/asio/resolver.hpp"
 
 #include "cocaine/detail/actor.hpp"
+#include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
 #include "cocaine/detail/locator.hpp"
 #include "cocaine/detail/unique_id.hpp"
@@ -50,7 +51,6 @@ using namespace std::placeholders;
 
 namespace fs = boost::filesystem;
 
-#include "report.inl"
 #include "synchronization.inl"
 
 namespace {
@@ -418,16 +418,20 @@ context_t::~context_t() {
     COCAINE_LOG_INFO(blog, "stopping the services");
     
     for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
-        detach(it->first);
+        remove(it->first);
     }
 
-    // Any services which haven't been explicitly detached by their owners must be terminated here,
+    // Any services which haven't been explicitly removed by their owners must be terminated here,
     // because otherwise their threads' destructors will terminate the whole program (13.3.1.3).
 
     while(!m_services.empty()) {
         m_services.back().second->terminate();
         m_services.pop_back();
     }
+
+    COCAINE_LOG_INFO(blog, "stopping the execution units");
+
+    m_pool.clear();
 }
 
 namespace {
@@ -445,16 +449,12 @@ struct match {
 } // namespace
 
 void
-context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
+context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
     uint16_t port = 0;
 
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    auto existing = std::find_if(m_services.cbegin(), m_services.cend(), match {
-        name
-    });
-
-    BOOST_VERIFY(existing == m_services.cend());
+    BOOST_VERIFY(!std::count_if(m_services.cbegin(), m_services.cend(), match{name}));
 
     if(config.network.ports) {
         if(m_ports.empty()) {
@@ -487,7 +487,7 @@ context_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 }
 
 auto
-context_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
+context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
     std::lock_guard<std::mutex> guard(m_mutex);
 
     auto it = std::find_if(m_services.begin(), m_services.end(), match {
@@ -531,8 +531,16 @@ context_t::locate(const std::string& name) const -> boost::optional<actor_t&> {
 }
 
 void
+context_t::attach(const std::shared_ptr<io::socket<io::tcp>>& ptr,
+                  const std::shared_ptr<io::dispatch_t>& dispatch)
+{
+    m_pool[ptr->fd() % m_pool.size()]->attach(ptr, dispatch);
+}
+
+void
 context_t::bootstrap() {
     auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
+    auto pool = boost::thread::hardware_concurrency() * 2;
 
     if(config.network.ports) {
         uint16_t min, max;
@@ -545,6 +553,10 @@ context_t::bootstrap() {
             m_ports.push(--max);
         }
     }
+
+    COCAINE_LOG_INFO(blog, "growing the execution unit pool to %d units", pool);
+
+    while(pool--) { m_pool.emplace_back(std::make_unique<execution_unit_t>(*this, "engines")); }
 
     COCAINE_LOG_INFO(
         blog,
@@ -559,7 +571,7 @@ context_t::bootstrap() {
         COCAINE_LOG_INFO(blog, "starting service '%s'", it->first);
 
         try {
-            attach(it->first, std::make_unique<actor_t>(*this, reactor, get<api::service_t>(
+            insert(it->first, std::make_unique<actor_t>(*this, reactor, get<api::service_t>(
                 it->second.type,
                 *this,
                 *reactor,
@@ -594,11 +606,9 @@ context_t::bootstrap() {
 
     m_synchronization = std::make_shared<synchronization_t>(*this);
 
-    // NOTE: Some of the locator methods are better implemented in the Context, to avoid unnecessary
-    // copying intermediate structures around.
-
+    // Some of the locator methods are better implemented in the Context, to avoid unnecessary
+    // copying intermediate structures around, for example service lists synchronization.
     locator->on<io::locator::synchronize>(m_synchronization);
-    // locator->on<io::locator::reports>(memusage_action_t { *this });
 
     m_services.emplace_front("locator", std::make_unique<actor_t>(
         *this,

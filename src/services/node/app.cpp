@@ -265,7 +265,7 @@ app_t::start() {
     COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
 
     // Publish the app service.
-    m_context.attach(m_manifest->name, std::make_unique<actor_t>(
+    m_context.insert(m_manifest->name, std::make_unique<actor_t>(
         m_context,
         std::make_shared<reactor_t>(),
         std::unique_ptr<dispatch_t>(new app_service_t(m_context, m_manifest->name, *this))
@@ -404,7 +404,7 @@ app_t::stop() {
 
     if(!m_manifest->local) {
         // Destroy the app service.
-        m_context.detach(m_manifest->name);
+        m_context.remove(m_manifest->name);
     }
 
     auto callback = expect<control::terminate>(*m_reactor);

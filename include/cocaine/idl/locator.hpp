@@ -34,13 +34,6 @@ struct locator_tag;
 
 struct locator {
 
-typedef std::tuple<
- /* Fully-qualified domain name of the service node. */
-    std::string,
- /* Service port in host byte order. */
-    uint16_t
-> endpoint_tuple_type;
-
 struct resolve {
     typedef locator_tag tag;
 
@@ -54,6 +47,13 @@ struct resolve {
      /* An alias of the service to resolve. */
         std::string
     > tuple_type;
+
+    typedef std::tuple<
+     /* Fully-qualified domain name of the service node. */
+        std::string,
+     /* Service port in host byte order. */
+        uint16_t
+    > endpoint_tuple_type;
 
     typedef boost::mpl::list<
      /* An endpoint for the client to connect to in order to use the the service. */
@@ -94,14 +94,9 @@ struct reports {
         return "reports";
     }
 
-    typedef std::map<
-     /* Maps client remote endpoint to the number of streams and memory usage. */
-        endpoint_tuple_type, std::tuple<size_t, size_t>
-    > usage_type;
-
     typedef stream_of<
      /* Service I/O usage counters: number of concurrent sessions and memory footprints. */
-        std::map<std::string, std::tuple<size_t, usage_type>>
+        std::map<std::string, std::map<std::string, std::tuple<size_t, size_t>>>
     >::tag drain_type;
 };
 

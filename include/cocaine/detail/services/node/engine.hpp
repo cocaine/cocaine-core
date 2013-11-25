@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ENGINE_HPP
-#define COCAINE_ENGINE_HPP
+#ifndef COCAINE_APP_ENGINE_HPP
+#define COCAINE_APP_ENGINE_HPP
 
 #include "cocaine/common.hpp"
 

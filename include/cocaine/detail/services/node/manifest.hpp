@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_APP_MANIFEST_HPP
-#define COCAINE_APP_MANIFEST_HPP
+#ifndef COCAINE_ENGINE_MANIFEST_HPP
+#define COCAINE_ENGINE_MANIFEST_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/detail/cached.hpp"

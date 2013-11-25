@@ -95,4 +95,3 @@ void
 session_t::detach(uint64_t index) {
     downstreams.erase(index);
 }
-
