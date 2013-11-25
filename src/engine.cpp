@@ -97,7 +97,7 @@ execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket,
         std::bind(&execution_unit_t::on_failure, this, fd, _1)
     );
 
-    m_sessions.insert({fd, std::make_shared<session_t>(std::move(ptr), dispatch)});
+    m_sessions[fd] = std::make_shared<session_t>(std::move(ptr), dispatch);
 }
 
 void
