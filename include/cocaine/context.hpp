@@ -26,7 +26,6 @@
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
-#include <mutex>
 #include <queue>
 
 #include <boost/optional.hpp>

@@ -143,7 +143,7 @@ void
 dispatch_t::on(const std::shared_ptr<detail::slot_concept_t>& ptr) {
     const int id = event_traits<Event>::id;
 
-    if(!m_slots->insert({id, ptr}).second) {
+    if(!m_slots->insert(std::make_pair(id, ptr)).second) {
         throw cocaine::error_t("duplicate slot %d: %s", id, ptr->name());
     }
 }
