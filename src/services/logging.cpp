@@ -20,6 +20,8 @@
 
 #include "cocaine/detail/services/logging.hpp"
 
+#include "cocaine/api/logger.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
@@ -35,10 +37,22 @@ logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& 
     api::service_t(context, reactor, name, args),
     implements<io::log_tag>(context, name)
 {
-    auto logger = std::ref(context.logger());
+    auto backend = args.as_object().at("backend", "core").as_string();
 
-    on<io::log::emit>(std::bind(&logger_concept_t::emit, logger, _1, _2, _3));
-    on<io::log::verbosity>(std::bind(&logger_concept_t::verbosity, logger));
+    if(backend != "core") {
+        const auto it = context.config.loggers.find(backend);
+
+        if(it == context.config.loggers.end()) {
+            throw cocaine::error_t("the '%s' logger is not configured", backend);
+        }
+
+        m_logger = context.get<api::logger_t>(it->second.type, context.config, it->second.args);
+    }
+
+    logger_concept_t* ptr = m_logger ? m_logger.get() : &context.logger();
+
+    on<io::log::emit>(std::bind(&logger_concept_t::emit, ptr, _1, _2, _3));
+    on<io::log::verbosity>(std::bind(&logger_concept_t::verbosity, ptr));
 }
 
 auto

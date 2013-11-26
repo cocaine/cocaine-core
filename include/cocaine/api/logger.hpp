@@ -28,24 +28,6 @@
 
 namespace cocaine { namespace api {
 
-static inline
-logging::priorities
-logmask(const dynamic_t& args) {
-    const std::string& verbosity = args.as_object()["verbosity"].as_string();
-
-    if(verbosity == "ignore") {
-        return logging::ignore;
-    } else if(verbosity == "debug") {
-        return logging::debug;
-    } else if(verbosity == "warning") {
-        return logging::warning;
-    } else if(verbosity == "error") {
-        return logging::error;
-    } else {
-        return logging::info;
-    }
-}
-
 struct logger_t:
     public logging::logger_concept_t
 {
@@ -63,6 +45,24 @@ protected:
     { }
 
 private:
+    static inline
+    logging::priorities
+    logmask(const dynamic_t& args) {
+        auto verbosity = args.as_object().at("verbosity", "info").as_string();
+
+        if(verbosity == "ignore") {
+            return logging::ignore;
+        } else if(verbosity == "debug") {
+            return logging::debug;
+        } else if(verbosity == "warning") {
+            return logging::warning;
+        } else if(verbosity == "error") {
+            return logging::error;
+        } else {
+            return logging::info;
+        }
+    }
+
     const logging::priorities m_verbosity;
 };
 

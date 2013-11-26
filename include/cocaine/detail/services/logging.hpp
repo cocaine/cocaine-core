@@ -39,6 +39,9 @@ class logging_t:
         virtual
         auto
         prototype() -> dispatch_t&;
+
+    private:
+        std::unique_ptr<api::logger_t> m_logger;
 };
 
 }} // namespace cocaine::service
