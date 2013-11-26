@@ -451,37 +451,39 @@ struct match {
 
 void
 context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
+    auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
     uint16_t port = 0;
 
-    auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
-    auto locked = m_services.synchronize();
+    {
+        auto locked = m_services.synchronize();
 
-    BOOST_VERIFY(!std::count_if(locked->cbegin(), locked->cend(), match {
-        name
-    }));
-
-    if(config.network.ports) {
-        if(m_ports.empty()) {
-            throw cocaine::error_t("no ports left for allocation");
+        if(std::count_if(locked->cbegin(), locked->cend(), match{name})) {
+            throw cocaine::error_t("service '%s' exists", name);
         }
 
-        port = m_ports.top();
+        if(config.network.ports) {
+            if(m_ports.empty()) {
+                throw cocaine::error_t("no ports left for allocation");
+            }
 
-        // NOTE: Remove the taken port from the free pool. If, for any reason, this port is unavailable
-        // for binding, it's okay to keep it removed forever.
-        m_ports.pop();
+            port = m_ports.top();
+
+            // NOTE: Remove the taken port from the free pool. If, for any reason, this port is unavailable
+            // for binding, it's okay to keep it removed forever.
+            m_ports.pop();
+        }
+
+        const std::vector<io::tcp::endpoint> endpoints = {{
+            boost::asio::ip::address::from_string(config.network.endpoint),
+            port
+        }};
+
+        service->run(endpoints);
+
+        COCAINE_LOG_INFO(blog, "service '%s' published on %d", name, service->location().front());
+
+        locked->emplace_back(name, std::move(service));
     }
-
-    const std::vector<io::tcp::endpoint> endpoints = {{
-        boost::asio::ip::address::from_string(config.network.endpoint),
-        port
-    }};
-
-    service->run(endpoints);
-
-    COCAINE_LOG_INFO(blog, "service '%s' published on %d", name, service->location().front());
-
-    locked->emplace_back(name, std::move(service));
 
     if(m_synchronization) {
         m_synchronization->announce();
@@ -491,28 +493,30 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
 auto
 context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
     auto blog = std::make_unique<logging::log_t>(*this, "bootstrap");
-    auto locked = m_services.synchronize();
+    std::unique_ptr<actor_t> service;
 
-    auto it = std::find_if(locked->begin(), locked->end(), match {
-        name
-    });
+    {
+        auto locked = m_services.synchronize();
+        auto it = std::find_if(locked->begin(), locked->end(), match {name});
 
-    if(it == locked->end()) {
-        throw cocaine::error_t("service '%s' doesn't exist", name);
-    }
+        if(it == locked->end()) {
+            throw cocaine::error_t("service '%s' doesn't exist", name);
+        }
 
-    // Release the service's actor ownership.
-    std::unique_ptr<actor_t> service = std::move(it->second);
-    locked->erase(it);
+        // Release the service's actor ownership.
+        service = std::move(it->second);
 
-    const std::vector<io::tcp::endpoint> endpoints = service->location();
+        const std::vector<io::tcp::endpoint> endpoints = service->location();
 
-    service->terminate();
+        service->terminate();
 
-    COCAINE_LOG_INFO(blog, "service '%s' withdrawn from %d", name, endpoints.front());
+        COCAINE_LOG_INFO(blog, "service '%s' withdrawn from %d", name, endpoints.front());
 
-    if(config.network.ports) {
-        m_ports.push(endpoints.front().port());
+        if(config.network.ports) {
+            m_ports.push(endpoints.front().port());
+        }
+
+        locked->erase(it);
     }
 
     if(m_synchronization) {
@@ -525,12 +529,9 @@ context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
 auto
 context_t::locate(const std::string& name) const -> boost::optional<actor_t&> {
     auto locked = m_services.synchronize();
+    auto it = std::find_if(locked->cbegin(), locked->cend(), match{name});
 
-    auto it = std::find_if(locked->begin(), locked->end(), match {
-        name
-    });
-
-    return boost::optional<actor_t&>(it != locked->end(), *it->second);
+    return boost::optional<actor_t&>(it != locked->cend(), *it->second);
 }
 
 void
