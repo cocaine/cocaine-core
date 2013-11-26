@@ -50,154 +50,153 @@ class slave_t {
         inactive
     };
 
-    public:
-        slave_t(context_t& context,
-                io::reactor_t& reactor,
-                const manifest_t& manifest,
-                const profile_t& profile,
-                const std::string& id,
-                engine_t& engine);
+    context_t& m_context;
 
-       ~slave_t();
+    const std::unique_ptr<logging::log_t> m_log;
 
-        // I/O
+    // I/O Reactor
 
-        void
-        bind(const std::shared_ptr<io::channel<io::socket<io::local>>>& channel);
+    io::reactor_t& m_reactor;
 
-        // Session scheduling
+    // Configuration
 
-        void
-        assign(const std::shared_ptr<session_t>& session);
+    const manifest_t& m_manifest;
+    const profile_t& m_profile;
 
-        // Termination
+    // Slave ID
 
-        void
-        stop();
+    const std::string m_id;
 
-    public:
-        bool
-        active() const {
-            return m_state == states::active;
-        }
+    // Controlling engine
 
-        size_t
-        load() const {
-            return m_sessions.size();
-        }
+    engine_t& m_engine;
 
-    private:
-        void
-        on_message(const io::message_t& message);
+    // Health
 
-        void
-        on_failure(const std::error_code& ec);
-
-        // Streaming RPC
-
-        void
-        on_ping();
-
-        void
-        on_death(int code, const std::string& reason);
-
-        void
-        on_chunk(uint64_t session_id, const std::string& chunk);
-
-        void
-        on_error(uint64_t session_id, int code, const std::string& reason);
-
-        void
-        on_choke(uint64_t session_id);
-
-        // Health
-
-        void
-        on_timeout(ev::timer&, int);
-
-        void
-        on_idle(ev::timer&, int);
-
-        size_t
-        on_output(const char* data, size_t size);
-
-        // Housekeeping
-
-        void
-        pump();
-
-        void
-        dump();
-
-        void
-        terminate(int code, const std::string& reason);
-
-    private:
-        context_t& m_context;
-
-        const std::unique_ptr<logging::log_t> m_log;
-
-        // I/O Reactor
-
-        io::reactor_t& m_reactor;
-
-        // Configuration
-
-        const manifest_t& m_manifest;
-        const profile_t& m_profile;
-
-        // Slave ID
-
-        const std::string m_id;
-
-        // Controlling engine
-
-        engine_t& m_engine;
-
-        // Health
-
-        states m_state;
+    states m_state;
 
 #if defined(__clang__) || defined(HAVE_GCC47)
-        const std::chrono::steady_clock::time_point m_birthstamp;
+    const std::chrono::steady_clock::time_point m_birthstamp;
 #else
-        const std::chrono::monotonic_clock::time_point m_birthstamp;
+    const std::chrono::monotonic_clock::time_point m_birthstamp;
 #endif
 
-        std::unique_ptr<ev::timer> m_heartbeat_timer;
-        std::unique_ptr<ev::timer> m_idle_timer;
+    std::unique_ptr<ev::timer> m_heartbeat_timer;
+    std::unique_ptr<ev::timer> m_idle_timer;
 
-        // Native handle
+    // Native handle
 
-        std::unique_ptr<api::handle_t> m_handle;
+    std::unique_ptr<api::handle_t> m_handle;
 
-        // Output capture
+    // Output capture
 
-        struct pipe_t;
+    struct pipe_t;
 
-        std::unique_ptr<io::readable_stream<pipe_t>> m_output_pipe;
-        boost::circular_buffer<std::string> m_output_ring;
+    std::unique_ptr<io::readable_stream<pipe_t>> m_output_pipe;
+    boost::circular_buffer<std::string> m_output_ring;
 
-        // I/O channel
+    // I/O channel
 
-        std::shared_ptr<io::channel<io::socket<io::local>>> m_channel;
+    std::shared_ptr<io::channel<io::socket<io::local>>> m_channel;
 
-        // Active sessions
+    // Active sessions
 
-        typedef std::map<
-            uint64_t,
-            std::shared_ptr<session_t>
-        > session_map_t;
+    typedef std::map<
+        uint64_t,
+        std::shared_ptr<session_t>
+    > session_map_t;
 
-        session_map_t m_sessions;
+    session_map_t m_sessions;
 
-        // Tagged session queue
+    // Tagged session queue
 
-        session_queue_t m_queue;
+    session_queue_t m_queue;
 
-        // Slave interlocking
+    // Slave interlocking
 
-        std::mutex m_mutex;
+    std::mutex m_mutex;
+
+public:
+    slave_t(context_t& context,
+            io::reactor_t& reactor,
+            const manifest_t& manifest,
+            const profile_t& profile,
+            const std::string& id,
+            engine_t& engine);
+
+   ~slave_t();
+
+    // I/O
+
+    void
+    bind(const std::shared_ptr<io::channel<io::socket<io::local>>>& channel);
+
+    // Session scheduling
+
+    void
+    assign(const std::shared_ptr<session_t>& session);
+
+    // Termination
+
+    void
+    stop();
+
+public:
+    bool
+    active() const {
+        return m_state == states::active;
+    }
+
+    size_t
+    load() const {
+        return m_sessions.size();
+    }
+
+private:
+    void
+    on_message(const io::message_t& message);
+
+    void
+    on_failure(const std::error_code& ec);
+
+    // Streaming RPC
+
+    void
+    on_ping();
+
+    void
+    on_death(int code, const std::string& reason);
+
+    void
+    on_chunk(uint64_t session_id, const std::string& chunk);
+
+    void
+    on_error(uint64_t session_id, int code, const std::string& reason);
+
+    void
+    on_choke(uint64_t session_id);
+
+    // Health
+
+    void
+    on_timeout(ev::timer&, int);
+
+    void
+    on_idle(ev::timer&, int);
+
+    size_t
+    on_output(const char* data, size_t size);
+
+    // Housekeeping
+
+    void
+    pump();
+
+    void
+    dump();
+
+    void
+    terminate(int code, const std::string& reason);
 };
 
 }} // namespace cocaine::engine

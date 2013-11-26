@@ -30,16 +30,15 @@ namespace cocaine {
 class pid_file_t {
     COCAINE_DECLARE_NONCOPYABLE(pid_file_t)
 
-    public:
-        pid_file_t(const boost::filesystem::path& filepath);
-       ~pid_file_t();
+    const boost::filesystem::path m_filepath;
 
-    private:
-        void
-        remove();
+public:
+    pid_file_t(const boost::filesystem::path& filepath);
+   ~pid_file_t();
 
-    private:
-        const boost::filesystem::path m_filepath;
+private:
+    void
+    remove();
 };
 
 } // namespace cocaine

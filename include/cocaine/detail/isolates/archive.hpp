@@ -34,27 +34,26 @@ struct archive_error_t:
 };
 
 class archive_t {
-    public:
-        archive_t(context_t& context, const std::string& archive);
-       ~archive_t();
+    const std::unique_ptr<logging::log_t> m_log;
 
-        void
-        deploy(const std::string& prefix);
+    // The source archive.
+    archive* m_archive;
 
-    public:
-        std::string
-        type() const;
+public:
+    archive_t(context_t& context, const std::string& archive);
+   ~archive_t();
 
-    private:
-        static
-        void
-        extract(archive* source, archive* target);
+    void
+    deploy(const std::string& prefix);
 
-    private:
-        const std::unique_ptr<logging::log_t> m_log;
+public:
+    std::string
+    type() const;
 
-        // The source archive.
-        archive* m_archive;
+private:
+    static
+    void
+    extract(archive* source, archive* target);
 };
 
 } // namespace cocaine

@@ -33,15 +33,14 @@ class logging_t:
     public api::service_t,
     public implements<io::log_tag>
 {
-    public:
-        logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
+    std::unique_ptr<api::logger_t> m_logger;
 
-        virtual
-        auto
-        prototype() -> dispatch_t&;
+public:
+    logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
 
-    private:
-        std::unique_ptr<api::logger_t> m_logger;
+    virtual
+    auto
+    prototype() -> dispatch_t&;
 };
 
 }} // namespace cocaine::service

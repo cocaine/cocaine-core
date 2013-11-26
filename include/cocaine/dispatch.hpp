@@ -53,54 +53,53 @@ struct is_slot<std::shared_ptr<T>>:
 class dispatch_t {
     COCAINE_DECLARE_NONCOPYABLE(dispatch_t)
 
-    public:
-        dispatch_t(context_t& context, const std::string& name);
+    const std::unique_ptr<logging::log_t> m_log;
 
-        virtual
-       ~dispatch_t();
+    typedef std::map<
+        int,
+        std::shared_ptr<detail::slot_concept_t>
+    > slot_map_t;
 
-        template<class Event, class F>
-        void
-        on(const F& callable, typename std::enable_if<!aux::is_slot<F>::value>::type* = nullptr);
+    slot_map_t m_slots;
 
-        template<class Event>
-        void
-        on(const std::shared_ptr<detail::slot_concept_t>& ptr);
+    // It's mutable to enable invoke() to be const.
+    mutable std::mutex m_mutex;
 
-        template<class Event>
-        void
-        forget();
+    // For actor's named threads feature.
+    const std::string m_name;
 
-    public:
-        std::shared_ptr<dispatch_t>
-        invoke(const message_t& message, const std::shared_ptr<upstream_t>& upstream) const;
+public:
+    dispatch_t(context_t& context, const std::string& name);
 
-        virtual
-        auto
-        protocol() const -> const dispatch_graph_t& = 0;
+    virtual
+   ~dispatch_t();
 
-        virtual
-        int
-        versions() const = 0;
+    template<class Event, class F>
+    void
+    on(const F& callable, typename std::enable_if<!aux::is_slot<F>::value>::type* = nullptr);
 
-        std::string
-        name() const;
+    template<class Event>
+    void
+    on(const std::shared_ptr<detail::slot_concept_t>& ptr);
 
-    private:
-        const std::unique_ptr<logging::log_t> m_log;
+    template<class Event>
+    void
+    forget();
 
-        typedef std::map<
-            int,
-            std::shared_ptr<detail::slot_concept_t>
-        > slot_map_t;
+public:
+    std::shared_ptr<dispatch_t>
+    invoke(const message_t& message, const std::shared_ptr<upstream_t>& upstream) const;
 
-        slot_map_t m_slots;
+    virtual
+    auto
+    protocol() const -> const dispatch_graph_t& = 0;
 
-        // It's mutable to enable invoke() to be const.
-        mutable std::mutex m_mutex;
+    virtual
+    int
+    versions() const = 0;
 
-        // For actor's named threads feature.
-        const std::string m_name;
+    std::string
+    name() const;
 };
 
 namespace aux {

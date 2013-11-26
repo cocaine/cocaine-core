@@ -41,73 +41,72 @@ class session_t;
 class locator_t:
     public implements<io::locator_tag>
 {
-    public:
-        typedef result_of<io::locator::resolve>::type resolve_result_type;
-        typedef result_of<io::locator::refresh>::type refresh_result_type;
+    context_t& m_context;
 
-        typedef std::tuple<std::string, std::string, uint16_t> remote_id_t;
+    const std::unique_ptr<logging::log_t> m_log;
 
-    public:
-        locator_t(context_t& context, io::reactor_t& reactor);
+    // For cluster interconnections.
+    io::reactor_t& m_reactor;
 
-        virtual
-       ~locator_t();
+    // Announce receiver.
+    std::unique_ptr<io::socket<io::udp>> m_sink;
+    std::unique_ptr<ev::io> m_sink_watcher;
 
-    private:
-        void
-        connect();
+    typedef std::tuple<std::string, std::string, uint16_t> remote_id_t;
 
-        auto
-        resolve(const std::string& name) const -> resolve_result_type;
+    class remote_client_t;
 
-        auto
-        refresh(const std::string& name) -> refresh_result_type;
+    // These are remote sessions indexed by endpoint and uuid. The uuid is required to easily
+    // disambiguate between different runtime instances on the same host.
+    std::map<remote_id_t, std::shared_ptr<session_t>> m_remotes;
 
-        // Cluster I/O
+    // Remote gateway.
+    std::unique_ptr<api::gateway_t> m_gateway;
 
-        void
-        on_announce_event(ev::io&, int);
+    // Announce emitter.
+    std::unique_ptr<io::socket<io::udp>> m_announce;
+    std::unique_ptr<ev::timer> m_announce_timer;
 
-        void
-        on_announce_timer(ev::timer&, int);
+    class router_t;
 
-        // Synchronization
+    // Used to resolve service names against service groups based on weights and other metrics.
+    std::unique_ptr<router_t> m_router;
 
-        void
-        on_message(const remote_id_t& node, const io::message_t& message);
+public:
+    typedef result_of<io::locator::resolve>::type resolve_result_type;
+    typedef result_of<io::locator::refresh>::type refresh_result_type;
 
-        void
-        on_failure(const remote_id_t& node, const std::error_code& ec);
+public:
+    locator_t(context_t& context, io::reactor_t& reactor);
 
-    private:
-        context_t& m_context;
+    virtual
+   ~locator_t();
 
-        const std::unique_ptr<logging::log_t> m_log;
+private:
+    void
+    connect();
 
-        // For cluster interconnections.
-        io::reactor_t& m_reactor;
+    auto
+    resolve(const std::string& name) const -> resolve_result_type;
 
-        // Announce receiver.
-        std::unique_ptr<io::socket<io::udp>> m_sink;
-        std::unique_ptr<ev::io> m_sink_watcher;
+    auto
+    refresh(const std::string& name) -> refresh_result_type;
 
-        class remote_client_t;
+    // Cluster I/O
 
-        // These are remote sessions indexed by endpoint and uuid. The uuid is required to easily
-        // disambiguate between different runtime instances on the same host.
-        std::map<remote_id_t, std::shared_ptr<session_t>> m_remotes;
+    void
+    on_announce_event(ev::io&, int);
 
-        // Remote gateway.
-        std::unique_ptr<api::gateway_t> m_gateway;
+    void
+    on_announce_timer(ev::timer&, int);
 
-        // Announce emitter.
-        std::unique_ptr<io::socket<io::udp>> m_announce;
-        std::unique_ptr<ev::timer> m_announce_timer;
+    // Synchronization
 
-        class router_t;
+    void
+    on_message(const remote_id_t& node, const io::message_t& message);
 
-        // Used to resolve service names against service groups based on weights and other metrics.
-        std::unique_ptr<router_t> m_router;
+    void
+    on_failure(const remote_id_t& node, const std::error_code& ec);
 };
 
 } // namespace cocaine

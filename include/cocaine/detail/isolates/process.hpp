@@ -34,35 +34,34 @@ namespace cocaine { namespace isolate {
 class process_t:
     public api::isolate_t
 {
-    public:
-        process_t(context_t& context, const std::string& name, const dynamic_t& args);
+    context_t& m_context;
 
-        virtual
-       ~process_t();
+    const std::unique_ptr<logging::log_t> m_log;
 
-        virtual
-        void
-        spool();
+    // Spooling prefix.
+    const std::string m_name;
 
-        virtual
-        std::unique_ptr<api::handle_t>
-        spawn(const std::string& path, const api::string_map_t& args, const api::string_map_t& environment);
-
-    private:
-        context_t& m_context;
-
-        const std::unique_ptr<logging::log_t> m_log;
-
-        // Spooling prefix.
-        const std::string m_name;
-
-        // Spooling target directory.
-        const boost::filesystem::path m_working_directory;
+    // Spooling target directory.
+    const boost::filesystem::path m_working_directory;
 
 #ifdef COCAINE_ALLOW_CGROUPS
-        // Control group handle.
-        cgroup* m_cgroup;
+    // Control group handle.
+    cgroup* m_cgroup;
 #endif
+
+public:
+    process_t(context_t& context, const std::string& name, const dynamic_t& args);
+
+    virtual
+   ~process_t();
+
+    virtual
+    void
+    spool();
+
+    virtual
+    std::unique_ptr<api::handle_t>
+    spawn(const std::string& path, const api::string_map_t& args, const api::string_map_t& environment);
 };
 
 }} // namespace cocaine::isolate

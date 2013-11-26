@@ -30,16 +30,15 @@
 
 namespace cocaine { namespace service {
 
-class storage_t:
+struct storage_t:
     public api::service_t,
     public implements<io::storage_tag>
 {
-    public:
-        storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
+    storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
 
-        virtual
-        auto
-        prototype() -> dispatch_t&;
+    virtual
+    auto
+    prototype() -> dispatch_t&;
 };
 
 }} // namespace cocaine::service

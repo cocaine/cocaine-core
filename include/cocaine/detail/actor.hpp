@@ -39,48 +39,45 @@ namespace cocaine {
 class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
 
-    class execution_unit_t;
+    context_t& m_context;
 
-    public:
-        actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::dispatch_t>&& prototype);
-        actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t>&& service);
+    const std::unique_ptr<logging::log_t> m_log;
+    const std::shared_ptr<io::reactor_t> m_reactor;
 
-       ~actor_t();
+    // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the
+    // new sessions. In case of secure actors, this might as well be the protocol dispatch to
+    // switch to after the authentication process completes successfully.
+    std::shared_ptr<io::dispatch_t> m_prototype;
 
-        void
-        run(std::vector<io::tcp::endpoint> endpoints);
+    // Actor I/O connectors. Actors have a separate thread to accept new connections. The same
+    // thread is also shared with the dispatch whenever it needs an event loop to do something.
+    std::list<io::connector<io::acceptor<io::tcp>>> m_connectors;
+    std::unique_ptr<boost::thread> m_thread;
 
-        void
-        terminate();
+public:
+    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::dispatch_t>&& prototype);
+    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t>&& service);
 
-    public:
-        auto
-        location() const -> std::vector<io::tcp::endpoint>;
+   ~actor_t();
 
-        typedef result_of<io::locator::resolve>::type metadata_t;
+    void
+    run(std::vector<io::tcp::endpoint> endpoints);
 
-        metadata_t
-        metadata() const;
+    void
+    terminate();
 
-    private:
-        void
-        on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket);
+public:
+    auto
+    location() const -> std::vector<io::tcp::endpoint>;
 
-    private:
-        context_t& m_context;
+    typedef result_of<io::locator::resolve>::type metadata_t;
 
-        const std::unique_ptr<logging::log_t> m_log;
-        const std::shared_ptr<io::reactor_t> m_reactor;
+    metadata_t
+    metadata() const;
 
-        // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the
-        // new sessions. In case of secure actors, this might as well be the protocol dispatch to
-        // switch to after the authentication process completes successfully.
-        std::shared_ptr<io::dispatch_t> m_prototype;
-
-        // Actor I/O connectors. Actors have a separate thread to accept new connections. The same
-        // thread is also shared with the dispatch whenever it needs an event loop to do something.
-        std::list<io::connector<io::acceptor<io::tcp>>> m_connectors;
-        std::unique_ptr<boost::thread> m_thread;
+private:
+    void
+    on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket);
 };
 
 } // namespace cocaine

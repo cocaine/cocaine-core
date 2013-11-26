@@ -30,35 +30,34 @@ namespace cocaine { namespace storage {
 class files_t:
     public api::storage_t
 {
-    public:
-        files_t(context_t& context, const std::string& name, const dynamic_t& args);
+    const std::unique_ptr<logging::log_t> m_log;
 
-        virtual
-       ~files_t();
+    // TODO: Drop this, switch to atomic writes.
+    std::mutex m_mutex;
 
-        virtual
-        std::string
-        read(const std::string& collection, const std::string& key);
+    const boost::filesystem::path m_storage_path;
 
-        virtual
-        void
-        write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags);
+public:
+    files_t(context_t& context, const std::string& name, const dynamic_t& args);
 
-        virtual
-        void
-        remove(const std::string& collection, const std::string& key);
+    virtual
+   ~files_t();
 
-        virtual
-        std::vector<std::string>
-        find(const std::string& collection, const std::vector<std::string>& tags);
+    virtual
+    std::string
+    read(const std::string& collection, const std::string& key);
 
-    private:
-        const std::unique_ptr<logging::log_t> m_log;
+    virtual
+    void
+    write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags);
 
-        // TODO: Drop this, switch to atomic writes.
-        std::mutex m_mutex;
+    virtual
+    void
+    remove(const std::string& collection, const std::string& key);
 
-        const boost::filesystem::path m_storage_path;
+    virtual
+    std::vector<std::string>
+    find(const std::string& collection, const std::vector<std::string>& tags);
 };
 
 }} // namespace cocaine::storage

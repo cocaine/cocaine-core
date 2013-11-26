@@ -87,134 +87,124 @@ class engine_t {
         stopped
     };
 
-    public:
-        engine_t(context_t& context,
-                 const std::shared_ptr<io::reactor_t>& reactor,
-                 const manifest_t& manifest,
-                 const profile_t& profile,
-                 const std::shared_ptr<io::socket<io::local>>& control);
+    context_t& m_context;
 
-       ~engine_t();
+    const std::unique_ptr<logging::log_t> m_log;
 
-        void
-        run();
+    // Configuration
 
-        void
-        wake();
+    const manifest_t& m_manifest;
+    const profile_t& m_profile;
 
-        // Scheduling
+    // Engine state
 
-        std::shared_ptr<api::stream_t>
-        enqueue(const api::event_t& event,
-                const std::shared_ptr<api::stream_t>& upstream);
+    states m_state;
 
-        std::shared_ptr<api::stream_t>
-        enqueue(const api::event_t& event,
-                const std::shared_ptr<api::stream_t>& upstream,
-                const std::string& tag);
+    // Event loop
 
-        void
-        erase(const std::string& id, int code, const std::string& reason);
+    std::shared_ptr<io::reactor_t> m_reactor;
 
-        // App access
+    std::unique_ptr<ev::async> m_notification;
+    std::unique_ptr<ev::timer> m_termination_timer;
 
-        io::reactor_t&
-        reactor() {
-            return *m_reactor;
-        }
+    // I/O
 
-    private:
-        void
-        on_connection(const std::shared_ptr<io::socket<io::local>>& socket);
+    std::unique_ptr<io::connector<io::acceptor<io::local>>> m_connector;
+    std::unique_ptr<io::channel<io::socket<io::local>>> m_channel;
 
-        void
-        on_handshake(int fd, const io::message_t& message);
+    // Session tagging
 
-        void
-        on_disconnect(int fd, const std::error_code& ec);
+    std::atomic<uint64_t> m_next_id;
 
-        void
-        on_control(const io::message_t& message);
+    // Session queue
 
-        void
-        on_notification(ev::async&, int);
+    session_queue_t m_queue;
 
-        void
-        on_termination(ev::timer&, int);
+    // Slave pool
 
-        void
-        pump();
+    typedef std::map<
+        int,
+        std::shared_ptr<io::channel<io::socket<io::local>>>
+    > backlog_t;
 
-        void
-        balance();
+    backlog_t m_backlog;
 
-        void
-        migrate(states target);
+    typedef std::map<
+        std::string,
+        std::shared_ptr<slave_t>
+    > pool_map_t;
 
-        void
-        stop();
+    pool_map_t m_pool;
 
-    private:
-        context_t& m_context;
+    // Spawning mutex.
+    std::mutex m_pool_mutex;
 
-        const std::unique_ptr<logging::log_t> m_log;
+    // NOTE: A strong isolate reference, keeping it here
+    // avoids isolate destruction, as the factory stores
+    // only weak references to the isolate instances.
+    api::category_traits<api::isolate_t>::ptr_type m_isolate;
 
-        // Configuration
+public:
+    engine_t(context_t& context,
+             const std::shared_ptr<io::reactor_t>& reactor,
+             const manifest_t& manifest,
+             const profile_t& profile,
+             const std::shared_ptr<io::socket<io::local>>& control);
 
-        const manifest_t& m_manifest;
-        const profile_t& m_profile;
+   ~engine_t();
 
-        // Engine state
+    void
+    run();
 
-        states m_state;
+    void
+    wake();
 
-        // Event loop
+    // Scheduling
 
-        std::shared_ptr<io::reactor_t> m_reactor;
+    std::shared_ptr<api::stream_t>
+    enqueue(const api::event_t& event,
+            const std::shared_ptr<api::stream_t>& upstream);
 
-        std::unique_ptr<ev::async> m_notification;
-        std::unique_ptr<ev::timer> m_termination_timer;
+    std::shared_ptr<api::stream_t>
+    enqueue(const api::event_t& event,
+            const std::shared_ptr<api::stream_t>& upstream,
+            const std::string& tag);
 
-        // I/O
+    void
+    erase(const std::string& id, int code, const std::string& reason);
 
-        std::unique_ptr<io::connector<io::acceptor<io::local>>> m_connector;
-        std::unique_ptr<io::channel<io::socket<io::local>>> m_channel;
+private:
+    void
+    on_connection(const std::shared_ptr<io::socket<io::local>>& socket);
 
-        // Session tagging
+    void
+    on_handshake(int fd, const io::message_t& message);
 
-        std::atomic<uint64_t> m_next_id;
+    void
+    on_disconnect(int fd, const std::error_code& ec);
 
-        // Session queue
+    void
+    on_control(const io::message_t& message);
 
-        session_queue_t m_queue;
+    void
+    on_notification(ev::async&, int);
 
-        // Slave pool
+    void
+    on_termination(ev::timer&, int);
 
-        typedef std::map<
-            int,
-            std::shared_ptr<io::channel<io::socket<io::local>>>
-        > backlog_t;
+    void
+    pump();
 
-        backlog_t m_backlog;
+    void
+    balance();
 
-        typedef std::map<
-            std::string,
-            std::shared_ptr<slave_t>
-        > pool_map_t;
+    void
+    migrate(states target);
 
-        pool_map_t m_pool;
-
-        // Spawning mutex.
-        std::mutex m_pool_mutex;
-
-        // NOTE: A strong isolate reference, keeping it here
-        // avoids isolate destruction, as the factory stores
-        // only weak references to the isolate instances.
-        api::category_traits<api::isolate_t>::ptr_type m_isolate;
+    void
+    stop();
 };
 
-} // namespace engine
-
-} // namespace cocaine
+}} // namespace cocaine::engine
 
 #endif

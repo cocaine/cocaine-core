@@ -77,34 +77,33 @@ struct repository_error_t:
 class repository_t {
     COCAINE_DECLARE_NONCOPYABLE(repository_t)
 
-    public:
-        repository_t();
-       ~repository_t();
+    // NOTE: Used to unload all the plugins on shutdown.
+    // Cannot use a forward declaration here due to the implementation details.
+    std::vector<lt_dlhandle> m_plugins;
 
-        void
-        load(const std::string& path);
+    typedef std::map<std::string, std::shared_ptr<factory_concept_t>> factory_map_t;
+    typedef std::map<std::string, factory_map_t> category_map_t;
 
-        template<class Category, typename... Args>
-        typename category_traits<Category>::ptr_type
-        get(const std::string& type, Args&&... args);
+    category_map_t m_categories;
 
-        template<class T>
-        void
-        insert(const std::string& type);
+public:
+    repository_t();
+   ~repository_t();
 
-    private:
-        void
-        open(const std::string& target);
+    void
+    load(const std::string& path);
 
-    private:
-        // NOTE: Used to unload all the plugins on shutdown.
-        // Cannot use a forward declaration here due to the implementation details.
-        std::vector<lt_dlhandle> m_plugins;
+    template<class Category, typename... Args>
+    typename category_traits<Category>::ptr_type
+    get(const std::string& type, Args&&... args);
 
-        typedef std::map<std::string, std::shared_ptr<factory_concept_t>> factory_map_t;
-        typedef std::map<std::string, factory_map_t> category_map_t;
+    template<class T>
+    void
+    insert(const std::string& type);
 
-        category_map_t m_categories;
+private:
+    void
+    open(const std::string& target);
 };
 
 template<class Category, typename... Args>

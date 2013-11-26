@@ -28,15 +28,14 @@ namespace cocaine { namespace logger {
 class syslog_t:
     public api::logger_t
 {
-    public:
-        syslog_t(const config_t& config, const dynamic_t& args);
+    const std::string m_identity;
 
-        virtual
-        void
-        emit(logging::priorities level, const std::string& source, const std::string& message);
+public:
+    syslog_t(const config_t& config, const dynamic_t& args);
 
-    private:
-        const std::string m_identity;
+    virtual
+    void
+    emit(logging::priorities level, const std::string& source, const std::string& message);
 };
 
 }} // namespace cocaine::logger

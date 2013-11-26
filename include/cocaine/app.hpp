@@ -47,46 +47,45 @@ namespace cocaine {
 class app_t {
     COCAINE_DECLARE_NONCOPYABLE(app_t)
 
-    public:
-        app_t(context_t& context, const std::string& name, const std::string& profile);
-       ~app_t();
+    context_t& m_context;
 
-        void
-        start();
+    const std::unique_ptr<logging::log_t> m_log;
 
-        void
-        stop();
+    // Configuration
 
-        dynamic_t
-        info() const;
+    std::unique_ptr<const engine::manifest_t> m_manifest;
+    std::unique_ptr<const engine::profile_t> m_profile;
 
-        // Scheduling
+    // Control
 
-        std::shared_ptr<api::stream_t>
-        enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream);
+    std::unique_ptr<io::reactor_t> m_reactor;
+    std::unique_ptr<io::channel<io::socket<io::local>>> m_engine_control;
 
-        std::shared_ptr<api::stream_t>
-        enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag);
+    // Engine
 
-    private:
-        context_t& m_context;
+    std::shared_ptr<engine::engine_t> m_engine;
+    std::unique_ptr<std::thread> m_thread;
 
-        const std::unique_ptr<logging::log_t> m_log;
+public:
+    app_t(context_t& context, const std::string& name, const std::string& profile);
+   ~app_t();
 
-        // Configuration
+    void
+    start();
 
-        std::unique_ptr<const engine::manifest_t> m_manifest;
-        std::unique_ptr<const engine::profile_t> m_profile;
+    void
+    stop();
 
-        // Control
+    dynamic_t
+    info() const;
 
-        std::unique_ptr<io::reactor_t> m_reactor;
-        std::unique_ptr<io::channel<io::socket<io::local>>> m_engine_control;
+    // Scheduling
 
-        // Engine
+    std::shared_ptr<api::stream_t>
+    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream);
 
-        std::shared_ptr<engine::engine_t> m_engine;
-        std::unique_ptr<std::thread> m_thread;
+    std::shared_ptr<api::stream_t>
+    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag);
 };
 
 } // namespace cocaine

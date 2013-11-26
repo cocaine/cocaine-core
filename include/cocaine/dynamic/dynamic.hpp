@@ -42,21 +42,20 @@ struct dynamic_constructor {
 template<class To, class = void>
 struct dynamic_converter { };
 
-class dynamic_t {
-public:
-    struct null_t {
-        bool
-        operator==(const null_t&) const {
-            return true;
-        }
-    };
-
+struct dynamic_t {
     typedef bool                   bool_t;
     typedef int64_t                int_t;
     typedef uint64_t               uint_t;
     typedef double                 double_t;
     typedef std::string            string_t;
     typedef std::vector<dynamic_t> array_t;
+
+    struct null_t {
+        bool
+        operator==(const null_t&) const {
+            return true;
+        }
+    };
 
     class object_t;
 

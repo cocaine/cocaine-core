@@ -37,38 +37,37 @@ class node_t:
     public api::service_t,
     public implements<io::node_tag>
 {
-    public:
-        node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
+    context_t& m_context;
 
-        virtual
-       ~node_t();
+    const std::unique_ptr<logging::log_t> m_log;
 
-        virtual
-        auto
-        prototype() -> dispatch_t&;
+    typedef std::map<
+        std::string,
+        std::shared_ptr<app_t>
+    > app_map_t;
 
-    private:
-        dynamic_t
-        on_start_app(const std::map<std::string, std::string>& runlist);
+    // Apps.
+    synchronized<app_map_t> m_apps;
 
-        dynamic_t
-        on_pause_app(const std::vector<std::string>& applist);
+public:
+    node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
 
-        dynamic_t
-        on_list() const;
+    virtual
+   ~node_t();
 
-    private:
-        context_t& m_context;
+    virtual
+    auto
+    prototype() -> dispatch_t&;
 
-        const std::unique_ptr<logging::log_t> m_log;
+private:
+    dynamic_t
+    on_start_app(const std::map<std::string, std::string>& runlist);
 
-        typedef std::map<
-            std::string,
-            std::shared_ptr<app_t>
-        > app_map_t;
+    dynamic_t
+    on_pause_app(const std::vector<std::string>& applist);
 
-        // Apps.
-        synchronized<app_map_t> m_apps;
+    dynamic_t
+    on_list() const;
 };
 
 }} // namespace cocaine::service

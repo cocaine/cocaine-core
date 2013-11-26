@@ -26,13 +26,15 @@
 
 namespace cocaine {
 
-class dynamic_t;
+struct dynamic_t;
 
 namespace detail { namespace dynamic {
 
 // Helps to use STL containers
 template<class T>
 class incomplete_wrapper {
+    std::unique_ptr<T> m_data;
+
 public:
     // These *structors are needed just to satisfy the requirements of boost::variant.
     incomplete_wrapper() {
@@ -63,9 +65,6 @@ public:
     set(Args&&... args) {
         m_data.reset(new T(std::forward<Args>(args)...));
     }
-
-private:
-    std::unique_ptr<T> m_data;
 };
 
 template<class Visitor, class Result>

@@ -48,11 +48,11 @@ public:
    ~execution_unit_t();
 
     void
-    attach(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::dispatch_t>& dispatch);
+    attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<io::dispatch_t>& dispatch);
 
 private:
     void
-    on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::dispatch_t>& dispatch);
+    on_connect(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<io::dispatch_t>& dispatch);
 
     void
     on_message(int fd, const io::message_t& message);

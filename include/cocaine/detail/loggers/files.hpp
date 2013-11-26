@@ -28,18 +28,17 @@ namespace cocaine { namespace logger {
 class files_t:
     public api::logger_t
 {
-    public:
-        files_t(const config_t& config, const dynamic_t& args);
+    FILE* m_file;
 
-        virtual
-       ~files_t();
+public:
+    files_t(const config_t& config, const dynamic_t& args);
 
-        virtual
-        void
-        emit(logging::priorities level, const std::string& source, const std::string& message);
+    virtual
+   ~files_t();
 
-    private:
-        FILE* m_file;
+    virtual
+    void
+    emit(logging::priorities level, const std::string& source, const std::string& message);
 };
 
 }} // namespace cocaine::logger

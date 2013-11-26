@@ -120,78 +120,76 @@ struct reverse_priority_queue {
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
 
+    // NOTE: This is the first object in the component tree, all the other components, including
+    // loggers, storages or isolates have to be declared after this one.
+    std::unique_ptr<api::repository_t> m_repository;
+
+    // NOTE: As the loggers themselves are components, the repository has to be initialized
+    // first without a logger, unfortunately.
+    std::unique_ptr<logging::logger_concept_t> m_logger;
+
+    // Ports available for allocation.
+    reverse_priority_queue<uint16_t>::type m_ports;
+
+    typedef std::deque<
+        std::pair<std::string, std::unique_ptr<actor_t>>
+    > service_list_t;
+
+    // These are the instances of all the configured services, stored as a vector of pairs to
+    // preserve the initialization order. Synchronized, because services are allowed to start
+    // and stop other services during their lifetime.
+    service_list_t m_services;
+    mutable std::mutex m_mutex;
+
+    // A pool of execution units - threads responsible for doing all the service invocations.
+    std::vector<std::unique_ptr<execution_unit_t>> m_pool;
+
     struct synchronization_t;
 
-    public:
-        context_t(config_t config, const std::string& logger);
-        context_t(config_t config, std::unique_ptr<logging::logger_concept_t>&& logger);
-       ~context_t();
+    // Synchronization object is responsible for tracking remote clients and sending them service
+    // configuration updates when necessary.
+    std::shared_ptr<synchronization_t> m_synchronization;
 
-        // Component API
+public:
+    const config_t config;
 
-        template<class Category, typename... Args>
-        typename api::category_traits<Category>::ptr_type
-        get(const std::string& type, Args&&... args);
+public:
+    context_t(config_t config, const std::string& logger);
+    context_t(config_t config, std::unique_ptr<logging::logger_concept_t>&& logger);
+   ~context_t();
 
-        // Logging
+    // Component API
 
-        auto
-        logger() -> logging::logger_concept_t& {
-            return *m_logger;
-        }
+    template<class Category, typename... Args>
+    typename api::category_traits<Category>::ptr_type
+    get(const std::string& type, Args&&... args);
 
-        // Services
+    // Logging
 
-        void
-        insert(const std::string& name, std::unique_ptr<actor_t>&& service);
+    auto
+    logger() -> logging::logger_concept_t& {
+        return *m_logger;
+    }
 
-        auto
-        remove(const std::string& name) -> std::unique_ptr<actor_t>;
+    // Services
 
-        auto
-        locate(const std::string& name) const -> boost::optional<actor_t&>;
+    void
+    insert(const std::string& name, std::unique_ptr<actor_t>&& service);
 
-        // I/O
+    auto
+    remove(const std::string& name) -> std::unique_ptr<actor_t>;
 
-        void
-        attach(const std::shared_ptr<io::socket<io::tcp>>& ptr,
-               const std::shared_ptr<io::dispatch_t>& dispatch);
+    auto
+    locate(const std::string& name) const -> boost::optional<actor_t&>;
 
-    public:
-        const config_t config;
+    // I/O
 
-    private:
-        void
-        bootstrap();
+    void
+    attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<io::dispatch_t>& dispatch);
 
-    private:
-        // NOTE: This is the first object in the component tree, all the other components, including
-        // loggers, storages or isolates have to be declared after this one.
-        std::unique_ptr<api::repository_t> m_repository;
-
-        // NOTE: As the loggers themselves are components, the repository has to be initialized
-        // first without a logger, unfortunately.
-        std::unique_ptr<logging::logger_concept_t> m_logger;
-
-        // Ports available for allocation.
-        reverse_priority_queue<uint16_t>::type m_ports;
-
-        typedef std::deque<
-            std::pair<std::string, std::unique_ptr<actor_t>>
-        > service_list_t;
-
-        // These are the instances of all the configured services, stored as a vector of pairs to
-        // preserve the initialization order. Synchronized, because services are allowed to start
-        // and stop other services during their lifetime.
-        service_list_t m_services;
-        mutable std::mutex m_mutex;
-
-        // A pool of execution units - threads responsible for doing all the service invocations.
-        std::vector<std::unique_ptr<execution_unit_t>> m_pool;
-
-        // Synchronization object is responsible for tracking remote clients and sending them service
-        // configuration updates when necessary.
-        std::shared_ptr<synchronization_t> m_synchronization;
+private:
+    void
+    bootstrap();
 };
 
 template<class Category, typename... Args>

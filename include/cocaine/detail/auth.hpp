@@ -41,30 +41,29 @@ namespace crypto {
 class auth_t {
     COCAINE_DECLARE_NONCOPYABLE(auth_t)
 
-    public:
-        auth_t(context_t& context);
-       ~auth_t();
+    const std::unique_ptr<logging::log_t> m_log;
 
-        void
-        verify(const std::string& message,
-               const std::string& signature,
-               const std::string& username) const;
+    EVP_MD_CTX* m_evp_md_context;
 
-        // std::string
-        // sign(const std::string& message,
-        //      const std::string& username) const;
+    typedef std::map<
+        const std::string,
+        EVP_PKEY*
+    > key_map_t;
 
-    private:
-        const std::unique_ptr<logging::log_t> m_log;
+    key_map_t m_keys;
 
-        EVP_MD_CTX* m_evp_md_context;
+public:
+    auth_t(context_t& context);
+   ~auth_t();
 
-        typedef std::map<
-            const std::string,
-            EVP_PKEY*
-        > key_map_t;
+    void
+    verify(const std::string& message,
+           const std::string& signature,
+           const std::string& username) const;
 
-        key_map_t m_keys;
+    // std::string
+    // sign(const std::string& message,
+    //      const std::string& username) const;
 };
 
 }} // namespace cocaine::crypto
