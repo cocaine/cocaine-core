@@ -27,16 +27,12 @@
 using namespace cocaine;
 using namespace cocaine::io;
 
-class session_t::downstream_t {
-    // Active protocol for this downstream.
+class session_t::channel_t {
     std::shared_ptr<dispatch_t> dispatch;
-
-    // As of now, all clients are considered using the streaming protocol template, and it means that
-    // upstreams don't change when the downstream protocol is switched over.
     std::shared_ptr<upstream_t> upstream;
 
 public:
-    downstream_t(const std::shared_ptr<dispatch_t>& dispatch_, const std::shared_ptr<upstream_t>& upstream_):
+    channel_t(const std::shared_ptr<dispatch_t>& dispatch_, const std::shared_ptr<upstream_t>& upstream_):
         dispatch(dispatch_),
         upstream(upstream_)
     { }
@@ -45,7 +41,7 @@ public:
     invoke(const message_t& message) {
         if(!dispatch) {
             // TODO: COCAINE-82 adds a 'client' error category.
-            throw cocaine::error_t("downstream has been deactivated");
+            throw cocaine::error_t("channel has been deactivated");
         }
 
         dispatch = dispatch->invoke(message, upstream);
@@ -54,44 +50,47 @@ public:
 
 void
 session_t::invoke(const message_t& message) {
-    std::shared_ptr<downstream_t> downstream;
+    std::shared_ptr<channel_t> channel;
 
     {
-        std::lock_guard<std::mutex> guard(mutex);
+        channel_map_t::const_iterator lb, ub;
+        channel_map_t::key_type index = message.band();
 
-        auto index = message.band();
-        auto it    = downstreams.find(index);
+        auto locked = channels.synchronize();
 
-        if(it == downstreams.end()) {
-            std::tie(it, std::ignore) = downstreams.insert({ index, std::make_shared<downstream_t>(
+        std::tie(lb, ub) = locked->equal_range(index);
+
+        if(lb == ub) {
+            std::tie(lb, std::ignore) = locked->insert({ index, std::make_shared<channel_t>(
                 prototype,
                 std::make_shared<upstream_t>(shared_from_this(), index)
             )});
         }
 
-        // NOTE: The downstream pointer is copied here so that if the slot decides to close the
-        // downstream, it won't destroy it inside the downstream_t::invoke(). Instead, it will
-        // be destroyed when this function scope is exited, liberating us from thinking of some
-        // voodoo magic to handle it.
-        downstream = it->second;
+        // NOTE: The virtual channel pointer is copied here so that if the slot decides to close the
+        // virtual channel, it won't destroy it inside the channel_t::invoke(). Instead, it will be
+        // destroyed when this function scope is exited, liberating us from thinking of some voodoo
+        // magic to handle it.
+
+        channel = lb->second;
     }
 
-    downstream->invoke(message);
+    channel->invoke(message);
 }
 
 void
 session_t::revoke() {
     std::lock_guard<std::mutex> guard(mutex);
 
-    // This closes all the downstreams.
-    downstreams.clear();
+    // NOTE: This invalidates and closes the internal connection pointer and destroys the protocol
+    // dispatches, but the session itself might still be accessible via upstreams in other threads.
+    // And that's okay, since it has no resources associated with it anymore.
 
-    // NOTE: This invalidates and closes the internal channel pointer, but the session itself
-    // might still be accessible via upstreams in other threads, but that's okay.
+    channels->clear();
     ptr.reset();
 }
 
 void
 session_t::detach(uint64_t index) {
-    downstreams.erase(index);
+    channels->erase(index);
 }

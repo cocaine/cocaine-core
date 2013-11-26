@@ -22,6 +22,7 @@
 #define COCAINE_IO_SESSION_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/locked_ptr.hpp"
 
 #include <mutex>
 
@@ -33,15 +34,17 @@ class session_t:
     std::unique_ptr<io::channel<io::socket<io::tcp>>> ptr;
     std::mutex mutex;
 
-    // Root dispatch
+    // Initial dispatch
 
     const std::shared_ptr<io::dispatch_t> prototype;
 
-    // Downstreaming
+    // Virtual channels
 
-    class downstream_t;
+    class channel_t;
 
-    std::map<uint64_t, std::shared_ptr<downstream_t>> downstreams;
+    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
+
+    synchronized<channel_map_t> channels;
 
 public:
     friend class upstream_t;
