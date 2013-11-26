@@ -38,6 +38,8 @@ struct depend {
     typedef void type;
 };
 
+// Variadic pack conversion
+
 namespace aux {
 
 template<class, typename...>
@@ -66,12 +68,16 @@ struct itemize {
     >::type type;
 };
 
+// Pristine type extraction
+
 template<class T>
 struct pristine {
     typedef typename std::remove_cv<
         typename std::remove_reference<T>::type
     >::type type;
 };
+
+// Result-of type deduction
 
 template<class F, class = void>
 struct result_of {
@@ -82,6 +88,8 @@ template<class F>
 struct result_of<F, typename depend<typename F::result_type>::type> {
     typedef typename F::result_type type;
 };
+
+// Constant index sequences
 
 template<size_t... N>
 struct index_sequence {
