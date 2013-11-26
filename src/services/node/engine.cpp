@@ -340,8 +340,8 @@ engine_t::on_control(const message_t& message) {
         collector_t collector;
 
         size_t active = std::count_if(
-            m_pool.cbegin(),
-            m_pool.cend(),
+            m_pool.begin(),
+            m_pool.end(),
             std::bind<bool>(std::ref(collector), _1)
         );
 

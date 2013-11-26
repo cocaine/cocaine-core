@@ -65,7 +65,7 @@ execution_unit_t::~execution_unit_t() {
     m_chamber->join();
     m_chamber.reset();
 
-    for(auto it = m_sessions.cbegin(); it != m_sessions.cend(); ++it) {
+    for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
         // Synchronously close the connections.
         it->second->revoke();
     }

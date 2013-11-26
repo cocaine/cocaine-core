@@ -45,35 +45,35 @@ adhoc_t::~adhoc_t() {
 
 auto
 adhoc_t::resolve(const std::string& name) const -> metadata_t {
-    auto it  = m_remote_services.cend(),
-         end = it;
+    auto lb = m_remote_services.end(),
+         ub = lb;
 
-    std::tie(it, end) = m_remote_services.equal_range(name);
+    std::tie(lb, ub) = m_remote_services.equal_range(name);
 
-    if(it == end) {
+    if(lb == ub) {
         throw cocaine::error_t("the specified service is not available in the group");
     }
 
 #if defined(__clang__) || defined(HAVE_GCC46)
-    std::uniform_int_distribution<int> distribution(0, std::distance(it, end) - 1);
+    std::uniform_int_distribution<int> distribution(0, std::distance(lb, ub) - 1);
 #else
-    std::uniform_int<int> distribution(0, std::distance(it, end) - 1);
+    std::uniform_int<int> distribution(0, std::distance(lb, ub) - 1);
 #endif
 
-    std::advance(it, distribution(m_random_generator));
+    std::advance(lb, distribution(m_random_generator));
 
-    const auto endpoint = std::get<0>(it->second.meta);
+    const auto endpoint = std::get<0>(lb->second.meta);
 
     COCAINE_LOG_DEBUG(
         m_log,
         "providing '%s' using remote node '%s' on %s:%d",
         name,
-        it->second.uuid,
+        lb->second.uuid,
         std::get<0>(endpoint),
         std::get<1>(endpoint)
     );
 
-    return it->second.meta;
+    return lb->second.meta;
 }
 
 void

@@ -49,7 +49,7 @@ auth_t::auth_t(context_t& context):
         return;
     }
 
-    for(auto it = keys.cbegin(); it != keys.cend(); ++it) {
+    for(auto it = keys.begin(); it != keys.end(); ++it) {
         const std::string identity = *it;
         const std::string object = storage->get<std::string>("keys", identity);
 

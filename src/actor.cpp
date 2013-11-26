@@ -87,7 +87,7 @@ void
 actor_t::run(std::vector<io::tcp::endpoint> endpoints) {
     BOOST_ASSERT(!m_thread);
 
-    for(auto it = endpoints.cbegin(); it != endpoints.cend(); ++it) {
+    for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
         m_connectors.emplace_back(
             *m_reactor,
             std::make_unique<io::acceptor<io::tcp>>(*it)

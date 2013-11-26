@@ -457,7 +457,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
     {
         auto locked = m_services.synchronize();
 
-        if(std::count_if(locked->cbegin(), locked->cend(), match{name})) {
+        if(std::count_if(locked->begin(), locked->end(), match{name})) {
             throw cocaine::error_t("service '%s' exists", name);
         }
 
@@ -497,7 +497,7 @@ context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
 
     {
         auto locked = m_services.synchronize();
-        auto it = std::find_if(locked->begin(), locked->end(), match {name});
+        auto it = std::find_if(locked->begin(), locked->end(), match{name});
 
         if(it == locked->end()) {
             throw cocaine::error_t("service '%s' doesn't exist", name);
@@ -529,9 +529,9 @@ context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
 auto
 context_t::locate(const std::string& name) const -> boost::optional<actor_t&> {
     auto locked = m_services.synchronize();
-    auto it = std::find_if(locked->cbegin(), locked->cend(), match{name});
+    auto it = std::find_if(locked->begin(), locked->end(), match{name});
 
-    return boost::optional<actor_t&>(it != locked->cend(), *it->second);
+    return boost::optional<actor_t&>(it != locked->end(), *it->second);
 }
 
 void
