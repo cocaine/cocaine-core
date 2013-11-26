@@ -1,6 +1,6 @@
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core2
-Version:	0.11.0.0
+Version:	0.11.2.0
 Release:	1%{?dist}
 
 License:	GPLv2+

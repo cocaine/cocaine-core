@@ -1,3 +1,11 @@
+cocaine-core (0.11.2.0) unstable; urgency=low
+
+  * An ability to pick a backend for the Logging Service.
+  * Bugfix: profile default grow threshold is now picked more carefully.
+  * Bugfix: correctly skip locator groups with weight sum of zero.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 26 Nov 2013 19:46:58 +0400
+
 cocaine-core (0.11.1.0) unstable; urgency=low
 
   * Docker (http://docker.io) containerization support.
