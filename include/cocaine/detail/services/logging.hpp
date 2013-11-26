@@ -30,6 +30,9 @@ class logging_t:
 {
     public:
         logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
+
+    private:
+        std::unique_ptr<api::logger_t> m_logger;
 };
 
 }} // namespace cocaine::service

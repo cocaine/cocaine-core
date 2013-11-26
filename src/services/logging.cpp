@@ -20,6 +20,8 @@
 
 #include "cocaine/detail/services/logging.hpp"
 
+#include "cocaine/api/logger.hpp"
+
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/messages.hpp"
@@ -32,11 +34,23 @@ using namespace std::placeholders;
 logging_t::logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args):
     category_type(context, reactor, name, args)
 {
-    auto logger = std::ref(context.logger());
+    auto backend = args.get("backend", "core").asString();
+
+    if(backend != "core") {
+        const auto it = context.config.loggers.find(backend);
+
+        if(it == context.config.loggers.end()) {
+            throw cocaine::error_t("the '%s' logger is not configured", backend);
+        }
+
+        m_logger = context.get<api::logger_t>(it->second.type, context.config, it->second.args);
+    }
 
     using cocaine::logging::logger_concept_t;
 
-    on<io::logging::emit>("emit", std::bind(&logger_concept_t::emit, logger, _1, _2, _3));
-    on<io::logging::verbosity>("verbosity", std::bind(&logger_concept_t::verbosity, logger));
+    logger_concept_t* ptr = m_logger ? m_logger.get() : &context.logger();
+
+    on<io::logging::emit>("emit", std::bind(&logger_concept_t::emit, ptr, _1, _2, _3));
+    on<io::logging::verbosity>("verbosity", std::bind(&logger_concept_t::verbosity, ptr));
 }
 
