@@ -39,8 +39,18 @@ struct cached:
 {
     cached(context_t& context, const std::string& collection, const std::string& name);
 
-    sources::values
-    source() const {
+    T&
+    object() {
+        return static_cast<T&>(*this);
+    }
+
+    const T&
+    object() const {
+        return static_cast<const T&>(*this);
+    }
+
+    auto
+    source() const -> sources::values {
         return m_source;
     }
 
@@ -63,15 +73,13 @@ cached<T>::cached(context_t& context, const std::string& collection, const std::
         return;
     }
 
-    T& object = static_cast<T&>(*this);
-
     try {
-        object = cache->get<T>(collection, name);
+        object() = cache->get<T>(collection, name);
     } catch(const storage_error_t& e) {
         download(context, collection, name);
 
         try {
-            cache->put(collection, name, object, std::vector<std::string>());
+            cache->put(collection, name, object(), std::vector<std::string>());
         } catch(const storage_error_t& e) {
             throw storage_error_t("unable to cache object '%s' in '%s' - %s", name, collection, e.what());
         }
@@ -85,11 +93,8 @@ cached<T>::cached(context_t& context, const std::string& collection, const std::
 template<class T>
 void
 cached<T>::download(context_t& context, const std::string& collection, const std::string& name) {
-    T& object = static_cast<T&>(*this);
-
     // Intentionally propagate storage exceptions from this call.
-    object = api::storage(context, "core")->get<T>(collection, name);
-
+    object() = api::storage(context, "core")->get<T>(collection, name);
     m_source = sources::storage;
 }
 
