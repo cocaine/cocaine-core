@@ -39,22 +39,18 @@ dispatch_t::~dispatch_t() {
 
 std::shared_ptr<dispatch_t>
 dispatch_t::invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const {
-    slot_map_t::mapped_type slot;
+    slot_map_t::const_iterator it, end;
 
-    {
-        std::lock_guard<std::mutex> guard(m_mutex);
+    std::tie(it, end) = m_slots->equal_range(message.id());
 
-        auto it = m_slots.find(message.id());
-
-        if(it == m_slots.end()) {
-            // TODO: COCAINE-82 adds a 'client' error category.
-            throw cocaine::error_t("unknown type %d message", message.id());
-        }
-
-        // NOTE: The slot pointer is copied here so that the handling code could unregister the slot
-        // via dispatch_t::forget() without pulling the object from underneath itself.
-        slot = it->second;
+    if(it == end) {
+        // TODO: COCAINE-82 adds a 'client' error category.
+        throw cocaine::error_t("unknown type %d message", message.id());
     }
+
+    // NOTE: The slot pointer is copied here so that the handling code could unregister the slot via
+    // dispatch_t::forget() without pulling the object from underneath itself.
+    slot_map_t::mapped_type slot = it->second;
 
     COCAINE_LOG_DEBUG(m_log, "processing type %d message using slot '%s'", message.id(), slot->name());
 

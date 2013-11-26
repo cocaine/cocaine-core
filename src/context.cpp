@@ -497,7 +497,7 @@ context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
         name
     });
 
-    if(locked->end() == it) {
+    if(it == locked->end()) {
         throw cocaine::error_t("service '%s' doesn't exist", name);
     }
 

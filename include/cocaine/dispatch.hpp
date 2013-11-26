@@ -60,10 +60,7 @@ class dispatch_t {
         std::shared_ptr<detail::slot_concept_t>
     > slot_map_t;
 
-    slot_map_t m_slots;
-
-    // It's mutable to enable invoke() to be const.
-    mutable std::mutex m_mutex;
+    synchronized<slot_map_t> m_slots;
 
     // For actor's named threads feature.
     const std::string m_name;
@@ -146,13 +143,9 @@ void
 dispatch_t::on(const std::shared_ptr<detail::slot_concept_t>& ptr) {
     const int id = event_traits<Event>::id;
 
-    std::lock_guard<std::mutex> guard(m_mutex);
-
-    if(m_slots.find(id) != m_slots.end()) {
+    if(!m_slots->insert({id, ptr}).second) {
         throw cocaine::error_t("duplicate slot %d: %s", id, ptr->name());
     }
-
-    m_slots[id] = ptr;
 }
 
 template<class Event>
@@ -160,13 +153,9 @@ void
 dispatch_t::forget() {
     const int id = event_traits<Event>::id;
 
-    std::lock_guard<std::mutex> guard(m_mutex);
-
-    if(m_slots.find(id) == m_slots.end()) {
+    if(!m_slots->erase(id)) {
         throw cocaine::error_t("slot %d does not exist", id);
     }
-
-    m_slots.erase(id);
 }
 
 } // namespace io
