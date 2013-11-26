@@ -75,17 +75,19 @@ node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, 
 }
 
 node_t::~node_t() {
-    auto locked = m_apps.synchronize();
+    auto& unlocked = m_apps.get();
 
-    if(locked->empty()) {
-        COCAINE_LOG_INFO(m_log, "stopping the apps");
-
-        for(auto it = locked->begin(); it != locked->end(); ++it) {
-            it->second->stop();
-        }
-
-        locked->clear();
+    if(unlocked.empty()) {
+        return;
     }
+
+    COCAINE_LOG_INFO(m_log, "stopping the apps");
+
+    for(auto it = unlocked.begin(); it != unlocked.end(); ++it) {
+        it->second->stop();
+    }
+
+    unlocked.clear();
 }
 
 auto

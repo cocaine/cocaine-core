@@ -73,7 +73,7 @@ struct config_t {
 
     struct component_t {
         std::string type;
-        dynamic_t args;
+        dynamic_t   args;
     };
 
     struct {
@@ -85,17 +85,14 @@ struct config_t {
 
         // NOTE: Service locator port is configurable to allow multiple runtimes to run on a single
         // machine. This port will be forwarded to the slaves via a command-line argument.
-        uint16_t locator;
+        uint16_t    locator;
 
         boost::optional<std::string> group;
         boost::optional<std::tuple<uint16_t, uint16_t>> ports;
         boost::optional<component_t> gateway;
     } network;
 
-    typedef std::map<
-        std::string,
-        component_t
-    > component_map_t;
+    typedef std::map<std::string, component_t> component_map_t;
 
     component_map_t loggers;
     component_map_t services;
@@ -138,8 +135,7 @@ class context_t {
     // These are the instances of all the configured services, stored as a vector of pairs to
     // preserve the initialization order. Synchronized, because services are allowed to start
     // and stop other services during their lifetime.
-    service_list_t m_services;
-    mutable std::mutex m_mutex;
+    synchronized<service_list_t> m_services;
 
     // A pool of execution units - threads responsible for doing all the service invocations.
     std::vector<std::unique_ptr<execution_unit_t>> m_pool;

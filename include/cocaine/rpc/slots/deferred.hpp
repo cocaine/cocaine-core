@@ -90,10 +90,10 @@ struct deferred {
     write(U&& value,
           typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type* = nullptr)
     {
-        auto queue = (*queue_impl).synchronize();
+        auto locked = (*queue_impl).synchronize();
 
-        queue->template append<typename protocol::chunk>(std::forward<U>(value));
-        queue->template append<typename protocol::choke>();
+        locked->template append<typename protocol::chunk>(std::forward<U>(value));
+        locked->template append<typename protocol::choke>();
     }
 
     void

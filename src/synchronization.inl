@@ -86,9 +86,9 @@ auto
 context_t::synchronization_t::dump() const -> result_type {
     result_type result;
 
-    std::lock_guard<std::mutex> guard(self.m_mutex);
+    auto locked = self.m_services.synchronize();
 
-    for(auto it = self.m_services.begin(); it != self.m_services.end(); ++it) {
+    for(auto it = locked->begin(); it != locked->end(); ++it) {
         result[it->first] = it->second->metadata();
     }
 
