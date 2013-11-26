@@ -75,7 +75,7 @@ node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, 
 }
 
 node_t::~node_t() {
-    auto& unlocked = m_apps.get();
+    auto& unlocked = m_apps.value();
 
     if(unlocked.empty()) {
         return;

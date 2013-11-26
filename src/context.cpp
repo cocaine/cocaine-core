@@ -406,7 +406,7 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t
 
 context_t::~context_t() {
     auto  blog = std::make_unique<logging::log_t>(*this, "bootstrap");
-    auto& unlocked = m_services.get();
+    auto& unlocked = m_services.value();
 
     m_synchronization->shutdown();
     m_synchronization.reset();
@@ -563,6 +563,8 @@ context_t::bootstrap() {
 
     COCAINE_LOG_INFO(blog, "starting %d %s", config.services.size(), config.services.size() == 1 ? "service" : "services");
 
+    m_synchronization = std::make_shared<synchronization_t>(*this);
+
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto reactor = std::make_shared<reactor_t>();
 
@@ -596,25 +598,25 @@ context_t::bootstrap() {
 
     COCAINE_LOG_INFO(blog, "starting the service locator on %s", endpoints.front());
 
-    auto reactor = std::make_shared<reactor_t>();
-    auto locator = std::make_unique<locator_t>(*this, *reactor);
-
-    m_synchronization = std::make_shared<synchronization_t>(*this);
-
-    // Some of the locator methods are better implemented in the Context, to avoid unnecessary
-    // copying intermediate structures around, for example service lists synchronization.
-    locator->on<io::locator::synchronize>(m_synchronization);
-
-    m_services.get().emplace_front("locator", std::make_unique<actor_t>(
-        *this,
-        reactor,
-        std::unique_ptr<dispatch_t>(std::move(locator))
-    ));
+    std::unique_ptr<actor_t> service;
 
     try {
-        // NOTE: Start the locator thread last, so that we won't needlessly send node updates to the peers
-        // which managed to connect during the bootstrap.
-        m_services.get().front().second->run(endpoints);
+        auto reactor = std::make_shared<reactor_t>();
+        auto locator = std::make_unique<locator_t>(*this, *reactor);
+
+        // Some of the locator methods are better implemented in the Context, to avoid unnecessary
+        // copying intermediate structures around, for example service lists synchronization.
+        locator->on<io::locator::synchronize>(m_synchronization);
+
+        service = std::make_unique<actor_t>(
+            *this,
+            reactor,
+            std::unique_ptr<dispatch_t>(std::move(locator))
+        );
+
+        // NOTE: Start the locator thread last, so that we won't needlessly send node updates to the
+        // peers which managed to connect during the bootstrap.
+        service->run(endpoints);
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(blog, "unable to initialize the locator - %s - [%d] %s", e.what(),
             e.code().value(), e.code().message());
@@ -626,4 +628,6 @@ context_t::bootstrap() {
         COCAINE_LOG_ERROR(blog, "unable to initialize the locator - unknown exception");
         throw;
     }
+
+    m_services->emplace_front("locator", std::move(service));
 }

@@ -62,37 +62,46 @@ struct synchronized {
     typedef T        value_type;
     typedef Lockable mutex_type;
 
-    synchronized(): value() { }
-    synchronized(const value_type& value_): value(value_) { }
-    synchronized(value_type&& value_): value(std::move(value_)) { }
+    synchronized(): m_value() { }
+    synchronized(const value_type& value): m_value(value) { }
+    synchronized(value_type&& value): m_value(std::move(value)) { }
 
-    locked_ptr<T, Lockable> synchronize() {
-        return locked_ptr<T, Lockable>(value, mutex);
+    auto
+    value() -> value_type& {
+        return m_value;
     }
 
-    locked_ptr<const T, Lockable> synchronize() const {
-        return locked_ptr<const T, Lockable>(value, mutex);
+    auto
+    value() const -> const value_type& {
+        return m_value;
     }
 
-    locked_ptr<T, Lockable> operator->() {
-        return locked_ptr<T, Lockable>(value, mutex);
+    typedef locked_ptr<T, Lockable> ptr_type;
+    typedef locked_ptr<const T, Lockable> const_ptr_type;
+
+    auto
+    synchronize() -> ptr_type {
+        return ptr_type(m_value, m_mutex);
     }
 
-    locked_ptr<const T, Lockable> operator->() const {
-        return locked_ptr<const T, Lockable>(value, mutex);
+    auto
+    synchronize() const -> const_ptr_type {
+        return const_ptr_type(m_value, m_mutex);
     }
 
-    value_type& get() {
-        return value;
+    auto
+    operator->() -> ptr_type {
+        return synchronize();
     }
 
-    const value_type& get() const {
-        return value;
+    auto
+    operator->() const -> const_ptr_type {
+        return synchronize();
     }
 
 private:
-    value_type value;
-    mutable mutex_type mutex;
+    value_type m_value;
+    mutable mutex_type m_mutex;
 };
 
 } // namespace cocaine
