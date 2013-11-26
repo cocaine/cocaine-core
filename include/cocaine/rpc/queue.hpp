@@ -95,7 +95,7 @@ class message_queue {
     std::deque<variant_type> operations;
 
     // The upstream might be attached during state method invocation, so it has to be synchronized
-    // with a mutex - the atomicicity guarantee of the shared_ptr<T> is not enough.
+    // for thread safety - the atomicicity guarantee of the shared_ptr<T> is not enough.
     std::shared_ptr<upstream_t> upstream;
 
 public:
