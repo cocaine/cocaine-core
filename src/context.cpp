@@ -408,13 +408,13 @@ context_t::~context_t() {
     auto  blog = std::make_unique<logging::log_t>(*this, "bootstrap");
     auto& unlocked = m_services.value();
 
-    m_synchronization->shutdown();
-    m_synchronization.reset();
-
     COCAINE_LOG_INFO(blog, "stopping the service locator");
 
     unlocked.front().second->terminate();
     unlocked.pop_front();
+
+    m_synchronization->shutdown();
+    m_synchronization.reset();
 
     COCAINE_LOG_INFO(blog, "stopping the services");
     
