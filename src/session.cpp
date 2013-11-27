@@ -61,7 +61,7 @@ session_t::invoke(const message_t& message) {
         std::tie(lb, ub) = locked->equal_range(index);
 
         if(lb == ub) {
-            std::tie(lb, std::ignore) = locked->insert({ index, std::make_shared<channel_t>(
+            std::tie(lb, std::ignore) = locked->insert({index, std::make_shared<channel_t>(
                 prototype,
                 std::make_shared<upstream_t>(shared_from_this(), index)
             )});

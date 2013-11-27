@@ -31,19 +31,20 @@ namespace cocaine {
 class session_t:
     public std::enable_shared_from_this<session_t>
 {
+    class channel_t;
+
+    // NOTE: The underlying connection and session mutex. Upstreams use this mutex to synchronize
+    // their state when sending messages, however it does not seem to be under contention.
     std::unique_ptr<io::channel<io::socket<io::tcp>>> ptr;
     std::mutex mutex;
 
-    // Initial dispatch
-
+    // Initial dispatch.
     const std::shared_ptr<io::dispatch_t> prototype;
 
-    // Virtual channels
-
-    class channel_t;
-
+    // Virtual channels.
     typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
 
+    // NOTE: Virtual channels use their own synchronization to decouple invocation and messaging.
     synchronized<channel_map_t> channels;
 
 public:
@@ -60,6 +61,7 @@ public:
     void
     revoke();
 
+private:
     void
     detach(uint64_t index);
 };
