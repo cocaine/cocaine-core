@@ -53,14 +53,11 @@ struct deferred_slot:
         try {
             // This cast is needed to ensure the correct return type.
             auto result = static_cast<T<R>>(this->call(unpacked));
+            auto locked = (*result.queue_impl).synchronize();
 
-            {
-                auto locked = (*result.queue_impl).synchronize();
-
-                // Upstream is attached in a critical section, because it might be already in use
-                // in some other processing thread of the service.
-                locked->attach(upstream);
-            }
+            // Upstream is attached in a critical section, because it might be already in use
+            // in some other processing thread of the service.
+            locked->attach(upstream);
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
