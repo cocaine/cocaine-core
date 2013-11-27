@@ -458,7 +458,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
         auto locked = m_services.synchronize();
 
         if(std::count_if(locked->begin(), locked->end(), match{name})) {
-            throw cocaine::error_t("service '%s' exists", name);
+            throw cocaine::error_t("service '%s' already exists", name);
         }
 
         if(config.network.ports) {
