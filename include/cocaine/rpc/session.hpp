@@ -59,11 +59,11 @@ public:
     invoke(const io::message_t& message);
 
     void
-    revoke();
+    detach();
 
 private:
     void
-    detach(uint64_t index);
+    revoke(uint64_t index);
 };
 
 } // namespace cocaine

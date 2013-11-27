@@ -50,12 +50,12 @@ public:
 
 void
 session_t::invoke(const message_t& message) {
+    channel_map_t::const_iterator lb, ub;
+    channel_map_t::key_type index = message.band();
+
     std::shared_ptr<channel_t> channel;
 
     {
-        channel_map_t::const_iterator lb, ub;
-        channel_map_t::key_type index = message.band();
-
         auto locked = channels.synchronize();
 
         std::tie(lb, ub) = locked->equal_range(index);
@@ -79,7 +79,7 @@ session_t::invoke(const message_t& message) {
 }
 
 void
-session_t::revoke() {
+session_t::detach() {
     std::lock_guard<std::mutex> guard(mutex);
 
     // NOTE: This invalidates and closes the internal connection pointer and destroys the protocol
@@ -91,6 +91,6 @@ session_t::revoke() {
 }
 
 void
-session_t::detach(uint64_t index) {
+session_t::revoke(uint64_t index) {
     channels->erase(index);
 }

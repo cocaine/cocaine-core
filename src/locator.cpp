@@ -453,6 +453,6 @@ locator_t::on_failure(const remote_id_t& node, const std::error_code& ec) {
         m_gateway->cleanup(uuid, it->first);
     }
 
-    m_remotes[node]->revoke();
+    m_remotes[node]->detach();
     m_remotes.erase(node);
 }

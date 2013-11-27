@@ -67,7 +67,7 @@ execution_unit_t::~execution_unit_t() {
 
     for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
         // Synchronously close the connections.
-        it->second->revoke();
+        it->second->detach();
     }
 
     m_sessions.clear();
@@ -114,7 +114,7 @@ execution_unit_t::on_message(int fd, const io::message_t& message) {
         // NOTE: This destroys the connection but not necessarily the session itself, as it might be
         // still in use by shared upstreams even in other threads. In other words, this doesn't guarantee
         // that the session will be actually deleted, but it's fine, since the connection is closed.
-        it->second->revoke();
+        it->second->detach();
         m_sessions.erase(it);
     }
 }
@@ -132,6 +132,6 @@ execution_unit_t::on_failure(int fd, const std::error_code& error) {
         COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
     }
 
-    m_sessions[fd]->revoke();
+    m_sessions[fd]->detach();
     m_sessions.erase(fd);
 }

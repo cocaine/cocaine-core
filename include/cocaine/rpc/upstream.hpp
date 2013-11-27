@@ -66,9 +66,9 @@ upstream_t::send(Args&&... args) {
         state = states::sealed;
 
         // If the event transition type is void, i.e. the remote dispatch will be destroyed after
-        // receiving this message, then detach the stream with the given index in the channel, so
+        // receiving this message, then revoke the stream with the given index in the channel, so
         // that new requests might reuse it in the future. This stream will become sealed.
-        session->detach(index);
+        session->revoke(index);
     }
 
     if(session->ptr) {
