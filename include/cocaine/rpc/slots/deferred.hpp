@@ -30,11 +30,15 @@ namespace cocaine { namespace io {
 
 // Deferred slot
 
-template<template<class> class T, class R, class Event>
+template<
+    template<class> class T,
+    class Event,
+    class R = typename result_of<Event>::type
+>
 struct deferred_slot:
-    public function_slot<R, Event>
+    public function_slot<Event, T<R>>
 {
-    typedef function_slot<R, Event> parent_type;
+    typedef function_slot<Event, T<R>> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::protocol_type protocol;
@@ -46,18 +50,16 @@ struct deferred_slot:
     virtual
     std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
-        typedef T<typename result_of<Event>::type> expected_type;
-
         try {
             // This cast is needed to ensure the correct return type.
-            auto value = static_cast<expected_type>(this->call(unpacked));
+            auto result = static_cast<T<R>>(this->call(unpacked));
 
             {
-                auto queue = (*value.queue_impl).synchronize();
+                auto locked = (*result.queue_impl).synchronize();
 
                 // Upstream is attached in a critical section, because it might be already in use
                 // in some other processing thread of the service.
-                queue->attach(upstream);
+                locked->attach(upstream);
             }
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));

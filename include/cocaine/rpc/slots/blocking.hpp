@@ -27,11 +27,14 @@ namespace cocaine { namespace io {
 
 // Blocking slot
 
-template<class R, class Event, class = void>
+template<
+    class Event,
+    class R = typename result_of<Event>::type
+>
 struct blocking_slot:
-    public function_slot<R, Event>
+    public function_slot<Event, R>
 {
-    typedef function_slot<R, Event> parent_type;
+    typedef function_slot<Event, R> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::protocol_type protocol;
@@ -97,10 +100,10 @@ struct blocking_slot_impl<void> {
 } // namespace aux
 
 template<class Event>
-struct blocking_slot<void, Event>:
-    public function_slot<void, Event>
+struct blocking_slot<Event, void>:
+    public function_slot<Event, void>
 {
-    typedef function_slot<void, Event> parent_type;
+    typedef function_slot<Event, void> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::protocol_type protocol;

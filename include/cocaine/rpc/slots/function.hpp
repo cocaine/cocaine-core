@@ -196,7 +196,7 @@ struct invoke {
     }
 };
 
-template<class R, class Event>
+template<class Event, class R>
 struct function_slot:
     public basic_slot<Event>
 {
