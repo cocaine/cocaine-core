@@ -51,13 +51,11 @@ struct deferred_slot:
     std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
         try {
-            // This cast is needed to ensure the correct return type.
-            auto result = static_cast<T<R>>(this->call(unpacked));
-            auto locked = (*result.queue_impl).synchronize();
+            const T<R> result = this->call(unpacked);
 
-            // Upstream is attached in a critical section, because it might be already in use
-            // in some other processing thread of the service.
-            locked->attach(upstream);
+            // Upstream is attached in a critical section, because the internal message queue might
+            // be already in use in some other processing thread of the service.
+            (*result.queue_impl)->attach(upstream);
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
