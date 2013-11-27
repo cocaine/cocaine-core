@@ -105,7 +105,7 @@ struct tuple_type<Event, typename depend<typename Event::tuple_type>::type> {
 
 template<class Event, class = void>
 struct drain_type {
-    typedef void type;
+    typedef streaming_tag<mpl::list<void>> type;
 };
 
 template<class Event>

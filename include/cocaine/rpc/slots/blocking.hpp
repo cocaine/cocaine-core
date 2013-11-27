@@ -27,16 +27,14 @@ namespace cocaine { namespace io {
 
 // Blocking slot
 
-template<class R, class Event>
+template<class R, class Event, class = void>
 struct blocking_slot:
     public function_slot<R, Event>
 {
     typedef function_slot<R, Event> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
-    typedef typename parent_type::upstream_type upstream_type;
-
-    typedef io::streaming<upstream_type> protocol;
+    typedef typename parent_type::protocol_type protocol;
 
     blocking_slot(callable_type callable):
         parent_type(callable)
@@ -59,7 +57,44 @@ struct blocking_slot:
     }
 };
 
-// Blocking slot specialization for void functions
+// Blocking slot specialization for void functions and void drain protocols
+
+namespace aux {
+
+template<class Protocol>
+struct blocking_slot_impl {
+    template<class F>
+    static inline
+    void
+    call(const F& callable, const std::shared_ptr<upstream_t>& upstream) {
+        try {
+            callable();
+
+            // This is needed anyway so that service clients could detect operation completion.
+            upstream->send<typename Protocol::choke>();
+        } catch(const std::system_error& e) {
+            upstream->send<typename Protocol::error>(e.code().value(), std::string(e.code().message()));
+        } catch(const std::exception& e) {
+            upstream->send<typename Protocol::error>(invocation_error, std::string(e.what()));
+        }
+    }
+};
+
+template<>
+struct blocking_slot_impl<void> {
+    template<class F>
+    static inline
+    void
+    call(const F& callable, const std::shared_ptr<upstream_t>& /* upstream */) {
+        try {
+            callable();
+        } catch(const std::exception& e) {
+            throw cocaine::error_t("error while calling a terminal slot - %s", e.what());
+        }
+    }
+};
+
+} // namespace aux
 
 template<class Event>
 struct blocking_slot<void, Event>:
@@ -68,9 +103,7 @@ struct blocking_slot<void, Event>:
     typedef function_slot<void, Event> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
-    typedef typename parent_type::upstream_type upstream_type;
-
-    typedef io::streaming<upstream_type> protocol;
+    typedef typename parent_type::protocol_type protocol;
 
     blocking_slot(callable_type callable):
         parent_type(callable)
@@ -79,16 +112,7 @@ struct blocking_slot<void, Event>:
     virtual
     std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
-        try {
-            this->call(unpacked);
-
-            // This is needed anyway so that service clients could detect operation completion.
-            upstream->send<typename protocol::choke>();
-        } catch(const std::system_error& e) {
-            upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
-        } catch(const std::exception& e) {
-            upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
-        }
+        aux::blocking_slot_impl<protocol>::call(std::bind(&parent_type::call, this, unpacked), upstream);
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();

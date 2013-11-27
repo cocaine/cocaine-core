@@ -37,9 +37,7 @@ struct deferred_slot:
     typedef function_slot<R, Event> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
-    typedef typename parent_type::upstream_type upstream_type;
-
-    typedef io::streaming<upstream_type> protocol;
+    typedef typename parent_type::protocol_type protocol;
 
     deferred_slot(callable_type callable):
         parent_type(callable)

@@ -134,7 +134,7 @@ struct upstream_impl;
 
 template<class T>
 struct upstream_impl<streaming_tag<T>> {
-    typedef T type;
+    typedef streaming<T> type;
 };
 
 template<>
@@ -204,7 +204,7 @@ struct function_slot:
 
     typedef typename aux::upstream_impl<
         typename event_traits<Event>::drain_type
-    >::type upstream_type;
+    >::type protocol_type;
 
     typedef typename mpl::transform<
         tuple_type,

@@ -63,6 +63,9 @@ struct chunk {
     // Automatically expand tuple to a typelist, so that it won't look like a tuple with a single
     // embedded tuple element, i.e. (0, 0, ((42, 3.14, "Death to all humans!"),)).
     typedef typename tuple_type_impl<T>::type tuple_type;
+
+    // Terminal message.
+    typedef void drain_type;
 };
 
 struct error {
@@ -80,6 +83,9 @@ struct error {
      /* Human-readable error description. */
         std::string
     > tuple_type;
+
+    // Terminal message.
+    typedef void drain_type;
 };
 
 struct choke {
@@ -90,6 +96,9 @@ struct choke {
     alias() {
         return "close";
     }
+
+    // Terminal message.
+    typedef void drain_type;
 };
 
 }; // struct streaming
