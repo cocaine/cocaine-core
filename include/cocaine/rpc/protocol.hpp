@@ -115,7 +115,7 @@ template<class Event>
 struct event_traits {
     enum constants { id = aux::enumerate<Event>::type::value };
 
-    // Transition is a protocol tag type of the service channel dispatch after the given message was
+    // Transition is a protocol tag type of the service channel dispatch after the given message is
     // successfully processed. The possible transitions types are: void, recursive protocol tag or
     // some arbitrary protocol tag.
     // By default, all messages switch the service protocol to the void protocol, which means that
@@ -126,10 +126,10 @@ struct event_traits {
     // By default, all messages have no arguments, the only information they provide is their type.
     typedef typename aux::tuple_type<Event>::type tuple_type;
 
-    // Drain is a protocol tag type of the set of possible messages that a service will be sending
-    // in response to the given message, i.e. it's the protocol tag type of the client dispatch after
-    // the given message was sent.
-    // By default, all messages use the void streaming protocol to sent back the invocation errors
+    // Drain is a protocol tag type of all the possible messages that a service might send back in
+    // response to the given message, i.e. it's a protocol tag type of the client dispatch after the
+    // given message is sent.
+    // By default, all messages use the void streaming protocol to send back the invocation errors
     // and signal message processing completion.
     typedef typename aux::drain_type<Event>::type drain_type;
 };
