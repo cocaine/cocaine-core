@@ -170,7 +170,7 @@ struct implements:
     {
         static_assert(
             !boost::mpl::empty<typename io::protocol<Tag>::messages>::value,
-            "protocol has no registered events"
+            "protocol has no registered messages"
         );
     }
 

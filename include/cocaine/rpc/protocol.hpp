@@ -50,8 +50,6 @@ struct extends {
 
 namespace aux {
 
-// Message enumeration
-
 template<class Protocol, class = void>
 struct flatten {
     typedef typename Protocol::messages type;
@@ -72,7 +70,7 @@ struct enumerate {
 
     static_assert(
         mpl::contains<hierarchy_type, Event>::value,
-        "event has not been registered within its hierarchy"
+        "message has not been registered within its protocol hierarchy"
     );
 
     typedef typename mpl::distance<
@@ -80,8 +78,6 @@ struct enumerate {
         typename mpl::find<hierarchy_type, Event>::type
     >::type type;
 };
-
-// Dependent type extraction
 
 template<class Event, class = void>
 struct transition_type {
@@ -119,9 +115,22 @@ template<class Event>
 struct event_traits {
     enum constants { id = aux::enumerate<Event>::type::value };
 
+    // Transition is a protocol tag type of the service channel dispatch after the given message was
+    // successfully processed. The possible transitions types are: void, recursive protocol tag or
+    // some arbitrary protocol tag.
+    // By default, all messages switch the service protocol to the void protocol, which means that
+    // no other messages can be sent in the channel until the invocation is complete.
     typedef typename aux::transition_type<Event>::type transition_type;
 
+    // Tuple is the type list of the message arguments.
+    // By default, all messages have no arguments, the only information they provide is their type.
     typedef typename aux::tuple_type<Event>::type tuple_type;
+
+    // Drain is a protocol tag type of the set of possible messages that a service will be sending
+    // in response to the given message, i.e. it's the protocol tag type of the client dispatch after
+    // the given message was sent.
+    // By default, all messages use the void streaming protocol to sent back the invocation errors
+    // and signal message processing completion.
     typedef typename aux::drain_type<Event>::type drain_type;
 };
 

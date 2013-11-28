@@ -221,10 +221,63 @@ class locator_t::remote_client_t:
 {
     locator_t& impl;
 
-    // Remote node identification
-
+    // Remote node identification.
     const remote_id_t node;
     const std::string uuid;
+
+public:
+    typedef io::event_traits<io::locator::synchronize>::drain_type tag;
+    typedef io::protocol<tag>::type protocol;
+
+public:
+    struct announce_slot_t:
+        public basic_slot<protocol::chunk>
+    {
+        announce_slot_t(const std::shared_ptr<remote_client_t>& impl_):
+            impl(impl_)
+        { }
+
+        std::shared_ptr<dispatch_t>
+        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
+            auto service = impl.lock();
+
+            io::invoke<event_traits<protocol::chunk>::tuple_type>::apply(
+                boost::bind(&remote_client_t::announce, service.get(), boost::arg<1>()),
+                unpacked
+            );
+
+            return service;
+        }
+
+    private:
+        const std::weak_ptr<remote_client_t> impl;
+    };
+
+    struct shutdown_slot_t:
+        public basic_slot<protocol::choke>
+    {
+        shutdown_slot_t(const std::shared_ptr<remote_client_t>& impl_):
+            impl(impl_)
+        { }
+
+        std::shared_ptr<dispatch_t>
+        operator()(const msgpack::object& /* unpacked */, const std::shared_ptr<upstream_t>& /* upstream */) {
+            impl.lock()->shutdown();
+
+            // Return an empty protocol dispatch.
+            return std::shared_ptr<dispatch_t>();
+        }
+
+    private:
+        const std::weak_ptr<remote_client_t> impl;
+    };
+
+    remote_client_t(locator_t& impl_, const remote_id_t& node_):
+        implements<tag>(impl_.m_context, impl_.name()),
+        impl(impl_),
+        node(node_),
+        uuid(std::get<0>(node))
+    { }
 
 private:
     void
@@ -254,45 +307,7 @@ private:
 
         // NOTE: It is dangerous to disconnect the remote while the message is still being
         // processed, so we defer it via reactor_t::post().
-        impl.m_reactor.post(deferred_erase_action<decltype(impl.m_remotes)> {
-            impl.m_remotes,
-            node
-        });
-    }
-
-public:
-    typedef io::protocol<io::event_traits<io::locator::synchronize>::drain_type>::type protocol;
-
-    struct announce_slot_t:
-        public basic_slot<protocol::chunk>
-    {
-        announce_slot_t(const std::shared_ptr<remote_client_t>& impl_):
-            impl(impl_)
-        { }
-
-        std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
-            auto service = impl.lock();
-
-            io::invoke<event_traits<protocol::chunk>::tuple_type>::apply(
-                boost::bind(&remote_client_t::announce, service.get(), boost::arg<1>()),
-                unpacked
-            );
-
-            return service;
-        }
-
-    private:
-        const std::weak_ptr<remote_client_t> impl;
-    };
-
-    remote_client_t(locator_t& impl_, const remote_id_t& node_):
-        implements<io::event_traits<io::locator::synchronize>::drain_type>(impl_.m_context, impl_.name()),
-        impl(impl_),
-        node(node_),
-        uuid(std::get<0>(node))
-    {
-        on<protocol::choke>(std::bind(&remote_client_t::shutdown, this));
+        impl.m_reactor.post(deferred_erase_action<decltype(impl.m_remotes)>{impl.m_remotes, node});
     }
 };
 
@@ -388,9 +403,10 @@ locator_t::on_announce_event(ev::io&, int) {
 
     auto service = std::make_shared<remote_client_t>(*this, node);
 
-    service->on<remote_client_t::protocol::chunk>(
-        std::make_shared<remote_client_t::announce_slot_t>(service)
-    );
+    typedef remote_client_t::protocol protocol;
+
+    service->on<protocol::chunk>(std::make_shared<remote_client_t::announce_slot_t>(service));
+    service->on<protocol::choke>(std::make_shared<remote_client_t::shutdown_slot_t>(service));
 
     // Spawn the synchronization session
 

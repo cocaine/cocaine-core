@@ -44,11 +44,11 @@ struct traverse_impl {
     static inline
     void
     apply(dispatch_graph_t& object) {
-        typedef typename mpl::deref<It>::type event_type;
-        typedef event_traits<event_type> traits_type;
+        typedef typename mpl::deref<It>::type message_type;
+        typedef event_traits<message_type> traits_type;
 
         object[traits_type::id] = std::make_tuple(
-            event_type::alias(),
+            message_type::alias(),
             traverse<typename traits_type::transition_type>()
         );
 

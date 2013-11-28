@@ -41,7 +41,7 @@ public:
     invoke(const message_t& message) {
         if(!dispatch) {
             // TODO: COCAINE-82 adds a 'client' error category.
-            throw cocaine::error_t("channel has been deactivated");
+            throw cocaine::error_t("dispatch has been deactivated");
         }
 
         dispatch = dispatch->invoke(message, upstream);

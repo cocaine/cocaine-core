@@ -71,6 +71,85 @@ class streaming_service_t:
 {
     const api::stream_ptr_t downstream;
 
+public:
+    typedef io::event_traits<io::app::enqueue>::transition_type tag;
+    typedef io::protocol<tag>::type protocol;
+
+public:
+    struct write_slot_t:
+        public basic_slot<protocol::chunk>
+    {
+        write_slot_t(const std::shared_ptr<streaming_service_t>& impl_):
+            impl(impl_)
+        { }
+
+        virtual
+        std::shared_ptr<dispatch_t>
+        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
+            auto service = impl.lock();
+
+            io::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
+                boost::bind(&streaming_service_t::write, service.get(), boost::arg<1>()),
+                unpacked
+            );
+
+            return service;
+        }
+
+    private:
+        const std::weak_ptr<streaming_service_t> impl;
+    };
+
+    struct error_slot_t:
+        public basic_slot<protocol::error>
+    {
+        error_slot_t(const std::shared_ptr<streaming_service_t>& impl_):
+            impl(impl_)
+        { }
+
+        virtual
+        std::shared_ptr<dispatch_t>
+        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
+            auto service = impl.lock();
+
+            io::invoke<event_traits<rpc::error>::tuple_type>::apply(
+                boost::bind(&streaming_service_t::error, service.get(), boost::arg<1>(), boost::arg<2>()),
+                unpacked
+            );
+
+            // Return an empty protocol dispatch.
+            return std::shared_ptr<dispatch_t>();
+        }
+
+    private:
+        const std::weak_ptr<streaming_service_t> impl;
+    };
+
+    struct close_slot_t:
+        public basic_slot<protocol::chunk>
+    {
+        close_slot_t(const std::shared_ptr<streaming_service_t>& impl_):
+            impl(impl_)
+        { }
+
+        virtual
+        std::shared_ptr<dispatch_t>
+        operator()(const msgpack::object& /* unpacked */, const std::shared_ptr<upstream_t>& /* upstream */) {
+            impl.lock()->close();
+
+            // Return an empty protocol dispatch.
+            return std::shared_ptr<dispatch_t>();
+        }
+
+    private:
+        const std::weak_ptr<streaming_service_t> impl;
+    };
+
+    streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& downstream_):
+        implements<tag>(context, name),
+        downstream(downstream_)
+    { }
+
 private:
     void
     write(const std::string& chunk) {
@@ -87,58 +166,24 @@ private:
     close() {
         downstream->close();
     }
-
-public:
-    typedef io::protocol<io::event_traits<io::app::enqueue>::transition_type>::type protocol;
-
-    struct write_slot_t:
-        public basic_slot<protocol::chunk>
-    {
-        write_slot_t(const std::shared_ptr<streaming_service_t>& self_):
-            self(self_)
-        { }
-
-        virtual
-        std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
-            auto service = self.lock();
-
-            io::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
-                boost::bind(&streaming_service_t::write, service.get(), boost::arg<1>()),
-                unpacked
-            );
-
-            return service;
-        }
-
-    private:
-        const std::weak_ptr<streaming_service_t> self;
-    };
-
-    streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& downstream_):
-        implements<io::event_traits<io::app::enqueue>::transition_type>(context, name),
-        downstream(downstream_)
-    {
-        using namespace std::placeholders;
-
-        on<protocol::error>(std::bind(&streaming_service_t::error, this, _1, _2));
-        on<protocol::choke>(std::bind(&streaming_service_t::close, this));
-    }
 };
 
 class app_service_t:
     public implements<io::app_tag>
 {
     context_t& context;
-    app_t&     app;
+    app_t& app;
 
 private:
-    struct stream_adapter_t: public api::stream_t {
-        stream_adapter_t(const std::shared_ptr<upstream_t>& upstream_):
+    struct engine_stream_adapter_t:
+        public api::stream_t
+    {
+        engine_stream_adapter_t(const std::shared_ptr<upstream_t>& upstream_):
             upstream(upstream_)
         { }
 
-        typedef io::protocol<io::event_traits<io::app::enqueue>::drain_type>::type protocol;
+        typedef io::event_traits<io::app::enqueue>::drain_type tag;
+        typedef io::protocol<tag>::type protocol;
 
         virtual
         void
@@ -187,16 +232,18 @@ private:
         api::stream_ptr_t downstream;
 
         if(tag.empty()) {
-            downstream = app.enqueue(api::event_t(event), std::make_shared<stream_adapter_t>(upstream));
+            downstream = app.enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream));
         } else {
-            downstream = app.enqueue(api::event_t(event), std::make_shared<stream_adapter_t>(upstream), tag);
+            downstream = app.enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
         }
 
         auto service = std::make_shared<streaming_service_t>(context, name(), downstream);
 
-        service->on<streaming_service_t::protocol::chunk>(
-            std::make_shared<streaming_service_t::write_slot_t>(service)
-        );
+        typedef streaming_service_t::protocol protocol;
+
+        service->on<protocol::chunk>(std::make_shared<streaming_service_t::write_slot_t>(service));
+        service->on<protocol::error>(std::make_shared<streaming_service_t::error_slot_t>(service));
+        service->on<protocol::choke>(std::make_shared<streaming_service_t::close_slot_t>(service));
 
         return service;
     }

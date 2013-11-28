@@ -45,7 +45,7 @@ dispatch_t::invoke(const io::message_t& message, const std::shared_ptr<upstream_
 
     if(lb == ub) {
         // TODO: COCAINE-82 adds a 'client' error category.
-        throw cocaine::error_t("unknown type %d message", message.id());
+        throw cocaine::error_t("unbound type %d message", message.id());
     }
 
     // NOTE: The slot pointer is copied here so that the handling code could unregister the slot via
@@ -60,7 +60,7 @@ dispatch_t::invoke(const io::message_t& message, const std::shared_ptr<upstream_
         // TODO: COCAINE-82 adds a 'server' error category.
         // This happens only when the underlying slot has miserably failed to manage its exceptions.
         // In such case, the client is disconnected to prevent any further damage.
-        throw cocaine::error_t("unable to process message '%s' - %s", slot->name(), e.what());
+        throw cocaine::error_t("unable to process type %d message - %s", message.id(), e.what());
     }
 }
 

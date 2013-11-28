@@ -52,8 +52,8 @@ struct frozen {
         tuple(std::forward<Args>(args)...)
     { }
 
-    // NOTE: If the event cannot be sent right away, simply move the event arguments to a temporary
-    // storage and wait for the upstream to be attached.
+    // NOTE: If the message cannot be sent right away, then the message arguments are placed into a
+    // temporary storage until the upstream is attached.
     typename tuple::fold<typename event_traits<Event>::tuple_type>::type tuple;
 };
 
@@ -72,8 +72,8 @@ struct frozen_visitor_t:
 
     template<class Event>
     void
-    operator()(const frozen<Event>& event) const {
-        upstream->send<Event>(event.tuple);
+    operator()(const frozen<Event>& frozen) const {
+        upstream->send<Event>(frozen.tuple);
     }
 
 private:
@@ -104,7 +104,7 @@ public:
     append(Args&&... args) {
         static_assert(
             std::is_same<typename Event::tag, Tag>::value,
-            "event protocol is not supported by the queue"
+            "message protocol is not compatible with this message queue"
         );
 
         if(!upstream) {

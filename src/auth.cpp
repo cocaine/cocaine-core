@@ -98,9 +98,7 @@ auth_t::~auth_t() {
 }
 
 /*
-std::string auth_t::sign(const std::string& message,
-                         const std::string& username) const
-{
+std::string auth_t::sign(const std::string& message, const std::string& username) const {
     key_map_t::const_iterator it = m_private_keys.find(username);
 
     if(it == m_private_keys.end()) {

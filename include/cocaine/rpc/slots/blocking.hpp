@@ -60,44 +60,7 @@ struct blocking_slot:
     }
 };
 
-// Blocking slot specialization for void functions and void drain protocols
-
-namespace aux {
-
-template<class Protocol>
-struct blocking_slot_impl {
-    template<class F>
-    static inline
-    void
-    call(const F& callable, const std::shared_ptr<upstream_t>& upstream) {
-        try {
-            callable();
-
-            // This is needed anyway so that service clients could detect operation completion.
-            upstream->send<typename Protocol::choke>();
-        } catch(const std::system_error& e) {
-            upstream->send<typename Protocol::error>(e.code().value(), std::string(e.code().message()));
-        } catch(const std::exception& e) {
-            upstream->send<typename Protocol::error>(invocation_error, std::string(e.what()));
-        }
-    }
-};
-
-template<>
-struct blocking_slot_impl<void> {
-    template<class F>
-    static inline
-    void
-    call(const F& callable, const std::shared_ptr<upstream_t>& /* upstream */) {
-        try {
-            callable();
-        } catch(const std::exception& e) {
-            throw cocaine::error_t("error while calling a terminal slot - %s", e.what());
-        }
-    }
-};
-
-} // namespace aux
+// Blocking slot specialization for void functions
 
 template<class Event>
 struct blocking_slot<Event, void>:
@@ -115,7 +78,16 @@ struct blocking_slot<Event, void>:
     virtual
     std::shared_ptr<dispatch_t>
     operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
-        aux::blocking_slot_impl<protocol>::call(std::bind(&parent_type::call, this, unpacked), upstream);
+        try {
+            this->call(unpacked);
+
+            // This is needed anyway so that service clients could detect operation completion.
+            upstream->send<typename protocol::choke>();
+        } catch(const std::system_error& e) {
+            upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
+        } catch(const std::exception& e) {
+            upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
+        }
 
         // Return an empty protocol dispatch.
         return std::shared_ptr<dispatch_t>();
