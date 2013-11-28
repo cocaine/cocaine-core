@@ -43,7 +43,7 @@ struct result_of_impl<streaming_tag<T>> {
 };
 
 template<>
-struct result_of_impl<void> {
+struct result_of_impl<streaming_tag<void>> {
     typedef void type;
 };
 
