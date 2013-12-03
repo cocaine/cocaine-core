@@ -41,14 +41,13 @@ namespace mpl = boost::mpl;
 
 template<class It, class End>
 struct traverse_impl {
+    typedef typename mpl::deref<It>::type message_type;
+    typedef event_traits<message_type> traits_type;
+
     static inline
     void
     apply(dispatch_graph_t& object) {
-        typedef typename mpl::deref<It>::type message_type;
-        typedef event_traits<message_type> traits_type;
-
-        object[traits_type::id] = std::make_tuple(
-            message_type::alias(),
+        object[traits_type::id] = std::make_tuple(message_type::alias(),
             std::is_same<typename traits_type::transition_type, typename message_type::tag>::value
               ? boost::none
               : traverse<typename traits_type::transition_type>()
