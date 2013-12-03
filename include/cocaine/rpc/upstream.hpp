@@ -76,6 +76,51 @@ upstream_t::send(Args&&... args) {
     }
 }
 
+template<class Tag>
+class upstream {
+public:
+    upstream(const std::shared_ptr<upstream_t>& stream) :
+        m_stream(stream)
+    {
+        // Empty.
+    }
+
+    template<class Event, class... Args>
+    typename std::enable_if<
+        std::is_same<typename Event::tag, Tag>::value &&
+        !std::is_same<typename io::event_traits<Event>::transition_type, void>::value &&
+        !std::is_same<typename io::event_traits<Event>::transition_type, io::recursive_tag>::value,
+        upstream<typename io::event_traits<Event>::transition_type>
+    >::type
+    send(Args&&... args) {
+        m_stream->send<Event>(std::forward<Args>(args)...);
+        return upstream<typename io::event_traits<Event>::transition_type>(m_stream);
+    }
+
+    template<class Event, class... Args>
+    typename std::enable_if<
+        std::is_same<typename Event::tag, Tag>::value &&
+        std::is_same<typename io::event_traits<Event>::transition_type, void>::value
+    >::type
+    send(Args&&... args) {
+        m_stream->send<Event>(std::forward<Args>(args)...);
+    }
+
+    template<class Event, class... Args>
+    typename std::enable_if<
+        std::is_same<typename Event::tag, Tag>::value &&
+        !std::is_same<typename io::event_traits<Event>::transition_type, io::recursive_tag>::value,
+        upstream<Tag>
+    >::type
+    send(Args&&... args) {
+        m_stream->send<Event>(std::forward<Args>(args)...);
+        return *this;
+    }
+
+private:
+    std::shared_ptr<upstream_t> m_stream;
+};
+
 } // namespace cocaine
 
 #endif
