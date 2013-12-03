@@ -37,8 +37,6 @@ struct optional_with_default;
 
 // Protocol tags
 
-struct recursive_tag;
-
 template<class T>
 struct streaming_tag;
 
