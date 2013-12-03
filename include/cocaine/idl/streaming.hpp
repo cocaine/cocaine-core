@@ -32,7 +32,7 @@ struct streaming {
 
 struct chunk {
     typedef streaming_tag<T> tag;
-    typedef recursive_tag    transition_type;
+    typedef streaming_tag<T> transition_type;
 
     static
     const char*

@@ -49,7 +49,9 @@ struct traverse_impl {
 
         object[traits_type::id] = std::make_tuple(
             message_type::alias(),
-            traverse<typename traits_type::transition_type>()
+            std::is_same<typename traits_type::transition_type, typename message_type::tag>::value
+              ? boost::none
+              : traverse<typename traits_type::transition_type>()
         );
 
         traverse_impl<typename mpl::next<It>::type, End>::apply(object);
@@ -79,13 +81,6 @@ traverse() -> boost::optional<dispatch_graph_t> {
     >::apply(result);
 
     return result;
-}
-
-template<>
-inline
-auto
-traverse<recursive_tag>() -> boost::optional<dispatch_graph_t> {
-    return boost::none;
 }
 
 }} // namespace cocaine::io
