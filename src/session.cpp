@@ -85,7 +85,7 @@ session_t::invoke(const message_t& message) {
 std::shared_ptr<upstream_t>
 session_t::attach(uint64_t id, const std::shared_ptr<io::dispatch_t>& dispatch) {
     auto upstream = std::make_shared<upstream_t>(shared_from_this(), id);
-    channels.synchronize()->insert({id, std::make_shared<channel_t>(dispatch, upstream)});
+    channels->insert({id, std::make_shared<channel_t>(dispatch, upstream)});
     return upstream;
 }
 
