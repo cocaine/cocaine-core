@@ -26,6 +26,10 @@
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/slot.hpp"
 
+#include "cocaine/traits/enum.hpp"
+
+#include "cocaine/tuple.hpp"
+
 #include <boost/function_types/function_type.hpp>
 
 #include <boost/mpl/lambda.hpp>

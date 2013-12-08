@@ -22,7 +22,9 @@
 #define COCAINE_DISPATCH_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/locked_ptr.hpp"
 
+#include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/message.hpp"
 
 #include "cocaine/rpc/slots/blocking.hpp"
@@ -31,11 +33,9 @@
 
 #include "cocaine/rpc/traversal.hpp"
 
-#include "cocaine/traits.hpp"
-#include "cocaine/traits/enum.hpp"
+#include "cocaine/traits/tuple.hpp"
 
 #include <boost/mpl/apply.hpp>
-#include <boost/mpl/count_if.hpp>
 #include <boost/mpl/transform.hpp>
 #include <boost/mpl/lambda.hpp>
 

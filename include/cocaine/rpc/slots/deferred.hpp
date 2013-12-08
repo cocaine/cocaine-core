@@ -21,10 +21,10 @@
 #ifndef COCAINE_IO_DEFERRED_SLOT_HPP
 #define COCAINE_IO_DEFERRED_SLOT_HPP
 
+#include "cocaine/rpc/slots/function.hpp"
+
 #include "cocaine/rpc/queue.hpp"
 #include "cocaine/rpc/result_of.hpp"
-
-#include "cocaine/rpc/slots/function.hpp"
 
 namespace cocaine { namespace io {
 

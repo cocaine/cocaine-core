@@ -25,6 +25,8 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
+#include "cocaine/rpc/session.hpp"
+
 #if defined(__linux__)
     #include <sys/prctl.h>
 #endif

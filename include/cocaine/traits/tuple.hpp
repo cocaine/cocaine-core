@@ -25,7 +25,7 @@
 
 #include "cocaine/rpc/tags.hpp"
 
-#include "cocaine/tuple.hpp"
+#include <tuple>
 
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/count_if.hpp>
@@ -36,7 +36,7 @@
 namespace cocaine { namespace io {
 
 // NOTE: The following structure is a template specialization for type lists, to support validating
-// sequence packing and unpacking, which can be used as follows:
+// sequence packing and unpacking with optional elements, which can be used as follows:
 //
 // type_traits<Sequence>::pack(buffer, std::forward<Args>(args)...);
 // type_traits<Sequence>::unpack(object, std::forward<Args>(args)...);
@@ -45,9 +45,6 @@ namespace cocaine { namespace io {
 //
 // type_traits<Sequence>::pack(buffer, std::tuple<Args...> tuple);
 // type_traits<Sequence>::unpack(object, std::tuple<Args...> tuple);
-//
-// It might be a better idea to do that via the type_traits<Args...> template, but such kind of
-// template argument pack expanding is not yet supported by GCC 4.4, which we use on Ubuntu Lucid.
 
 namespace aux {
 
@@ -56,18 +53,18 @@ struct tuple_type_traits_impl;
 
 template<size_t... Indices>
 struct tuple_type_traits_impl<index_sequence<Indices...>> {
-    template<class TypeList, class Stream, class Tuple>
+    template<class Sequence, class Stream, class Tuple>
     static inline
     void
     pack(msgpack::packer<Stream>& target, const Tuple& source) {
-        type_traits<TypeList>::pack(target, std::get<Indices>(source)...);
+        type_traits<Sequence>::pack(target, std::get<Indices>(source)...);
     }
 
-    template<class TypeList, class Tuple>
+    template<class Sequence, class Tuple>
     static inline
     void
     unpack(const msgpack::object& source, Tuple& target) {
-        type_traits<TypeList>::unpack(source, std::get<Indices>(target)...);
+        type_traits<Sequence>::unpack(source, std::get<Indices>(target)...);
     }
 };
 

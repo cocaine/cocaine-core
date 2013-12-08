@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_MESSAGE_HPP
 #define COCAINE_IO_MESSAGE_HPP
 
-#include "cocaine/common.hpp"
+#include "cocaine/rpc/protocol.hpp"
 
 #include "cocaine/traits/tuple.hpp"
 
