@@ -83,14 +83,16 @@ public:
             impl(impl_)
         { }
 
+        typedef basic_slot<protocol::chunk>::tuple_type tuple_type;
+
         virtual
         std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
+        operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& /* upstream */) {
             auto service = impl.lock();
 
-            io::invoke<event_traits<rpc::chunk>::tuple_type>::apply(
+            tuple::invoke(
                 boost::bind(&streaming_service_t::write, service.get(), boost::arg<1>()),
-                unpacked
+                args
             );
 
             return service;
@@ -107,14 +109,16 @@ public:
             impl(impl_)
         { }
 
+        typedef basic_slot<protocol::error>::tuple_type tuple_type;
+
         virtual
         std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
+        operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& /* upstream */) {
             auto service = impl.lock();
 
-            io::invoke<event_traits<rpc::error>::tuple_type>::apply(
+            tuple::invoke(
                 boost::bind(&streaming_service_t::error, service.get(), boost::arg<1>(), boost::arg<2>()),
-                unpacked
+                args
             );
 
             // Return an empty protocol dispatch.
@@ -126,15 +130,17 @@ public:
     };
 
     struct close_slot_t:
-        public basic_slot<protocol::chunk>
+        public basic_slot<protocol::choke>
     {
         close_slot_t(const std::shared_ptr<streaming_service_t>& impl_):
             impl(impl_)
         { }
 
+        typedef basic_slot<protocol::choke>::tuple_type tuple_type;
+
         virtual
         std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& /* unpacked */, const std::shared_ptr<upstream_t>& /* upstream */) {
+        operator()(const tuple_type& /* args */, const std::shared_ptr<upstream_t>& /* upstream */) {
             impl.lock()->close();
 
             // Return an empty protocol dispatch.
@@ -214,12 +220,14 @@ private:
             self(self_)
         { }
 
+        typedef basic_slot<io::app::enqueue>::tuple_type tuple_type;
+
         virtual
         std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
-            return io::invoke<event_traits<io::app::enqueue>::tuple_type>::apply(
+        operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
+            return tuple::invoke(
                 boost::bind(&app_service_t::enqueue, &self, upstream, boost::arg<1>(), boost::arg<2>()),
-                unpacked
+                args
             );
         }
 

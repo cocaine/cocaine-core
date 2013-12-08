@@ -35,9 +35,9 @@ template<class Tag>
 auto
 traverse() -> boost::optional<dispatch_graph_t>;
 
-namespace aux {
-
 namespace mpl = boost::mpl;
+
+namespace aux {
 
 template<class It, class End>
 struct traverse_impl {

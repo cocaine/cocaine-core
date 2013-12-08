@@ -45,14 +45,14 @@ struct type_traits<
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer, const T& source) {
-        packer << static_cast<base_type>(source);
+    pack(msgpack::packer<Stream>& target, const T& source) {
+        target << static_cast<base_type>(source);
     }
 
     static inline
     void
-    unpack(const msgpack::object& unpacked, T& target) {
-        target = static_cast<T>(unpacked.as<base_type>());
+    unpack(const msgpack::object& source, T& target) {
+        target = static_cast<T>(source.as<base_type>());
     }
 };
 

@@ -39,9 +39,9 @@
 
 namespace cocaine { namespace io {
 
-// Message queue
-
 template<class Tag> class message_queue;
+
+namespace mpl = boost::mpl;
 
 namespace aux {
 
@@ -84,12 +84,12 @@ private:
 
 template<class Tag>
 class message_queue {
-    typedef typename boost::mpl::transform<
+    typedef typename mpl::transform<
         typename protocol<Tag>::messages,
-        typename boost::mpl::lambda<aux::frozen<boost::mpl::arg<1>>>
-    >::type wrapped_type;
+        typename mpl::lambda<aux::frozen<mpl::_1>>
+    >::type frozen_types;
 
-    typedef typename boost::make_variant_over<wrapped_type>::type variant_type;
+    typedef typename boost::make_variant_over<frozen_types>::type variant_type;
 
     // Operation log.
     std::deque<variant_type> operations;

@@ -25,8 +25,6 @@
 
 namespace cocaine { namespace io {
 
-// Blocking slot
-
 template<
     class Event,
     class R = typename result_of<Event>::type
@@ -43,11 +41,13 @@ struct blocking_slot:
         parent_type(callable)
     { }
 
+    typedef typename parent_type::tuple_type tuple_type;
+
     virtual
     std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
+    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
         try {
-            upstream->send<typename protocol::chunk>(this->call(unpacked));
+            upstream->send<typename protocol::chunk>(this->call(args));
             upstream->send<typename protocol::choke>();
         } catch(const std::system_error& e) {
             upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
@@ -75,11 +75,13 @@ struct blocking_slot<Event, void>:
         parent_type(callable)
     { }
 
+    typedef typename parent_type::tuple_type tuple_type;
+
     virtual
     std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
+    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
         try {
-            this->call(unpacked);
+            this->call(args);
 
             // This is needed anyway so that service clients could detect operation completion.
             upstream->send<typename protocol::choke>();

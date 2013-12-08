@@ -21,6 +21,8 @@
 #ifndef COCAINE_TUPLE_HPP
 #define COCAINE_TUPLE_HPP
 
+#include "cocaine/utility.hpp"
+
 #include <tuple>
 
 #include <boost/mpl/begin.hpp>
@@ -56,6 +58,19 @@ struct fold_impl<End, End, Args...> {
     typedef std::tuple<Args...> type;
 };
 
+template<class IndexSequence>
+struct invoke_impl;
+
+template<size_t... Indices>
+struct invoke_impl<index_sequence<Indices...>> {
+    template<class F, class T>
+    static inline
+    typename result_of<F>::type
+    apply(const F& callable, const T& args) {
+        return callable(std::get<Indices>(args)...);
+    }
+};
+
 } // namespace aux
 
 template<typename TypeList>
@@ -65,6 +80,17 @@ struct fold {
         typename boost::mpl::end<TypeList>::type
     >::type type;
 };
+
+// Function invocation with arguments provided as a tuple
+
+template<class F, typename... Args>
+inline
+typename result_of<F>::type
+invoke(const F& callable, const std::tuple<Args...>& args) {
+    return aux::invoke_impl<
+        typename make_index_sequence<sizeof...(Args)>::type
+    >::apply(callable, args);
+}
 
 }} // namespace cocaine::tuple
 
