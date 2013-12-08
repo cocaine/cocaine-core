@@ -23,6 +23,8 @@
 
 #include "cocaine/common.hpp"
 
+#include <system_error>
+
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/thread/thread.hpp>
 
