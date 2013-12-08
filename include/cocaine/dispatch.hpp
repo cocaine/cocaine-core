@@ -240,7 +240,12 @@ template<class Tag>
 template<class Event, class F>
 void
 implements<Tag>::on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type*) {
-    on<Event>(std::make_shared<typename aux::select<typename result_of<F>::type, Event>::type>(callable));
+    typedef typename aux::select<
+        typename result_of<F>::type,
+        Event
+    >::type slot_type;
+
+    on<Event>(std::make_shared<slot_type>(callable));
 }
 
 template<class Tag>
