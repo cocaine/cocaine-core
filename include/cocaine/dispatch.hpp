@@ -35,7 +35,6 @@
 
 #include "cocaine/traits/tuple.hpp"
 
-#include <boost/mpl/apply.hpp>
 #include <boost/mpl/transform.hpp>
 #include <boost/mpl/lambda.hpp>
 
@@ -108,11 +107,13 @@ class implements:
 
     // Slot traits
 
-    template<class T, class Event> struct is_slot:
+    template<class T, class Event>
+    struct is_slot:
         public std::false_type
     { };
 
-    template<class T, class Event> struct is_slot<std::shared_ptr<T>, Event>:
+    template<class T, class Event>
+    struct is_slot<std::shared_ptr<T>, Event>:
         public std::is_base_of<io::basic_slot<Event>, T>
     { };
 
@@ -125,6 +126,10 @@ public:
     virtual
     std::shared_ptr<io::dispatch_t>
     invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const;
+
+    template<class Visitor>
+    std::shared_ptr<io::dispatch_t>
+    invoke_impl(int id, Visitor&& visitor) const;
 
     virtual
     auto
@@ -181,22 +186,19 @@ private:
 
 // Slot selection
 
-template<class R> struct select {
-    template<class Event> struct apply {
-        typedef io::blocking_slot<Event> type;
-    };
+template<class R, class Event>
+struct select {
+    typedef io::blocking_slot<Event> type;
 };
 
-template<class R> struct select<deferred<R>> {
-    template<class Event> struct apply {
-        typedef io::deferred_slot<deferred, Event> type;
-    };
+template<class R, class Event>
+struct select<deferred<R>, Event> {
+    typedef io::deferred_slot<deferred, Event> type;
 };
 
-template<class R> struct select<streamed<R>> {
-    template<class Event> struct apply {
-        typedef io::deferred_slot<streamed, Event> type;
-    };
+template<class R, class Event>
+struct select<streamed<R>, Event> {
+    typedef io::deferred_slot<streamed, Event> type;
 };
 
 } // namespace aux
@@ -204,13 +206,20 @@ template<class R> struct select<streamed<R>> {
 template<class Tag>
 std::shared_ptr<io::dispatch_t>
 implements<Tag>::invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const {
+    return invoke_impl(message.id(), aux::invocation_visitor_t(message.args(), upstream));
+}
+
+template<class Tag>
+template<class Visitor>
+std::shared_ptr<io::dispatch_t>
+implements<Tag>::invoke_impl(int id, Visitor&& visitor) const {
     typename slot_map_t::const_iterator lb, ub;
 
-    std::tie(lb, ub) = m_slots->equal_range(message.id());
+    std::tie(lb, ub) = m_slots->equal_range(id);
 
     if(lb == ub) {
         // TODO: COCAINE-82 adds a 'client' error category.
-        throw cocaine::error_t("unbound type %d message", message.id());
+        throw cocaine::error_t("unbound type %d slot", id);
     }
 
     // NOTE: The slot pointer is copied here so that the handling code could unregister the slot via
@@ -218,12 +227,12 @@ implements<Tag>::invoke(const io::message_t& message, const std::shared_ptr<upst
     typename slot_map_t::mapped_type slot = lb->second;
 
     try {
-        return boost::apply_visitor(aux::invocation_visitor_t(message.args(), upstream), slot);
+        return boost::apply_visitor(visitor, slot);
     } catch(const std::exception& e) {
         // TODO: COCAINE-82 adds a 'server' error category.
         // This happens only when the underlying slot has miserably failed to manage its exceptions.
         // In such case, the client is disconnected to prevent any further damage.
-        throw cocaine::error_t("unable to process type %d message - %s", message.id(), e.what());
+        throw cocaine::error_t("unable to invoke type %d slot - %s", id, e.what());
     }
 }
 
@@ -231,22 +240,15 @@ template<class Tag>
 template<class Event, class F>
 void
 implements<Tag>::on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type*) {
-    typedef typename mpl::apply<
-        aux::select<typename result_of<F>::type>,
-        Event
-    >::type slot_type;
-
-    on<Event>(std::make_shared<slot_type>(callable));
+    on<Event>(std::make_shared<typename aux::select<typename result_of<F>::type, Event>::type>(callable));
 }
 
 template<class Tag>
 template<class Event>
 void
 implements<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
-    const int id = io::event_traits<Event>::id;
-
-    if(!m_slots->insert(std::make_pair(id, ptr)).second) {
-        throw cocaine::error_t("duplicate slot %d: %s", id, ptr->name());
+    if(!m_slots->insert(std::make_pair(io::event_traits<Event>::id, ptr)).second) {
+        throw cocaine::error_t("duplicate slot %d: %s", io::event_traits<Event>::id, ptr->name());
     }
 }
 
@@ -254,10 +256,8 @@ template<class Tag>
 template<class Event>
 void
 implements<Tag>::forget() {
-    const int id = io::event_traits<Event>::id;
-
-    if(!m_slots->erase(id)) {
-        throw cocaine::error_t("slot %d does not exist", id);
+    if(!m_slots->erase(io::event_traits<Event>::id)) {
+        throw cocaine::error_t("slot %d does not exist", io::event_traits<Event>::id);
     }
 }
 
