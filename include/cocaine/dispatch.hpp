@@ -66,11 +66,13 @@ public:
     virtual
    ~dispatch_t();
 
-public:
+    // Network I/O-triggered invocation support
+
     virtual
     std::shared_ptr<dispatch_t>
     invoke(const message_t& message, const std::shared_ptr<upstream_t>& upstream) const = 0;
 
+public:
     virtual
     auto
     protocol() const -> const dispatch_graph_t& = 0;
@@ -127,10 +129,6 @@ public:
     std::shared_ptr<io::dispatch_t>
     invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const;
 
-    template<class Visitor>
-    std::shared_ptr<io::dispatch_t>
-    invoke_impl(int id, Visitor&& visitor) const;
-
     virtual
     auto
     protocol() const -> const io::dispatch_graph_t& {
@@ -144,6 +142,10 @@ public:
     }
 
 public:
+    template<class Visitor>
+    auto
+    invoke(int id, Visitor&& visitor) const -> typename Visitor::result_type;
+
     template<class Event, class F>
     void
     on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type* = nullptr);
@@ -206,13 +208,13 @@ struct select<streamed<R>, Event> {
 template<class Tag>
 std::shared_ptr<io::dispatch_t>
 implements<Tag>::invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const {
-    return invoke_impl(message.id(), aux::invocation_visitor_t(message.args(), upstream));
+    return invoke(message.id(), aux::invocation_visitor_t(message.args(), upstream));
 }
 
 template<class Tag>
 template<class Visitor>
-std::shared_ptr<io::dispatch_t>
-implements<Tag>::invoke_impl(int id, Visitor&& visitor) const {
+auto
+implements<Tag>::invoke(int id, Visitor&& visitor) const -> typename Visitor::result_type {
     typename slot_map_t::const_iterator lb, ub;
 
     std::tie(lb, ub) = m_slots->equal_range(id);
