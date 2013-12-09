@@ -130,10 +130,6 @@ public:
         graph(io::traverse<Tag>().get())
     { }
 
-    template<class Visitor>
-    typename Visitor::result_type
-    invoke(int id, Visitor&& visitor) const;
-
     template<class Event, class F>
     void
     on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type* = nullptr);
@@ -141,6 +137,10 @@ public:
     template<class Event>
     void
     on(const std::shared_ptr<io::basic_slot<Event>>& ptr);
+
+    template<class Visitor>
+    typename Visitor::result_type
+    invoke(int id, Visitor&& visitor) const;
 
     template<class Event>
     void
@@ -213,6 +213,27 @@ private:
 } // namespace aux
 
 template<class Tag>
+template<class Event, class F>
+void
+implements<Tag>::on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type*) {
+    typedef typename aux::select<
+        typename result_of<F>::type,
+        Event
+    >::type slot_type;
+
+    on<Event>(std::make_shared<slot_type>(callable));
+}
+
+template<class Tag>
+template<class Event>
+void
+implements<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
+    if(!m_slots->insert(std::make_pair(io::event_traits<Event>::id, ptr)).second) {
+        throw cocaine::error_t("duplicate slot %d: %s", io::event_traits<Event>::id, ptr->name());
+    }
+}
+
+template<class Tag>
 template<class Visitor>
 typename Visitor::result_type
 implements<Tag>::invoke(int id, Visitor&& visitor) const {
@@ -236,27 +257,6 @@ implements<Tag>::invoke(int id, Visitor&& visitor) const {
         // This happens only when the underlying slot has miserably failed to manage its exceptions.
         // In such case, the client is disconnected to prevent any further damage.
         throw cocaine::error_t("unable to invoke type %d slot - %s", id, e.what());
-    }
-}
-
-template<class Tag>
-template<class Event, class F>
-void
-implements<Tag>::on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type*) {
-    typedef typename aux::select<
-        typename result_of<F>::type,
-        Event
-    >::type slot_type;
-
-    on<Event>(std::make_shared<slot_type>(callable));
-}
-
-template<class Tag>
-template<class Event>
-void
-implements<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
-    if(!m_slots->insert(std::make_pair(io::event_traits<Event>::id, ptr)).second) {
-        throw cocaine::error_t("duplicate slot %d: %s", io::event_traits<Event>::id, ptr->name());
     }
 }
 
