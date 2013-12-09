@@ -229,7 +229,7 @@ template<class Event>
 void
 implements<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
     if(!m_slots->insert(std::make_pair(io::event_traits<Event>::id, ptr)).second) {
-        throw cocaine::error_t("duplicate slot %d: %s", io::event_traits<Event>::id, ptr->name());
+        throw cocaine::error_t("duplicate type %d slot: %s", io::event_traits<Event>::id, ptr->name());
     }
 }
 
@@ -265,7 +265,7 @@ template<class Event>
 void
 implements<Tag>::forget() {
     if(!m_slots->erase(io::event_traits<Event>::id)) {
-        throw cocaine::error_t("slot %d does not exist", io::event_traits<Event>::id);
+        throw cocaine::error_t("type %d slot does not exist", io::event_traits<Event>::id);
     }
 }
 
