@@ -124,7 +124,7 @@ struct type_traits<
     typename std::enable_if<boost::mpl::is_sequence<T>::value>::type
 >
 {
-    enum {
+    enum constants: unsigned {
 
     minimal = boost::mpl::count_if<
         T,
@@ -157,6 +157,10 @@ public:
 
         traits_type::template pack<T>(target, source);
     }
+
+    #if defined(__GNUC__) && !defined(HAVE_GCC46)
+        #pragma GCC diagnostic ignored "-Wtype-limits"
+    #endif
 
     template<typename... Args>
     static inline
