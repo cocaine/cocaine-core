@@ -35,7 +35,7 @@ dispatch_t::~dispatch_t() {
     // Empty.
 }
 
-std::string
-dispatch_t::name() const {
+auto
+dispatch_t::name() const -> std::string {
     return m_name;
 }

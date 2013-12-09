@@ -66,13 +66,14 @@ public:
     virtual
    ~dispatch_t();
 
-    // Network I/O-triggered invocation support
+    auto
+    name() const -> std::string;
 
+public:
     virtual
     std::shared_ptr<dispatch_t>
     invoke(const message_t& message, const std::shared_ptr<upstream_t>& upstream) const = 0;
 
-public:
     virtual
     auto
     protocol() const -> const dispatch_graph_t& = 0;
@@ -80,9 +81,6 @@ public:
     virtual
     int
     versions() const = 0;
-
-    std::string
-    name() const;
 };
 
 } // namespace io
@@ -95,9 +93,16 @@ class implements:
 {
     const io::dispatch_graph_t graph;
 
+    // Slot construction
+
+    template<class Event>
+    struct make_slot_over {
+        typedef std::shared_ptr<io::basic_slot<Event>> type;
+    };
+
     typedef typename mpl::transform<
         typename io::protocol<Tag>::messages,
-        typename mpl::lambda<std::shared_ptr<io::basic_slot<mpl::_1>>>::type
+        typename mpl::lambda<make_slot_over<mpl::_1>>::type
     >::type slot_types;
 
     typedef std::map<
@@ -125,6 +130,23 @@ public:
         graph(io::traverse<Tag>().get())
     { }
 
+    template<class Visitor>
+    typename Visitor::result_type
+    invoke(int id, Visitor&& visitor) const;
+
+    template<class Event, class F>
+    void
+    on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type* = nullptr);
+
+    template<class Event>
+    void
+    on(const std::shared_ptr<io::basic_slot<Event>>& ptr);
+
+    template<class Event>
+    void
+    forget();
+
+public:
     virtual
     std::shared_ptr<io::dispatch_t>
     invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const;
@@ -140,26 +162,28 @@ public:
     versions() const {
         return io::protocol<Tag>::version::value;
     }
-
-public:
-    template<class Visitor>
-    auto
-    invoke(int id, Visitor&& visitor) const -> typename Visitor::result_type;
-
-    template<class Event, class F>
-    void
-    on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type* = nullptr);
-
-    template<class Event>
-    void
-    on(const std::shared_ptr<io::basic_slot<Event>>& ptr);
-
-    template<class Event>
-    void
-    forget();
 };
 
 namespace aux {
+
+// Slot selection
+
+template<class R, class Event>
+struct select {
+    typedef io::blocking_slot<Event> type;
+};
+
+template<class R, class Event>
+struct select<deferred<R>, Event> {
+    typedef io::deferred_slot<deferred, Event> type;
+};
+
+template<class R, class Event>
+struct select<streamed<R>, Event> {
+    typedef io::deferred_slot<streamed, Event> type;
+};
+
+// Slot invocation with arguments provided as a MessagePack object
 
 struct invocation_visitor_t:
     public boost::static_visitor<std::shared_ptr<io::dispatch_t>>
@@ -186,35 +210,12 @@ private:
     const std::shared_ptr<upstream_t>& upstream;
 };
 
-// Slot selection
-
-template<class R, class Event>
-struct select {
-    typedef io::blocking_slot<Event> type;
-};
-
-template<class R, class Event>
-struct select<deferred<R>, Event> {
-    typedef io::deferred_slot<deferred, Event> type;
-};
-
-template<class R, class Event>
-struct select<streamed<R>, Event> {
-    typedef io::deferred_slot<streamed, Event> type;
-};
-
 } // namespace aux
 
 template<class Tag>
-std::shared_ptr<io::dispatch_t>
-implements<Tag>::invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const {
-    return invoke(message.id(), aux::invocation_visitor_t(message.args(), upstream));
-}
-
-template<class Tag>
 template<class Visitor>
-auto
-implements<Tag>::invoke(int id, Visitor&& visitor) const -> typename Visitor::result_type {
+typename Visitor::result_type
+implements<Tag>::invoke(int id, Visitor&& visitor) const {
     typename slot_map_t::const_iterator lb, ub;
 
     std::tie(lb, ub) = m_slots->equal_range(id);
@@ -266,6 +267,12 @@ implements<Tag>::forget() {
     if(!m_slots->erase(io::event_traits<Event>::id)) {
         throw cocaine::error_t("slot %d does not exist", io::event_traits<Event>::id);
     }
+}
+
+template<class Tag>
+std::shared_ptr<io::dispatch_t>
+implements<Tag>::invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const {
+    return invoke(message.id(), aux::invocation_visitor_t(message.args(), upstream));
 }
 
 } // namespace cocaine
