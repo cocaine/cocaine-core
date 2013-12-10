@@ -1,3 +1,9 @@
+cocaine-core (0.11.2.1) unstable; urgency=low
+
+  * Proper logging prefix for the Process Isolate.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 10 Dec 2013 17:53:27 +0400
+
 cocaine-core (0.11.2.0) unstable; urgency=low
 
   * An ability to pick a backend for the Logging Service.
