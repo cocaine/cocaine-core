@@ -21,29 +21,41 @@
 #ifndef COCAINE_RAFT_LOG_HPP
 #define COCAINE_RAFT_LOG_HPP
 
-#include "cocaine/common.hpp"
 #include "cocaine/rpc/queue.hpp"
+
+#include <boost/variant.hpp>
+#include <boost/optional.hpp>
+
+#include <vector>
+#include <functional>
 
 namespace cocaine { namespace raft {
 
-template<class Tag>
+template<class StateMachine>
 class log_entry {
     typedef typename boost::mpl::transform<
-        typename protocol<Tag>::messages,
+        typename protocol<typename StateMachine::tag>::messages,
         typename boost::mpl::lambda<aux::frozen<boost::mpl::arg<1>>>
     >::type wrapped_type;
 
 public:
-    typedef typename boost::make_variant_over<wrapped_type>::type data_type;
+    typedef typename boost::make_variant_over<wrapped_type>::type command_type;
 
     struct nop_t {};
 
-    typedef typename boost::variant<nop_t, data_type> variant_type;
+    typedef typename boost::variant<nop_t, command_type> variant_type;
 
 public:
-    log_entry(uint64_t term, const data_type& data):
+    log_entry(uint64_t term):
         m_term(term),
-        m_data(data)
+        m_data(nop_t())
+    {
+        // Empty.
+    }
+
+    log_entry(uint64_t term, const command_type& command):
+        m_term(term),
+        m_data(command)
     {
         // Empty.
     }
@@ -53,30 +65,50 @@ public:
         return m_term;
     }
 
-    const variant_type&
-    data() const {
-        return m_data;
+    bool
+    is_command() const {
+        return boost::get<command_type>(&m_data);
+    }
+
+    const command_type&
+    get_command() const {
+        return boost::get<command_type>(m_data);
     }
 
     variant_type&
-    data() {
-        return m_data;
+    get_command() {
+        return boost::get<command_type>(m_data);
+    }
+
+    template<class Handler>
+    void
+    bind(Handler&& h) {
+        m_commit_handler = h;
+    }
+
+    void
+    notify(boost::optional<uint64_t> index) {
+        if(m_commit_handler) {
+            m_commit_handler(index);
+        }
     }
 
 private:
     uint64_t m_term;
     variant_type m_data;
+    std::function<void(boost::optional<uint64_t>)> m_commit_handler;
 };
 
-template<class Tag>
+template<class StateMachine>
 class log {
 public:
-    typedef log_entry<Tag> value_type;
+    typedef log_entry<StateMachine> value_type;
+    typedef std::vector<value_type>::const_iterator const_iterator;
 
     template<class... Args>
     void
     append(Args&&... args) {
-        m_data.emplace_back(std::forward<Args>(args));
+        m_data.emplace_back(std::forward<Args>(args)...);
     }
 
     value_type&
@@ -86,7 +118,17 @@ public:
 
     const value_type&
     at(uint64_t index) const {
-        return m_data.at(index);
+        return m_data[index];
+    }
+
+    const_iterator
+    iter(uint64_t index) const {
+        return m_data.begin() + index;
+    }
+
+    const_iterator
+    end(uint64_t index) const {
+        return m_data.end();
     }
 
     uint64_t
@@ -97,6 +139,11 @@ public:
     uint64_t
     last_term() const {
         return m_data.back().term();
+    }
+
+    void
+    truncate_suffix(uint64_t index) {
+        m_data.resize(index);
     }
 
 private:

@@ -30,8 +30,6 @@ struct raft_tag;
 
 template<class Entry>
 struct raft {
-    typedef std::pair<std::string, uint16_t> node_id_t;
-
     struct append {
         typedef raft_tag<Entry> tag;
 
@@ -47,7 +45,7 @@ struct raft {
         /* Leader's term. */
             uint64_t,
         /* Leader's id. */
-            node_id_t,
+            std::pair<std::string, uint16_t>,
         /* Index and term of log entry immediately preceding new ones. (prev_log_index, prev_log_term) */
             std::tuple<uint64_t, uint64_t>,
         /* Entries to append. */
@@ -79,7 +77,7 @@ struct raft {
         /* Candidate's term. */
             uint64_t,
         /* Candidate's id. */
-            node_id_t,
+            std::pair<std::string, uint16_t>,
         /* Index and term of candidate's last log entry. */
             std:tuple<uint64_t, uint64_t>
         > tuple_type;
