@@ -50,6 +50,11 @@ struct upstream_impl<streaming_tag<T>> {
     typedef streaming<T> type;
 };
 
+template<>
+struct upstream_impl<void> {
+    typedef void type;
+};
+
 } // namespace aux
 
 namespace mpl = boost::mpl;

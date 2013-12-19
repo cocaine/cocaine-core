@@ -28,6 +28,8 @@
 
 namespace cocaine {
 
+class upstream_t;
+
 class session_t:
     public std::enable_shared_from_this<session_t>
 {

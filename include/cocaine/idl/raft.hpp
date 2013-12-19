@@ -22,6 +22,7 @@
 #define COCAINE_RAFT_SERVICE_INTERFACE_HPP
 
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/traits/vector.hpp"
 
 namespace cocaine { namespace io {
 
@@ -79,7 +80,7 @@ struct raft {
         /* Candidate's id. */
             std::pair<std::string, uint16_t>,
         /* Index and term of candidate's last log entry. */
-            std:tuple<uint64_t, uint64_t>
+            std::tuple<uint64_t, uint64_t>
         > tuple_type;
 
         typedef stream_of<
@@ -99,8 +100,8 @@ struct protocol<raft_tag<Entry>> {
     >::type version;
 
     typedef boost::mpl::list<
-        raft<Entry>::append,
-        raft<Entry>::request_vote
+        typename raft<Entry>::append,
+        typename raft<Entry>::request_vote
     > messages;
 
     typedef raft<Entry> type;

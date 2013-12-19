@@ -22,40 +22,50 @@
 #define COCAINE_RAFT_LOG_HPP
 
 #include "cocaine/rpc/queue.hpp"
+#include "cocaine/traits/frozen.hpp"
+#include "cocaine/traits/variant.hpp"
 
-#include <boost/variant.hpp>
 #include <boost/optional.hpp>
 
 #include <vector>
 #include <functional>
 
-namespace cocaine { namespace raft {
+namespace cocaine {
+
+namespace raft {
+
+struct nop_t {
+    bool
+    operator==(const nop_t&) const {
+        return true;
+    }
+};
 
 template<class StateMachine>
 class log_entry {
+    template<class> friend struct cocaine::io::type_traits;
+
     typedef typename boost::mpl::transform<
-        typename protocol<typename StateMachine::tag>::messages,
-        typename boost::mpl::lambda<aux::frozen<boost::mpl::arg<1>>>
+        typename io::protocol<typename StateMachine::tag>::messages,
+        typename boost::mpl::lambda<io::aux::frozen<boost::mpl::arg<1>>>
     >::type wrapped_type;
 
 public:
     typedef typename boost::make_variant_over<wrapped_type>::type command_type;
-
-    struct nop_t {};
-
-    typedef typename boost::variant<nop_t, command_type> variant_type;
+    typedef typename boost::variant<nop_t, command_type> value_type;
 
 public:
-    log_entry(uint64_t term):
+    explicit
+    log_entry(uint64_t term = 0):
         m_term(term),
-        m_data(nop_t())
+        m_value(nop_t())
     {
         // Empty.
     }
 
-    log_entry(uint64_t term, const command_type& command):
+    log_entry(uint64_t term, const command_type& entry):
         m_term(term),
-        m_data(command)
+        m_value(entry)
     {
         // Empty.
     }
@@ -67,17 +77,17 @@ public:
 
     bool
     is_command() const {
-        return boost::get<command_type>(&m_data);
+        return boost::get<command_type>(&m_value);
     }
 
     const command_type&
     get_command() const {
-        return boost::get<command_type>(m_data);
+        return boost::get<command_type>(m_value);
     }
 
-    variant_type&
+    command_type&
     get_command() {
-        return boost::get<command_type>(m_data);
+        return boost::get<command_type>(m_value);
     }
 
     template<class Handler>
@@ -95,7 +105,7 @@ public:
 
 private:
     uint64_t m_term;
-    variant_type m_data;
+    value_type m_value;
     std::function<void(boost::optional<uint64_t>)> m_commit_handler;
 };
 
@@ -103,13 +113,8 @@ template<class StateMachine>
 class log {
 public:
     typedef log_entry<StateMachine> value_type;
-    typedef std::vector<value_type>::const_iterator const_iterator;
-
-    template<class... Args>
-    void
-    append(Args&&... args) {
-        m_data.emplace_back(std::forward<Args>(args)...);
-    }
+    typedef typename std::vector<value_type>::iterator iterator;
+    typedef typename std::vector<value_type>::const_iterator const_iterator;
 
     value_type&
     at(uint64_t index) {
@@ -121,13 +126,33 @@ public:
         return m_data[index];
     }
 
+    const value_type&
+    back() const {
+        return m_data.back();
+    }
+
+    value_type&
+    back() {
+        return m_data.back();
+    }
+
     const_iterator
     iter(uint64_t index) const {
         return m_data.begin() + index;
     }
 
     const_iterator
-    end(uint64_t index) const {
+    end() const {
+        return m_data.end();
+    }
+
+    iterator
+    iter(uint64_t index) {
+        return m_data.begin() + index;
+    }
+
+    iterator
+    end() {
         return m_data.end();
     }
 
@@ -141,6 +166,12 @@ public:
         return m_data.back().term();
     }
 
+    template<class... Args>
+    void
+    append(Args&&... args) {
+        m_data.emplace_back(std::forward<Args>(args)...);
+    }
+
     void
     truncate_suffix(uint64_t index) {
         m_data.resize(index);
@@ -150,6 +181,63 @@ private:
     std::vector<value_type> m_data;
 };
 
-}} // namespace cocaine::raft
+}// namespace raft
+
+namespace io {
+
+template<class StateMachine>
+struct type_traits<cocaine::raft::log_entry<StateMachine>> {
+    typedef typename cocaine::raft::log_entry<StateMachine>::value_type
+            value_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const cocaine::raft::log_entry<StateMachine>& source) {
+        target.pack_array(2);
+        target << source.term();
+        type_traits<value_type>::pack(target, source.m_value);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, cocaine::raft::log_entry<StateMachine>& target) {
+        if(source.type != msgpack::type::ARRAY ||
+           source.via.array.size != 2 ||
+           source.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER)
+        {
+            throw std::bad_cast();
+        }
+
+        target = cocaine::raft::log_entry<StateMachine>(source.via.array.ptr[0].via.u64);
+
+        type_traits<value_type>::unpack(source.via.array.ptr[1], target.m_value);
+    }
+};
+
+template<>
+struct type_traits<cocaine::raft::nop_t> {
+    typedef cocaine::raft::nop_t
+            value_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const value_type& source) {
+        target.pack_nil();
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, value_type& target) {
+        if(source.type != msgpack::type::NIL) {
+            throw std::bad_cast();
+        }
+    }
+};
+
+} // namespace io
+
+} // namespace cocaine
 
 #endif // COCAINE_RAFT_LOG_HPP

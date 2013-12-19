@@ -104,6 +104,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/services/node/queue
     src/services/node/session
     src/services/node/slave
+    src/services/raft
     src/services/storage
     src/session
     src/storages/files

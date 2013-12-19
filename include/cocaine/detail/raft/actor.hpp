@@ -21,10 +21,11 @@
 #ifndef COCAINE_RAFT_ACTOR_HPP
 #define COCAINE_RAFT_ACTOR_HPP
 
-#include "cocaine/common.hpp"
-#include "cocaine/format.hpp"
-#include "cocaine/raft/remote.hpp"
-#include "cocaine/raft/log.hpp"
+#include "cocaine/detail/raft/log.hpp"
+#include "cocaine/detail/raft/remote.hpp"
+
+#include <memory>
+#include <vector>
 
 namespace cocaine { namespace raft {
 
@@ -34,27 +35,30 @@ enum class state_t {
     follower
 };
 
-struct actor_concept_t {
+class actor_concept_t {
+public:
     virtual
     std::tuple<uint64_t, bool>
     append(uint64_t term,
-           io::raft::node_id_t leader,
-           std:tuple<uint64_t, uint64_t> prev_entry, // index, term
+           raft::node_id_t leader,
+           std::tuple<uint64_t, uint64_t> prev_entry, // index, term
            const std::vector<msgpack::object>& entries,
            uint64_t commit_index) = 0;
 
     virtual
     std::tuple<uint64_t, bool>
     request_vote(uint64_t term,
-                 io::raft::node_id_t candidate,
-                 std:tuple<uint64_t, uint64_t> last_entry) = 0;
+                 raft::node_id_t candidate,
+                 std::tuple<uint64_t, uint64_t> last_entry) = 0;
 };
 
-template<class Dispatch, class Log = log<Dispatch>>
+template<class Dispatch, class Log>
 class actor:
     public actor_concept_t
 {
-    typedef remote_node<raft_actor<Dispatch, Log>> remote_type;
+    typedef remote_node<actor<Dispatch, Log>> remote_type;
+
+    template<class> friend class remote_node;
 
 public:
     typedef Dispatch machine_type;
@@ -62,15 +66,21 @@ public:
     typedef Log log_type;
 
 public:
+    template<class LogArg>
     actor(raft_service_t& service,
-          const std::shared_ptr<machine_type>& state_machine):
+          const std::string& name,
+          const std::shared_ptr<machine_type>& state_machine,
+          LogArg&& log):
         m_service(service),
+        m_name(name),
         m_state(state_t::follower),
-        m_election_timer(service.reactor()),
-        m_applier(service.reactor())
+        m_state_machine(state_machine),
+        m_log(std::forward<LogArg>(log)),
+        m_election_timer(service.reactor().native()),
+        m_applier(service.reactor().native())
     {
         for(auto it = m_service.cluster().begin(); it != m_service.cluster().end(); ++it) {
-            m_cluster.emplace_back(*this, *it);
+            m_cluster.emplace_back(std::make_shared<remote_type>(*this, *it));
         }
 
         m_election_timer.set<actor, &actor::on_disown>(this);
@@ -82,7 +92,7 @@ public:
         finish_leadership();
         stop_election_timer();
 
-        if(m_applier.started()) {
+        if(m_applier.is_active()) {
             m_applier.stop();
         }
     }
@@ -90,6 +100,30 @@ public:
     void
     run() {
         restart_election_timer();
+    }
+
+    const std::string&
+    name() const {
+        return m_name;
+    }
+
+    uint64_t
+    commit_index() const {
+        if(!is_leader() || m_log.last_term() == current_term()) {
+            return m_commit_index;
+        } else {
+            return 0;
+        }
+    }
+
+    const node_id_t&
+    id() const {
+        return m_service.id();
+    }
+
+    raft_service_t&
+    service() {
+        return m_service;
     }
 
     uint64_t
@@ -125,18 +159,20 @@ public:
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
             try {
-                it->replicate();
+                (*it)->replicate();
             } catch(...) {
                 // Ignore.
             }
         }
+
+        return true;
     }
 
 private:
     std::tuple<uint64_t, bool>
     append(uint64_t term,
-           io::raft::node_id_t leader,
-           std:tuple<uint64_t, uint64_t> prev_entry, // index, term
+           raft::node_id_t leader,
+           std::tuple<uint64_t, uint64_t> prev_entry, // index, term
            const std::vector<msgpack::object>& entries,
            uint64_t commit_index)
     {
@@ -158,20 +194,21 @@ private:
 
         uint64_t entry_index = std::get<0>(prev_entry);
         for(auto it = entries.begin(); it != entries.end(); ++it, ++entry_index) {
-            log_type::value_type entry;
-            io::type_traits<log_type::value_type>::unpack(*it, entry);
+            typename log_type::value_type entry;
+            io::type_traits<typename log_type::value_type>::unpack(*it, entry);
+
             if(m_log.last_index() > entry_index && entry.term() != m_log.at(entry_index).term()) {
                 m_log.truncate_suffix(entry_index);
             }
 
             if(entry_index >= m_log.last_index()) {
-                m_log.append(*it);
+                m_log.append(entry);
             }
         }
 
         m_commit_index = commit_index;
 
-        if(m_commit_index > m_last_applied && !m_applier.started()) {
+        if(m_commit_index > m_last_applied && !m_applier.is_active()) {
             m_applier.start();
         }
 
@@ -180,8 +217,8 @@ private:
 
     std::tuple<uint64_t, bool>
     request_vote(uint64_t term,
-                 io::raft::node_id_t candidate,
-                 std:tuple<uint64_t, uint64_t> last_entry)
+                 raft::node_id_t candidate,
+                 std::tuple<uint64_t, uint64_t> last_entry)
     {
         if(term > m_current_term) {
             step_down(term);
@@ -190,8 +227,8 @@ private:
         if(term == m_current_term &&
            !m_voted_for &&
            (std::get<1>(last_entry) > m_log.last_term() ||
-            std::get<1>(last_entry) == m_log.last_term() &&
-            std::get<0>(last_entry) >= m_log.last_index()))
+            (std::get<1>(last_entry) == m_log.last_term() &&
+             std::get<0>(last_entry) >= m_log.last_index())))
         {
             step_down(term);
             m_voted_for = candidate;
@@ -200,20 +237,11 @@ private:
         return std::make_tuple(m_current_term, term == m_current_term && m_voted_for == candidate);
     }
 
-    uint64_t
-    commit_index() const {
-        if(!is_leader() || m_log.last_term() == current_term()) {
-            return m_commit_index;
-        } else {
-            return 0;
-        }
-    }
-
     void
     step_down(uint64_t term) {
         if(term > m_current_term) {
             m_current_term = term;
-            voted_for.reset();
+            m_voted_for.reset();
         }
 
         restart_election_timer();
@@ -230,6 +258,24 @@ private:
         start_election();
     }
 
+    struct invocation_visitor_t:
+        public boost::static_visitor<>
+    {
+        invocation_visitor_t(typename log_type::value_type& entry):
+            m_entry(entry)
+        { }
+
+        template<class Event>
+        void
+        operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
+            (*slot)(boost::get<typename io::aux::frozen<Event>>(m_entry.get_command()).tuple,
+                    std::shared_ptr<upstream_t>());
+        }
+
+    private:
+        typename log_type::value_type& m_entry;
+    };
+
     void
     apply_entries(ev::idle&, int) {
         if(commit_index() <= m_last_applied) {
@@ -239,7 +285,8 @@ private:
 
         for(size_t entry = m_last_applied + 1; entry <= m_commit_index; ++entry) {
             if(m_log.at(entry).is_command()) {
-                m_state_machine(m_log.at(entry).get_command());
+                auto& data = m_log.at(entry);
+                m_state_machine->invoke(data.get_command().which(), invocation_visitor_t(data));
             }
 
             ++m_last_applied;
@@ -248,7 +295,7 @@ private:
 
     void
     stop_election_timer() {
-        if(!m_election_timer.started()) {
+        if(!m_election_timer.is_active()) {
             m_election_timer.stop();
         }
     }
@@ -256,14 +303,14 @@ private:
     void
     restart_election_timer() {
         stop_election_timer();
-        m_election_timer.start(float(election_timeout + rand() % election_timeout) / 1000.0);
+        m_election_timer.start(float(m_service.election_timeout() + rand() % m_service.election_timeout()) / 1000.0);
     }
 
     class election_state_t {
     public:
         election_state_t(actor &actor):
             m_active(true),
-            m_votes(0),
+            m_granted(0),
             m_actor(actor)
         {
             // Empty.
@@ -284,11 +331,11 @@ private:
                 if(std::get<1>(*result)) {
                     m_granted++;
 
-                    if(m_granted > m_actor.cluster_size() / 2) {
+                    if(m_granted > m_actor.m_cluster.size() / 2) {
                         m_active = false;
                         m_actor.switch_to_leader();
                     }
-                } else if(std::get<0>(*result) > m_actor.term()) {
+                } else if(std::get<0>(*result) > m_actor.current_term()) {
                     m_active = false;
                     m_actor.step_down(std::get<0>(*result));
                 }
@@ -300,6 +347,8 @@ private:
         unsigned int m_granted;
         actor &m_actor;
     };
+
+    friend class election_state_t;
 
     void
     start_election() {
@@ -314,10 +363,7 @@ private:
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
             try {
-                it->second.request_vote(std::bind(&election_state_t::vote_handler, m_election_state, _1),
-                                        m_current_term,
-                                        m_id,
-                                        std::make_tuple(m_log.last_index(), m_log.last_term()));
+                (*it)->request_vote(std::bind(&election_state_t::vote_handler, m_election_state, _1));
             } catch(const std::exception&) {
                 // Ignore.
             }
@@ -342,14 +388,14 @@ private:
         call(std::function<void(boost::optional<uint64_t>)>());
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
-            it->begin_leadership();
+            (*it)->begin_leadership();
         }
     }
 
     void
     finish_leadership() {
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
-            it->finish_leadership();
+            (*it)->finish_leadership();
         }
 
         if(is_leader()) {
@@ -361,8 +407,10 @@ private:
 
     static
     bool
-    compare_match_index(const remote_type& left, const remote_type& right) const {
-        return left.match_index() < right.match_index();
+    compare_match_index(const std::shared_ptr<remote_type>& left,
+                        const std::shared_ptr<remote_type>& right)
+    {
+        return left->match_index() < right->match_index();
     }
 
     void
@@ -372,14 +420,14 @@ private:
                          m_cluster.begin() + pivot,
                          m_cluster.end(),
                          &actor::compare_match_index);
-        if(m_cluster[pivot].match_index() > m_commit_index()) {
+        if(m_cluster[pivot]->match_index() > commit_index()) {
             auto old_commit_index = m_commit_index;
-            m_commit_index = m_cluster[pivot].match_index();
+            m_commit_index = m_cluster[pivot]->match_index();
             for(uint64_t i = old_commit_index; i < m_commit_index; ++i) {
                 m_log.at(i).notify(i);
             }
 
-            if(m_applier.started()) {
+            if(m_applier.is_active()) {
                 m_applier.start();
             }
         }
@@ -388,7 +436,9 @@ private:
 private:
     raft_service_t &m_service;
 
-    std::vector<remote_type> m_cluster;
+    std::string m_name;
+
+    std::vector<std::shared_ptr<remote_type>> m_cluster;
 
     state_t m_state;
 
@@ -404,7 +454,7 @@ private:
     // The last entry applied to the state machine.
     uint64_t m_last_applied;
 
-    boost::option<node_id_t> m_voted_for;
+    boost::optional<node_id_t> m_voted_for;
 
     // The leader from the last append message.
     node_id_t m_leader;

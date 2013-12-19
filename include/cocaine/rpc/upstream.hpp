@@ -87,21 +87,25 @@ public:
 
     template<class Event, class... Args>
     typename std::enable_if<
-        std::is_same<typename Event::tag, Tag>::value &&
         !std::is_same<typename io::event_traits<Event>::transition_type, void>::value,
         upstream<typename io::event_traits<Event>::transition_type>
     >::type
     send(Args&&... args) {
+        static_assert(std::is_same<typename Event::tag, Tag>::value,
+                      "The event doesn't match protocol.");
+
         m_stream->send<Event>(std::forward<Args>(args)...);
         return upstream<typename io::event_traits<Event>::transition_type>(m_stream);
     }
 
     template<class Event, class... Args>
     typename std::enable_if<
-        std::is_same<typename Event::tag, Tag>::value &&
         std::is_same<typename io::event_traits<Event>::transition_type, void>::value
     >::type
     send(Args&&... args) {
+        static_assert(std::is_same<typename Event::tag, Tag>::value,
+                      "The event doesn't match protocol.");
+
         m_stream->send<Event>(std::forward<Args>(args)...);
     }
 

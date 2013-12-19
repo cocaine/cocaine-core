@@ -47,6 +47,13 @@ namespace aux {
 
 template<class Event>
 struct frozen {
+    typedef typename tuple::fold<typename event_traits<Event>::tuple_type>::type
+            tuple_type;
+
+    frozen() {
+        // Empty.
+    }
+
     template<typename... Args>
     frozen(Event, Args&&... args):
         tuple(std::forward<Args>(args)...)
@@ -54,7 +61,7 @@ struct frozen {
 
     // NOTE: If the message cannot be sent right away, then the message arguments are placed into a
     // temporary storage until the upstream is attached.
-    typename tuple::fold<typename event_traits<Event>::tuple_type>::type tuple;
+    tuple_type tuple;
 };
 
 template<class Event, typename... Args>
