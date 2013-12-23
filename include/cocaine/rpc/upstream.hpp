@@ -32,6 +32,7 @@ namespace cocaine {
 class upstream_t {
     const std::shared_ptr<session_t> session;
     const uint64_t index;
+    bool server;
 
     struct states {
         enum values: int { active, sealed };
@@ -42,15 +43,22 @@ class upstream_t {
     states::values state;
 
 public:
-    upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_):
+    upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_, bool server_):
         session(session_),
         index(index_),
+        server(server_),
         state(states::active)
     { }
 
     template<class Event, typename... Args>
     void
     send(Args&&... args);
+
+    void
+    revoke() {
+        state = states::sealed;
+        session->revoke(index);
+    }
 };
 
 template<class Event, typename... Args>
@@ -62,13 +70,11 @@ upstream_t::send(Args&&... args) {
         return;
     }
 
-    if(std::is_same<typename io::event_traits<Event>::transition_type, void>::value) {
-        state = states::sealed;
-
+    if(std::is_same<typename io::event_traits<Event>::transition_type, void>::value && server) {
         // If the message transition type is void, i.e. the remote dispatch will be destroyed after
         // receiving this message, then revoke the channel with the given index in this session, so
         // that new requests might reuse it in the future. This upstream will become sealed.
-        session->revoke(index);
+        revoke();
     }
 
     if(session->ptr) {

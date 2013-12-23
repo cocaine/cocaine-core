@@ -45,6 +45,10 @@ public:
         }
 
         dispatch = dispatch->invoke(message, upstream);
+
+        if(!dispatch) {
+            upstream->revoke();
+        }
     }
 };
 
@@ -61,13 +65,15 @@ session_t::invoke(const message_t& message) {
         std::tie(lb, ub) = locked->equal_range(index);
 
         if(lb == ub) {
-            if(!prototype) {
+            if(!prototype || index <= max_channel) {
                 return;
             }
 
+            max_channel = index;
+
             std::tie(lb, std::ignore) = locked->insert({index, std::make_shared<channel_t>(
                 prototype,
-                std::make_shared<upstream_t>(shared_from_this(), index)
+                std::make_shared<upstream_t>(shared_from_this(), index, true)
             )});
         }
 
@@ -83,8 +89,8 @@ session_t::invoke(const message_t& message) {
 }
 
 std::shared_ptr<upstream_t>
-session_t::attach(uint64_t id, const std::shared_ptr<io::dispatch_t>& dispatch) {
-    auto upstream = std::make_shared<upstream_t>(shared_from_this(), id);
+session_t::invoke(uint64_t id, const std::shared_ptr<io::dispatch_t>& dispatch) {
+    auto upstream = std::make_shared<upstream_t>(shared_from_this(), id, false);
     channels->insert({id, std::make_shared<channel_t>(dispatch, upstream)});
     return upstream;
 }

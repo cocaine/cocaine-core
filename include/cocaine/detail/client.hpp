@@ -73,7 +73,7 @@ public:
         typename detail::transition_upstream<Event>::type
     >::type
     call(const std::shared_ptr<io::dispatch_t>& handler, Args&&... args) {
-        return upstream<typename Event::tag>(m_session->attach(m_next_channel++, handler))
+        return upstream<typename Event::tag>(m_session->invoke(m_next_channel++, handler))
                .template send<Event>(std::forward<Args>(args)...);
     }
 
@@ -83,7 +83,7 @@ public:
         typename detail::transition_upstream<Event>::type
     >::type
     call(const std::shared_ptr<io::dispatch_t>&, Args&&... args) {
-        return upstream<typename Event::tag>(std::make_shared<upstream_t>(m_session, m_next_channel++))
+        return upstream<typename Event::tag>(std::make_shared<upstream_t>(m_session, m_next_channel++, false))
                .template send<Event>(std::forward<Args>(args)...);
     }
 
