@@ -22,7 +22,13 @@
 #define COCAINE_RAFT_REMOTE_HPP
 
 #include "cocaine/detail/client.hpp"
+
 #include "cocaine/idl/streaming.hpp"
+#include "cocaine/idl/locator.hpp"
+
+#include "cocaine/traits/graph.hpp"
+#include "cocaine/traits/literal.hpp"
+
 #include "cocaine/asio/resolver.hpp"
 #include "cocaine/memory.hpp"
 
@@ -35,25 +41,80 @@ namespace cocaine { namespace raft {
 
 namespace detail {
 
-class result_provider :
+class resolve_dispatch :
+    public implements<io::locator::resolve::drain_type>
+{
+    typedef boost::optional<std::tuple<std::string, uint16_t>> result_type;
+
+public:
+    resolve_dispatch(context_t &context,
+                     const std::string& name,
+                     const std::function<void(result_type)>& callback):
+        implements<io::locator::resolve::drain_type>(context, name),
+        m_callback(callback)
+    {
+        using namespace std::placeholders;
+
+        typedef io::streaming<io::locator::resolve::value_type> stream_type;
+
+        on<stream_type::chunk>(std::bind(&resolve_dispatch::on_write, this, _1, _2, _3));
+        on<stream_type::error>(std::bind(&resolve_dispatch::on_error, this, _1, _2));
+        on<stream_type::choke>(std::bind(&resolve_dispatch::on_choke, this));
+    }
+
+    ~resolve_dispatch() {
+        if(m_callback) {
+            m_callback(boost::none);
+        }
+    }
+
+private:
+    void
+    on_write(const io::locator::resolve::endpoint_tuple_type& endpoint,
+             unsigned int,
+             const io::dispatch_graph_t&)
+    {
+        m_callback(endpoint);
+        m_callback = std::function<void(result_type)>();
+    }
+
+    void
+    on_error(int, std::string) {
+        m_callback(boost::none);
+        m_callback = std::function<void(result_type)>();
+    }
+
+    void
+    on_choke() {
+        if(m_callback) {
+            m_callback(boost::none);
+            m_callback = std::function<void(result_type)>();
+        }
+    }
+
+private:
+    std::function<void(result_type)> m_callback;
+};
+
+class raft_dispatch :
     public implements<io::streaming_tag<std::tuple<uint64_t, bool>>>
 {
     typedef boost::optional<std::tuple<uint64_t, bool>> result_type;
 public:
-    result_provider(context_t &context,
-                    const std::string& name,
-                    const std::function<void(result_type)>& callback):
+    raft_dispatch(context_t &context,
+                  const std::string& name,
+                  const std::function<void(result_type)>& callback):
         implements<io::streaming_tag<std::tuple<uint64_t, bool>>>(context, name),
         m_callback(callback)
     {
         using namespace std::placeholders;
 
-        on<io::streaming<std::tuple<uint64_t, bool>>::chunk>(std::bind(&result_provider::on_write, this, _1, _2));
-        on<io::streaming<std::tuple<uint64_t, bool>>::error>(std::bind(&result_provider::on_error, this, _1, _2));
-        on<io::streaming<std::tuple<uint64_t, bool>>::choke>(std::bind(&result_provider::on_choke, this));
+        on<io::streaming<std::tuple<uint64_t, bool>>::chunk>(std::bind(&raft_dispatch::on_write, this, _1, _2));
+        on<io::streaming<std::tuple<uint64_t, bool>>::error>(std::bind(&raft_dispatch::on_error, this, _1, _2));
+        on<io::streaming<std::tuple<uint64_t, bool>>::choke>(std::bind(&raft_dispatch::on_choke, this));
     }
 
-    ~result_provider() {
+    ~raft_dispatch() {
         if(m_callback) {
             m_callback(boost::none);
         }
@@ -92,19 +153,47 @@ class remote_node {
 
     typedef typename actor_type::log_type log_type;
 
-    class append_state_t {
+    class resolve_handler_t {
     public:
-        append_state_t(remote_node &remote, uint64_t last_index):
+        resolve_handler_t(remote_node &remote, std::function<void()> callback):
             m_active(true),
             m_remote(remote),
-            m_last(last_index)
+            m_callback(callback)
         {
-            // Empty.
+            // Emtpy.
+        }
+
+        void
+        handle(boost::optional<std::tuple<std::string, uint16_t>> endpoint) {
+            if(m_active) {
+                if(endpoint) {
+                    m_remote.connect(std::get<0>(endpoint.get()), std::get<1>(endpoint.get()));
+                }
+                m_callback();
+            }
         }
 
         void
         disable() {
             m_active = false;
+        }
+
+    private:
+        bool m_active;
+        remote_node &m_remote;
+        std::function<void()> m_callback;
+    };
+
+    friend class resolve_handler_t;
+
+    class append_handler_t {
+    public:
+        append_handler_t(remote_node &remote, uint64_t last_index):
+            m_active(true),
+            m_remote(remote),
+            m_last(last_index)
+        {
+            // Empty.
         }
 
         void
@@ -133,6 +222,11 @@ class remote_node {
             }
         }
 
+        void
+        disable() {
+            m_active = false;
+        }
+
     private:
         bool m_active;
         remote_node &m_remote;
@@ -152,19 +246,15 @@ public:
 
     void
     request_vote(const std::function<void(boost::optional<std::tuple<uint64_t, bool>>)>& handler) {
-        ensure_connection();
+        ensure_connection(std::bind(&remote_node::request_vote_impl, this, handler));
+    }
 
-        m_client->call<typename io::raft<typename log_type::value_type>::request_vote>(
-            std::make_shared<detail::result_provider>(
-                m_local.service().context(),
-                m_id.first,
-                handler
-            ),
-            m_local.name(),
-            m_local.current_term(),
-            m_local.id(),
-            std::make_tuple(m_local.log().last_index(), m_local.log().last_term())
-        );
+    void
+    replicate() {
+        if(!m_append_state && m_local.is_leader() && m_local.log().last_index() >= m_next_index) {
+            m_append_state = std::make_shared<append_handler_t>(*this, m_local.log().last_index());
+            ensure_connection(std::bind(&remote_node::send_append, this));
+        }
     }
 
     uint64_t
@@ -186,13 +276,6 @@ public:
     }
 
     void
-    replicate() {
-        if(m_local.log().last_index() >= m_next_index) {
-            send_append();
-        }
-    }
-
-    void
     reset_append_state() {
         if(m_append_state) {
             m_append_state->disable();
@@ -203,6 +286,10 @@ public:
     void
     reset() {
         reset_append_state();
+        if(m_resolve_state) {
+            m_resolve_state->disable();
+            m_resolve_state.reset();
+        }
         m_client.reset();
         m_next_index = 0;
         m_match_index = 0;
@@ -215,55 +302,106 @@ public:
 
 private:
     void
-    send_append() {
-        if(m_local.is_leader() && m_client) {
-            if(m_append_state) {
-                m_client->call<typename io::raft<typename log_type::value_type>::append>(
-                    std::shared_ptr<io::dispatch_t>(),
-                    m_local.name(),
-                    m_local.current_term(),
-                    m_local.id(),
-                    std::make_tuple(0, 0),
-                    std::vector<typename log_type::value_type>(),
-                    m_local.commit_index()
-                );
-            } else {
-                m_append_state = std::make_shared<append_state_t>(*this, m_local.log().last_index());
-                auto handler = std::bind(&append_state_t::handle, m_append_state, std::placeholders::_1);
-                auto dispatch = std::make_shared<detail::result_provider>(
+    request_vote_impl(const std::function<void(boost::optional<std::tuple<uint64_t, bool>>)>& handler) {
+        if(m_client) {
+            m_client->call<typename io::raft<typename log_type::value_type>::request_vote>(
+                std::make_shared<detail::raft_dispatch>(
                     m_local.service().context(),
-                    m_local.id().first,
+                    m_id.first,
                     handler
-                );
+                ),
+                m_local.name(),
+                m_local.current_term(),
+                m_local.id(),
+                std::make_tuple(m_local.log().last_index(), m_local.log().last_term())
+            );
+        } else {
+            handler(boost::none);
+        }
+    }
 
-                m_client->call<typename io::raft<typename log_type::value_type>::append>(
-                    dispatch,
-                    m_local.name(),
-                    m_local.current_term(),
-                    m_local.id(),
-                    std::make_tuple(m_next_index - 1, m_local.log().at(m_next_index - 1).term()),
-                    std::vector<typename log_type::value_type>(m_local.log().iter(m_next_index), m_local.log().end()),
-                    m_local.commit_index()
-                );
-            }
+    void
+    send_append() {
+        if(m_client) {
+            auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
+            auto dispatch = std::make_shared<detail::raft_dispatch>(
+                m_local.service().context(),
+                m_local.id().first,
+                handler
+            );
+
+            m_client->call<typename io::raft<typename log_type::value_type>::append>(
+                dispatch,
+                m_local.name(),
+                m_local.current_term(),
+                m_local.id(),
+                std::make_tuple(m_next_index - 1, m_local.log().at(m_next_index - 1).term()),
+                std::vector<typename log_type::value_type>(m_local.log().iter(m_next_index), m_local.log().end()),
+                m_local.commit_index()
+            );
+        } else {
+            m_append_state->handle(boost::none);
+        }
+    }
+
+    void
+    send_heartbeat() {
+        if(m_client) {
+            m_client->call<typename io::raft<typename log_type::value_type>::append>(
+                std::shared_ptr<io::dispatch_t>(),
+                m_local.name(),
+                m_local.current_term(),
+                m_local.id(),
+                std::make_tuple(0, 0),
+                std::vector<typename log_type::value_type>(),
+                m_local.commit_index()
+            );
         }
     }
 
     void
     heartbeat(ev::timer&, int) {
-        ensure_connection();
-        send_append();
+        if(m_local.is_leader()) {
+            if(m_append_state || m_local.log().last_index() < m_next_index) {
+                ensure_connection(std::bind(&remote_node::send_heartbeat, this));
+            } else {
+                replicate();
+            }
+        }
     }
 
     void
-    ensure_connection() {
+    ensure_connection(const std::function<void()>& handler) {
         if(m_client) {
-            return;
+            handler();
+        } else {
+            std::shared_ptr<client_t> locator = make_client(m_id.first, m_id.second);
+
+            if(!locator) {
+                handler();
+                return;
+            }
+
+            m_resolve_state = std::make_shared<resolve_handler_t>(*this, handler);
+
+            auto dispatch = std::make_shared<detail::resolve_dispatch>(
+                m_local.service().context(),
+                std::string(),
+                std::bind(&resolve_handler_t::handle, m_resolve_state, std::placeholders::_1)
+            );
+
+            locator->call<cocaine::io::locator::resolve>(dispatch, "raft");
         }
+    }
 
+    void
+    connect(const std::string& host, uint16_t port) {
+        m_client = make_client(host, port);
+    }
+
+    std::shared_ptr<client_t>
+    make_client(const std::string& host, uint16_t port) {
         auto endpoints = io::resolver<io::tcp>::query(m_id.first, m_id.second);
-
-        std::exception_ptr e;
 
         for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
             try {
@@ -272,15 +410,13 @@ private:
                     m_local.service().reactor(),
                     socket
                 );
-                m_client = std::make_shared<client_t>(channel);
-
-                return;
+                return std::make_shared<client_t>(channel);
             } catch(const std::exception&) {
-                e = std::current_exception();
+                // Ignore.
             }
         }
 
-        std::rethrow_exception(e);
+        return std::shared_ptr<client_t>();
     }
 
     void
@@ -297,7 +433,9 @@ private:
 
     ev::timer m_heartbeat_timer;
 
-    std::shared_ptr<append_state_t> m_append_state;
+    std::shared_ptr<resolve_handler_t> m_resolve_state;
+
+    std::shared_ptr<append_handler_t> m_append_state;
 
     // The next log entry to send to the follower.
     uint64_t m_next_index;
