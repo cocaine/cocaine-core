@@ -31,11 +31,13 @@
 
 #include "cocaine/asio/resolver.hpp"
 #include "cocaine/memory.hpp"
+#include "cocaine/logging.hpp"
 
 #include <boost/optional.hpp>
 
 #include <functional>
 #include <string>
+#include <algorithm>
 
 namespace cocaine { namespace raft {
 
@@ -79,7 +81,7 @@ private:
     }
 
     void
-    on_error(int, std::string) {
+    on_error(int, const std::string&) {
         m_callback(boost::none);
         m_callback = std::function<void(result_type)>();
     }
@@ -128,7 +130,7 @@ private:
     }
 
     void
-    on_error(int, std::string) {
+    on_error(int, const std::string&) {
         m_callback(boost::none);
         m_callback = std::function<void(result_type)>();
     }
@@ -155,7 +157,10 @@ class remote_node {
 
     class resolve_handler_t {
     public:
-        resolve_handler_t(remote_node &remote, std::function<void()> callback):
+        resolve_handler_t(const std::shared_ptr<client_t>& locator,
+                          remote_node &remote,
+                          std::function<void()> callback):
+            m_locator(locator),
             m_active(true),
             m_remote(remote),
             m_callback(callback)
@@ -176,9 +181,11 @@ class remote_node {
         void
         disable() {
             m_active = false;
+            m_locator.reset();
         }
 
     private:
+        std::shared_ptr<client_t> m_locator;
         bool m_active;
         remote_node &m_remote;
         std::function<void()> m_callback;
@@ -215,8 +222,8 @@ class remote_node {
                         m_remote.m_match_index = m_last;
                         m_remote.local().update_commit_index();
                     }
-                } else {
-                    m_remote.m_next_index--;
+                } else if(m_remote.m_next_index > 1) {
+                    --m_remote.m_next_index;
                 }
                 m_remote.replicate();
             }
@@ -235,10 +242,11 @@ class remote_node {
 
 public:
     remote_node(actor_type& local, node_id_t id):
+        m_logger(new logging::log_t(local.service().context(), "remote/" + cocaine::format("%s:%d", id.first, id.second))),
         m_id(id),
         m_local(local),
         m_heartbeat_timer(local.service().reactor().native()),
-        m_next_index(local.log().last_index()),
+        m_next_index(std::max<int64_t>(1, local.log().last_index())),
         m_match_index(0)
     {
         m_heartbeat_timer.set<remote_node, &remote_node::heartbeat>(this);
@@ -254,6 +262,8 @@ public:
         if(!m_append_state && m_local.is_leader() && m_local.log().last_index() >= m_next_index) {
             m_append_state = std::make_shared<append_handler_t>(*this, m_local.log().last_index());
             ensure_connection(std::bind(&remote_node::send_append, this));
+        } else {
+            COCAINE_LOG_DEBUG(m_logger, "Nothing to replicate.");
         }
     }
 
@@ -265,6 +275,8 @@ public:
     void
     begin_leadership() {
         m_heartbeat_timer.start(0.0, float(m_local.service().heartbeat_timeout()) / 1000.0);
+        m_match_index = 0;
+        m_next_index = std::max<int64_t>(1, m_local.log().last_index());
     }
 
     void
@@ -285,6 +297,7 @@ public:
 
     void
     reset() {
+        //COCAINE_LOG_DEBUG(m_logger, "Reset the remote.");
         reset_append_state();
         if(m_resolve_state) {
             m_resolve_state->disable();
@@ -304,6 +317,7 @@ private:
     void
     request_vote_impl(const std::function<void(boost::optional<std::tuple<uint64_t, bool>>)>& handler) {
         if(m_client) {
+            COCAINE_LOG_DEBUG(m_logger, "Sending vote request.");
             m_client->call<typename io::raft<typename log_type::value_type>::request_vote>(
                 std::make_shared<detail::raft_dispatch>(
                     m_local.service().context(),
@@ -316,13 +330,14 @@ private:
                 std::make_tuple(m_local.log().last_index(), m_local.log().last_term())
             );
         } else {
+            COCAINE_LOG_DEBUG(m_logger, "Client disconnected. Unable to send vote request.");
             handler(boost::none);
         }
     }
 
     void
     send_append() {
-        if(m_client) {
+        if(m_client && m_local.is_leader()) {
             auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
             auto dispatch = std::make_shared<detail::raft_dispatch>(
                 m_local.service().context(),
@@ -339,7 +354,13 @@ private:
                 std::vector<typename log_type::value_type>(m_local.log().iter(m_next_index), m_local.log().end()),
                 m_local.commit_index()
             );
+            COCAINE_LOG_DEBUG(m_logger,
+                              "Sending append request; term %d; next %d; last %d.",
+                              m_local.current_term(),
+                              m_next_index,
+                              m_local.log().last_index());
         } else {
+            COCAINE_LOG_DEBUG(m_logger, "Client disconnected or the local node is not the leader. Unable to send append request.");
             m_append_state->handle(boost::none);
         }
     }
@@ -347,6 +368,7 @@ private:
     void
     send_heartbeat() {
         if(m_client) {
+            //COCAINE_LOG_DEBUG(m_logger, "Sending heartbeat.");
             m_client->call<typename io::raft<typename log_type::value_type>::append>(
                 std::shared_ptr<io::dispatch_t>(),
                 m_local.name(),
@@ -373,16 +395,20 @@ private:
     void
     ensure_connection(const std::function<void()>& handler) {
         if(m_client) {
+            //COCAINE_LOG_DEBUG(m_logger, "Client is connected. Call handler.");
             handler();
         } else {
+            COCAINE_LOG_DEBUG(m_logger, "Client is not connected. Connecting...");
+
             std::shared_ptr<client_t> locator = make_client(m_id.first, m_id.second);
 
             if(!locator) {
+                COCAINE_LOG_DEBUG(m_logger, "Unable to connect to locator.");
                 handler();
                 return;
             }
 
-            m_resolve_state = std::make_shared<resolve_handler_t>(*this, handler);
+            m_resolve_state = std::make_shared<resolve_handler_t>(locator, *this, handler);
 
             auto dispatch = std::make_shared<detail::resolve_dispatch>(
                 m_local.service().context(),
@@ -401,7 +427,7 @@ private:
 
     std::shared_ptr<client_t>
     make_client(const std::string& host, uint16_t port) {
-        auto endpoints = io::resolver<io::tcp>::query(m_id.first, m_id.second);
+        auto endpoints = io::resolver<io::tcp>::query(host, port);
 
         for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
             try {
@@ -410,7 +436,7 @@ private:
                     m_local.service().reactor(),
                     socket
                 );
-                return std::make_shared<client_t>(channel);
+                return std::make_shared<client_t>(std::move(channel));
             } catch(const std::exception&) {
                 // Ignore.
             }
@@ -421,10 +447,13 @@ private:
 
     void
     on_error(const std::error_code& ec) {
+        COCAINE_LOG_INFO(m_logger, "Connection error: %s.", ec.message());
         reset();
     }
 
 private:
+    const std::unique_ptr<logging::log_t> m_logger;
+
     node_id_t m_id;
 
     actor_type &m_local;

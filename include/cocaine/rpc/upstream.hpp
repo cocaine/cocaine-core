@@ -32,7 +32,8 @@ namespace cocaine {
 class upstream_t {
     const std::shared_ptr<session_t> session;
     const uint64_t index;
-    bool server;
+
+    bool automatically_revoke;
 
     struct states {
         enum values: int { active, sealed };
@@ -43,10 +44,10 @@ class upstream_t {
     states::values state;
 
 public:
-    upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_, bool server_):
+    upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_):
         session(session_),
         index(index_),
-        server(server_),
+        automatically_revoke(false),
         state(states::active)
     { }
 
@@ -55,8 +56,12 @@ public:
     send(Args&&... args);
 
     void
+    auto_revoke(bool value = true) {
+        automatically_revoke = value;
+    }
+
+    void
     revoke() {
-        state = states::sealed;
         session->revoke(index);
     }
 };
@@ -64,18 +69,22 @@ public:
 template<class Event, typename... Args>
 void
 upstream_t::send(Args&&... args) {
-    std::lock_guard<std::mutex> guard(session->mutex);
-
     if(state != states::active) {
         return;
     }
 
-    if(std::is_same<typename io::event_traits<Event>::transition_type, void>::value && server) {
+    if(std::is_same<typename io::event_traits<Event>::transition_type, void>::value) {
+        state = states::sealed;
+
         // If the message transition type is void, i.e. the remote dispatch will be destroyed after
         // receiving this message, then revoke the channel with the given index in this session, so
         // that new requests might reuse it in the future. This upstream will become sealed.
-        revoke();
+        if(automatically_revoke) {
+            revoke();
+        }
     }
+
+    std::lock_guard<std::mutex> guard(session->mutex);
 
     if(session->ptr) {
         session->ptr->wr->write<Event>(index, std::forward<Args>(args)...);
@@ -87,9 +96,7 @@ class upstream {
 public:
     upstream(const std::shared_ptr<upstream_t>& stream) :
         m_stream(stream)
-    {
-        // Empty.
-    }
+    { }
 
     template<class Event, class... Args>
     typename std::enable_if<
@@ -113,6 +120,11 @@ public:
                       "The event doesn't match protocol.");
 
         m_stream->send<Event>(std::forward<Args>(args)...);
+    }
+
+    void
+    revoke() {
+        m_stream->revoke();
     }
 
 private:

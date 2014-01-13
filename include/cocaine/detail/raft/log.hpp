@@ -116,6 +116,11 @@ public:
     typedef typename std::vector<value_type>::iterator iterator;
     typedef typename std::vector<value_type>::const_iterator const_iterator;
 
+    bool
+    empty() const {
+        return m_data.empty();
+    }
+
     value_type&
     at(uint64_t index) {
         return m_data[index];
@@ -158,7 +163,7 @@ public:
 
     uint64_t
     last_index() const {
-        return m_data.size();
+        return m_data.size() - 1;
     }
 
     uint64_t

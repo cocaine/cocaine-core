@@ -20,14 +20,16 @@
 
 #include "cocaine/detail/services/raft.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/logging.hpp"
+
+#include <iostream>
 
 using namespace cocaine;
+using namespace cocaine::service;
 
 using namespace std::placeholders;
 
 namespace cocaine { namespace io {
-
-// Storage service interface
 
 struct counter_tag;
 
@@ -45,6 +47,8 @@ struct counter {
         typedef boost::mpl::list<
             int
         > tuple_type;
+
+        typedef void drain_type;
     };
 
     struct dec {
@@ -59,6 +63,8 @@ struct counter {
         typedef boost::mpl::list<
             int
         > tuple_type;
+
+        typedef void drain_type;
     };
 
     struct cas {
@@ -74,6 +80,8 @@ struct counter {
             int,
             int
         > tuple_type;
+
+        typedef void drain_type;
     };
 
 }; // struct counter
@@ -102,8 +110,11 @@ struct counter_t:
 
     counter_t(context_t& context, const std::string& name):
         implements<io::counter_tag>(context, name),
+        m_log(new logging::log_t(context, name)),
         m_value(0)
     {
+        COCAINE_LOG_DEBUG(m_log, "Initialize counter state machine %s.", name);
+
         on<io::counter::inc>(std::bind(&counter_t::inc, this, std::placeholders::_1));
         on<io::counter::dec>(std::bind(&counter_t::dec, this, std::placeholders::_1));
         on<io::counter::cas>(std::bind(&counter_t::cas, this, std::placeholders::_1, std::placeholders::_2));
@@ -118,81 +129,98 @@ struct counter_t:
     void
     inc(int n) {
         m_value += n;
+        COCAINE_LOG_DEBUG(m_log, "Add value to counter: %d. Value is %d.", n, m_value);
     }
 
     void
     dec(int n) {
         m_value -= n;
+        COCAINE_LOG_DEBUG(m_log, "Subtract value from counter: %d. Value is %d.", n, m_value);
     }
 
     void
     cas(int expected, int desired) {
         m_value.compare_exchange_strong(expected, desired);
+        COCAINE_LOG_DEBUG(m_log, "Compare and swap: %d, %d. Value is %d.", expected, desired, m_value);
     }
 
 private:
+    const std::unique_ptr<logging::log_t> m_log;
+
     std::atomic<int> m_value;
 };
 
-raft_service_t::raft_service_t(context_t& context,
-                               io::reactor_t& reactor,
-                               const std::string& name,
-                               const dynamic_t& args):
+raft_t::raft_t(context_t& context,
+               io::reactor_t& reactor,
+               const std::string& name,
+               const dynamic_t& args):
     api::service_t(context, reactor, name, args),
     implements<io::raft_tag<msgpack::object>>(context, name),
-    m_self(context.config.network.endpoint, context.config.network.locator),
     m_context(context),
-    m_reactor(reactor)
+    m_reactor(reactor),
+    m_log(new logging::log_t(context, name)),
+    m_test_timer(reactor.native()),
+    m_self(context.config.network.endpoint, context.config.network.locator)
 {
+    COCAINE_LOG_DEBUG(m_log, "Starting RAFT service with name %s.", name);
+
     m_cluster = args.as_object().at("cluster", dynamic_t::empty_object).to<std::set<raft::node_id_t>>();
     m_election_timeout = args.as_object().at("election-timeout", 2500).to<uint64_t>();
     m_heartbeat_timeout = args.as_object().at("heartbeat-timeout", m_election_timeout / 2).to<uint64_t>();
 
     using namespace std::placeholders;
 
-    on<io::raft<msgpack::object>::append>(std::bind(&raft_service_t::append, this, _1, _2, _3, _4, _5, _6));
-    on<io::raft<msgpack::object>::request_vote>(std::bind(&raft_service_t::request_vote, this, _1, _2, _3, _4));
+    on<io::raft<msgpack::object>::append>(std::bind(&raft_t::append, this, _1, _2, _3, _4, _5, _6));
+    on<io::raft<msgpack::object>::request_vote>(std::bind(&raft_t::request_vote, this, _1, _2, _3, _4));
+
+    // TODO: Remove this code after testing.
+    COCAINE_LOG_DEBUG(m_log, "Adding 'counter' state machine to the RAFT.");
 
     this->add("counter", std::make_shared<counter_t>(context, "counter"));
+
+    m_test_timer.set<raft_t, &raft_t::do_something>(this);
+    m_test_timer.start(10.0, 20.0);
+
+    srand(50);
 }
 
 const raft::node_id_t&
-raft_service_t::id() const {
+raft_t::id() const {
     return m_self;
 }
 
 const std::set<raft::node_id_t>&
-raft_service_t::cluster() const {
+raft_t::cluster() const {
     return m_cluster;
 }
 
 context_t&
-raft_service_t::context() {
+raft_t::context() {
     return m_context;
 }
 
 io::reactor_t&
-raft_service_t::reactor() {
+raft_t::reactor() {
     return m_reactor;
 }
 
 uint64_t
-raft_service_t::election_timeout() const {
+raft_t::election_timeout() const {
     return m_election_timeout;
 }
 
 uint64_t
-raft_service_t::heartbeat_timeout() const {
+raft_t::heartbeat_timeout() const {
     return m_heartbeat_timeout;
 }
 
-std::tuple<uint64_t, bool>
-raft_service_t::append(const std::string& state_machine,
-                       uint64_t term,
-                       raft::node_id_t leader,
-                       std::tuple<uint64_t, uint64_t> prev_entry, // index, term
-                       const std::vector<msgpack::object>& entries,
-                       uint64_t commit_index)
+deferred<std::tuple<uint64_t, bool>>
+raft_t::append(const std::string& state_machine,
+               uint64_t term,
+               raft::node_id_t leader,
+               std::tuple<uint64_t, uint64_t> prev_entry, // index, term
+               const std::vector<msgpack::object>& entries,
+               uint64_t commit_index)
 {
     auto actors = m_actors.synchronize();
 
@@ -205,11 +233,11 @@ raft_service_t::append(const std::string& state_machine,
     }
 }
 
-std::tuple<uint64_t, bool>
-raft_service_t::request_vote(const std::string& state_machine,
-                             uint64_t term,
-                             raft::node_id_t candidate,
-                             std::tuple<uint64_t, uint64_t> last_entry)
+deferred<std::tuple<uint64_t, bool>>
+raft_t::request_vote(const std::string& state_machine,
+                     uint64_t term,
+                     raft::node_id_t candidate,
+                     std::tuple<uint64_t, uint64_t> last_entry)
 {
     auto actors = m_actors.synchronize();
 
@@ -219,5 +247,43 @@ raft_service_t::request_vote(const std::string& state_machine,
         return it->second->request_vote(term, candidate, last_entry);
     } else {
         throw error_t("There is no such state machine.");
+    }
+}
+
+namespace {
+    void
+    commit_result2(boost::optional<uint64_t> index) {
+        if(index) {
+            std::cerr << "An entry committed with index " << *index << std::endl;
+        } else {
+            std::cerr << "Something wrong." << std::endl;
+        }
+    }
+}
+
+void
+raft_t::do_something(ev::timer&, int) {
+    auto actors = m_actors.synchronize();
+
+    auto it = actors->find("counter");
+
+    if(it != actors->end()) {
+        typedef raft::actor<counter_t, raft::log<counter_t>> actor_type;
+
+        actor_type *a = static_cast<actor_type*>(it->second.get());
+
+        bool ok = false;
+        if(rand() % 2 == 0) {
+            ok = a->call(&commit_result2, io::aux::frozen<io::counter::dec>(io::counter::dec(), rand() % 50));
+        } else {
+            ok = a->call(&commit_result2, io::aux::frozen<io::counter::inc>(io::counter::inc(), rand() % 50));
+        }
+
+        if(!ok) {
+            COCAINE_LOG_DEBUG(m_log,
+                              "I'm not leader. Leader is %s:%d.",
+                              a->leader_id().first,
+                              a->leader_id().second);
+        }
     }
 }

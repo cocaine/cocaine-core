@@ -39,15 +39,23 @@ namespace raft {
     class actor;
 }
 
-class raft_service_t:
+namespace service {
+
+class raft_t:
     public api::service_t,
     public implements<io::raft_tag<msgpack::object>>
 {
 public:
-    raft_service_t(context_t& context,
-                   io::reactor_t& reactor,
-                   const std::string& name,
-                   const dynamic_t& args);
+    raft_t(context_t& context,
+           io::reactor_t& reactor,
+           const std::string& name,
+           const dynamic_t& args);
+
+    virtual
+    auto
+    prototype() -> dispatch_t& {
+        return *this;
+    }
 
     const raft::node_id_t&
     id() const;
@@ -79,7 +87,7 @@ public:
 
 
 private:
-    std::tuple<uint64_t, bool>
+    deferred<std::tuple<uint64_t, bool>>
     append(const std::string& state_machine,
            uint64_t term,
            raft::node_id_t leader,
@@ -87,45 +95,51 @@ private:
            const std::vector<msgpack::object>& entries,
            uint64_t commit_index);
 
-    std::tuple<uint64_t, bool>
+    deferred<std::tuple<uint64_t, bool>>
     request_vote(const std::string& state_machine,
                  uint64_t term,
                  raft::node_id_t candidate,
                  std::tuple<uint64_t, uint64_t> last_entry);
 
+    void
+    do_something(ev::timer&, int);
+
 private:
-    raft::node_id_t m_self;
-    std::set<raft::node_id_t> m_cluster;
     context_t& m_context;
     io::reactor_t& m_reactor;
+    const std::unique_ptr<logging::log_t> m_log;
+    ev::timer m_test_timer;
+
+    raft::node_id_t m_self;
+    std::set<raft::node_id_t> m_cluster;
     uint64_t m_election_timeout;
     uint64_t m_heartbeat_timeout;
 
     synchronized<std::map<std::string, std::shared_ptr<raft::actor_concept_t>>> m_actors;
 };
 
+} // namespace service
+
 } // namespace cocaine
 
 #include "cocaine/detail/raft/actor.hpp"
 
-namespace cocaine {
+namespace cocaine { namespace service {
 
 template<class Machine, class Log>
 std::shared_ptr<raft::actor<Machine, typename std::decay<Log>::type>>
-raft_service_t::add(const std::string& name,
-                    const std::shared_ptr<Machine>& machine,
-                    Log&& log)
+raft_t::add(const std::string& name,
+            const std::shared_ptr<Machine>& machine,
+            Log&& log)
 {
     auto actors = m_actors.synchronize();
 
-    auto actor = std::make_shared<raft::actor<Machine, typename std::decay<Log>::type>>(
-        *this,
-        name,
-        machine,
-        std::forward<Log>(log)
-    );
+    typedef raft::actor<Machine, typename std::decay<Log>::type> actor_type;
+
+    auto actor = std::make_shared<actor_type>(*this, name, machine, std::forward<Log>(log));
 
     if(actors->insert(std::make_pair(name, actor)).second) {
+        m_reactor.post(std::bind(&actor_type::run, actor));
         return actor;
     } else {
         return std::shared_ptr<raft::actor<Machine, typename std::decay<Log>::type>>();
@@ -134,23 +148,21 @@ raft_service_t::add(const std::string& name,
 
 template<class Machine>
 std::shared_ptr<raft::actor<Machine, raft::log<Machine>>>
-raft_service_t::add(const std::string& name, const std::shared_ptr<Machine>& machine) {
+raft_t::add(const std::string& name, const std::shared_ptr<Machine>& machine) {
     auto actors = m_actors.synchronize();
 
-    auto actor = std::make_shared<raft::actor<Machine, raft::log<Machine>>>(
-        *this,
-        name,
-        machine,
-        raft::log<Machine>()
-    );
+    typedef raft::actor<Machine, raft::log<Machine>> actor_type;
+
+    auto actor = std::make_shared<actor_type>(*this, name, machine, raft::log<Machine>());
 
     if(actors->insert(std::make_pair(name, actor)).second) {
+        m_reactor.post(std::bind(&actor_type::run, actor));
         return actor;
     } else {
         return std::shared_ptr<raft::actor<Machine, raft::log<Machine>>>();
     }
 }
 
-} // namespace cocaine
+}} // namespace cocaine::service
 
 #endif // COCAINE_RAFT_SERVICE_HPP

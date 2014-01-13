@@ -24,6 +24,7 @@
 #include "cocaine/detail/loggers/syslog.hpp"
 #include "cocaine/detail/services/logging.hpp"
 #include "cocaine/detail/services/node.hpp"
+#include "cocaine/detail/services/raft.hpp"
 #include "cocaine/detail/services/storage.hpp"
 #include "cocaine/detail/storages/files.hpp"
 
@@ -37,6 +38,7 @@ cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<logger::syslog_t>("syslog");
     repository.insert<service::logging_t>("logging");
     repository.insert<service::node_t>("node");
+    repository.insert<service::raft_t>("raft");
     repository.insert<service::storage_t>("storage");
     repository.insert<storage::files_t>("files");
 }

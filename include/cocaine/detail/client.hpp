@@ -61,6 +61,9 @@ public:
         m_session = std::make_shared<session_t>(std::move(s));
     }
 
+    ~client_t() {
+        m_session->detach();
+    }
 
     void
     bind(std::function<void(const std::error_code&)> error_handler) {
@@ -83,7 +86,7 @@ public:
         typename detail::transition_upstream<Event>::type
     >::type
     call(const std::shared_ptr<io::dispatch_t>&, Args&&... args) {
-        return upstream<typename Event::tag>(std::make_shared<upstream_t>(m_session, m_next_channel++, false))
+        return upstream<typename Event::tag>(m_session->invoke(m_next_channel++, std::shared_ptr<io::dispatch_t>()))
                .template send<Event>(std::forward<Args>(args)...);
     }
 

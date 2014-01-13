@@ -71,10 +71,13 @@ session_t::invoke(const message_t& message) {
 
             max_channel = index;
 
-            std::tie(lb, std::ignore) = locked->insert({index, std::make_shared<channel_t>(
-                prototype,
-                std::make_shared<upstream_t>(shared_from_this(), index, true)
-            )});
+            auto upstream = std::make_shared<upstream_t>(shared_from_this(), index);
+            upstream->auto_revoke();
+
+            std::tie(lb, std::ignore) = locked->insert({
+                index,
+                std::make_shared<channel_t>(prototype, upstream)
+            });
         }
 
         // NOTE: The virtual channel pointer is copied here so that if the slot decides to close the
@@ -90,8 +93,12 @@ session_t::invoke(const message_t& message) {
 
 std::shared_ptr<upstream_t>
 session_t::invoke(uint64_t id, const std::shared_ptr<io::dispatch_t>& dispatch) {
-    auto upstream = std::make_shared<upstream_t>(shared_from_this(), id, false);
-    channels->insert({id, std::make_shared<channel_t>(dispatch, upstream)});
+    auto upstream = std::make_shared<upstream_t>(shared_from_this(), id);
+
+    if(dispatch) {
+        channels->insert({id, std::make_shared<channel_t>(dispatch, upstream)});
+    }
+
     return upstream;
 }
 
