@@ -1,6 +1,6 @@
 /*
-    Copyright (c) 2013-2013 Andrey Goryachev <andrey.goryachev@gmail.com>
-    Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
+    Copyright (c) 2013-2014 Andrey Goryachev <andrey.goryachev@gmail.com>
+    Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
 
     This file is part of Cocaine.
 
@@ -21,77 +21,60 @@
 #ifndef COCAINE_RAFT_ACTOR_HPP
 #define COCAINE_RAFT_ACTOR_HPP
 
-#include "cocaine/detail/raft/log.hpp"
+#include "cocaine/detail/raft/forwards.hpp"
 #include "cocaine/detail/raft/remote.hpp"
+
+#include "cocaine/traits/raft.hpp"
 
 #include <memory>
 #include <vector>
 
 namespace cocaine { namespace raft {
 
-enum class state_t {
-    leader,
-    candidate,
-    follower
-};
-
-class actor_concept_t {
-public:
-    virtual
-    deferred<std::tuple<uint64_t, bool>>
-    append(uint64_t term,
-           raft::node_id_t leader,
-           std::tuple<uint64_t, uint64_t> prev_entry, // index, term
-           const std::vector<msgpack::object>& entries,
-           uint64_t commit_index) = 0;
-
-    virtual
-    deferred<std::tuple<uint64_t, bool>>
-    request_vote(uint64_t term,
-                 raft::node_id_t candidate,
-                 std::tuple<uint64_t, uint64_t> last_entry) = 0;
-};
-
-template<class Dispatch, class Log>
+template<class StateMachine, class Configuration>
 class actor:
     public actor_concept_t
 {
-    typedef remote_node<actor<Dispatch, Log>> remote_type;
+    typedef actor<StateMachine, Configuration> actor_type;
+    typedef remote_node<actor_type> remote_type;
 
     template<class> friend class remote_node;
 
 public:
-    typedef Dispatch machine_type;
-
-    typedef Log log_type;
+    typedef StateMachine machine_type;
+    typedef Configuration config_type;
+    typedef typename config_type::log_type log_type;
+    typedef typename log_type::value_type entry_type;
 
 public:
-    template<class LogArg>
-    actor(service::raft_t& service,
+    template<class ConfigArg>
+    actor(context_t& context,
+          io::reactor_t& reactor,
           const std::string& name,
           const std::shared_ptr<machine_type>& state_machine,
-          LogArg&& log):
-        m_service(service),
-        m_logger(new logging::log_t(service.context(), "raft/" + name)),
+          ConfigArg&& config,
+          uint64_t election_timeout,
+          uint64_t heartbeat_timeout):
+        m_context(context),
+        m_reactor(reactor),
+        m_log(new logging::log_t(context, "raft/" + name)),
         m_name(name),
         m_state(state_t::follower),
         m_state_machine(state_machine),
-        m_log(std::forward<LogArg>(log)),
-        m_current_term(0),
-        m_commit_index(0),
-        m_last_applied(0),
-        m_election_timer(service.reactor().native()),
-        m_applier(service.reactor().native())
+        m_configuration(std::forward<ConfigArg>(config)),
+        m_election_timeout(election_timeout),
+        m_heartbeat_timeout(heartbeat_timeout),
+        m_election_timer(reactor.native()),
+        m_applier(reactor.native())
     {
-        COCAINE_LOG_DEBUG(m_logger, "Initialize raft actor with name %s.", name);
+        COCAINE_LOG_DEBUG(m_log, "Initialize raft actor with name %s.", name);
 
-        for(auto it = m_service.cluster().begin(); it != m_service.cluster().end(); ++it) {
-            COCAINE_LOG_DEBUG(m_logger, "Add remote to cluster: %s:%d.", it->first, it->second);
+        for(auto it = config().cluster().begin(); it != config().cluster().end(); ++it) {
             m_cluster.emplace_back(std::make_shared<remote_type>(*this, *it));
         }
 
-        if(m_log.empty()) {
-            m_log.append(typename log_type::value_type(0));
+        if(config().log().empty()) {
+            config().log().append(entry_type(0));
         }
 
         m_election_timer.set<actor, &actor::on_disown>(this);
@@ -99,9 +82,9 @@ public:
     }
 
     ~actor() {
+        stop_election_timer();
         reset_election_state();
         finish_leadership();
-        stop_election_timer();
 
         if(m_applier.is_active()) {
             m_applier.stop();
@@ -110,8 +93,18 @@ public:
 
     void
     run() {
-        COCAINE_LOG_DEBUG(m_logger, "Running the raft actor.");
-        restart_election_timer();
+        COCAINE_LOG_DEBUG(m_log, "Running the raft actor.");
+        step_down(config().current_term() + 1);
+    }
+
+    context_t&
+    context() {
+        return m_context;
+    }
+
+    io::reactor_t&
+    reactor() {
+        return m_reactor;
     }
 
     const std::string&
@@ -119,10 +112,30 @@ public:
         return m_name;
     }
 
+    config_type&
+    config() {
+        return m_configuration;
+    }
+
+    const config_type&
+    config() const {
+        return m_configuration;
+    }
+
+    uint64_t
+    election_timeout() const {
+        return m_election_timeout;
+    }
+
+    uint64_t
+    heartbeat_timeout() const {
+        return m_heartbeat_timeout;
+    }
+
     uint64_t
     commit_index() const {
-        if(!is_leader() || m_log.last_term() == current_term()) {
-            return m_commit_index;
+        if(!is_leader() || config().log().last_term() == config().current_term()) {
+            return config().commit_index();
         } else {
             return 0;
         }
@@ -130,22 +143,7 @@ public:
 
     const node_id_t&
     id() const {
-        return m_service.id();
-    }
-
-    service::raft_t&
-    service() {
-        return m_service;
-    }
-
-    uint64_t
-    current_term() const {
-        return m_current_term;
-    }
-
-    const log_type&
-    log() const {
-        return m_log;
+        return config().id();
     }
 
     bool
@@ -166,10 +164,10 @@ public:
             return false;
         }
 
-        m_log.append(current_term(), std::forward<Args>(args)...);
-        m_log.back().bind(std::forward<Handler>(h));
+        config().log().append(config().current_term(), std::forward<Args>(args)...);
+        config().log().at(config().log().last_index()).bind(std::forward<Handler>(h));
 
-        COCAINE_LOG_DEBUG(m_logger, "New entry has been added to the log.");
+        COCAINE_LOG_DEBUG(m_log, "New entry has been added to the log.");
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
             try {
@@ -198,16 +196,16 @@ private:
            const std::vector<msgpack::object>& entries,
            uint64_t commit_index)
     {
-        std::vector<typename log_type::value_type> unpacked;
+        std::vector<entry_type> unpacked;
         for (auto it = entries.begin(); it != entries.end(); ++it) {
-            typename log_type::value_type entry;
-            io::type_traits<typename log_type::value_type>::unpack(*it, entry);
+            entry_type entry;
+            io::type_traits<entry_type>::unpack(*it, entry);
             unpacked.emplace_back(std::move(entry));
         }
 
         deferred<std::tuple<uint64_t, bool>> promise;
         std::function<std::tuple<uint64_t, bool>()> producer = std::bind(&actor::append_impl, this, term, leader, prev_entry, unpacked, commit_index);
-        service().reactor().post(std::bind(&actor::deferred_writer, promise, producer));
+        reactor().post(std::bind(&actor::deferred_writer, promise, producer));
         return promise;
     }
 
@@ -218,7 +216,7 @@ private:
     {
         deferred<std::tuple<uint64_t, bool>> promise;
         std::function<std::tuple<uint64_t, bool>()> producer = std::bind(&actor::request_vote_impl, this, term, candidate, last_entry);
-        service().reactor().post(std::bind(&actor::deferred_writer, promise, producer));
+        reactor().post(std::bind(&actor::deferred_writer, promise, producer));
         return promise;
     }
 
@@ -226,50 +224,52 @@ private:
     append_impl(uint64_t term,
                node_id_t leader,
                std::tuple<uint64_t, uint64_t> prev_entry, // index, term
-               const std::vector<typename log_type::value_type>& entries,
+               const std::vector<entry_type>& entries,
                uint64_t commit_index)
     {
-        COCAINE_LOG_DEBUG(m_logger,
+        COCAINE_LOG_DEBUG(m_log,
                           "Append request received from %s:%d, term: %d, prev_entry: (%d, %d), commit index: %d.",
                           leader.first, leader.second,
                           term,
                           std::get<0>(prev_entry), std::get<1>(prev_entry),
                           commit_index);
 
-        if(term < m_current_term) {
-            return std::make_tuple(m_current_term, false);
+        if(term < config().current_term()) {
+            return std::make_tuple(config().current_term(), false);
         }
 
         step_down(term);
 
         m_leader = leader;
 
-        if(std::get<0>(prev_entry) > m_log.last_index()) {
-            return std::make_tuple(m_current_term, false);
+        if(std::get<0>(prev_entry) > config().log().last_index()) {
+            return std::make_tuple(config().current_term(), false);
         }
 
-        if(std::get<1>(prev_entry) != m_log.at(std::get<0>(prev_entry)).term()) {
-            return std::make_tuple(m_current_term, false);
+        if(std::get<1>(prev_entry) != config().log().at(std::get<0>(prev_entry)).term()) {
+            return std::make_tuple(config().current_term(), false);
         }
 
-        uint64_t entry_index = std::get<0>(prev_entry);
+        uint64_t entry_index = std::get<0>(prev_entry) + 1;
         for(auto it = entries.begin(); it != entries.end(); ++it, ++entry_index) {
-            if(m_log.last_index() > entry_index && it->term() != m_log.at(entry_index).term()) {
-                m_log.truncate_suffix(entry_index);
+            if(config().log().last_index() >= entry_index &&
+               it->term() != config().log().at(entry_index).term())
+            {
+                config().log().truncate_suffix(entry_index);
             }
 
-            if(entry_index >= m_log.last_index()) {
-                m_log.append(*it);
+            if(entry_index > config().log().last_index()) {
+                config().log().append(*it);
             }
         }
 
-        m_commit_index = commit_index;
+        config().set_commit_index(commit_index);
 
-        if(m_commit_index > m_last_applied && !m_applier.is_active()) {
+        if(config().commit_index() > config().last_applied() && !m_applier.is_active()) {
             m_applier.start();
         }
 
-        return std::make_tuple(m_current_term, true);
+        return std::make_tuple(config().current_term(), true);
     }
 
     std::tuple<uint64_t, bool>
@@ -277,36 +277,40 @@ private:
                       node_id_t candidate,
                       std::tuple<uint64_t, uint64_t> last_entry)
     {
-        COCAINE_LOG_DEBUG(m_logger,
+        COCAINE_LOG_DEBUG(m_log,
                           "Vote request received from %s:%d, term: %d, last entry: (%d, %d).",
                           candidate.first, candidate.second,
                           term,
                           std::get<0>(last_entry), std::get<1>(last_entry));
-        if(term > m_current_term) {
-            COCAINE_LOG_DEBUG(m_logger, "Stepping down to term %d from term %d.", term, m_current_term);
+        if(term > config().current_term()) {
+            COCAINE_LOG_DEBUG(m_log, "Stepping down to term %d from term %d.", term, m_current_term);
             step_down(term);
         }
 
-        if(term == m_current_term &&
+        if(term == config().current_term() &&
            !m_voted_for &&
-           (std::get<1>(last_entry) > m_log.last_term() ||
-            (std::get<1>(last_entry) == m_log.last_term() &&
-             std::get<0>(last_entry) >= m_log.last_index())))
+           (std::get<1>(last_entry) > config().log().last_term() ||
+            (std::get<1>(last_entry) == config().log().last_term() &&
+             std::get<0>(last_entry) >= config().log().last_index())))
         {
             step_down(term);
             m_voted_for = candidate;
-            COCAINE_LOG_DEBUG(m_logger, "In term %d vote granted to %s:%d.", m_current_term, candidate.first, candidate.second);
+            COCAINE_LOG_DEBUG(m_log,
+                              "In term %d vote granted to %s:%d.",
+                              config().current_term(),
+                              candidate.first, candidate.second);
         }
 
-        return std::make_tuple(m_current_term, term == m_current_term && m_voted_for == candidate);
+        return std::make_tuple(config().current_term(),
+                               term == config().current_term() && m_voted_for == candidate);
     }
 
     void
     step_down(uint64_t term) {
-        COCAINE_LOG_DEBUG(m_logger, "Stepping down to term %d.", term);
+        COCAINE_LOG_DEBUG(m_log, "Stepping down to term %d.", term);
 
-        if(term > m_current_term) {
-            m_current_term = term;
+        if(term > config().current_term()) {
+            config().set_current_term(term);
             m_voted_for.reset();
         }
 
@@ -339,20 +343,23 @@ private:
 
     void
     apply_entries(ev::idle&, int) {
-        if(std::min(commit_index(), m_log.last_index()) <= m_last_applied) {
-            COCAINE_LOG_DEBUG(m_logger, "Stop applier.");
+        if(std::min(commit_index(), config().log().last_index()) <= config().last_applied()) {
+            COCAINE_LOG_DEBUG(m_log, "Stop applier.");
             m_applier.stop();
             return;
         }
 
-        COCAINE_LOG_DEBUG(m_logger,
+        COCAINE_LOG_DEBUG(m_log,
                           "Applying entries from %d to %d.",
-                          m_last_applied + 1,
-                          std::min(commit_index(), m_log.last_index()));
+                          config().last_applied() + 1,
+                          std::min(commit_index(), config().log().last_index()));
 
-        for(size_t entry = m_last_applied + 1; entry <= std::min(commit_index(), m_log.last_index()); ++entry) {
-            if(m_log.at(entry).is_command()) {
-                auto& data = m_log.at(entry);
+        for(size_t entry = config().last_applied() + 1;
+            entry <= std::min(commit_index(), config().log().last_index());
+            ++entry)
+        {
+            if(config().log().at(entry).is_command()) {
+                auto& data = config().log().at(entry);
                 try {
                     m_state_machine->invoke(data.get_command().which(), invocation_visitor_t(data));
                 } catch(const std::exception&) {
@@ -360,7 +367,7 @@ private:
                 }
             }
 
-            ++m_last_applied;
+            config().set_last_applied(config().last_applied() + 1);
         }
     }
 
@@ -381,11 +388,11 @@ private:
     restart_election_timer() {
         stop_election_timer();
 
-        float election_timeout = m_service.election_timeout() + rand() % m_service.election_timeout();
+        float timeout = election_timeout() + rand() % election_timeout();
 
         //COCAINE_LOG_DEBUG(m_logger, "Election timer will fire in %f milliseconds.", election_timeout);
 
-        m_election_timer.start(election_timeout / 1000.0);
+        m_election_timer.start(timeout / 1000.0);
     }
 
     class election_state_t {
@@ -416,11 +423,11 @@ private:
                 if(std::get<1>(*result)) {
                     m_granted++;
 
-                    if(m_granted > (m_actor.m_cluster.size() + 1) / 2) {
+                    if(m_granted > (m_actor.config().cluster().size() + 1) / 2) {
                         m_active = false;
                         m_actor.switch_to_leader();
                     }
-                } else if(std::get<0>(*result) > m_actor.current_term()) {
+                } else if(std::get<0>(*result) > m_actor.config().current_term()) {
                     m_active = false;
                     m_actor.step_down(std::get<0>(*result));
                 }
@@ -437,17 +444,17 @@ private:
 
     void
     start_election() {
-        COCAINE_LOG_DEBUG(m_logger, "Start new election.");
+        COCAINE_LOG_DEBUG(m_log, "Start new election.");
 
         using namespace std::placeholders;
 
-        step_down(m_current_term + 1);
+        step_down(config().current_term() + 1);
 
         m_election_state = std::make_shared<election_state_t>(*this);
 
         m_state = state_t::candidate;
 
-        m_voted_for = id();
+        m_voted_for = config().id();
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
             try {
@@ -489,8 +496,8 @@ private:
 
         if(is_leader()) {
             COCAINE_LOG_DEBUG(m_logger, "Finish leadership.");
-            for(auto it = m_log.iter(m_commit_index); it != m_log.end(); ++it) {
-                it->notify(boost::none);
+            for(auto it = config().commit_index(); it <= config().log().last_index(); ++it) {
+                config().log().at(it).notify(boost::none);
             }
         }
     }
@@ -512,13 +519,15 @@ private:
                          &actor::compare_match_index);
 
         if(m_cluster[pivot]->match_index() > commit_index()) {
-            auto old_commit_index = m_commit_index;
-            m_commit_index = m_cluster[pivot]->match_index();
+            auto old_commit_index = config().commit_index();
+            config().set_commit_index(m_cluster[pivot]->match_index());
 
-            COCAINE_LOG_DEBUG(m_logger, "Commit index has been updated to %d.", m_cluster[pivot]->match_index());
+            COCAINE_LOG_DEBUG(m_log,
+                              "Commit index has been updated to %d.",
+                              m_cluster[pivot]->match_index());
 
-            for(uint64_t i = old_commit_index; i < m_commit_index; ++i) {
-                m_log.at(i).notify(i);
+            for(uint64_t i = old_commit_index; i < config().commit_index(); ++i) {
+                config().log().at(i).notify(i);
             }
 
             if(!m_applier.is_active()) {
@@ -528,28 +537,27 @@ private:
     }
 
 private:
-    service::raft_t &m_service;
+    context_t& m_context;
 
-    const std::unique_ptr<logging::log_t> m_logger;
+    io::reactor_t& m_reactor;
+
+    const std::unique_ptr<logging::log_t> m_log;
 
     std::string m_name;
+
+    std::shared_ptr<machine_type> m_state_machine;
+
+    config_type m_configuration;
+
+    uint64_t m_election_timeout;
+
+    uint64_t m_heartbeat_timeout;
 
     std::vector<std::shared_ptr<remote_type>> m_cluster;
 
     state_t m_state;
 
-    std::shared_ptr<machine_type> m_state_machine;
-
-    log_type m_log;
-
-    uint64_t m_current_term;
-
-    // The highest index known to be commited.
-    uint64_t m_commit_index;
-
-    // The last entry applied to the state machine.
-    uint64_t m_last_applied;
-
+    // The node for which the actor voted in current term.
     boost::optional<node_id_t> m_voted_for;
 
     // The leader from the last append message.
@@ -557,9 +565,6 @@ private:
 
     // When the timer fires, the follower will switch to the candidate state.
     ev::timer m_election_timer;
-
-    // When the timer fires, the follower will switch to the candidate state.
-    ev::timer m_heartbeat_timer;
 
     // This watcher will apply committed entries in background.
     ev::idle m_applier;

@@ -31,20 +31,6 @@
 
 namespace cocaine {
 
-namespace detail {
-
-    template<class Event>
-    struct transition_upstream {
-        typedef typename std::conditional<
-                    std::is_same<typename io::event_traits<Event>::transition_type, void>::value,
-                    void,
-                    upstream<typename io::event_traits<Event>::transition_type>
-                >::type
-                type;
-    };
-
-} // namespace detail
-
 class client_t {
 public:
     typedef cocaine::io::channel<cocaine::io::socket<cocaine::io::tcp>>
@@ -71,23 +57,14 @@ public:
     }
 
     template<class Event, class... Args>
-    typename std::enable_if<
-        !std::is_same<typename io::event_traits<Event>::drain_type, void>::value,
-        typename detail::transition_upstream<Event>::type
-    >::type
+    upstream_t
     call(const std::shared_ptr<io::dispatch_t>& handler, Args&&... args) {
-        return upstream<typename Event::tag>(m_session->invoke(m_next_channel++, handler))
-               .template send<Event>(std::forward<Args>(args)...);
-    }
-
-    template<class Event, class... Args>
-    typename std::enable_if<
-        std::is_same<typename io::event_traits<Event>::drain_type, void>::value,
-        typename detail::transition_upstream<Event>::type
-    >::type
-    call(const std::shared_ptr<io::dispatch_t>&, Args&&... args) {
-        return upstream<typename Event::tag>(m_session->invoke(m_next_channel++, std::shared_ptr<io::dispatch_t>()))
-               .template send<Event>(std::forward<Args>(args)...);
+        auto dispatch = std::is_same<typename io::event_traits<Event>::drain_type, void>::value ?
+                        std::shared_ptr<io::dispatch_t>() :
+                        handler;
+        auto upstream = m_session->invoke(m_next_channel++, dispatch);
+        upstream->send<Event>(std::forward<Args>(args)...);
+        return upstream;
     }
 
 private:
