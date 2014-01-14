@@ -164,7 +164,7 @@ raft_t::raft_t(context_t& context,
 {
     COCAINE_LOG_DEBUG(m_log, "Starting RAFT service with name %s.", name);
 
-    m_cluster = args.as_object().at("cluster", dynamic_t::empty_object).to<std::set<raft::node_id_t>>();
+    m_cluster = args.as_object().at("cluster", dynamic_t::empty_object).to<raft::cluster_t>();
     m_election_timeout = args.as_object().at("election-timeout", 2500).to<uint64_t>();
     m_heartbeat_timeout = args.as_object().at("heartbeat-timeout", m_election_timeout / 2).to<uint64_t>();
 
@@ -268,18 +268,19 @@ raft_t::do_something(ev::timer&, int) {
     auto it = actors->find("counter");
 
     if(it != actors->end()) {
-        typedef raft::actor<counter_t, raft::log<counter_t>> actor_type;
+        typedef raft::actor<counter_t, raft::configuration<raft::log<counter_t>>> actor_type;
 
         actor_type *a = static_cast<actor_type*>(it->second.get());
 
-        bool ok = false;
+        actor_type::entry_type::command_type cmd;
+
         if(rand() % 2 == 0) {
-            ok = a->call(&commit_result2, io::aux::frozen<io::counter::dec>(io::counter::dec(), rand() % 50));
+            cmd = io::aux::frozen<io::counter::dec>(io::counter::dec(), rand() % 50);
         } else {
-            ok = a->call(&commit_result2, io::aux::frozen<io::counter::inc>(io::counter::inc(), rand() % 50));
+            cmd = io::aux::frozen<io::counter::inc>(io::counter::inc(), rand() % 50);
         }
 
-        if(!ok) {
+        if(!a->call(&commit_result2, cmd)) {
             COCAINE_LOG_DEBUG(m_log,
                               "I'm not leader. Leader is %s:%d.",
                               a->leader_id().first,

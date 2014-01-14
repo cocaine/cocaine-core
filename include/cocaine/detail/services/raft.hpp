@@ -26,15 +26,12 @@
 #include "cocaine/dispatch.hpp"
 #include "cocaine/api/service.hpp"
 #include "cocaine/idl/raft.hpp"
+#include "cocaine/detail/raft/configuration.hpp"
 #include "cocaine/detail/raft/log.hpp"
 
 namespace cocaine {
 
 namespace raft {
-    typedef std::pair<std::string, uint16_t> node_id_t;
-
-    class actor_concept_t;
-
     template<class Dispatch, class Log>
     class actor;
 }
@@ -75,14 +72,14 @@ public:
     uint64_t
     heartbeat_timeout() const;
 
-    template<class Machine, class Log>
-    std::shared_ptr<raft::actor<Machine, typename std::decay<Log>::type>>
+    template<class Machine, class Config>
+    std::shared_ptr<raft::actor<Machine, typename std::decay<Config>::type>>
     add(const std::string& name,
         const std::shared_ptr<Machine>& machine,
-        Log&& log);
+        Config&& config);
 
     template<class Machine>
-    std::shared_ptr<raft::actor<Machine, raft::log<Machine>>>
+    std::shared_ptr<raft::actor<Machine, raft::configuration<raft::log<Machine>>>>
     add(const std::string& name, const std::shared_ptr<Machine>& machine);
 
 
@@ -111,7 +108,7 @@ private:
     ev::timer m_test_timer;
 
     raft::node_id_t m_self;
-    std::set<raft::node_id_t> m_cluster;
+    raft::cluster_t m_cluster;
     uint64_t m_election_timeout;
     uint64_t m_heartbeat_timeout;
 
@@ -126,40 +123,54 @@ private:
 
 namespace cocaine { namespace service {
 
-template<class Machine, class Log>
-std::shared_ptr<raft::actor<Machine, typename std::decay<Log>::type>>
+template<class Machine, class Config>
+std::shared_ptr<raft::actor<Machine, typename std::decay<Config>::type>>
 raft_t::add(const std::string& name,
             const std::shared_ptr<Machine>& machine,
-            Log&& log)
+            Config&& config)
 {
     auto actors = m_actors.synchronize();
 
-    typedef raft::actor<Machine, typename std::decay<Log>::type> actor_type;
+    typedef raft::actor<Machine, typename std::decay<Config>::type> actor_type;
 
-    auto actor = std::make_shared<actor_type>(*this, name, machine, std::forward<Log>(log));
+    auto actor = std::make_shared<actor_type>(m_context,
+                                              m_reactor,
+                                              name,
+                                              machine,
+                                              std::forward<Config>(config),
+                                              m_election_timeout,
+                                              m_heartbeat_timeout);
 
     if(actors->insert(std::make_pair(name, actor)).second) {
         m_reactor.post(std::bind(&actor_type::run, actor));
         return actor;
     } else {
-        return std::shared_ptr<raft::actor<Machine, typename std::decay<Log>::type>>();
+        return std::shared_ptr<raft::actor<Machine, typename std::decay<Config>::type>>();
     }
 }
 
 template<class Machine>
-std::shared_ptr<raft::actor<Machine, raft::log<Machine>>>
+std::shared_ptr<raft::actor<Machine, raft::configuration<raft::log<Machine>>>>
 raft_t::add(const std::string& name, const std::shared_ptr<Machine>& machine) {
     auto actors = m_actors.synchronize();
 
-    typedef raft::actor<Machine, raft::log<Machine>> actor_type;
+    typedef raft::actor<Machine, raft::configuration<raft::log<Machine>>> actor_type;
 
-    auto actor = std::make_shared<actor_type>(*this, name, machine, raft::log<Machine>());
+    raft::configuration<raft::log<Machine>> config(m_self, m_cluster);
+
+    auto actor = std::make_shared<actor_type>(m_context,
+                                              m_reactor,
+                                              name,
+                                              machine,
+                                              config,
+                                              m_election_timeout,
+                                              m_heartbeat_timeout);
 
     if(actors->insert(std::make_pair(name, actor)).second) {
         m_reactor.post(std::bind(&actor_type::run, actor));
         return actor;
     } else {
-        return std::shared_ptr<raft::actor<Machine, raft::log<Machine>>>();
+        return std::shared_ptr<raft::actor<Machine, raft::configuration<raft::log<Machine>>>>();
     }
 }
 

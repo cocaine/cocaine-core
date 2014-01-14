@@ -44,7 +44,7 @@ public:
     typedef StateMachine machine_type;
     typedef Configuration config_type;
     typedef typename config_type::log_type log_type;
-    typedef typename log_type::value_type entry_type;
+    typedef log_entry<machine_type> entry_type;
 
 public:
     template<class ConfigArg>
@@ -59,22 +59,25 @@ public:
         m_reactor(reactor),
         m_log(new logging::log_t(context, "raft/" + name)),
         m_name(name),
-        m_state(state_t::follower),
         m_state_machine(state_machine),
         m_configuration(std::forward<ConfigArg>(config)),
         m_election_timeout(election_timeout),
         m_heartbeat_timeout(heartbeat_timeout),
+        m_state(state_t::follower),
         m_election_timer(reactor.native()),
         m_applier(reactor.native())
     {
         COCAINE_LOG_DEBUG(m_log, "Initialize raft actor with name %s.", name);
 
-        for(auto it = config().cluster().begin(); it != config().cluster().end(); ++it) {
+        for(auto it = this->config().cluster().begin();
+            it != this->config().cluster().end();
+            ++it)
+        {
             m_cluster.emplace_back(std::make_shared<remote_type>(*this, *it));
         }
 
-        if(config().log().empty()) {
-            config().log().append(entry_type(0));
+        if(this->config().log().empty()) {
+            this->config().log().append(entry_type(0, nop_t()));
         }
 
         m_election_timer.set<actor, &actor::on_disown>(this);
@@ -139,11 +142,6 @@ public:
         } else {
             return 0;
         }
-    }
-
-    const node_id_t&
-    id() const {
-        return config().id();
     }
 
     bool
@@ -283,7 +281,6 @@ private:
                           term,
                           std::get<0>(last_entry), std::get<1>(last_entry));
         if(term > config().current_term()) {
-            COCAINE_LOG_DEBUG(m_log, "Stepping down to term %d from term %d.", term, m_current_term);
             step_down(term);
         }
 
@@ -307,9 +304,9 @@ private:
 
     void
     step_down(uint64_t term) {
-        COCAINE_LOG_DEBUG(m_log, "Stepping down to term %d.", term);
-
         if(term > config().current_term()) {
+            COCAINE_LOG_DEBUG(m_log, "Stepping down to term %d.", term);
+
             config().set_current_term(term);
             m_voted_for.reset();
         }
@@ -326,7 +323,7 @@ private:
     struct invocation_visitor_t:
         public boost::static_visitor<>
     {
-        invocation_visitor_t(typename log_type::value_type& entry):
+        invocation_visitor_t(entry_type& entry):
             m_entry(entry)
         { }
 
@@ -338,7 +335,7 @@ private:
         }
 
     private:
-        typename log_type::value_type& m_entry;
+        entry_type& m_entry;
     };
 
     void
@@ -402,12 +399,12 @@ private:
             m_granted(1),
             m_actor(actor)
         {
-            COCAINE_LOG_DEBUG(m_actor.m_logger, "New election state created.");
+            COCAINE_LOG_DEBUG(m_actor.m_log, "New election state created.");
         }
 
         void
         disable() {
-            COCAINE_LOG_DEBUG(m_actor.m_logger, "Election state disabled.");
+            COCAINE_LOG_DEBUG(m_actor.m_log, "Election state disabled.");
             m_active = false;
         }
 
@@ -416,10 +413,11 @@ private:
             if(!m_active) {
                 return;
             }
-            COCAINE_LOG_DEBUG(m_actor.m_logger, "New vote result accepted.");
+            COCAINE_LOG_DEBUG(m_actor.m_log, "New vote result accepted.");
 
             if(result) {
-                COCAINE_LOG_DEBUG(m_actor.m_logger, "Vote accepted: %d, %s", std::get<0>(*result), (std::get<1>(*result) ? "True" : "False"));
+                COCAINE_LOG_DEBUG(m_actor.m_log, "Vote accepted: %d, %s", std::get<0>(*result), (std::get<1>(*result) ? "True" : "False"));
+
                 if(std::get<1>(*result)) {
                     m_granted++;
 
@@ -475,13 +473,13 @@ private:
 
     void
     switch_to_leader() {
-        COCAINE_LOG_DEBUG(m_logger, "Begin leadership.");
+        COCAINE_LOG_DEBUG(m_log, "Begin leadership.");
         stop_election_timer();
         reset_election_state();
 
         m_state = state_t::leader;
 
-        call(std::function<void(boost::optional<uint64_t>)>());
+        call(std::function<void(boost::optional<uint64_t>)>(), nop_t());
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
             (*it)->begin_leadership();
@@ -495,7 +493,7 @@ private:
         }
 
         if(is_leader()) {
-            COCAINE_LOG_DEBUG(m_logger, "Finish leadership.");
+            COCAINE_LOG_DEBUG(m_log, "Finish leadership.");
             for(auto it = config().commit_index(); it <= config().log().last_index(); ++it) {
                 config().log().at(it).notify(boost::none);
             }
@@ -527,7 +525,7 @@ private:
                               m_cluster[pivot]->match_index());
 
             for(uint64_t i = old_commit_index; i < config().commit_index(); ++i) {
-                config().log().at(i).notify(i);
+                config().log().at(i + 1).notify(i + 1);
             }
 
             if(!m_applier.is_active()) {
