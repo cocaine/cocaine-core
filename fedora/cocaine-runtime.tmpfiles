@@ -1,0 +1,2 @@
+# cocaine-runtime runtime directory
+d /var/run/cocaine 0755 root root -
