@@ -26,7 +26,11 @@
 
 #include "cocaine/traits/raft.hpp"
 
+#include "cocaine/platform.hpp"
+
+#include <functional>
 #include <memory>
+#include <random>
 #include <vector>
 
 namespace cocaine { namespace raft {
@@ -35,6 +39,14 @@ template<class StateMachine, class Configuration>
 class actor:
     public actor_concept_t
 {
+    COCAINE_DECLARE_NONCOPYABLE(actor)
+
+    enum class state_t {
+        leader,
+        candidate,
+        follower
+    };
+
     typedef actor<StateMachine, Configuration> actor_type;
     typedef remote_node<actor_type> remote_type;
 
@@ -45,14 +57,14 @@ public:
     typedef Configuration config_type;
     typedef typename config_type::log_type log_type;
     typedef log_entry<machine_type> entry_type;
+    typedef typename machine_type::snapshot_type snapshot_type;
 
 public:
-    template<class ConfigArg>
     actor(context_t& context,
           io::reactor_t& reactor,
           const std::string& name,
           const std::shared_ptr<machine_type>& state_machine,
-          ConfigArg&& config,
+          config_type&& config,
           uint64_t election_timeout,
           uint64_t heartbeat_timeout):
         m_context(context),
@@ -60,14 +72,15 @@ public:
         m_log(new logging::log_t(context, "raft/" + name)),
         m_name(name),
         m_state_machine(state_machine),
-        m_configuration(std::forward<ConfigArg>(config)),
+        m_configuration(std::move(config)),
         m_election_timeout(election_timeout),
         m_heartbeat_timeout(heartbeat_timeout),
+        m_snapshot_threshold(10),
         m_state(state_t::follower),
         m_election_timer(reactor.native()),
         m_applier(reactor.native())
     {
-        COCAINE_LOG_DEBUG(m_log, "Initialize raft actor with name %s.", name);
+        COCAINE_LOG_INFO(m_log, "Initialize Raft actor with name %s.", name);
 
         for(auto it = this->config().cluster().begin();
             it != this->config().cluster().end();
@@ -76,8 +89,22 @@ public:
             m_cluster.emplace_back(std::make_shared<remote_type>(*this, *it));
         }
 
+#if defined(__clang__) || defined(HAVE_GCC46)
+        std::random_device device;
+        m_random_generator.seed(device());
+#else
+        // Initialize the generator with unique for current node id and time value.
+        unsigned long random_init = static_cast<unsigned long>(::time(nullptr))
+                                  + std::hash<std::string>()(this->config().id().first)
+                                  + this->config().id().second;
+        m_random_generator.seed(random_init);
+#endif
+
         if(this->config().log().empty()) {
             this->config().log().append(entry_type(0, nop_t()));
+            this->config().log().set_snapshot(0, 0, m_state_machine->snapshot());
+            this->config().set_commit_index(0);
+            this->config().set_last_applied(0);
         }
 
         m_election_timer.set<actor, &actor::on_disown>(this);
@@ -96,7 +123,7 @@ public:
 
     void
     run() {
-        COCAINE_LOG_DEBUG(m_log, "Running the raft actor.");
+        COCAINE_LOG_INFO(m_log, "Running the Raft actor.");
         step_down(config().current_term() + 1);
     }
 
@@ -133,15 +160,6 @@ public:
     uint64_t
     heartbeat_timeout() const {
         return m_heartbeat_timeout;
-    }
-
-    uint64_t
-    commit_index() const {
-        if(!is_leader() || config().log().last_term() == config().current_term()) {
-            return config().commit_index();
-        } else {
-            return 0;
-        }
     }
 
     bool
@@ -208,6 +226,22 @@ private:
     }
 
     deferred<std::tuple<uint64_t, bool>>
+    apply(uint64_t term,
+          node_id_t leader,
+          std::tuple<uint64_t, uint64_t> snapshot_entry, // index, term
+          const msgpack::object& snapshot,
+          uint64_t commit_index)
+    {
+        snapshot_type unpacked;
+        io::type_traits<snapshot_type>::unpack(snapshot, unpacked);
+
+        deferred<std::tuple<uint64_t, bool>> promise;
+        std::function<std::tuple<uint64_t, bool>()> producer = std::bind(&actor::apply_impl, this, term, leader, snapshot_entry, unpacked, commit_index);
+        reactor().post(std::bind(&actor::deferred_writer, promise, producer));
+        return promise;
+    }
+
+    deferred<std::tuple<uint64_t, bool>>
     request_vote(uint64_t term,
                  node_id_t candidate,
                  std::tuple<uint64_t, uint64_t> last_entry)
@@ -220,10 +254,10 @@ private:
 
     std::tuple<uint64_t, bool>
     append_impl(uint64_t term,
-               node_id_t leader,
-               std::tuple<uint64_t, uint64_t> prev_entry, // index, term
-               const std::vector<entry_type>& entries,
-               uint64_t commit_index)
+                node_id_t leader,
+                std::tuple<uint64_t, uint64_t> prev_entry, // index, term
+                const std::vector<entry_type>& entries,
+                uint64_t commit_index)
     {
         COCAINE_LOG_DEBUG(m_log,
                           "Append request received from %s:%d, term: %d, prev_entry: (%d, %d), commit index: %d.",
@@ -244,8 +278,16 @@ private:
             return std::make_tuple(config().current_term(), false);
         }
 
-        if(std::get<1>(prev_entry) != config().log().at(std::get<0>(prev_entry)).term()) {
+        if(std::get<0>(prev_entry) < config().log().snapshot_index()) {
             return std::make_tuple(config().current_term(), false);
+        } else {
+            uint64_t prev_term = config().log().snapshot_index() == std::get<0>(prev_entry) ?
+                                 config().log().snapshot_term() :
+                                 config().log().at(std::get<0>(prev_entry)).term();
+
+            if(prev_term != std::get<1>(prev_entry)) {
+                return std::make_tuple(config().current_term(), false);
+            }
         }
 
         uint64_t entry_index = std::get<0>(prev_entry) + 1;
@@ -253,7 +295,7 @@ private:
             if(config().log().last_index() >= entry_index &&
                it->term() != config().log().at(entry_index).term())
             {
-                config().log().truncate_suffix(entry_index);
+                config().log().truncate(entry_index);
             }
 
             if(entry_index > config().log().last_index()) {
@@ -261,11 +303,46 @@ private:
             }
         }
 
-        config().set_commit_index(commit_index);
+        set_commit_index(commit_index);
 
-        if(config().commit_index() > config().last_applied() && !m_applier.is_active()) {
-            m_applier.start();
+        return std::make_tuple(config().current_term(), true);
+    }
+
+    std::tuple<uint64_t, bool>
+    apply_impl(uint64_t term,
+               node_id_t leader,
+               std::tuple<uint64_t, uint64_t> snapshot_entry, // index, term
+               const snapshot_type& snapshot,
+               uint64_t commit_index)
+    {
+        COCAINE_LOG_DEBUG(m_log,
+                          "Apply request received from %s:%d, term: %d, entry: (%d, %d), commit index: %d.",
+                          leader.first, leader.second,
+                          term,
+                          std::get<0>(snapshot_entry), std::get<1>(snapshot_entry),
+                          commit_index);
+
+        if(term < config().current_term()) {
+            return std::make_tuple(config().current_term(), false);
         }
+
+        step_down(term);
+
+        m_leader = leader;
+
+        if(std::get<0>(snapshot_entry) > config().log().snapshot_index() &&
+           std::get<0>(snapshot_entry) <= config().log().last_index() &&
+           std::get<1>(snapshot_entry) != config().log().at(std::get<0>(snapshot_entry)).term())
+        {
+            config().log().truncate(std::get<0>(snapshot_entry));
+        }
+
+        config().log().set_snapshot(std::get<0>(snapshot_entry),
+                                    std::get<1>(snapshot_entry),
+                                    snapshot);
+        config().set_last_applied(std::get<0>(snapshot_entry) - 1);
+
+        set_commit_index(commit_index);
 
         return std::make_tuple(config().current_term(), true);
     }
@@ -280,6 +357,7 @@ private:
                           candidate.first, candidate.second,
                           term,
                           std::get<0>(last_entry), std::get<1>(last_entry));
+
         if(term > config().current_term()) {
             step_down(term);
         }
@@ -292,6 +370,7 @@ private:
         {
             step_down(term);
             m_voted_for = candidate;
+
             COCAINE_LOG_DEBUG(m_log,
                               "In term %d vote granted to %s:%d.",
                               config().current_term(),
@@ -340,7 +419,9 @@ private:
 
     void
     apply_entries(ev::idle&, int) {
-        if(std::min(commit_index(), config().log().last_index()) <= config().last_applied()) {
+        uint64_t to_apply = std::min(config().commit_index(), config().log().last_index());
+
+        if(to_apply <= config().last_applied()) {
             COCAINE_LOG_DEBUG(m_log, "Stop applier.");
             m_applier.stop();
             return;
@@ -349,12 +430,18 @@ private:
         COCAINE_LOG_DEBUG(m_log,
                           "Applying entries from %d to %d.",
                           config().last_applied() + 1,
-                          std::min(commit_index(), config().log().last_index()));
+                          to_apply);
 
-        for(size_t entry = config().last_applied() + 1;
-            entry <= std::min(commit_index(), config().log().last_index());
-            ++entry)
-        {
+        if(config().log().snapshot_index() > config().last_applied()) {
+            try {
+                m_state_machine->consume(config().log().snapshot());
+            } catch(...) {
+                return;
+            }
+            config().set_last_applied(config().log().snapshot_index());
+        }
+
+        for(size_t entry = config().last_applied() + 1; entry <= to_apply; ++entry) {
             if(config().log().at(entry).is_command()) {
                 auto& data = config().log().at(entry);
                 try {
@@ -365,6 +452,24 @@ private:
             }
 
             config().set_last_applied(config().last_applied() + 1);
+
+            replace_snapshot();
+
+            if(config().last_applied() == config().log().snapshot_index() + m_snapshot_threshold) {
+                m_next_snapshot.reset(new snapshot_type(m_state_machine->snapshot()));
+                m_snapshot_index = config().last_applied();
+                m_snapshot_term = config().log().at(config().last_applied()).term();
+            }
+        }
+    }
+
+    void
+    replace_snapshot() {
+        if(m_next_snapshot && config().commit_index() > m_snapshot_index + m_snapshot_threshold / 2) {
+            config().log().set_snapshot(m_snapshot_index,
+                                        m_snapshot_term,
+                                        std::move(*m_next_snapshot));
+            m_next_snapshot.reset();
         }
     }
 
@@ -376,7 +481,6 @@ private:
     void
     stop_election_timer() {
         if(m_election_timer.is_active()) {
-            //COCAINE_LOG_DEBUG(m_logger, "Stop election timer.");
             m_election_timer.stop();
         }
     }
@@ -385,11 +489,18 @@ private:
     restart_election_timer() {
         stop_election_timer();
 
-        float timeout = election_timeout() + rand() % election_timeout();
+#if defined(__clang__) || defined(HAVE_GCC46)
+        typedef std::uniform_int_distribution<unsigned int> uniform_uint;
+#else
+        typedef std::uniform_int<unsigned int> uniform_uint;
+#endif
 
-        //COCAINE_LOG_DEBUG(m_logger, "Election timer will fire in %f milliseconds.", election_timeout);
+        uniform_uint distribution(election_timeout(), 2 * election_timeout());
 
+        float timeout = distribution(m_random_generator);
         m_election_timer.start(timeout / 1000.0);
+
+        COCAINE_LOG_DEBUG(m_log, "Election timer will fire in %f milliseconds.", timeout);
     }
 
     class election_state_t {
@@ -399,12 +510,11 @@ private:
             m_granted(1),
             m_actor(actor)
         {
-            COCAINE_LOG_DEBUG(m_actor.m_log, "New election state created.");
+            // Empty.
         }
 
         void
         disable() {
-            COCAINE_LOG_DEBUG(m_actor.m_log, "Election state disabled.");
             m_active = false;
         }
 
@@ -413,10 +523,12 @@ private:
             if(!m_active) {
                 return;
             }
-            COCAINE_LOG_DEBUG(m_actor.m_log, "New vote result accepted.");
 
             if(result) {
-                COCAINE_LOG_DEBUG(m_actor.m_log, "Vote accepted: %d, %s", std::get<0>(*result), (std::get<1>(*result) ? "True" : "False"));
+                COCAINE_LOG_DEBUG(m_actor.m_log,
+                                  "New vote accepted: %d, %s",
+                                  std::get<0>(*result),
+                                  (std::get<1>(*result) ? "True" : "False"));
 
                 if(std::get<1>(*result)) {
                     m_granted++;
@@ -429,6 +541,8 @@ private:
                     m_active = false;
                     m_actor.step_down(std::get<0>(*result));
                 }
+            } else {
+                COCAINE_LOG_DEBUG(m_actor.m_log, "Vote request has failed.");
             }
         }
 
@@ -474,6 +588,7 @@ private:
     void
     switch_to_leader() {
         COCAINE_LOG_DEBUG(m_log, "Begin leadership.");
+
         stop_election_timer();
         reset_election_state();
 
@@ -494,7 +609,8 @@ private:
 
         if(is_leader()) {
             COCAINE_LOG_DEBUG(m_log, "Finish leadership.");
-            for(auto it = config().commit_index(); it <= config().log().last_index(); ++it) {
+
+            for(auto it = config().commit_index() + 1; it <= config().log().last_index(); ++it) {
                 config().log().at(it).notify(boost::none);
             }
         }
@@ -510,27 +626,40 @@ private:
 
     void
     update_commit_index() {
-        size_t pivot = m_cluster.size() % 2 == 0 ? m_cluster.size() / 2 : m_cluster.size() / 2 + 1;
+        size_t pivot = (m_cluster.size() % 2 == 0) ? (m_cluster.size() / 2) : (m_cluster.size() / 2 + 1);
         std::nth_element(m_cluster.begin(),
                          m_cluster.begin() + pivot,
                          m_cluster.end(),
                          &actor::compare_match_index);
 
-        if(m_cluster[pivot]->match_index() > commit_index()) {
-            auto old_commit_index = config().commit_index();
-            config().set_commit_index(m_cluster[pivot]->match_index());
+        uint64_t just_commited = m_cluster[pivot]->match_index();
 
-            COCAINE_LOG_DEBUG(m_log,
-                              "Commit index has been updated to %d.",
-                              m_cluster[pivot]->match_index());
+        if(just_commited > config().commit_index() &&
+           config().log().at(just_commited).term() == config().current_term())
+        {
+            set_commit_index(just_commited);
+        }
+    }
 
-            for(uint64_t i = old_commit_index; i < config().commit_index(); ++i) {
+    void
+    set_commit_index(uint64_t index) {
+        auto old_index = config().commit_index();
+        auto new_index = std::min(index, config().log().last_index());
+
+        config().set_commit_index(new_index);
+
+        COCAINE_LOG_DEBUG(m_log, "Commit index has been updated to %d.", new_index);
+
+        if(new_index > config().log().snapshot_index()) {
+            for(uint64_t i = std::max(old_index, config().log().snapshot_index() + 1); i < new_index; ++i) {
                 config().log().at(i + 1).notify(i + 1);
             }
+        }
 
-            if(!m_applier.is_active()) {
-                m_applier.start();
-            }
+        replace_snapshot();
+
+        if(config().last_applied() < config().commit_index() && !m_applier.is_active()) {
+            m_applier.start();
         }
     }
 
@@ -551,6 +680,9 @@ private:
 
     uint64_t m_heartbeat_timeout;
 
+    // The actor will truncate the log and save snapshot of the state machine every m_snapshot_threshold committed entries.
+    uint64_t m_snapshot_threshold;
+
     std::vector<std::shared_ptr<remote_type>> m_cluster;
 
     state_t m_state;
@@ -569,6 +701,21 @@ private:
 
     // This state will contain information about received votes and will be reset at finish of the election.
     std::shared_ptr<election_state_t> m_election_state;
+
+    // The snapshot to be written to the log.
+    // The actor ensures that log contains at least (m_snapshot_threshold / 2) committed entries after a snapshot.
+    // So the actor stores the next snapshot here until the log contains enough entries.
+    std::unique_ptr<snapshot_type> m_next_snapshot;
+
+    uint64_t m_snapshot_index;
+
+    uint64_t m_snapshot_term;
+
+#if defined(__clang__) || defined(HAVE_GCC46)
+    std::default_random_engine m_random_generator;
+#else
+    std::minstd_rand0 m_random_generator;
+#endif
 };
 
 }} // namespace cocaine::raft

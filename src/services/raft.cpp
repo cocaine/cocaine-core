@@ -107,6 +107,7 @@ struct counter_t:
     public implements<io::counter_tag>
 {
     typedef io::counter_tag tag;
+    typedef int snapshot_type;
 
     counter_t(context_t& context, const std::string& name):
         implements<io::counter_tag>(context, name),
@@ -124,6 +125,16 @@ struct counter_t:
     auto
     prototype() -> dispatch_t& {
         return *this;
+    }
+
+    snapshot_type
+    snapshot() const {
+        return m_value;
+    }
+
+    void
+    consume(const snapshot_type& snapshot) {
+        m_value = snapshot;
     }
 
     void
@@ -155,7 +166,7 @@ raft_t::raft_t(context_t& context,
                const std::string& name,
                const dynamic_t& args):
     api::service_t(context, reactor, name, args),
-    implements<io::raft_tag<msgpack::object>>(context, name),
+    implements<io::raft_tag<msgpack::object, msgpack::object>>(context, name),
     m_context(context),
     m_reactor(reactor),
     m_log(new logging::log_t(context, name)),
@@ -165,13 +176,14 @@ raft_t::raft_t(context_t& context,
     COCAINE_LOG_DEBUG(m_log, "Starting RAFT service with name %s.", name);
 
     m_cluster = args.as_object().at("cluster", dynamic_t::empty_object).to<raft::cluster_t>();
-    m_election_timeout = args.as_object().at("election-timeout", 2500).to<uint64_t>();
+    m_election_timeout = args.as_object().at("election-timeout", 1500).to<uint64_t>();
     m_heartbeat_timeout = args.as_object().at("heartbeat-timeout", m_election_timeout / 2).to<uint64_t>();
 
     using namespace std::placeholders;
 
-    on<io::raft<msgpack::object>::append>(std::bind(&raft_t::append, this, _1, _2, _3, _4, _5, _6));
-    on<io::raft<msgpack::object>::request_vote>(std::bind(&raft_t::request_vote, this, _1, _2, _3, _4));
+    on<io::raft<msgpack::object, msgpack::object>::append>(std::bind(&raft_t::append, this, _1, _2, _3, _4, _5, _6));
+    on<io::raft<msgpack::object, msgpack::object>::apply>(std::bind(&raft_t::apply, this, _1, _2, _3, _4, _5, _6));
+    on<io::raft<msgpack::object, msgpack::object>::request_vote>(std::bind(&raft_t::request_vote, this, _1, _2, _3, _4));
 
     // TODO: Remove this code after testing.
     COCAINE_LOG_DEBUG(m_log, "Adding 'counter' state machine to the RAFT.");
@@ -179,39 +191,7 @@ raft_t::raft_t(context_t& context,
     this->add("counter", std::make_shared<counter_t>(context, "counter"));
 
     m_test_timer.set<raft_t, &raft_t::do_something>(this);
-    m_test_timer.start(10.0, 20.0);
-
-    srand(50);
-}
-
-const raft::node_id_t&
-raft_t::id() const {
-    return m_self;
-}
-
-const std::set<raft::node_id_t>&
-raft_t::cluster() const {
-    return m_cluster;
-}
-
-context_t&
-raft_t::context() {
-    return m_context;
-}
-
-io::reactor_t&
-raft_t::reactor() {
-    return m_reactor;
-}
-
-uint64_t
-raft_t::election_timeout() const {
-    return m_election_timeout;
-}
-
-uint64_t
-raft_t::heartbeat_timeout() const {
-    return m_heartbeat_timeout;
+    m_test_timer.start(10.0, 10.0);
 }
 
 deferred<std::tuple<uint64_t, bool>>
@@ -228,6 +208,25 @@ raft_t::append(const std::string& state_machine,
 
     if(it != actors->end()) {
         return it->second->append(term, leader, prev_entry, entries, commit_index);
+    } else {
+        throw error_t("There is no such state machine.");
+    }
+}
+
+deferred<std::tuple<uint64_t, bool>>
+raft_t::apply(const std::string& state_machine,
+              uint64_t term,
+              raft::node_id_t leader,
+              std::tuple<uint64_t, uint64_t> snapshot_entry, // index, term
+              const msgpack::object& snapshot,
+              uint64_t commit_index)
+{
+    auto actors = m_actors.synchronize();
+
+    auto it = actors->find(state_machine);
+
+    if(it != actors->end()) {
+        return it->second->apply(term, leader, snapshot_entry, snapshot, commit_index);
     } else {
         throw error_t("There is no such state machine.");
     }

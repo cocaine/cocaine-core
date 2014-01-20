@@ -27,6 +27,8 @@ namespace cocaine { namespace raft {
 
 template<class Log, class Cluster = cluster_t>
 class configuration {
+    COCAINE_DECLARE_NONCOPYABLE(configuration)
+
 public:
     typedef Log log_type;
     typedef Cluster cluster_type;
@@ -39,12 +41,34 @@ public:
                   uint64_t last_applied = 0):
         m_id(id),
         m_cluster(cluster),
-        m_log(log),
+        m_log(std::move(log)),
         m_current_term(term),
         m_commit_index(commit_index),
         m_last_applied(last_applied)
     {
         // Empty.
+    }
+
+    configuration(configuration&& other):
+        m_id(std::move(other.m_id)),
+        m_cluster(std::move(other.m_cluster)),
+        m_log(std::move(other.m_log)),
+        m_current_term(other.m_current_term),
+        m_commit_index(other.m_commit_index),
+        m_last_applied(other.m_last_applied)
+    {
+        // Empty.
+    }
+
+    configuration&
+    operator=(configuration&& other) {
+        m_id = std::move(other.m_id);
+        m_cluster = std::move(other.m_cluster);
+        m_log = std::move(other.m_log);
+        m_current_term = other.m_current_term;
+        m_commit_index = other.m_commit_index;
+        m_last_applied = other.m_last_applied;
+        return *this;
     }
 
     const node_id_t&

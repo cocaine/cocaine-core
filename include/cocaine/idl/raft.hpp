@@ -26,13 +26,13 @@
 
 namespace cocaine { namespace io {
 
-template<class Entry>
+template<class Entry, class Snapshot>
 struct raft_tag;
 
-template<class Entry>
+template<class Entry, class Snapshot>
 struct raft {
     struct append {
-        typedef raft_tag<Entry> tag;
+        typedef raft_tag<Entry, Snapshot> tag;
 
         static
         const char*
@@ -63,8 +63,40 @@ struct raft {
         >::tag drain_type;
     };
 
+    struct apply {
+        typedef raft_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "apply";
+        }
+
+        typedef boost::mpl::list<
+        /* Name of state machine. */
+            std::string,
+        /* Leader's term. */
+            uint64_t,
+        /* Leader's id. */
+            std::pair<std::string, uint16_t>,
+        /* Index and term of the last log entry participating in the snapshot. */
+            std::tuple<uint64_t, uint64_t>,
+        /* Snapshot. */
+            Snapshot,
+        /* Leader's commit_index. */
+            uint64_t
+        > tuple_type;
+
+        typedef stream_of<
+        /* Term of the follower. */
+            uint64_t,
+        /* Success. */
+            bool
+        >::tag drain_type;
+    };
+
     struct request_vote {
-        typedef raft_tag<Entry> tag;
+        typedef raft_tag<Entry, Snapshot> tag;
 
         static
         const char*
@@ -93,18 +125,19 @@ struct raft {
 
 }; // struct raft
 
-template<class Entry>
-struct protocol<raft_tag<Entry>> {
+template<class Entry, class Snapshot>
+struct protocol<raft_tag<Entry, Snapshot>> {
     typedef boost::mpl::int_<
         1
     >::type version;
 
     typedef boost::mpl::list<
-        typename raft<Entry>::append,
-        typename raft<Entry>::request_vote
+        typename raft<Entry, Snapshot>::append,
+        typename raft<Entry, Snapshot>::apply,
+        typename raft<Entry, Snapshot>::request_vote
     > messages;
 
-    typedef raft<Entry> type;
+    typedef raft<Entry, Snapshot> type;
 };
 
 }} // namespace cocaine::io

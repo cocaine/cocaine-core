@@ -38,13 +38,6 @@ typedef std::pair<std::string, uint16_t> node_id_t;
 // May be removed in the future.
 typedef std::set<node_id_t> cluster_t;
 
-// RAFT actor state.
-enum class state_t {
-    leader,
-    candidate,
-    follower
-};
-
 // Concept of RAFT actor.
 class actor_concept_t {
 public:
@@ -55,6 +48,14 @@ public:
            std::tuple<uint64_t, uint64_t> prev_entry, // index, term
            const std::vector<msgpack::object>& entries,
            uint64_t commit_index) = 0;
+
+    virtual
+    deferred<std::tuple<uint64_t, bool>>
+    apply(uint64_t term,
+          node_id_t leader,
+          std::tuple<uint64_t, uint64_t> prev_entry, // index, term
+          const msgpack::object& snapshot,
+          uint64_t commit_index) = 0;
 
     virtual
     deferred<std::tuple<uint64_t, bool>>
@@ -135,6 +136,7 @@ public:
     notify(boost::optional<uint64_t> index) {
         if(m_commit_handler) {
             m_commit_handler(index);
+            m_commit_handler = std::function<void(boost::optional<uint64_t>)>();
         }
     }
 

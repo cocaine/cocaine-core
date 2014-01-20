@@ -151,10 +151,13 @@ private:
 
 template<class Actor>
 class remote_node {
+    COCAINE_DECLARE_NONCOPYABLE(remote_node)
+
     typedef Actor actor_type;
 
     typedef typename actor_type::log_type log_type;
     typedef typename actor_type::entry_type entry_type;
+    typedef typename actor_type::snapshot_type snapshot_type;
 
     class resolve_handler_t {
     public:
@@ -196,12 +199,17 @@ class remote_node {
 
     class append_handler_t {
     public:
-        append_handler_t(remote_node &remote, uint64_t last_index):
+        append_handler_t(remote_node &remote):
             m_active(true),
             m_remote(remote),
-            m_last(last_index)
+            m_last(0)
         {
             // Empty.
+        }
+
+        void
+        set_last(uint64_t last_index) {
+            m_last = last_index;
         }
 
         void
@@ -264,7 +272,7 @@ public:
            m_local.is_leader() &&
            m_local.config().log().last_index() >= m_next_index)
         {
-            m_append_state = std::make_shared<append_handler_t>(*this, m_local.config().log().last_index());
+            m_append_state = std::make_shared<append_handler_t>(*this);
             ensure_connection(std::bind(&remote_node::send_append, this));
         }
     }
@@ -319,7 +327,7 @@ private:
     request_vote_impl(const std::function<void(boost::optional<std::tuple<uint64_t, bool>>)>& handler) {
         if(m_client) {
             COCAINE_LOG_DEBUG(m_logger, "Sending vote request.");
-            m_client->call<typename io::raft<entry_type>::request_vote>(
+            m_client->call<typename io::raft<entry_type, snapshot_type>::request_vote>(
                 std::make_shared<detail::raft_dispatch>(m_local.context(), m_id.first, handler),
                 m_local.name(),
                 m_local.config().current_term(),
@@ -338,29 +346,55 @@ private:
             auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
             auto dispatch = std::make_shared<detail::raft_dispatch>(m_local.context(), "", handler);
 
-            auto prev_entry = std::make_tuple(
-                m_next_index - 1,
-                m_local.config().log().at(m_next_index - 1).term()
-            );
+            if(m_next_index <= m_local.config().log().snapshot_index()) {
+                auto snapshot_entry = std::make_tuple(
+                    m_local.config().log().snapshot_index(),
+                    m_local.config().log().snapshot_term()
+                );
 
-            std::vector<entry_type> entries(m_local.config().log().iter(m_next_index),
-                                            m_local.config().log().end());
+                m_append_state->set_last(m_local.config().log().snapshot_index());
 
-            m_client->call<typename io::raft<entry_type>::append>(
-                dispatch,
-                m_local.name(),
-                m_local.config().current_term(),
-                m_local.config().id(),
-                prev_entry,
-                entries,
-                m_local.config().commit_index()
-            );
+                m_client->call<typename io::raft<entry_type, snapshot_type>::apply>(
+                    dispatch,
+                    m_local.name(),
+                    m_local.config().current_term(),
+                    m_local.config().id(),
+                    snapshot_entry,
+                    m_local.config().log().snapshot(),
+                    m_local.config().commit_index()
+                );
 
-            COCAINE_LOG_DEBUG(m_logger,
-                              "Sending append request; term %d; next %d; last %d.",
-                              m_local.config().current_term(),
-                              m_next_index,
-                              m_local.config().log().last_index());
+                COCAINE_LOG_DEBUG(m_logger,
+                                  "Sending apply request; term %d; next %d; index %d.",
+                                  m_local.config().current_term(),
+                                  m_next_index,
+                                  m_local.config().log().snapshot_index());
+            } else if(m_next_index <= m_local.config().log().last_index()) {
+                uint64_t prev_term = m_local.config().log().snapshot_index() + 1 == m_next_index ?
+                                     m_local.config().log().snapshot_term() :
+                                     m_local.config().log().at(m_next_index - 1).term();
+
+                std::vector<entry_type> entries(m_local.config().log().iter(m_next_index),
+                                                m_local.config().log().end());
+
+                m_append_state->set_last(m_local.config().log().last_index());
+
+                m_client->call<typename io::raft<entry_type, snapshot_type>::append>(
+                    dispatch,
+                    m_local.name(),
+                    m_local.config().current_term(),
+                    m_local.config().id(),
+                    std::make_tuple(m_next_index - 1, prev_term),
+                    entries,
+                    m_local.config().commit_index()
+                );
+
+                COCAINE_LOG_DEBUG(m_logger,
+                                  "Sending append request; term %d; next %d; last %d.",
+                                  m_local.config().current_term(),
+                                  m_next_index,
+                                  m_local.config().log().last_index());
+            }
         } else {
             COCAINE_LOG_DEBUG(m_logger, "Client disconnected or the local node is not the leader. Unable to send append request.");
             m_append_state->handle(boost::none);
@@ -371,7 +405,7 @@ private:
     send_heartbeat() {
         if(m_client) {
             COCAINE_LOG_DEBUG(m_logger, "Sending heartbeat.");
-            m_client->call<typename io::raft<entry_type>::append>(
+            m_client->call<typename io::raft<entry_type, snapshot_type>::append>(
                 std::shared_ptr<io::dispatch_t>(),
                 m_local.name(),
                 m_local.config().current_term(),

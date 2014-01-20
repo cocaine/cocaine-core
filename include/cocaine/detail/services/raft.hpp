@@ -40,7 +40,7 @@ namespace service {
 
 class raft_t:
     public api::service_t,
-    public implements<io::raft_tag<msgpack::object>>
+    public implements<io::raft_tag<msgpack::object, msgpack::object>>
 {
 public:
     raft_t(context_t& context,
@@ -53,24 +53,6 @@ public:
     prototype() -> dispatch_t& {
         return *this;
     }
-
-    const raft::node_id_t&
-    id() const;
-
-    const std::set<raft::node_id_t>&
-    cluster() const;
-
-    context_t&
-    context();
-
-    io::reactor_t&
-    reactor();
-
-    uint64_t
-    election_timeout() const;
-
-    uint64_t
-    heartbeat_timeout() const;
 
     template<class Machine, class Config>
     std::shared_ptr<raft::actor<Machine, typename std::decay<Config>::type>>
@@ -91,6 +73,14 @@ private:
            std::tuple<uint64_t, uint64_t> prev_entry, // index, term
            const std::vector<msgpack::object>& entries,
            uint64_t commit_index);
+
+    deferred<std::tuple<uint64_t, bool>>
+    apply(const std::string& state_machine,
+          uint64_t term,
+          raft::node_id_t leader,
+          std::tuple<uint64_t, uint64_t> snapshot_entry, // index, term
+          const msgpack::object& snapshot,
+          uint64_t commit_index);
 
     deferred<std::tuple<uint64_t, bool>>
     request_vote(const std::string& state_machine,
@@ -162,7 +152,7 @@ raft_t::add(const std::string& name, const std::shared_ptr<Machine>& machine) {
                                               m_reactor,
                                               name,
                                               machine,
-                                              config,
+                                              std::move(config),
                                               m_election_timeout,
                                               m_heartbeat_timeout);
 
