@@ -176,8 +176,8 @@ raft_t::raft_t(context_t& context,
     COCAINE_LOG_DEBUG(m_log, "Starting RAFT service with name %s.", name);
 
     m_cluster = args.as_object().at("cluster", dynamic_t::empty_object).to<raft::cluster_t>();
-    m_election_timeout = args.as_object().at("election-timeout", 1500).to<uint64_t>();
-    m_heartbeat_timeout = args.as_object().at("heartbeat-timeout", m_election_timeout / 2).to<uint64_t>();
+    m_election_timeout = args.as_object().at("election-timeout", 1500).to<unsigned int>();
+    m_heartbeat_timeout = args.as_object().at("heartbeat-timeout", m_election_timeout / 2).to<unsigned int>();
 
     using namespace std::placeholders;
 

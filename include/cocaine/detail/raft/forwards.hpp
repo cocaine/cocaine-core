@@ -21,6 +21,8 @@
 #ifndef COCAINE_RAFT_FORWARD_DECLARATIONS_HPP
 #define COCAINE_RAFT_FORWARD_DECLARATIONS_HPP
 
+#include "cocaine/detail/raft/options.hpp"
+
 #include "cocaine/rpc/queue.hpp"
 
 #include <boost/optional.hpp>

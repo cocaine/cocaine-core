@@ -284,7 +284,7 @@ public:
 
     void
     begin_leadership() {
-        m_heartbeat_timer.start(0.0, float(m_local.heartbeat_timeout()) / 1000.0);
+        m_heartbeat_timer.start(0.0, float(m_local.options().heartbeat_timeout) / 1000.0);
         m_match_index = 0;
         m_next_index = std::max<uint64_t>(1, m_local.config().log().last_index());
     }

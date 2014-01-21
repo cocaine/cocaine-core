@@ -99,8 +99,8 @@ private:
 
     raft::node_id_t m_self;
     raft::cluster_t m_cluster;
-    uint64_t m_election_timeout;
-    uint64_t m_heartbeat_timeout;
+    unsigned int m_election_timeout;
+    unsigned int m_heartbeat_timeout;
 
     synchronized<std::map<std::string, std::shared_ptr<raft::actor_concept_t>>> m_actors;
 };
@@ -123,13 +123,14 @@ raft_t::add(const std::string& name,
 
     typedef raft::actor<Machine, typename std::decay<Config>::type> actor_type;
 
+    raft::options_t opt = {m_election_timeout, m_heartbeat_timeout, 100, 10};
+
     auto actor = std::make_shared<actor_type>(m_context,
                                               m_reactor,
                                               name,
                                               machine,
                                               std::forward<Config>(config),
-                                              m_election_timeout,
-                                              m_heartbeat_timeout);
+                                              opt);
 
     if(actors->insert(std::make_pair(name, actor)).second) {
         m_reactor.post(std::bind(&actor_type::run, actor));
@@ -147,14 +148,14 @@ raft_t::add(const std::string& name, const std::shared_ptr<Machine>& machine) {
     typedef raft::actor<Machine, raft::configuration<raft::log<Machine>>> actor_type;
 
     raft::configuration<raft::log<Machine>> config(m_self, m_cluster);
+    raft::options_t opt = {m_election_timeout, m_heartbeat_timeout, 100, 10};
 
     auto actor = std::make_shared<actor_type>(m_context,
                                               m_reactor,
                                               name,
                                               machine,
                                               std::move(config),
-                                              m_election_timeout,
-                                              m_heartbeat_timeout);
+                                              opt);
 
     if(actors->insert(std::make_pair(name, actor)).second) {
         m_reactor.post(std::bind(&actor_type::run, actor));

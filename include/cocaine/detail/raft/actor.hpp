@@ -65,17 +65,14 @@ public:
           const std::string& name,
           const std::shared_ptr<machine_type>& state_machine,
           config_type&& config,
-          uint64_t election_timeout,
-          uint64_t heartbeat_timeout):
+          const options_t& options):
         m_context(context),
         m_reactor(reactor),
         m_log(new logging::log_t(context, "raft/" + name)),
         m_name(name),
         m_state_machine(state_machine),
         m_configuration(std::move(config)),
-        m_election_timeout(election_timeout),
-        m_heartbeat_timeout(heartbeat_timeout),
-        m_snapshot_threshold(10),
+        m_options(options),
         m_state(state_t::follower),
         m_election_timer(reactor.native()),
         m_applier(reactor.native())
@@ -152,14 +149,9 @@ public:
         return m_configuration;
     }
 
-    uint64_t
-    election_timeout() const {
-        return m_election_timeout;
-    }
-
-    uint64_t
-    heartbeat_timeout() const {
-        return m_heartbeat_timeout;
+    const options_t&
+    options() const {
+        return m_options;
     }
 
     bool
@@ -471,7 +463,7 @@ private:
 
             replace_snapshot();
 
-            if(config().last_applied() == config().log().snapshot_index() + m_snapshot_threshold) {
+            if(config().last_applied() == config().log().snapshot_index() + options().snapshot_threshold) {
                 m_next_snapshot.reset(new snapshot_type(m_state_machine->snapshot()));
                 m_snapshot_index = config().last_applied();
                 m_snapshot_term = config().log().at(config().last_applied()).term();
@@ -481,7 +473,13 @@ private:
 
     void
     replace_snapshot() {
-        if(m_next_snapshot && config().commit_index() > m_snapshot_index + m_snapshot_threshold / 2) {
+        if(m_next_snapshot &&
+           config().commit_index() > m_snapshot_index + options().snapshot_threshold / 2)
+        {
+            COCAINE_LOG_DEBUG(m_log,
+                              "Truncate the log up to %d index and save snapshot of the state machine.",
+                              m_snapshot_index);
+
             config().log().set_snapshot(m_snapshot_index,
                                         m_snapshot_term,
                                         std::move(*m_next_snapshot));
@@ -511,7 +509,7 @@ private:
         typedef std::uniform_int<unsigned int> uniform_uint;
 #endif
 
-        uniform_uint distribution(election_timeout(), 2 * election_timeout());
+        uniform_uint distribution(options().election_timeout, 2 * options().election_timeout);
 
         float timeout = distribution(m_random_generator);
         m_election_timer.start(timeout / 1000.0);
@@ -692,12 +690,7 @@ private:
 
     config_type m_configuration;
 
-    uint64_t m_election_timeout;
-
-    uint64_t m_heartbeat_timeout;
-
-    // The actor will truncate the log and save snapshot of the state machine every m_snapshot_threshold committed entries.
-    uint64_t m_snapshot_threshold;
+    options_t m_options;
 
     std::vector<std::shared_ptr<remote_type>> m_cluster;
 
