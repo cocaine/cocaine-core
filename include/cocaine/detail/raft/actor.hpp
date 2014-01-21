@@ -427,7 +427,8 @@ private:
 
     void
     apply_entries(ev::idle&, int) {
-        uint64_t to_apply = std::min(config().commit_index(), config().log().last_index());
+        uint64_t to_apply = std::min(config().last_applied() + options().message_size,
+                                     std::min(config().commit_index(), config().log().last_index()));
 
         if(to_apply <= config().last_applied()) {
             COCAINE_LOG_DEBUG(m_log, "Stop applier.");
@@ -447,6 +448,8 @@ private:
                 return;
             }
             config().set_last_applied(config().log().snapshot_index());
+
+            return;
         }
 
         for(size_t entry = config().last_applied() + 1; entry <= to_apply; ++entry) {

@@ -232,7 +232,8 @@ class remote_node {
                         m_remote.local().update_commit_index();
                     }
                 } else if(m_remote.m_next_index > 1) {
-                    --m_remote.m_next_index;
+                    m_remote.m_next_index -= std::min<uint64_t>(m_remote.m_local.options().message_size / 2,
+                                                                m_remote.m_next_index - 1);
                 }
                 m_remote.replicate();
             }
@@ -374,10 +375,17 @@ private:
                                      m_local.config().log().snapshot_term() :
                                      m_local.config().log().at(m_next_index - 1).term();
 
-                std::vector<entry_type> entries(m_local.config().log().iter(m_next_index),
-                                                m_local.config().log().end());
+                std::vector<entry_type> entries;
 
-                m_append_state->set_last(m_local.config().log().last_index());
+                if(m_next_index + m_local.options().message_size <= m_local.config().log().last_index()) {
+                    entries.assign(m_local.config().log().iter(m_next_index),
+                                   m_local.config().log().iter(m_next_index + m_local.options().message_size));
+                    m_append_state->set_last(m_next_index + m_local.options().message_size - 1);
+                } else {
+                    entries.assign(m_local.config().log().iter(m_next_index),
+                                   m_local.config().log().end());
+                    m_append_state->set_last(m_local.config().log().last_index());
+                }
 
                 m_client->call<typename io::raft<entry_type, snapshot_type>::append>(
                     dispatch,
