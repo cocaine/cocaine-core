@@ -259,13 +259,17 @@ private:
                 const std::vector<entry_type>& entries,
                 uint64_t commit_index)
     {
+        uint64_t prev_index, prev_term;
+        std::tie(prev_index, prev_term) = prev_entry;
+
         COCAINE_LOG_DEBUG(m_log,
                           "Append request received from %s:%d, term: %d, prev_entry: (%d, %d), commit index: %d.",
                           leader.first, leader.second,
                           term,
-                          std::get<0>(prev_entry), std::get<1>(prev_entry),
+                          prev_index, prev_term,
                           commit_index);
 
+        // Reject stale leader.
         if(term < config().current_term()) {
             return std::make_tuple(config().current_term(), false);
         }
@@ -274,25 +278,34 @@ private:
 
         m_leader = leader;
 
-        if(std::get<0>(prev_entry) > config().log().last_index()) {
-            return std::make_tuple(config().current_term(), false);
-        }
+        // Check if the append is possible and oldest common terms match.
+        if(config().log().snapshot_index() > prev_index &&
+           config().log().snapshot_index() <= prev_index + entries.size())
+        {
+            uint64_t remote_term = entries[config().log().snapshot_index() - prev_index - 1].term();
 
-        if(std::get<0>(prev_entry) < config().log().snapshot_index()) {
-            return std::make_tuple(config().current_term(), false);
-        } else {
-            uint64_t prev_term = config().log().snapshot_index() == std::get<0>(prev_entry) ?
-                                 config().log().snapshot_term() :
-                                 config().log().at(std::get<0>(prev_entry)).term();
-
-            if(prev_term != std::get<1>(prev_entry)) {
+            if(config().log().snapshot_term() != remote_term) {
                 return std::make_tuple(config().current_term(), false);
             }
+        } else if(prev_index >= config().log().snapshot_index() &&
+                  prev_index <= config().log().last_index())
+        {
+            uint64_t local_term = config().log().snapshot_index() == prev_index ?
+                                 config().log().snapshot_term() :
+                                 config().log().at(prev_index).term();
+
+            if(local_term != prev_term) {
+                return std::make_tuple(config().current_term(), false);
+            }
+        } else {
+            return std::make_tuple(config().current_term(), false);
         }
 
-        uint64_t entry_index = std::get<0>(prev_entry) + 1;
+        // Append.
+        uint64_t entry_index = prev_index + 1;
         for(auto it = entries.begin(); it != entries.end(); ++it, ++entry_index) {
-            if(config().log().last_index() >= entry_index &&
+            if(entry_index > config().log().snapshot_index() &&
+               entry_index <= config().log().last_index() &&
                it->term() != config().log().at(entry_index).term())
             {
                 config().log().truncate(entry_index);
@@ -322,6 +335,7 @@ private:
                           std::get<0>(snapshot_entry), std::get<1>(snapshot_entry),
                           commit_index);
 
+        // Reject stale leader.
         if(term < config().current_term()) {
             return std::make_tuple(config().current_term(), false);
         }
@@ -330,6 +344,7 @@ private:
 
         m_leader = leader;
 
+        // Truncate wrong entries.
         if(std::get<0>(snapshot_entry) > config().log().snapshot_index() &&
            std::get<0>(snapshot_entry) <= config().log().last_index() &&
            std::get<1>(snapshot_entry) != config().log().at(std::get<0>(snapshot_entry)).term())
@@ -362,6 +377,7 @@ private:
             step_down(term);
         }
 
+        // Check if log of the candidate is as up to date as local log, and vote was not granted to other candidate in the current term.
         if(term == config().current_term() &&
            !m_voted_for &&
            (std::get<1>(last_entry) > config().log().last_term() ||
@@ -651,7 +667,7 @@ private:
         COCAINE_LOG_DEBUG(m_log, "Commit index has been updated to %d.", new_index);
 
         if(new_index > config().log().snapshot_index()) {
-            for(uint64_t i = std::max(old_index, config().log().snapshot_index() + 1); i < new_index; ++i) {
+            for(uint64_t i = std::max(old_index, config().log().snapshot_index()); i < new_index; ++i) {
                 config().log().at(i + 1).notify(i + 1);
             }
         }

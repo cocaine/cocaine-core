@@ -370,7 +370,7 @@ private:
                                   m_next_index,
                                   m_local.config().log().snapshot_index());
             } else if(m_next_index <= m_local.config().log().last_index()) {
-                uint64_t prev_term = m_local.config().log().snapshot_index() + 1 == m_next_index ?
+                uint64_t prev_term = (m_local.config().log().snapshot_index() + 1 == m_next_index) ?
                                      m_local.config().log().snapshot_term() :
                                      m_local.config().log().at(m_next_index - 1).term();
 
@@ -405,12 +405,23 @@ private:
     send_heartbeat() {
         if(m_client) {
             COCAINE_LOG_DEBUG(m_logger, "Sending heartbeat.");
+
+            std::tuple<uint64_t, uint64_t> prev_entry(0, 0);
+
+            if(m_next_index - 1 <= m_local.config().log().snapshot_index()) {
+                prev_entry = std::make_tuple(m_local.config().log().snapshot_index(),
+                                             m_local.config().log().snapshot_term());
+            } else if(m_next_index - 1 <= m_local.config().log().last_index()) {
+                prev_entry = std::make_tuple(m_next_index - 1,
+                                             m_local.config().log().at(m_next_index - 1).term());
+            }
+
             m_client->call<typename io::raft<entry_type, snapshot_type>::append>(
                 std::shared_ptr<io::dispatch_t>(),
                 m_local.name(),
                 m_local.config().current_term(),
                 m_local.config().id(),
-                std::make_tuple(0, 0),
+                prev_entry,
                 std::vector<entry_type>(),
                 m_local.config().commit_index()
             );
