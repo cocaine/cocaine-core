@@ -314,7 +314,6 @@ public:
             m_resolve_state.reset();
         }
         m_client.reset();
-        m_next_index = 1;
         m_match_index = 0;
     }
 
