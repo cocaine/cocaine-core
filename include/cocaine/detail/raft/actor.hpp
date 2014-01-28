@@ -75,7 +75,8 @@ public:
         m_options(options),
         m_state(state_t::follower),
         m_election_timer(reactor.native()),
-        m_applier(reactor.native())
+        m_applier(reactor.native()),
+        m_replicator(reactor.native())
     {
         COCAINE_LOG_INFO(m_log, "Initialize Raft actor with name %s.", name);
 
@@ -106,6 +107,7 @@ public:
 
         m_election_timer.set<actor, &actor::on_disown>(this);
         m_applier.set<actor, &actor::apply_entries>(this);
+        m_replicator.set<actor, &actor::replicate>(this);
     }
 
     ~actor() {
@@ -177,12 +179,8 @@ public:
 
         COCAINE_LOG_DEBUG(m_log, "New entry has been added to the log.");
 
-        for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
-            try {
-                (*it)->replicate();
-            } catch(...) {
-                // Ignore.
-            }
+        if(!m_replicator.is_active()) {
+            m_replicator.start();
         }
 
         return true;
@@ -680,6 +678,19 @@ private:
         }
     }
 
+    void
+    replicate(ev::idle&, int) {
+        m_replicator.stop();
+
+        for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
+            try {
+                (*it)->replicate();
+            } catch(...) {
+                // Ignore.
+            }
+        }
+    }
+
 private:
     context_t& m_context;
 
@@ -710,6 +721,9 @@ private:
 
     // This watcher will apply committed entries in background.
     ev::idle m_applier;
+
+    // This watcher replicates entries in background.
+    ev::idle m_replicator;
 
     // This state will contain information about received votes and will be reset at finish of the election.
     std::shared_ptr<election_state_t> m_election_state;
