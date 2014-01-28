@@ -39,8 +39,6 @@ class log {
 public:
     typedef log_entry<StateMachine> entry_type;
     typedef typename StateMachine::snapshot_type snapshot_type;
-    typedef typename container_type::iterator iterator;
-    typedef typename container_type::const_iterator const_iterator;
 
     log():
         m_first_index(0)
@@ -75,28 +73,6 @@ public:
     at(uint64_t index) const {
         BOOST_ASSERT(index >= m_first_index);
         return m_entries[index - m_first_index];
-    }
-
-    iterator
-    iter(uint64_t index) {
-        BOOST_ASSERT(index >= m_first_index);
-        return m_entries.begin() + index - m_first_index;
-    }
-
-    const_iterator
-    iter(uint64_t index) const {
-        BOOST_ASSERT(index >= m_first_index);
-        return m_entries.begin() + index - m_first_index;
-    }
-
-    iterator
-    end() {
-        return m_entries.end();
-    }
-
-    const_iterator
-    end() const {
-        return m_entries.end();
     }
 
     uint64_t

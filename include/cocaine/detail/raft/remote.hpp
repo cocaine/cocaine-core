@@ -374,17 +374,21 @@ private:
                                      m_local.config().log().snapshot_term() :
                                      m_local.config().log().at(m_next_index - 1).term();
 
-                std::vector<entry_type> entries;
+                uint64_t last_index = 0;
 
                 if(m_next_index + m_local.options().message_size <= m_local.config().log().last_index()) {
-                    entries.assign(m_local.config().log().iter(m_next_index),
-                                   m_local.config().log().iter(m_next_index + m_local.options().message_size));
-                    m_append_state->set_last(m_next_index + m_local.options().message_size - 1);
+                    last_index = m_next_index + m_local.options().message_size - 1;
                 } else {
-                    entries.assign(m_local.config().log().iter(m_next_index),
-                                   m_local.config().log().end());
-                    m_append_state->set_last(m_local.config().log().last_index());
+                    last_index = m_local.config().log().last_index();
                 }
+
+                std::vector<entry_type> entries;
+
+                for(uint64_t i = m_next_index; i <= last_index; ++i) {
+                    entries.push_back(m_local.config().log().at(i));
+                }
+
+                m_append_state->set_last(last_index);
 
                 m_client->call<typename io::raft<entry_type, snapshot_type>::append>(
                     dispatch,
