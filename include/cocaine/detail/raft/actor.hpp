@@ -175,7 +175,7 @@ public:
         }
 
         config().log().append(config().current_term(), std::forward<Args>(args)...);
-        config().log().at(config().log().last_index()).bind(std::forward<Handler>(h));
+        config().log()[config().log().last_index()].bind(std::forward<Handler>(h));
 
         COCAINE_LOG_DEBUG(m_log, "New entry has been added to the log.");
 
@@ -282,7 +282,7 @@ private:
         {
             uint64_t local_term = config().log().snapshot_index() == prev_index ?
                                  config().log().snapshot_term() :
-                                 config().log().at(prev_index).term();
+                                 config().log()[prev_index].term();
 
             if(local_term != prev_term) {
                 return std::make_tuple(config().current_term(), false);
@@ -296,7 +296,7 @@ private:
         for(auto it = entries.begin(); it != entries.end(); ++it, ++entry_index) {
             if(entry_index > config().log().snapshot_index() &&
                entry_index <= config().log().last_index() &&
-               it->term() != config().log().at(entry_index).term())
+               it->term() != config().log()[entry_index].term())
             {
                 config().log().truncate(entry_index);
             }
@@ -337,7 +337,7 @@ private:
         // Truncate wrong entries.
         if(std::get<0>(snapshot_entry) > config().log().snapshot_index() &&
            std::get<0>(snapshot_entry) <= config().log().last_index() &&
-           std::get<1>(snapshot_entry) != config().log().at(std::get<0>(snapshot_entry)).term())
+           std::get<1>(snapshot_entry) != config().log()[std::get<0>(snapshot_entry)].term())
         {
             config().log().truncate(std::get<0>(snapshot_entry));
         }
@@ -451,8 +451,8 @@ private:
         }
 
         for(size_t entry = config().last_applied() + 1; entry <= to_apply; ++entry) {
-            if(config().log().at(entry).is_command()) {
-                auto& data = config().log().at(entry);
+            if(config().log()[entry].is_command()) {
+                auto& data = config().log()[entry];
                 try {
                     m_state_machine->invoke(data.get_command().which(), invocation_visitor_t(data));
                 } catch(const std::exception&) {
@@ -467,7 +467,7 @@ private:
             if(config().last_applied() == config().log().snapshot_index() + options().snapshot_threshold) {
                 m_next_snapshot.reset(new snapshot_type(m_state_machine->snapshot()));
                 m_snapshot_index = config().last_applied();
-                m_snapshot_term = config().log().at(config().last_applied()).term();
+                m_snapshot_term = config().log()[config().last_applied()].term();
             }
         }
     }
@@ -625,8 +625,8 @@ private:
         if(is_leader()) {
             COCAINE_LOG_DEBUG(m_log, "Finish leadership.");
 
-            for(auto it = config().commit_index() + 1; it <= config().log().last_index(); ++it) {
-                config().log().at(it).notify(boost::none);
+            for(auto i = config().commit_index() + 1; i <= config().log().last_index(); ++i) {
+                config().log()[i].notify(boost::none);
             }
         }
     }
@@ -650,7 +650,7 @@ private:
         uint64_t just_commited = m_cluster[pivot]->match_index();
 
         if(just_commited > config().commit_index() &&
-           config().log().at(just_commited).term() == config().current_term())
+           config().log()[just_commited].term() == config().current_term())
         {
             set_commit_index(just_commited);
         }
@@ -667,7 +667,7 @@ private:
 
         if(new_index > config().log().snapshot_index()) {
             for(uint64_t i = std::max(old_index, config().log().snapshot_index()); i < new_index; ++i) {
-                config().log().at(i + 1).notify(i + 1);
+                config().log()[i + 1].notify(i + 1);
             }
         }
 

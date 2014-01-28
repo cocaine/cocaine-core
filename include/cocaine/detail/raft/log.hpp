@@ -64,13 +64,13 @@ public:
     }
 
     entry_type&
-    at(uint64_t index) {
+    operator[](uint64_t index) {
         BOOST_ASSERT(index >= m_first_index);
         return m_entries[index - m_first_index];
     }
 
     const entry_type&
-    at(uint64_t index) const {
+    operator[](uint64_t index) const {
         BOOST_ASSERT(index >= m_first_index);
         return m_entries[index - m_first_index];
     }

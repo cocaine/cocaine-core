@@ -372,7 +372,7 @@ private:
             } else if(m_next_index <= m_local.config().log().last_index()) {
                 uint64_t prev_term = (m_local.config().log().snapshot_index() + 1 == m_next_index) ?
                                      m_local.config().log().snapshot_term() :
-                                     m_local.config().log().at(m_next_index - 1).term();
+                                     m_local.config().log()[m_next_index - 1].term();
 
                 uint64_t last_index = 0;
 
@@ -385,7 +385,7 @@ private:
                 std::vector<entry_type> entries;
 
                 for(uint64_t i = m_next_index; i <= last_index; ++i) {
-                    entries.push_back(m_local.config().log().at(i));
+                    entries.push_back(m_local.config().log()[i]);
                 }
 
                 m_append_state->set_last(last_index);
@@ -424,7 +424,7 @@ private:
                                              m_local.config().log().snapshot_term());
             } else if(m_next_index - 1 <= m_local.config().log().last_index()) {
                 prev_entry = std::make_tuple(m_next_index - 1,
-                                             m_local.config().log().at(m_next_index - 1).term());
+                                             m_local.config().log()[m_next_index - 1].term());
             }
 
             m_client->call<typename io::raft<entry_type, snapshot_type>::append>(
