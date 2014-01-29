@@ -37,7 +37,8 @@ namespace cocaine { namespace raft {
 
 template<class StateMachine, class Configuration>
 class actor:
-    public actor_concept_t
+    public actor_concept_t,
+    public std::enable_shared_from_this<actor<StateMachine, Configuration>>
 {
     COCAINE_DECLARE_NONCOPYABLE(actor)
 
@@ -99,7 +100,7 @@ public:
 #endif
 
         if(this->config().log().empty()) {
-            this->config().log().append(entry_type(0, nop_t()));
+            this->config().log().push(entry_type(0, nop_t()));
             this->config().log().set_snapshot(0, 0, m_state_machine->snapshot());
             this->config().set_commit_index(0);
             this->config().set_last_applied(0);
@@ -126,6 +127,42 @@ public:
         step_down(config().current_term() + 1);
     }
 
+    const std::string&
+    name() const {
+        return m_name;
+    }
+
+    const options_t&
+    options() const {
+        return m_options;
+    }
+
+    // TODO: Add some type of synchronization here.
+    bool
+    is_leader() const {
+        return m_state == state_t::leader;
+    }
+
+    node_id_t
+    leader_id() const {
+        return *m_leader.synchronize();
+    }
+
+    // Send command to the replicated state machine. The actor must be a leader.
+    template<class Event, class Handler, class... Args>
+    void
+    call(Handler&& h, Args&&... args) {
+        typedef typename entry_type::command_type cmd_type;
+
+        reactor().post(std::bind(
+            &actor::call_impl<Handler, cmd_type>,
+            this->shared_from_this(),
+            std::forward<Handler>(h),
+            cmd_type(io::aux::frozen<Event>(Event(), std::forward<Args>(args)...))
+        ));
+    }
+
+private:
     context_t&
     context() {
         return m_context;
@@ -134,11 +171,6 @@ public:
     io::reactor_t&
     reactor() {
         return m_reactor;
-    }
-
-    const std::string&
-    name() const {
-        return m_name;
     }
 
     config_type&
@@ -151,42 +183,27 @@ public:
         return m_configuration;
     }
 
-    const options_t&
-    options() const {
-        return m_options;
-    }
-
-    bool
-    is_leader() const {
-        return m_state == state_t::leader;
-    }
-
-    node_id_t
-    leader_id() const {
-        return m_leader;
-    }
-
-    // Send command to the replicated state machine. The actor must be a leader.
-    template<class Handler, class... Args>
-    bool
-    call(Handler&& h, Args&&... args) {
+    template<class Handler, class Arg>
+    void
+    call_impl(Handler&& h, Arg&& arg) {
         if(!is_leader()) {
-            return false;
+            h(boost::none);
+            return;
         }
 
-        config().log().append(config().current_term(), std::forward<Args>(args)...);
+        config().log().push(config().current_term(), std::forward<Arg>(arg));
         config().log()[config().log().last_index()].bind(std::forward<Handler>(h));
-
-        COCAINE_LOG_DEBUG(m_log, "New entry has been added to the log.");
 
         if(!m_replicator.is_active()) {
             m_replicator.start();
         }
 
-        return true;
+        COCAINE_LOG_DEBUG(m_log,
+                          "New entry has been added to the log in term %d and index %d.",
+                          config().log().last_term(),
+                          config().log().last_index());
     }
 
-private:
     static
     void
     deferred_writer(deferred<std::tuple<uint64_t, bool>> promise,
@@ -210,7 +227,15 @@ private:
         }
 
         deferred<std::tuple<uint64_t, bool>> promise;
-        std::function<std::tuple<uint64_t, bool>()> producer = std::bind(&actor::append_impl, this, term, leader, prev_entry, unpacked, commit_index);
+        std::function<std::tuple<uint64_t, bool>()> producer = std::bind(
+            &actor::append_impl,
+            this->shared_from_this(),
+            term,
+            leader,
+            prev_entry,
+            unpacked,
+            commit_index
+        );
         reactor().post(std::bind(&actor::deferred_writer, promise, producer));
         return promise;
     }
@@ -226,7 +251,15 @@ private:
         io::type_traits<snapshot_type>::unpack(snapshot, unpacked);
 
         deferred<std::tuple<uint64_t, bool>> promise;
-        std::function<std::tuple<uint64_t, bool>()> producer = std::bind(&actor::apply_impl, this, term, leader, snapshot_entry, unpacked, commit_index);
+        std::function<std::tuple<uint64_t, bool>()> producer = std::bind(
+            &actor::apply_impl,
+            this->shared_from_this(),
+            term,
+            leader,
+            snapshot_entry,
+            unpacked,
+            commit_index
+        );
         reactor().post(std::bind(&actor::deferred_writer, promise, producer));
         return promise;
     }
@@ -237,7 +270,13 @@ private:
                  std::tuple<uint64_t, uint64_t> last_entry)
     {
         deferred<std::tuple<uint64_t, bool>> promise;
-        std::function<std::tuple<uint64_t, bool>()> producer = std::bind(&actor::request_vote_impl, this, term, candidate, last_entry);
+        std::function<std::tuple<uint64_t, bool>()> producer = std::bind(
+            &actor::request_vote_impl,
+            this->shared_from_this(),
+            term,
+            candidate,
+            last_entry
+        );
         reactor().post(std::bind(&actor::deferred_writer, promise, producer));
         return promise;
     }
@@ -266,7 +305,7 @@ private:
 
         step_down(term);
 
-        m_leader = leader;
+        *m_leader.synchronize() = leader;
 
         // Check if the append is possible and oldest common terms match.
         if(config().log().snapshot_index() > prev_index &&
@@ -302,7 +341,7 @@ private:
             }
 
             if(entry_index > config().log().last_index()) {
-                config().log().append(*it);
+                config().log().push(*it);
             }
         }
 
@@ -332,7 +371,7 @@ private:
 
         step_down(term);
 
-        m_leader = leader;
+        *m_leader.synchronize() = leader;
 
         // Truncate wrong entries.
         if(std::get<0>(snapshot_entry) > config().log().snapshot_index() &&
@@ -609,7 +648,7 @@ private:
 
         m_state = state_t::leader;
 
-        call(std::function<void(boost::optional<uint64_t>)>(), nop_t());
+        call_impl(std::function<void(boost::optional<uint64_t>)>(), nop_t());
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
             (*it)->begin_leadership();
@@ -714,7 +753,7 @@ private:
     boost::optional<node_id_t> m_voted_for;
 
     // The leader from the last append message.
-    node_id_t m_leader;
+    synchronized<node_id_t> m_leader;
 
     // When the timer fires, the follower will switch to the candidate state.
     ev::timer m_election_timer;

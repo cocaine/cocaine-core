@@ -271,19 +271,11 @@ raft_t::do_something(ev::timer&, int) {
 
         actor_type *a = static_cast<actor_type*>(it->second.get());
 
-        actor_type::entry_type::command_type cmd;
-
         if(rand() % 2 == 0) {
-            cmd = io::aux::frozen<io::counter::dec>(io::counter::dec(), rand() % 50);
+            a->call<io::counter::dec>(&commit_result2, rand() % 50);
         } else {
-            cmd = io::aux::frozen<io::counter::inc>(io::counter::inc(), rand() % 50);
+            a->call<io::counter::inc>(&commit_result2, rand() % 50);
         }
 
-        if(!a->call(&commit_result2, cmd)) {
-            COCAINE_LOG_DEBUG(m_log,
-                              "I'm not leader. Leader is %s:%d.",
-                              a->leader_id().first,
-                              a->leader_id().second);
-        }
     }
 }

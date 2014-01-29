@@ -89,7 +89,7 @@ public:
 
     template<class... Args>
     void
-    append(Args&&... args) {
+    push(Args&&... args) {
         m_entries.emplace_back(std::forward<Args>(args)...);
     }
 
