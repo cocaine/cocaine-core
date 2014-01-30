@@ -30,6 +30,7 @@
 #include "cocaine/traits/literal.hpp"
 
 #include "cocaine/asio/resolver.hpp"
+#include "cocaine/asio/connector.hpp"
 #include "cocaine/memory.hpp"
 #include "cocaine/logging.hpp"
 
@@ -176,9 +177,12 @@ class remote_node {
         handle(boost::optional<std::tuple<std::string, uint16_t>> endpoint) {
             if(m_active) {
                 if(endpoint) {
-                    m_remote.connect(std::get<0>(endpoint.get()), std::get<1>(endpoint.get()));
+                    m_remote.connect(std::get<0>(endpoint.get()),
+                                     std::get<1>(endpoint.get()),
+                                     m_callback);
+                } else {
+                    m_callback();
                 }
-                m_callback();
             }
         }
 
@@ -313,6 +317,7 @@ public:
             m_resolve_state->disable();
             m_resolve_state.reset();
         }
+        m_connector.reset();
         m_client.reset();
         m_match_index = 0;
     }
@@ -457,14 +462,21 @@ private:
         } else {
             COCAINE_LOG_DEBUG(m_logger, "Client is not connected. Connecting...");
 
-            std::shared_ptr<client_t> locator = make_client(m_id.first, m_id.second);
+            using namespace std::placeholders;
 
-            if(!locator) {
-                COCAINE_LOG_DEBUG(m_logger, "Unable to connect to the locator.");
-                handler();
-                return;
-            }
+            make_client(m_id.first,
+                        m_id.second,
+                        std::bind(&remote_node::on_locator_connected, this, handler, _1));
+        }
+    }
 
+    void
+    on_locator_connected(const std::function<void()>& handler,
+                         const std::shared_ptr<client_t>& locator)
+    {
+        m_connector.reset();
+
+        if(locator) {
             m_resolve_state = std::make_shared<resolve_handler_t>(locator, *this, handler);
 
             auto dispatch = std::make_shared<detail::resolve_dispatch>(
@@ -474,34 +486,61 @@ private:
             );
 
             locator->call<cocaine::io::locator::resolve>(dispatch, "raft");
+        } else {
+            handler();
         }
     }
 
     void
-    connect(const std::string& host, uint16_t port) {
-        m_client = make_client(host, port);
+    connect(const std::string& host, uint16_t port, const std::function<void()>& handler) {
+        using namespace std::placeholders;
+        make_client(host, port, std::bind(&remote_node::on_raft_connected, this, handler, _1));
     }
 
-    std::shared_ptr<client_t>
-    make_client(const std::string& host, uint16_t port) {
-        auto endpoints = io::resolver<io::tcp>::query(host, port);
+    void
+    on_raft_connected(const std::function<void()>& handler,
+                      const std::shared_ptr<client_t>& client)
+    {
+        m_client = client;
+        handler();
+    }
 
-        for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
-            try {
-                auto socket = std::make_shared<io::socket<io::tcp>>(*it);
-                auto channel = std::make_unique<io::channel<io::socket<io::tcp>>>(
-                    m_local.reactor(),
-                    socket
-                );
-                auto client = std::make_shared<client_t>(std::move(channel));
-                client->bind(std::bind(&remote_node::on_error, this, std::placeholders::_1));
-                return client;
-            } catch(const std::exception&) {
-                // Ignore.
-            }
+    void
+    on_connection_error(const std::function<void(std::shared_ptr<client_t>)>& callback,
+                        const std::error_code& ec)
+    {
+        COCAINE_LOG_INFO(m_logger, "Unable to connect to the remote node: %s.", ec.message());
+        callback(std::shared_ptr<client_t>());
+    }
+
+    void
+    on_connected(const std::function<void(std::shared_ptr<client_t>)>& callback,
+                 const std::shared_ptr<io::socket<io::tcp>>& socket)
+    {
+        auto channel = std::make_unique<io::channel<io::socket<io::tcp>>>(m_local.reactor(), socket);
+        callback(std::make_shared<client_t>(std::move(channel)));
+    }
+
+    void
+    make_client(const std::string& host,
+                uint16_t port,
+                const std::function<void(std::shared_ptr<client_t>)>& callback)
+    {
+        try {
+            m_connector = std::make_shared<io::connector<io::socket<io::tcp>>>(
+                m_local.reactor(),
+                io::resolver<io::tcp>::query(host, port)
+            );
+        } catch(const std::exception& e) {
+            COCAINE_LOG_INFO(m_logger, "Unable to resolve host %s: %s.", host, e.what());
+            callback(std::shared_ptr<client_t>());
+            return;
         }
 
-        return std::shared_ptr<client_t>();
+        using namespace std::placeholders;
+
+        m_connector->bind(std::bind(&remote_node::on_connected, this, callback, _1),
+                          std::bind(&remote_node::on_connection_error, this, callback, _1));
     }
 
     void
@@ -520,6 +559,8 @@ private:
     std::shared_ptr<client_t> m_client;
 
     ev::timer m_heartbeat_timer;
+
+    std::shared_ptr<io::connector<io::socket<io::tcp>>> m_connector;
 
     std::shared_ptr<resolve_handler_t> m_resolve_state;
 
