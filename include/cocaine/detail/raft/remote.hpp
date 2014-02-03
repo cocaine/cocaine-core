@@ -23,81 +23,17 @@
 
 #include "cocaine/detail/client.hpp"
 
-#include "cocaine/idl/streaming.hpp"
-#include "cocaine/idl/locator.hpp"
-
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/literal.hpp"
 
-#include "cocaine/asio/resolver.hpp"
-#include "cocaine/asio/connector.hpp"
-#include "cocaine/memory.hpp"
 #include "cocaine/logging.hpp"
 
 #include <boost/optional.hpp>
-
-#include <functional>
-#include <string>
 #include <algorithm>
 
 namespace cocaine { namespace raft {
 
 namespace detail {
-
-class resolve_dispatch :
-    public implements<io::locator::resolve::drain_type>
-{
-    typedef boost::optional<std::tuple<std::string, uint16_t>> result_type;
-
-public:
-    resolve_dispatch(context_t &context,
-                     const std::string& name,
-                     const std::function<void(result_type)>& callback):
-        implements<io::locator::resolve::drain_type>(context, name),
-        m_callback(callback)
-    {
-        using namespace std::placeholders;
-
-        typedef io::streaming<io::locator::resolve::value_type> stream_type;
-
-        on<stream_type::chunk>(std::bind(&resolve_dispatch::on_write, this, _1, _2, _3));
-        on<stream_type::error>(std::bind(&resolve_dispatch::on_error, this, _1, _2));
-        on<stream_type::choke>(std::bind(&resolve_dispatch::on_choke, this));
-    }
-
-    ~resolve_dispatch() {
-        if(m_callback) {
-            m_callback(boost::none);
-        }
-    }
-
-private:
-    void
-    on_write(const io::locator::resolve::endpoint_tuple_type& endpoint,
-             unsigned int,
-             const io::dispatch_graph_t&)
-    {
-        m_callback(endpoint);
-        m_callback = std::function<void(result_type)>();
-    }
-
-    void
-    on_error(int, const std::string&) {
-        m_callback(boost::none);
-        m_callback = std::function<void(result_type)>();
-    }
-
-    void
-    on_choke() {
-        if(m_callback) {
-            m_callback(boost::none);
-            m_callback = std::function<void(result_type)>();
-        }
-    }
-
-private:
-    std::function<void(result_type)> m_callback;
-};
 
 class raft_dispatch :
     public implements<io::streaming_tag<std::tuple<uint64_t, bool>>>
@@ -159,47 +95,6 @@ class remote_node {
     typedef typename actor_type::log_type log_type;
     typedef typename actor_type::entry_type entry_type;
     typedef typename actor_type::snapshot_type snapshot_type;
-
-    class resolve_handler_t {
-    public:
-        resolve_handler_t(const std::shared_ptr<client_t>& locator,
-                          remote_node &remote,
-                          std::function<void()> callback):
-            m_locator(locator),
-            m_active(true),
-            m_remote(remote),
-            m_callback(callback)
-        {
-            // Emtpy.
-        }
-
-        void
-        handle(boost::optional<std::tuple<std::string, uint16_t>> endpoint) {
-            if(m_active) {
-                if(endpoint) {
-                    m_remote.connect(std::get<0>(endpoint.get()),
-                                     std::get<1>(endpoint.get()),
-                                     m_callback);
-                } else {
-                    m_callback();
-                }
-            }
-        }
-
-        void
-        disable() {
-            m_active = false;
-            m_locator.reset();
-        }
-
-    private:
-        std::shared_ptr<client_t> m_locator;
-        bool m_active;
-        remote_node &m_remote;
-        std::function<void()> m_callback;
-    };
-
-    friend class resolve_handler_t;
 
     class append_handler_t {
     public:
@@ -303,21 +198,9 @@ public:
     }
 
     void
-    reset_append_state() {
-        if(m_append_state) {
-            m_append_state->disable();
-            m_append_state.reset();
-        }
-    }
-
-    void
     reset() {
         reset_append_state();
-        if(m_resolve_state) {
-            m_resolve_state->disable();
-            m_resolve_state.reset();
-        }
-        m_connector.reset();
+        m_resolver.reset();
         m_client.reset();
         m_match_index = 0;
     }
@@ -328,6 +211,14 @@ public:
     }
 
 private:
+    void
+    reset_append_state() {
+        if(m_append_state) {
+            m_append_state->disable();
+            m_append_state.reset();
+        }
+    }
+
     void
     request_vote_impl(const std::function<void(boost::optional<std::tuple<uint64_t, bool>>)>& handler) {
         if(m_client) {
@@ -340,7 +231,7 @@ private:
                 std::make_tuple(m_local.config().log().last_index(), m_local.config().log().last_term())
             );
         } else {
-            COCAINE_LOG_DEBUG(m_logger, "Client disconnected. Unable to send vote request.");
+            COCAINE_LOG_DEBUG(m_logger, "Client isn't connected. Unable to send vote request.");
             handler(boost::none);
         }
     }
@@ -462,85 +353,43 @@ private:
         } else {
             COCAINE_LOG_DEBUG(m_logger, "Client is not connected. Connecting...");
 
-            using namespace std::placeholders;
-
-            make_client(m_id.first,
-                        m_id.second,
-                        std::bind(&remote_node::on_locator_connected, this, handler, _1));
-        }
-    }
-
-    void
-    on_locator_connected(const std::function<void()>& handler,
-                         const std::shared_ptr<client_t>& locator)
-    {
-        m_connector.reset();
-
-        if(locator) {
-            m_resolve_state = std::make_shared<resolve_handler_t>(locator, *this, handler);
-
-            auto dispatch = std::make_shared<detail::resolve_dispatch>(
+            m_resolver = std::make_shared<service_resolver_t>(
                 m_local.context(),
-                std::string(),
-                std::bind(&resolve_handler_t::handle, m_resolve_state, std::placeholders::_1)
+                m_local.reactor(),
+                io::resolver<io::tcp>::query(m_id.first, m_id.second),
+                "raft"
             );
 
-            locator->call<cocaine::io::locator::resolve>(dispatch, "raft");
-        } else {
-            handler();
+            using namespace std::placeholders;
+
+            m_resolver->bind(std::bind(&remote_node::on_client_connected, this, handler, _1),
+                             std::bind(&remote_node::on_connection_error, this, handler, _1));
         }
     }
 
     void
-    connect(const std::string& host, uint16_t port, const std::function<void()>& handler) {
-        using namespace std::placeholders;
-        make_client(host, port, std::bind(&remote_node::on_raft_connected, this, handler, _1));
-    }
-
-    void
-    on_raft_connected(const std::function<void()>& handler,
-                      const std::shared_ptr<client_t>& client)
+    on_client_connected(const std::function<void()>& handler,
+                        const std::shared_ptr<client_t>& client)
     {
+        m_resolver.reset();
+
         m_client = client;
+        m_client->bind(std::bind(&remote_node::on_error, this, std::placeholders::_1));
+
         handler();
     }
 
     void
-    on_connection_error(const std::function<void(std::shared_ptr<client_t>)>& callback,
+    on_connection_error(const std::function<void()>& handler,
                         const std::error_code& ec)
     {
-        COCAINE_LOG_INFO(m_logger, "Unable to connect to the remote node: %s.", ec.message());
-        callback(std::shared_ptr<client_t>());
-    }
+        m_resolver.reset();
 
-    void
-    on_connected(const std::function<void(std::shared_ptr<client_t>)>& callback,
-                 const std::shared_ptr<io::socket<io::tcp>>& socket)
-    {
-        auto channel = std::make_unique<io::channel<io::socket<io::tcp>>>(m_local.reactor(), socket);
-        callback(std::make_shared<client_t>(std::move(channel)));
-    }
-
-    void
-    make_client(const std::string& host,
-                uint16_t port,
-                const std::function<void(std::shared_ptr<client_t>)>& callback)
-    {
-        try {
-            m_connector = std::make_shared<io::connector<io::socket<io::tcp>>>(
-                m_local.reactor(),
-                io::resolver<io::tcp>::query(host, port)
-            );
-        } catch(const std::exception& e) {
-            COCAINE_LOG_INFO(m_logger, "Unable to resolve host %s: %s.", host, e.what());
-            callback(std::shared_ptr<client_t>());
-            return;
-        }
-
-        using namespace std::placeholders;
-
-        m_connector->bind(std::bind(&remote_node::on_connected, this, callback, _1),
-                          std::bind(&remote_node::on_connection_error, this, callback, _1));
+        COCAINE_LOG_INFO(m_logger,
+                         "Unable to connect to Raft service: (%d, %s).",
+                         ec.value(),
+                         ec.message());
+        handler();
     }
 
     void
@@ -552,7 +401,7 @@ private:
 private:
     const std::unique_ptr<logging::log_t> m_logger;
 
-    node_id_t m_id;
+    const node_id_t m_id;
 
     actor_type &m_local;
 
@@ -560,9 +409,7 @@ private:
 
     ev::timer m_heartbeat_timer;
 
-    std::shared_ptr<io::connector<io::socket<io::tcp>>> m_connector;
-
-    std::shared_ptr<resolve_handler_t> m_resolve_state;
+    std::shared_ptr<service_resolver_t> m_resolver;
 
     std::shared_ptr<append_handler_t> m_append_state;
 
