@@ -56,27 +56,32 @@ public:
     ~raft_dispatch() {
         if(m_callback) {
             m_callback(boost::none);
+            m_callback = nullptr;
         }
     }
 
 private:
     void
     on_write(uint64_t term, bool success) {
-        m_callback(std::make_tuple(term, success));
-        m_callback = std::function<void(result_type)>();
+        if(m_callback) {
+            m_callback(std::make_tuple(term, success));
+            m_callback = nullptr;
+        }
     }
 
     void
     on_error(int, const std::string&) {
-        m_callback(boost::none);
-        m_callback = std::function<void(result_type)>();
+        if(m_callback) {
+            m_callback(boost::none);
+            m_callback = nullptr;
+        }
     }
 
     void
     on_choke() {
         if(m_callback) {
             m_callback(boost::none);
-            m_callback = std::function<void(result_type)>();
+            m_callback = nullptr;
         }
     }
 
@@ -101,14 +106,12 @@ class remote_node {
         append_handler_t(remote_node &remote):
             m_active(true),
             m_remote(remote),
-            m_last(0)
-        {
-            // Empty.
-        }
+            m_last_index(0)
+        { }
 
         void
         set_last(uint64_t last_index) {
-            m_last = last_index;
+            m_last_index = last_index;
         }
 
         void
@@ -121,18 +124,20 @@ class remote_node {
             m_remote.reset_append_state();
 
             if(result) {
-                if(std::get<0>(*result) > m_remote.local().config().current_term()) {
-                    m_remote.local().step_down(std::get<0>(*result));
+                if(std::get<0>(*result) > m_remote.m_local.config().current_term()) {
+                    m_remote.m_local.step_down(std::get<0>(*result));
                     return;
                 } else if(std::get<1>(*result)) {
-                    m_remote.m_next_index = std::max(m_last + 1, m_remote.m_next_index);
-                    if(m_remote.m_match_index < m_last) {
-                        m_remote.m_match_index = m_last;
-                        m_remote.local().update_commit_index();
+                    m_remote.m_next_index = std::max(m_last_index + 1, m_remote.m_next_index);
+                    if(m_remote.m_match_index < m_last_index) {
+                        m_remote.m_match_index = m_last_index;
+                        m_remote.m_local.update_commit_index();
                     }
                 } else if(m_remote.m_next_index > 1) {
-                    m_remote.m_next_index -= std::min<uint64_t>(m_remote.m_local.options().message_size / 2,
-                                                                m_remote.m_next_index - 1);
+                    m_remote.m_next_index -= std::min<uint64_t>(
+                        m_remote.m_local.options().message_size / 2,
+                        m_remote.m_next_index - 1
+                    );
                 }
                 m_remote.replicate();
             }
@@ -145,8 +150,11 @@ class remote_node {
 
     private:
         bool m_active;
+
         remote_node &m_remote;
-        uint64_t m_last;
+
+        // Last entry replicated with this request.
+        uint64_t m_last_index;
     };
 
 public:
@@ -205,11 +213,6 @@ public:
         m_match_index = 0;
     }
 
-    actor_type&
-    local() {
-        return m_local;
-    }
-
 private:
     void
     reset_append_state() {
@@ -218,6 +221,8 @@ private:
             m_append_state.reset();
         }
     }
+
+    // Election stuff.
 
     void
     request_vote_impl(const std::function<void(boost::optional<std::tuple<uint64_t, bool>>)>& handler) {
@@ -236,76 +241,89 @@ private:
         }
     }
 
+    // Leadership stuff.
+
+    void
+    replicate_impl() {
+        if(!m_client || !m_local.is_leader()) {
+            COCAINE_LOG_DEBUG(m_logger, "Client isn't connected or the local node is not the leader. Unable to send append request.");
+            m_append_state->handle(boost::none);
+        } else if(m_next_index <= m_local.config().log().snapshot_index()) {
+            send_apply();
+        } else if(m_next_index <= m_local.config().log().last_index()) {
+            send_append();
+        }
+    }
+
+    void
+    send_apply() {
+        auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
+        auto dispatch = std::make_shared<detail::raft_dispatch>(m_local.context(), "apply", handler);
+
+        auto snapshot_entry = std::make_tuple(
+            m_local.config().log().snapshot_index(),
+            m_local.config().log().snapshot_term()
+        );
+
+        m_append_state->set_last(m_local.config().log().snapshot_index());
+
+        m_client->call<typename io::raft<entry_type, snapshot_type>::apply>(
+            dispatch,
+            m_local.name(),
+            m_local.config().current_term(),
+            m_local.config().id(),
+            snapshot_entry,
+            m_local.config().log().snapshot(),
+            m_local.config().commit_index()
+        );
+
+        COCAINE_LOG_DEBUG(m_logger,
+                          "Sending apply request; term %d; next %d; index %d.",
+                          m_local.config().current_term(),
+                          m_next_index,
+                          m_local.config().log().snapshot_index());
+    }
+
     void
     send_append() {
-        if(m_client && m_local.is_leader()) {
-            auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
-            auto dispatch = std::make_shared<detail::raft_dispatch>(m_local.context(), "", handler);
+        auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
+        auto dispatch = std::make_shared<detail::raft_dispatch>(m_local.context(), "append", handler);
 
-            if(m_next_index <= m_local.config().log().snapshot_index()) {
-                auto snapshot_entry = std::make_tuple(
-                    m_local.config().log().snapshot_index(),
-                    m_local.config().log().snapshot_term()
-                );
+        uint64_t prev_term = (m_local.config().log().snapshot_index() + 1 == m_next_index) ?
+                             m_local.config().log().snapshot_term() :
+                             m_local.config().log()[m_next_index - 1].term();
 
-                m_append_state->set_last(m_local.config().log().snapshot_index());
+        uint64_t last_index = 0;
 
-                m_client->call<typename io::raft<entry_type, snapshot_type>::apply>(
-                    dispatch,
-                    m_local.name(),
-                    m_local.config().current_term(),
-                    m_local.config().id(),
-                    snapshot_entry,
-                    m_local.config().log().snapshot(),
-                    m_local.config().commit_index()
-                );
-
-                COCAINE_LOG_DEBUG(m_logger,
-                                  "Sending apply request; term %d; next %d; index %d.",
-                                  m_local.config().current_term(),
-                                  m_next_index,
-                                  m_local.config().log().snapshot_index());
-            } else if(m_next_index <= m_local.config().log().last_index()) {
-                uint64_t prev_term = (m_local.config().log().snapshot_index() + 1 == m_next_index) ?
-                                     m_local.config().log().snapshot_term() :
-                                     m_local.config().log()[m_next_index - 1].term();
-
-                uint64_t last_index = 0;
-
-                if(m_next_index + m_local.options().message_size <= m_local.config().log().last_index()) {
-                    last_index = m_next_index + m_local.options().message_size - 1;
-                } else {
-                    last_index = m_local.config().log().last_index();
-                }
-
-                std::vector<entry_type> entries;
-
-                for(uint64_t i = m_next_index; i <= last_index; ++i) {
-                    entries.push_back(m_local.config().log()[i]);
-                }
-
-                m_append_state->set_last(last_index);
-
-                m_client->call<typename io::raft<entry_type, snapshot_type>::append>(
-                    dispatch,
-                    m_local.name(),
-                    m_local.config().current_term(),
-                    m_local.config().id(),
-                    std::make_tuple(m_next_index - 1, prev_term),
-                    entries,
-                    m_local.config().commit_index()
-                );
-
-                COCAINE_LOG_DEBUG(m_logger,
-                                  "Sending append request; term %d; next %d; last %d.",
-                                  m_local.config().current_term(),
-                                  m_next_index,
-                                  m_local.config().log().last_index());
-            }
+        if(m_next_index + m_local.options().message_size <= m_local.config().log().last_index()) {
+            last_index = m_next_index + m_local.options().message_size - 1;
         } else {
-            COCAINE_LOG_DEBUG(m_logger, "Client disconnected or the local node is not the leader. Unable to send append request.");
-            m_append_state->handle(boost::none);
+            last_index = m_local.config().log().last_index();
         }
+
+        std::vector<entry_type> entries;
+
+        for(uint64_t i = m_next_index; i <= last_index; ++i) {
+            entries.push_back(m_local.config().log()[i]);
+        }
+
+        m_append_state->set_last(last_index);
+
+        m_client->call<typename io::raft<entry_type, snapshot_type>::append>(
+            dispatch,
+            m_local.name(),
+            m_local.config().current_term(),
+            m_local.config().id(),
+            std::make_tuple(m_next_index - 1, prev_term),
+            entries,
+            m_local.config().commit_index()
+        );
+
+        COCAINE_LOG_DEBUG(m_logger,
+                          "Sending append request; term %d; next %d; last %d.",
+                          m_local.config().current_term(),
+                          m_next_index,
+                          m_local.config().log().last_index());
     }
 
     void
@@ -345,6 +363,8 @@ private:
             }
         }
     }
+
+    // Connection maintenance.
 
     void
     ensure_connection(const std::function<void()>& handler) {

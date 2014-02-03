@@ -92,7 +92,7 @@ public:
         std::random_device device;
         m_random_generator.seed(device());
 #else
-        // Initialize the generator with unique for current node id and time value.
+        // Initialize the generator with value, which is unique for current node id and time.
         unsigned long random_init = static_cast<unsigned long>(::time(nullptr))
                                   + std::hash<std::string>()(this->config().id().first)
                                   + this->config().id().second;
@@ -183,6 +183,7 @@ private:
         return m_configuration;
     }
 
+    // Add new entry to the log.
     template<class Handler, class Arg>
     void
     call_impl(Handler&& h, Arg&& arg) {
@@ -203,6 +204,21 @@ private:
                           config().log().last_term(),
                           config().log().last_index());
     }
+
+    void
+    replicate(ev::idle&, int) {
+        m_replicator.stop();
+
+        for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
+            try {
+                (*it)->replicate();
+            } catch(...) {
+                // Ignore.
+            }
+        }
+    }
+
+    // Follower stuff.
 
     static
     void
@@ -426,6 +442,7 @@ private:
                                term == config().current_term() && m_voted_for == candidate);
     }
 
+    // Switch to follower state with given term.
     void
     step_down(uint64_t term) {
         if(term > config().current_term()) {
@@ -443,6 +460,8 @@ private:
 
         m_state = state_t::follower;
     }
+
+    // Entries application. These methods are used both by follower and by leader.
 
     struct invocation_visitor_t:
         public boost::static_visitor<>
@@ -527,6 +546,8 @@ private:
         }
     }
 
+    // Election.
+
     void
     on_disown(ev::timer&, int) {
         start_election();
@@ -605,8 +626,6 @@ private:
         unsigned int m_granted;
         actor &m_actor;
     };
-
-    friend class election_state_t;
 
     void
     start_election() {
@@ -714,19 +733,6 @@ private:
 
         if(config().last_applied() < config().commit_index() && !m_applier.is_active()) {
             m_applier.start();
-        }
-    }
-
-    void
-    replicate(ev::idle&, int) {
-        m_replicator.stop();
-
-        for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
-            try {
-                (*it)->replicate();
-            } catch(...) {
-                // Ignore.
-            }
         }
     }
 
