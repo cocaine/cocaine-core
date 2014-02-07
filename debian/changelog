@@ -1,3 +1,9 @@
+cocaine-core (0.11.2.2) unstable; urgency=low
+
+  * Fixed race in engine.
+
+ -- Andrey Goryachev <bugsbunny@yandex-team.ru>  Fri, 07 Feb 2014 20:01:37 +0400
+
 cocaine-core (0.11.2.1) unstable; urgency=low
 
   * Proper logging prefix for the Process Isolate.
