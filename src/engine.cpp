@@ -78,7 +78,7 @@ engine_t::engine_t(context_t& context,
     m_log(new logging::log_t(context, cocaine::format("app/%1%", manifest.name))),
     m_manifest(manifest),
     m_profile(profile),
-    m_state(states::stopped),
+    m_state(states::running),
     m_reactor(reactor),
     m_notification(new ev::async(m_reactor->native())),
     m_termination_timer(new ev::timer(m_reactor->native())),
@@ -125,7 +125,6 @@ engine_t::~engine_t() {
 
 void
 engine_t::run() {
-    m_state = states::running;
     m_reactor->run();
 }
 
