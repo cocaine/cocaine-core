@@ -135,7 +135,7 @@ class remote_node {
                     }
                 } else if(m_remote.m_next_index > 1) {
                     m_remote.m_next_index -= std::min<uint64_t>(
-                        m_remote.m_local.options().message_size / 2,
+                        m_remote.m_local.options().message_size,
                         m_remote.m_next_index - 1
                     );
                 }
@@ -181,7 +181,7 @@ public:
            m_local.config().log().last_index() >= m_next_index)
         {
             m_append_state = std::make_shared<append_handler_t>(*this);
-            ensure_connection(std::bind(&remote_node::send_append, this));
+            ensure_connection(std::bind(&remote_node::replicate_impl, this));
         }
     }
 

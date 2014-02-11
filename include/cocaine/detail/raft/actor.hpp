@@ -23,6 +23,7 @@
 
 #include "cocaine/detail/raft/forwards.hpp"
 #include "cocaine/detail/raft/remote.hpp"
+#include "cocaine/detail/raft/error.hpp"
 
 #include "cocaine/traits/raft.hpp"
 
@@ -64,14 +65,14 @@ public:
     actor(context_t& context,
           io::reactor_t& reactor,
           const std::string& name,
-          const std::shared_ptr<machine_type>& state_machine,
+          machine_type&& state_machine,
           config_type&& config,
           const options_t& options):
         m_context(context),
         m_reactor(reactor),
         m_log(new logging::log_t(context, "raft/" + name)),
         m_name(name),
-        m_state_machine(state_machine),
+        m_machine(std::move(state_machine)),
         m_configuration(std::move(config)),
         m_options(options),
         m_state(state_t::follower),
@@ -101,7 +102,7 @@ public:
 
         if(this->config().log().empty()) {
             this->config().log().push(entry_type(0, nop_t()));
-            this->config().log().set_snapshot(0, 0, m_state_machine->snapshot());
+            this->config().log().set_snapshot(0, 0, m_machine.snapshot());
             this->config().set_commit_index(0);
             this->config().set_last_applied(0);
         }
@@ -137,7 +138,7 @@ public:
         return m_options;
     }
 
-    // TODO: Add some type of synchronization here.
+    // TODO: Add some synchronization here.
     bool
     is_leader() const {
         return m_state == state_t::leader;
@@ -149,15 +150,15 @@ public:
     }
 
     // Send command to the replicated state machine. The actor must be a leader.
-    template<class Event, class Handler, class... Args>
+    template<class Event, class... Args>
     void
-    call(Handler&& h, Args&&... args) {
+    call(const typename command_traits<Event>::callback_type& handler, Args&&... args) {
         typedef typename entry_type::command_type cmd_type;
 
         reactor().post(std::bind(
-            &actor::call_impl<Handler, cmd_type>,
+            &actor::call_impl<Event>,
             this->shared_from_this(),
-            std::forward<Handler>(h),
+            handler,
             cmd_type(io::aux::frozen<Event>(Event(), std::forward<Args>(args)...))
         ));
     }
@@ -183,17 +184,21 @@ private:
         return m_configuration;
     }
 
-    // Add new entry to the log.
-    template<class Handler, class Arg>
+    // Add new command to the log.
+    template<class Event>
     void
-    call_impl(Handler&& h, Arg&& arg) {
+    call_impl(const typename command_traits<Event>::callback_type& handler,
+              const typename entry_type::command_type& cmd)
+    {
         if(!is_leader()) {
-            h(boost::none);
+            if(handler) {
+                handler(std::error_code(raft_errc::not_leader));
+            }
             return;
         }
 
-        config().log().push(config().current_term(), std::forward<Arg>(arg));
-        config().log()[config().log().last_index()].bind(std::forward<Handler>(h));
+        config().log().push(config().current_term(), cmd);
+        config().log()[config().log().last_index()].template bind<Event>(handler);
 
         if(!m_replicator.is_active()) {
             m_replicator.start();
@@ -203,6 +208,23 @@ private:
                           "New entry has been added to the log in term %d and index %d.",
                           config().log().last_term(),
                           config().log().last_index());
+    }
+
+    // Add nop entry to the log.
+    void
+    add_nop() {
+        if(is_leader()) {
+            config().log().push(config().current_term(), nop_t());
+
+            if(!m_replicator.is_active()) {
+                m_replicator.start();
+            }
+
+            COCAINE_LOG_DEBUG(m_log,
+                              "New entry has been added to the log in term %d and index %d.",
+                              config().log().last_term(),
+                              config().log().last_index());
+        }
     }
 
     void
@@ -466,18 +488,19 @@ private:
     struct invocation_visitor_t:
         public boost::static_visitor<>
     {
-        invocation_visitor_t(entry_type& entry):
+        invocation_visitor_t(machine_type& machine, entry_type& entry):
+            m_machine(machine),
             m_entry(entry)
         { }
 
         template<class Event>
         void
-        operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
-            (*slot)(boost::get<typename io::aux::frozen<Event>>(m_entry.get_command()).tuple,
-                    std::shared_ptr<upstream_t>());
+        operator()(const io::aux::frozen<Event>& command) const {
+                m_entry.template notify<Event>(m_machine(command));
         }
 
     private:
+        machine_type& m_machine;
         entry_type& m_entry;
     };
 
@@ -499,7 +522,7 @@ private:
 
         if(config().log().snapshot_index() > config().last_applied()) {
             try {
-                m_state_machine->consume(config().log().snapshot());
+                m_machine.consume(config().log().snapshot());
             } catch(...) {
                 return;
             }
@@ -509,11 +532,12 @@ private:
         }
 
         for(size_t entry = config().last_applied() + 1; entry <= to_apply; ++entry) {
-            if(config().log()[entry].is_command()) {
-                auto& data = config().log()[entry];
+            auto& data = config().log()[entry];
+            if(data.is_command()) {
                 try {
-                    m_state_machine->invoke(data.get_command().which(), invocation_visitor_t(data));
+                    boost::apply_visitor(invocation_visitor_t(m_machine, data), data.get_command());
                 } catch(const std::exception&) {
+                    // Unable to apply the entry right now. Try later.
                     return;
                 }
             }
@@ -523,7 +547,7 @@ private:
             replace_snapshot();
 
             if(config().last_applied() == config().log().snapshot_index() + options().snapshot_threshold) {
-                m_next_snapshot.reset(new snapshot_type(m_state_machine->snapshot()));
+                m_next_snapshot.reset(new snapshot_type(m_machine.snapshot()));
                 m_snapshot_index = config().last_applied();
                 m_snapshot_term = config().log()[config().last_applied()].term();
             }
@@ -667,7 +691,7 @@ private:
 
         m_state = state_t::leader;
 
-        call_impl(std::function<void(boost::optional<uint64_t>)>(), nop_t());
+        add_nop();
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
             (*it)->begin_leadership();
@@ -683,8 +707,8 @@ private:
         if(is_leader()) {
             COCAINE_LOG_DEBUG(m_log, "Finish leadership.");
 
-            for(auto i = config().commit_index() + 1; i <= config().log().last_index(); ++i) {
-                config().log()[i].notify(boost::none);
+            for(auto i = config().last_applied() + 1; i <= config().log().last_index(); ++i) {
+                config().log()[i].notify(std::error_code(raft_errc::unknown));
             }
         }
     }
@@ -716,18 +740,11 @@ private:
 
     void
     set_commit_index(uint64_t index) {
-        auto old_index = config().commit_index();
         auto new_index = std::min(index, config().log().last_index());
 
         config().set_commit_index(new_index);
 
         COCAINE_LOG_DEBUG(m_log, "Commit index has been updated to %d.", new_index);
-
-        if(new_index > config().log().snapshot_index()) {
-            for(uint64_t i = std::max(old_index, config().log().snapshot_index()); i < new_index; ++i) {
-                config().log()[i + 1].notify(i + 1);
-            }
-        }
 
         replace_snapshot();
 
@@ -745,7 +762,7 @@ private:
 
     std::string m_name;
 
-    std::shared_ptr<machine_type> m_state_machine;
+    machine_type m_machine;
 
     config_type m_configuration;
 

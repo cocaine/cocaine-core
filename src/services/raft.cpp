@@ -27,7 +27,15 @@
 using namespace cocaine;
 using namespace cocaine::service;
 
-using namespace std::placeholders;
+std::error_code
+cocaine::make_error_code(raft_errc e) {
+    return std::error_code(static_cast<int>(e), raft_category());
+}
+
+std::error_condition
+cocaine::make_error_condition(raft_errc e) {
+    return std::error_condition(static_cast<int>(e), raft_category());
+}
 
 namespace cocaine { namespace io {
 
@@ -49,6 +57,7 @@ struct counter {
         > tuple_type;
 
         typedef void drain_type;
+        typedef int result_type;
     };
 
     struct dec {
@@ -65,6 +74,7 @@ struct counter {
         > tuple_type;
 
         typedef void drain_type;
+        typedef int result_type;
     };
 
     struct cas {
@@ -82,6 +92,7 @@ struct counter {
         > tuple_type;
 
         typedef void drain_type;
+        typedef bool result_type;
     };
 
 }; // struct counter
@@ -103,27 +114,26 @@ struct protocol<counter_tag> {
 
 }} // namespace cocaine::io
 
-struct counter_t:
-    public implements<io::counter_tag>
-{
+struct counter_t {
     typedef io::counter_tag tag;
     typedef int snapshot_type;
 
     counter_t(context_t& context, const std::string& name):
-        implements<io::counter_tag>(context, name),
         m_log(new logging::log_t(context, name)),
         m_value(0)
     {
         COCAINE_LOG_DEBUG(m_log, "Initialize counter state machine %s.", name);
-
-        on<io::counter::inc>(std::bind(&counter_t::inc, this, std::placeholders::_1));
-        on<io::counter::dec>(std::bind(&counter_t::dec, this, std::placeholders::_1));
-        on<io::counter::cas>(std::bind(&counter_t::cas, this, std::placeholders::_1, std::placeholders::_2));
     }
 
-    virtual
-    auto
-    prototype() -> dispatch_t& {
+    counter_t(counter_t&& other) {
+        *this = std::move(other);
+    }
+
+    counter_t&
+    operator=(counter_t&& other) {
+        m_log = std::move(other.m_log);
+        m_value = other.m_value.load();
+
         return *this;
     }
 
@@ -137,27 +147,34 @@ struct counter_t:
         m_value = snapshot;
     }
 
-    void
-    inc(int n) {
-        m_value += n;
-        COCAINE_LOG_DEBUG(m_log, "Add value to counter: %d. Value is %d.", n, m_value);
+    int
+    operator()(const io::aux::frozen<io::counter::inc>& req) {
+        auto val = m_value.fetch_add(std::get<0>(req.tuple)) + std::get<0>(req.tuple);
+        COCAINE_LOG_DEBUG(m_log, "Add value to counter: %d. Value is %d.", std::get<0>(req.tuple), val);
+
+        return val;
     }
 
-    void
-    dec(int n) {
-        m_value -= n;
-        COCAINE_LOG_DEBUG(m_log, "Subtract value from counter: %d. Value is %d.", n, m_value);
+    int
+    operator()(const io::aux::frozen<io::counter::dec>& req) {
+        auto val = m_value.fetch_sub(std::get<0>(req.tuple)) - std::get<0>(req.tuple);
+        COCAINE_LOG_DEBUG(m_log, "Subtract value from counter: %d. Value is %d.", std::get<0>(req.tuple), val);
+
+        return val;
     }
 
-    void
-    cas(int expected, int desired) {
-        m_value.compare_exchange_strong(expected, desired);
-        COCAINE_LOG_DEBUG(m_log, "Compare and swap: %d, %d. Value is %d.", expected, desired, m_value);
+    bool
+    operator()(const io::aux::frozen<io::counter::cas>& req) {
+        int expected, desired;
+        std::tie(expected, desired) = req.tuple;
+        auto res = m_value.compare_exchange_strong(expected, desired);
+        COCAINE_LOG_DEBUG(m_log, "Compare and swap: %d, %d: %s.", expected, desired, res ? "sucess" : "fail");
+
+        return res;
     }
 
 private:
-    const std::unique_ptr<logging::log_t> m_log;
-
+    std::unique_ptr<logging::log_t> m_log;
     std::atomic<int> m_value;
 };
 
@@ -188,7 +205,7 @@ raft_t::raft_t(context_t& context,
     // TODO: Remove this code after testing.
     COCAINE_LOG_DEBUG(m_log, "Adding 'counter' state machine to the RAFT.");
 
-    this->add("counter", std::make_shared<counter_t>(context, "counter"));
+    this->add("counter", counter_t(context, "counter"));
 
     m_test_timer.set<raft_t, &raft_t::do_something>(this);
     m_test_timer.start(10.0, 10.0);
@@ -251,11 +268,24 @@ raft_t::request_vote(const std::string& state_machine,
 
 namespace {
     void
-    commit_result2(boost::optional<uint64_t> index) {
-        if(index) {
-            std::cerr << "An entry committed with index " << *index << std::endl;
+    on_inc_result(const boost::variant<int, std::error_code>& res) {
+        const std::error_code *ec = boost::get<std::error_code>(&res);
+
+        if(ec) {
+            std::cerr << "Inc error: " << ec->value() << ", " << ec->message() << std::endl;
         } else {
-            std::cerr << "Something wrong." << std::endl;
+            std::cerr << "Inc success: " << boost::get<int>(res) << std::endl;
+        }
+    }
+
+    void
+    on_dec_result(const boost::variant<int, std::error_code>& res) {
+        const std::error_code *ec = boost::get<std::error_code>(&res);
+
+        if(ec) {
+            std::cerr << "Dec error: " << ec->value() << ", " << ec->message() << std::endl;
+        } else {
+            std::cerr << "Dec success: " << boost::get<int>(res) << std::endl;
         }
     }
 }
@@ -272,9 +302,9 @@ raft_t::do_something(ev::timer&, int) {
         actor_type *a = static_cast<actor_type*>(it->second.get());
 
         if(rand() % 2 == 0) {
-            a->call<io::counter::dec>(&commit_result2, rand() % 50);
+            a->call<io::counter::dec>(&on_inc_result, rand() % 50);
         } else {
-            a->call<io::counter::inc>(&commit_result2, rand() % 50);
+            a->call<io::counter::inc>(&on_dec_result, rand() % 50);
         }
 
     }

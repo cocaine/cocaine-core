@@ -57,12 +57,12 @@ public:
     template<class Machine, class Config>
     std::shared_ptr<raft::actor<Machine, typename std::decay<Config>::type>>
     add(const std::string& name,
-        const std::shared_ptr<Machine>& machine,
+        Machine&& machine,
         Config&& config);
 
     template<class Machine>
     std::shared_ptr<raft::actor<Machine, raft::configuration<raft::log<Machine>>>>
-    add(const std::string& name, const std::shared_ptr<Machine>& machine);
+    add(const std::string& name, Machine&& machine);
 
 
 private:
@@ -116,19 +116,20 @@ namespace cocaine { namespace service {
 template<class Machine, class Config>
 std::shared_ptr<raft::actor<Machine, typename std::decay<Config>::type>>
 raft_t::add(const std::string& name,
-            const std::shared_ptr<Machine>& machine,
+            Machine&& machine,
             Config&& config)
 {
     auto actors = m_actors.synchronize();
 
-    typedef raft::actor<Machine, typename std::decay<Config>::type> actor_type;
+    typedef typename std::decay<Machine>::type machine_type;
+    typedef raft::actor<machine_type, typename std::decay<Config>::type> actor_type;
 
     raft::options_t opt = {m_election_timeout, m_heartbeat_timeout, 100, 10};
 
     auto actor = std::make_shared<actor_type>(m_context,
                                               m_reactor,
                                               name,
-                                              machine,
+                                              std::forward<Machine>(machine),
                                               std::forward<Config>(config),
                                               opt);
 
@@ -136,24 +137,25 @@ raft_t::add(const std::string& name,
         m_reactor.post(std::bind(&actor_type::run, actor));
         return actor;
     } else {
-        return std::shared_ptr<raft::actor<Machine, typename std::decay<Config>::type>>();
+        return std::shared_ptr<actor_type>();
     }
 }
 
 template<class Machine>
 std::shared_ptr<raft::actor<Machine, raft::configuration<raft::log<Machine>>>>
-raft_t::add(const std::string& name, const std::shared_ptr<Machine>& machine) {
+raft_t::add(const std::string& name, Machine&& machine) {
     auto actors = m_actors.synchronize();
 
-    typedef raft::actor<Machine, raft::configuration<raft::log<Machine>>> actor_type;
+    typedef typename std::decay<Machine>::type machine_type;
+    typedef raft::actor<machine_type, raft::configuration<raft::log<machine_type>>> actor_type;
 
-    raft::configuration<raft::log<Machine>> config(m_self, m_cluster);
+    raft::configuration<raft::log<machine_type>> config(m_self, m_cluster);
     raft::options_t opt = {m_election_timeout, m_heartbeat_timeout, 100, 10};
 
     auto actor = std::make_shared<actor_type>(m_context,
                                               m_reactor,
                                               name,
-                                              machine,
+                                              std::forward<Machine>(machine),
                                               std::move(config),
                                               opt);
 
@@ -161,7 +163,7 @@ raft_t::add(const std::string& name, const std::shared_ptr<Machine>& machine) {
         m_reactor.post(std::bind(&actor_type::run, actor));
         return actor;
     } else {
-        return std::shared_ptr<raft::actor<Machine, raft::configuration<raft::log<Machine>>>>();
+        return std::shared_ptr<actor_type>();
     }
 }
 

@@ -22,15 +22,11 @@
 #define COCAINE_RAFT_FORWARD_DECLARATIONS_HPP
 
 #include "cocaine/detail/raft/options.hpp"
-
-#include "cocaine/rpc/queue.hpp"
-
-#include <boost/optional.hpp>
+#include "cocaine/detail/raft/entry.hpp"
 
 #include <set>
 #include <string>
 #include <utility>
-#include <functional>
 
 namespace cocaine { namespace raft {
 
@@ -64,88 +60,6 @@ public:
     request_vote(uint64_t term,
                  node_id_t candidate,
                  std::tuple<uint64_t, uint64_t> last_entry) = 0;
-};
-
-// Special type of log entry, which does nothing.
-struct nop_t {
-    bool
-    operator==(const nop_t&) const {
-        return true;
-    }
-};
-
-template<class StateMachine>
-class log_entry {
-    typedef StateMachine machine_type;
-
-    typedef typename boost::mpl::transform<
-        typename io::protocol<typename machine_type::tag>::messages,
-        typename boost::mpl::lambda<io::aux::frozen<boost::mpl::arg<1>>>
-    >::type wrapped_type;
-
-public:
-    typedef typename boost::make_variant_over<wrapped_type>::type command_type;
-    typedef typename boost::variant<nop_t, command_type> value_type;
-
-public:
-    log_entry():
-        m_term(0),
-        m_value(nop_t())
-    { }
-
-    log_entry(uint64_t term, const value_type& value):
-        m_term(term),
-        m_value(value)
-    { }
-
-    uint64_t
-    term() const {
-        return m_term;
-    }
-
-    value_type&
-    value() {
-        return m_value;
-    }
-
-    const value_type&
-    value() const {
-        return m_value;
-    }
-
-    bool
-    is_command() const {
-        return boost::get<command_type>(&m_value);
-    }
-
-    const command_type&
-    get_command() const {
-        return boost::get<command_type>(m_value);
-    }
-
-    command_type&
-    get_command() {
-        return boost::get<command_type>(m_value);
-    }
-
-    template<class Handler>
-    void
-    bind(Handler&& h) {
-        m_commit_handler = h;
-    }
-
-    void
-    notify(boost::optional<uint64_t> index) {
-        if(m_commit_handler) {
-            m_commit_handler(index);
-            m_commit_handler = std::function<void(boost::optional<uint64_t>)>();
-        }
-    }
-
-private:
-    uint64_t m_term;
-    value_type m_value;
-    std::function<void(boost::optional<uint64_t>)> m_commit_handler;
 };
 
 }} // namespace cocaine::raft
