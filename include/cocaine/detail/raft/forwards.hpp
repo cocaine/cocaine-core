@@ -24,6 +24,8 @@
 #include "cocaine/detail/raft/options.hpp"
 #include "cocaine/detail/raft/entry.hpp"
 
+#include "cocaine/rpc/slots/deferred.hpp"
+
 #include <set>
 #include <string>
 #include <utility>
@@ -33,7 +35,7 @@ namespace cocaine { namespace raft {
 // Identifier of RAFT node. In fact this is endpoint of locator of the node.
 typedef std::pair<std::string, uint16_t> node_id_t;
 
-// May be removed in the future.
+// NOTE: May be removed in the future.
 typedef std::set<node_id_t> cluster_t;
 
 // Concept of RAFT actor.

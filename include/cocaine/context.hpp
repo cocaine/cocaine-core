@@ -25,6 +25,7 @@
 #include "cocaine/dynamic.hpp"
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
+#include "cocaine/detail/raft/repository.hpp"
 
 #include <queue>
 
@@ -91,6 +92,15 @@ struct config_t {
         boost::optional<component_t> gateway;
     } network;
 
+    struct {
+        raft::cluster_t cluster;
+        std::string service_name;
+        unsigned int election_timeout;
+        unsigned int heartbeat_timeout;
+        unsigned int snapshot_threshold;
+        unsigned int message_size;
+    } raft;
+
     typedef std::map<std::string, component_t> component_map_t;
 
     component_map_t loggers;
@@ -148,6 +158,8 @@ class context_t {
 public:
     const config_t config;
 
+    raft::repository_t raft;
+
 public:
     context_t(config_t config, const std::string& logger);
     context_t(config_t config, std::unique_ptr<logging::logger_concept_t>&& logger);
@@ -194,5 +206,7 @@ context_t::get(const std::string& type, Args&&... args) {
 }
 
 } // namespace cocaine
+
+#include "cocaine/detail/raft/repository_impl.hpp"
 
 #endif

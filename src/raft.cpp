@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/raft.hpp"
+#include "cocaine/detail/raft/service.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
@@ -35,6 +35,19 @@ cocaine::make_error_code(raft_errc e) {
 std::error_condition
 cocaine::make_error_condition(raft_errc e) {
     return std::error_condition(static_cast<int>(e), raft_category());
+}
+
+const std::shared_ptr<raft::actor_concept_t>&
+raft::repository_t::get(const std::string& name) const {
+    auto actors = m_actors.synchronize();
+
+    auto it = actors->find(name);
+
+    if(it != actors->end()) {
+        return it->second;
+    } else {
+        throw error_t("There is no such state machine.");
+    }
 }
 
 namespace cocaine { namespace io {
@@ -180,21 +193,15 @@ private:
 
 raft_t::raft_t(context_t& context,
                io::reactor_t& reactor,
-               const std::string& name,
-               const dynamic_t& args):
-    api::service_t(context, reactor, name, args),
+               const std::string& name):
+    api::service_t(context, reactor, name, dynamic_t::empty_object),
     implements<io::raft_tag<msgpack::object, msgpack::object>>(context, name),
     m_context(context),
     m_reactor(reactor),
     m_log(new logging::log_t(context, name)),
-    m_test_timer(reactor.native()),
-    m_self(context.config.network.endpoint, context.config.network.locator)
+    m_test_timer(reactor.native())
 {
     COCAINE_LOG_DEBUG(m_log, "Starting RAFT service with name %s.", name);
-
-    m_cluster = args.as_object().at("cluster", dynamic_t::empty_object).to<raft::cluster_t>();
-    m_election_timeout = args.as_object().at("election-timeout", 1500).to<unsigned int>();
-    m_heartbeat_timeout = args.as_object().at("heartbeat-timeout", m_election_timeout / 2).to<unsigned int>();
 
     using namespace std::placeholders;
 
@@ -205,7 +212,7 @@ raft_t::raft_t(context_t& context,
     // TODO: Remove this code after testing.
     COCAINE_LOG_DEBUG(m_log, "Adding 'counter' state machine to the RAFT.");
 
-    this->add("counter", counter_t(context, "counter"));
+    context.raft.insert("counter", counter_t(context, "counter"));
 
     m_test_timer.set<raft_t, &raft_t::do_something>(this);
     m_test_timer.start(10.0, 10.0);
@@ -219,15 +226,11 @@ raft_t::append(const std::string& state_machine,
                const std::vector<msgpack::object>& entries,
                uint64_t commit_index)
 {
-    auto actors = m_actors.synchronize();
-
-    auto it = actors->find(state_machine);
-
-    if(it != actors->end()) {
-        return it->second->append(term, leader, prev_entry, entries, commit_index);
-    } else {
-        throw error_t("There is no such state machine.");
-    }
+    return m_context.raft.get(state_machine)->append(term,
+                                                     leader,
+                                                     prev_entry,
+                                                     entries,
+                                                     commit_index);
 }
 
 deferred<std::tuple<uint64_t, bool>>
@@ -238,15 +241,11 @@ raft_t::apply(const std::string& state_machine,
               const msgpack::object& snapshot,
               uint64_t commit_index)
 {
-    auto actors = m_actors.synchronize();
-
-    auto it = actors->find(state_machine);
-
-    if(it != actors->end()) {
-        return it->second->apply(term, leader, snapshot_entry, snapshot, commit_index);
-    } else {
-        throw error_t("There is no such state machine.");
-    }
+    return m_context.raft.get(state_machine)->apply(term,
+                                                    leader,
+                                                    snapshot_entry,
+                                                    snapshot,
+                                                    commit_index);
 }
 
 deferred<std::tuple<uint64_t, bool>>
@@ -255,15 +254,7 @@ raft_t::request_vote(const std::string& state_machine,
                      raft::node_id_t candidate,
                      std::tuple<uint64_t, uint64_t> last_entry)
 {
-    auto actors = m_actors.synchronize();
-
-    auto it = actors->find(state_machine);
-
-    if(it != actors->end()) {
-        return it->second->request_vote(term, candidate, last_entry);
-    } else {
-        throw error_t("There is no such state machine.");
-    }
+    return m_context.raft.get(state_machine)->request_vote(term, candidate, last_entry);
 }
 
 namespace {
@@ -292,20 +283,15 @@ namespace {
 
 void
 raft_t::do_something(ev::timer&, int) {
-    auto actors = m_actors.synchronize();
+    auto c = m_context.raft.get("counter");
 
-    auto it = actors->find("counter");
+    typedef raft::actor<counter_t, raft::configuration<raft::log<counter_t>>> actor_type;
 
-    if(it != actors->end()) {
-        typedef raft::actor<counter_t, raft::configuration<raft::log<counter_t>>> actor_type;
+    actor_type *a = static_cast<actor_type*>(c.get());
 
-        actor_type *a = static_cast<actor_type*>(it->second.get());
-
-        if(rand() % 2 == 0) {
-            a->call<io::counter::dec>(&on_inc_result, rand() % 50);
-        } else {
-            a->call<io::counter::inc>(&on_dec_result, rand() % 50);
-        }
-
+    if(rand() % 2 == 0) {
+        a->call<io::counter::dec>(&on_inc_result, rand() % 50);
+    } else {
+        a->call<io::counter::inc>(&on_dec_result, rand() % 50);
     }
 }

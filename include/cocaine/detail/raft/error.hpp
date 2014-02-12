@@ -75,9 +75,7 @@ namespace std {
 template<>
 struct is_error_code_enum<cocaine::raft_errc> :
     public true_type
-{
-    // pass
-};
+{ };
 
 } // namespace std
 

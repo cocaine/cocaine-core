@@ -22,7 +22,7 @@
 #define COCAINE_RAFT_REMOTE_HPP
 
 #include "cocaine/detail/client.hpp"
-
+#include "cocaine/idl/raft.hpp"
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/literal.hpp"
 
@@ -377,7 +377,7 @@ private:
                 m_local.context(),
                 m_local.reactor(),
                 io::resolver<io::tcp>::query(m_id.first, m_id.second),
-                "raft"
+                m_local.context().config.raft.service_name
             );
 
             using namespace std::placeholders;
@@ -406,7 +406,7 @@ private:
         m_resolver.reset();
 
         COCAINE_LOG_INFO(m_logger,
-                         "Unable to connect to Raft service: (%d, %s).",
+                         "Unable to connect to Raft service: [%d] %s.",
                          ec.value(),
                          ec.message());
         handler();
@@ -414,7 +414,7 @@ private:
 
     void
     on_error(const std::error_code& ec) {
-        COCAINE_LOG_INFO(m_logger, "Connection error: %s.", ec.message());
+        COCAINE_LOG_INFO(m_logger, "Connection error: [%d] %s.", ec.value(), ec.message());
         reset();
     }
 
