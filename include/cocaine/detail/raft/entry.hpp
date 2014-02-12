@@ -132,9 +132,7 @@ public:
     template<class Event>
     void
     bind(const typename command_traits<Event>::callback_type& h) {
-        handler_wrapper<Event> wrapper;
-        wrapper.callback = h;
-        m_handler = wrapper;
+        m_handler = handler_wrapper<Event>{h};
     }
 
     template<class Event, class Result>
