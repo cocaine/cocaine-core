@@ -1,6 +1,6 @@
 /*
-    Copyright (c) 2013-2013 Andrey Goryachev <andrey.goryachev@gmail.com>
-    Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
+    Copyright (c) 2013-2014 Andrey Goryachev <andrey.goryachev@gmail.com>
+    Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
 
     This file is part of Cocaine.
 
@@ -19,10 +19,7 @@
 */
 
 #include "cocaine/detail/raft/service.hpp"
-#include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-
-#include <iostream>
 
 using namespace cocaine;
 using namespace cocaine::service;
@@ -50,147 +47,6 @@ raft::repository_t::get(const std::string& name) const {
     }
 }
 
-namespace cocaine { namespace io {
-
-struct counter_tag;
-
-struct counter {
-
-    struct inc {
-        typedef counter_tag tag;
-
-        static
-        const char*
-        alias() {
-            return "inc";
-        }
-
-        typedef boost::mpl::list<
-            int
-        > tuple_type;
-
-        typedef void drain_type;
-        typedef int result_type;
-    };
-
-    struct dec {
-        typedef counter_tag tag;
-
-        static
-        const char*
-        alias() {
-            return "dec";
-        }
-
-        typedef boost::mpl::list<
-            int
-        > tuple_type;
-
-        typedef void drain_type;
-        typedef int result_type;
-    };
-
-    struct cas {
-        typedef counter_tag tag;
-
-        static
-        const char*
-        alias() {
-            return "cas";
-        }
-
-        typedef boost::mpl::list<
-            int,
-            int
-        > tuple_type;
-
-        typedef void drain_type;
-        typedef bool result_type;
-    };
-
-}; // struct counter
-
-template<>
-struct protocol<counter_tag> {
-    typedef boost::mpl::int_<
-        1
-    >::type version;
-
-    typedef boost::mpl::list<
-        counter::inc,
-        counter::dec,
-        counter::cas
-    > messages;
-
-    typedef counter type;
-};
-
-}} // namespace cocaine::io
-
-struct counter_t {
-    typedef io::counter_tag tag;
-    typedef int snapshot_type;
-
-    counter_t(context_t& context, const std::string& name):
-        m_log(new logging::log_t(context, name)),
-        m_value(0)
-    {
-        COCAINE_LOG_DEBUG(m_log, "Initialize counter state machine %s.", name);
-    }
-
-    counter_t(counter_t&& other) {
-        *this = std::move(other);
-    }
-
-    counter_t&
-    operator=(counter_t&& other) {
-        m_log = std::move(other.m_log);
-        m_value = other.m_value.load();
-
-        return *this;
-    }
-
-    snapshot_type
-    snapshot() const {
-        return m_value;
-    }
-
-    void
-    consume(const snapshot_type& snapshot) {
-        m_value = snapshot;
-    }
-
-    int
-    operator()(const io::aux::frozen<io::counter::inc>& req) {
-        auto val = m_value.fetch_add(std::get<0>(req.tuple)) + std::get<0>(req.tuple);
-        COCAINE_LOG_DEBUG(m_log, "Add value to counter: %d. Value is %d.", std::get<0>(req.tuple), val);
-
-        return val;
-    }
-
-    int
-    operator()(const io::aux::frozen<io::counter::dec>& req) {
-        auto val = m_value.fetch_sub(std::get<0>(req.tuple)) - std::get<0>(req.tuple);
-        COCAINE_LOG_DEBUG(m_log, "Subtract value from counter: %d. Value is %d.", std::get<0>(req.tuple), val);
-
-        return val;
-    }
-
-    bool
-    operator()(const io::aux::frozen<io::counter::cas>& req) {
-        int expected, desired;
-        std::tie(expected, desired) = req.tuple;
-        auto res = m_value.compare_exchange_strong(expected, desired);
-        COCAINE_LOG_DEBUG(m_log, "Compare and swap: %d, %d: %s.", expected, desired, res ? "sucess" : "fail");
-
-        return res;
-    }
-
-private:
-    std::unique_ptr<logging::log_t> m_log;
-    std::atomic<int> m_value;
-};
-
 raft_t::raft_t(context_t& context,
                io::reactor_t& reactor,
                const std::string& name):
@@ -198,8 +54,7 @@ raft_t::raft_t(context_t& context,
     implements<io::raft_tag<msgpack::object, msgpack::object>>(context, name),
     m_context(context),
     m_reactor(reactor),
-    m_log(new logging::log_t(context, name)),
-    m_test_timer(reactor.native())
+    m_log(new logging::log_t(context, name))
 {
     COCAINE_LOG_DEBUG(m_log, "Starting RAFT service with name %s.", name);
 
@@ -208,14 +63,6 @@ raft_t::raft_t(context_t& context,
     on<io::raft<msgpack::object, msgpack::object>::append>(std::bind(&raft_t::append, this, _1, _2, _3, _4, _5, _6));
     on<io::raft<msgpack::object, msgpack::object>::apply>(std::bind(&raft_t::apply, this, _1, _2, _3, _4, _5, _6));
     on<io::raft<msgpack::object, msgpack::object>::request_vote>(std::bind(&raft_t::request_vote, this, _1, _2, _3, _4));
-
-    // TODO: Remove this code after testing.
-    COCAINE_LOG_DEBUG(m_log, "Adding 'counter' state machine to the RAFT.");
-
-    context.raft.insert("counter", counter_t(context, "counter"));
-
-    m_test_timer.set<raft_t, &raft_t::do_something>(this);
-    m_test_timer.start(10.0, 10.0);
 }
 
 deferred<std::tuple<uint64_t, bool>>
@@ -255,43 +102,4 @@ raft_t::request_vote(const std::string& state_machine,
                      std::tuple<uint64_t, uint64_t> last_entry)
 {
     return m_context.raft.get(state_machine)->request_vote(term, candidate, last_entry);
-}
-
-namespace {
-    void
-    on_inc_result(const boost::variant<int, std::error_code>& res) {
-        const std::error_code *ec = boost::get<std::error_code>(&res);
-
-        if(ec) {
-            std::cerr << "Inc error: " << ec->value() << ", " << ec->message() << std::endl;
-        } else {
-            std::cerr << "Inc success: " << boost::get<int>(res) << std::endl;
-        }
-    }
-
-    void
-    on_dec_result(const boost::variant<int, std::error_code>& res) {
-        const std::error_code *ec = boost::get<std::error_code>(&res);
-
-        if(ec) {
-            std::cerr << "Dec error: " << ec->value() << ", " << ec->message() << std::endl;
-        } else {
-            std::cerr << "Dec success: " << boost::get<int>(res) << std::endl;
-        }
-    }
-}
-
-void
-raft_t::do_something(ev::timer&, int) {
-    auto c = m_context.raft.get("counter");
-
-    typedef raft::actor<counter_t, raft::configuration<raft::log<counter_t>>> actor_type;
-
-    actor_type *a = static_cast<actor_type*>(c.get());
-
-    if(rand() % 2 == 0) {
-        a->call<io::counter::dec>(&on_inc_result, rand() % 50);
-    } else {
-        a->call<io::counter::inc>(&on_dec_result, rand() % 50);
-    }
 }

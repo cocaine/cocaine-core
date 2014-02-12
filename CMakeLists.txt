@@ -96,6 +96,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/logging
     src/raft
     src/repository
+    src/services/counter
     src/services/logging
     src/services/node.cpp
     src/services/node/app

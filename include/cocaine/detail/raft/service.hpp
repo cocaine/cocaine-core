@@ -67,14 +67,10 @@ private:
                  raft::node_id_t candidate,
                  std::tuple<uint64_t, uint64_t> last_entry);
 
-    void
-    do_something(ev::timer&, int);
-
 private:
     context_t& m_context;
     io::reactor_t& m_reactor;
     const std::unique_ptr<logging::log_t> m_log;
-    ev::timer m_test_timer;
 };
 
 }} // namespace cocaine::service
