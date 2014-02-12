@@ -19,10 +19,11 @@
 */
 
 #include "cocaine/detail/raft/service.hpp"
+#include "cocaine/raft.hpp"
 #include "cocaine/logging.hpp"
 
 using namespace cocaine;
-using namespace cocaine::service;
+using namespace cocaine::raft;
 
 std::error_code
 cocaine::make_error_code(raft_errc e) {
@@ -47,59 +48,48 @@ raft::repository_t::get(const std::string& name) const {
     }
 }
 
-raft_t::raft_t(context_t& context,
-               io::reactor_t& reactor,
-               const std::string& name):
+service_t::service_t(context_t& context,
+                     io::reactor_t& reactor,
+                     const std::string& name):
     api::service_t(context, reactor, name, dynamic_t::empty_object),
     implements<io::raft_tag<msgpack::object, msgpack::object>>(context, name),
     m_context(context),
-    m_reactor(reactor),
-    m_log(new logging::log_t(context, name))
+    m_reactor(reactor)
 {
-    COCAINE_LOG_DEBUG(m_log, "Starting RAFT service with name %s.", name);
-
     using namespace std::placeholders;
 
-    on<io::raft<msgpack::object, msgpack::object>::append>(std::bind(&raft_t::append, this, _1, _2, _3, _4, _5, _6));
-    on<io::raft<msgpack::object, msgpack::object>::apply>(std::bind(&raft_t::apply, this, _1, _2, _3, _4, _5, _6));
-    on<io::raft<msgpack::object, msgpack::object>::request_vote>(std::bind(&raft_t::request_vote, this, _1, _2, _3, _4));
+    on<io::raft<msgpack::object, msgpack::object>::append>(std::bind(&service_t::append, this, _1, _2, _3, _4, _5, _6));
+    on<io::raft<msgpack::object, msgpack::object>::apply>(std::bind(&service_t::apply, this, _1, _2, _3, _4, _5, _6));
+    on<io::raft<msgpack::object, msgpack::object>::request_vote>(std::bind(&service_t::request_vote, this, _1, _2, _3, _4));
 }
 
 deferred<std::tuple<uint64_t, bool>>
-raft_t::append(const std::string& state_machine,
-               uint64_t term,
-               raft::node_id_t leader,
-               std::tuple<uint64_t, uint64_t> prev_entry, // index, term
-               const std::vector<msgpack::object>& entries,
-               uint64_t commit_index)
+service_t::append(const std::string& machine,
+                  uint64_t term,
+                  node_id_t leader,
+                  std::tuple<uint64_t, uint64_t> prev_entry, // index, term
+                  const std::vector<msgpack::object>& entries,
+                  uint64_t commit_index)
 {
-    return m_context.raft.get(state_machine)->append(term,
-                                                     leader,
-                                                     prev_entry,
-                                                     entries,
-                                                     commit_index);
+    return m_context.raft->get(machine)->append(term, leader, prev_entry, entries, commit_index);
 }
 
 deferred<std::tuple<uint64_t, bool>>
-raft_t::apply(const std::string& state_machine,
-              uint64_t term,
-              raft::node_id_t leader,
-              std::tuple<uint64_t, uint64_t> snapshot_entry, // index, term
-              const msgpack::object& snapshot,
-              uint64_t commit_index)
+service_t::apply(const std::string& machine,
+                 uint64_t term,
+                 raft::node_id_t leader,
+                 std::tuple<uint64_t, uint64_t> snapshot_entry, // index, term
+                 const msgpack::object& snapshot,
+                 uint64_t commit_index)
 {
-    return m_context.raft.get(state_machine)->apply(term,
-                                                    leader,
-                                                    snapshot_entry,
-                                                    snapshot,
-                                                    commit_index);
+    return m_context.raft->get(machine)->apply(term, leader, snapshot_entry, snapshot, commit_index);
 }
 
 deferred<std::tuple<uint64_t, bool>>
-raft_t::request_vote(const std::string& state_machine,
-                     uint64_t term,
-                     raft::node_id_t candidate,
-                     std::tuple<uint64_t, uint64_t> last_entry)
+service_t::request_vote(const std::string& state_machine,
+                        uint64_t term,
+                        raft::node_id_t candidate,
+                        std::tuple<uint64_t, uint64_t> last_entry)
 {
-    return m_context.raft.get(state_machine)->request_vote(term, candidate, last_entry);
+    return m_context.raft->get(state_machine)->request_vote(term, candidate, last_entry);
 }

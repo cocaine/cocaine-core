@@ -405,16 +405,16 @@ private:
     {
         m_resolver.reset();
 
-        COCAINE_LOG_INFO(m_logger,
-                         "Unable to connect to Raft service: [%d] %s.",
-                         ec.value(),
-                         ec.message());
+        COCAINE_LOG_DEBUG(m_logger,
+                          "Unable to connect to Raft service: [%d] %s.",
+                          ec.value(),
+                          ec.message());
         handler();
     }
 
     void
     on_error(const std::error_code& ec) {
-        COCAINE_LOG_INFO(m_logger, "Connection error: [%d] %s.", ec.value(), ec.message());
+        COCAINE_LOG_DEBUG(m_logger, "Connection error: [%d] %s.", ec.value(), ec.message());
         reset();
     }
 

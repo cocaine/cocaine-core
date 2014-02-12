@@ -34,6 +34,7 @@
 
 #include "cocaine/memory.hpp"
 
+#include "cocaine/detail/raft/repository.hpp"
 #include "cocaine/detail/raft/service.hpp"
 
 #include <cstring>
@@ -376,7 +377,7 @@ config_t::version() {
 
 context_t::context_t(config_t config_, const std::string& logger):
     config(config_),
-    raft(*this)
+    raft(std::make_unique<raft::repository_t>(*this))
 {
     m_repository.reset(new api::repository_t());
 
@@ -401,7 +402,7 @@ context_t::context_t(config_t config_, const std::string& logger):
 
 context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t>&& logger):
     config(config_),
-    raft(*this)
+    raft(std::make_unique<raft::repository_t>(*this))
 {
     m_repository.reset(new api::repository_t());
 
@@ -582,14 +583,14 @@ context_t::bootstrap() {
 
     // Initialize Raft service.
     try {
-        std::unique_ptr<api::service_t> raft_service(std::make_unique<service::raft_t>(
+        std::unique_ptr<api::service_t> raft_service(std::make_unique<raft::service_t>(
             *this,
-            *raft.m_reactor,
+            *raft->m_reactor,
             std::string("service/") + config.raft.service_name
         ));
 
         insert(config.raft.service_name,
-               std::make_unique<actor_t>(*this, raft.m_reactor, std::move(raft_service)));
+               std::make_unique<actor_t>(*this, raft->m_reactor, std::move(raft_service)));
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(blog,
                           "unable to initialize RAFT service - %s - [%d] %s",

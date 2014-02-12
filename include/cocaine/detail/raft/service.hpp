@@ -26,17 +26,18 @@
 #include "cocaine/dispatch.hpp"
 #include "cocaine/api/service.hpp"
 #include "cocaine/idl/raft.hpp"
+#include "cocaine/detail/raft/forwards.hpp"
 
-namespace cocaine { namespace service {
+namespace cocaine { namespace raft {
 
-class raft_t:
+class service_t:
     public api::service_t,
     public implements<io::raft_tag<msgpack::object, msgpack::object>>
 {
 public:
-    raft_t(context_t& context,
-           io::reactor_t& reactor,
-           const std::string& name);
+    service_t(context_t& context,
+              io::reactor_t& reactor,
+              const std::string& name);
 
     virtual
     auto
@@ -70,7 +71,6 @@ private:
 private:
     context_t& m_context;
     io::reactor_t& m_reactor;
-    const std::unique_ptr<logging::log_t> m_log;
 };
 
 }} // namespace cocaine::service

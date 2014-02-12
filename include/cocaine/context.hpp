@@ -25,7 +25,6 @@
 #include "cocaine/dynamic.hpp"
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
-#include "cocaine/detail/raft/repository.hpp"
 
 #include <queue>
 
@@ -93,7 +92,7 @@ struct config_t {
     } network;
 
     struct {
-        raft::cluster_t cluster;
+        std::set<std::pair<std::string, uint16_t>> cluster;
         std::string service_name;
         unsigned int election_timeout;
         unsigned int heartbeat_timeout;
@@ -158,7 +157,7 @@ class context_t {
 public:
     const config_t config;
 
-    raft::repository_t raft;
+    std::unique_ptr<raft::repository_t> raft;
 
 public:
     context_t(config_t config, const std::string& logger);
@@ -206,7 +205,5 @@ context_t::get(const std::string& type, Args&&... args) {
 }
 
 } // namespace cocaine
-
-#include "cocaine/detail/raft/repository_impl.hpp"
 
 #endif

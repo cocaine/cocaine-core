@@ -22,6 +22,7 @@
 #define COCAINE_SERVICE_COUNTER_HPP
 
 #include "cocaine/context.hpp"
+#include "cocaine/raft.hpp"
 #include "cocaine/dispatch.hpp"
 #include "cocaine/api/service.hpp"
 #include "cocaine/idl/counter.hpp"

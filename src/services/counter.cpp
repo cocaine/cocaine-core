@@ -151,7 +151,7 @@ counter_t::counter_t(context_t& context,
     on<io::counter::dec>(std::bind(&counter_t::on_dec, this, _1));
     on<io::counter::cas>(std::bind(&counter_t::on_cas, this, _1, _2));
 
-    m_raft = context.raft.insert(name, counter_machine_t());
+    m_raft = context.raft->insert(name, counter_machine_t());
 
     COCAINE_LOG_INFO(m_log, "Start counter service with name %s.", name);
 }
