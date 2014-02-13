@@ -403,13 +403,12 @@ private:
     on_connection_error(const std::function<void()>& handler,
                         const std::error_code& ec)
     {
-        m_resolver.reset();
-
         COCAINE_LOG_DEBUG(m_logger,
                           "Unable to connect to Raft service: [%d] %s.",
                           ec.value(),
                           ec.message());
         handler();
+        reset();
     }
 
     void

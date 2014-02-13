@@ -88,7 +88,8 @@ struct counter_t::counter_machine_t {
     typedef counter_machine_tag tag;
     typedef int snapshot_type;
 
-    counter_machine_t():
+    counter_machine_t(context_t& context):
+        m_log(new logging::log_t(context, "counter_machine")),
         m_value(0)
     { }
 
@@ -99,6 +100,7 @@ struct counter_t::counter_machine_t {
     counter_machine_t&
     operator=(counter_machine_t&& other) {
         m_value = other.m_value.load();
+        m_log = std::move(other.m_log);
         return *this;
     }
 
@@ -109,18 +111,21 @@ struct counter_t::counter_machine_t {
 
     void
     consume(const snapshot_type& snapshot) {
+        COCAINE_LOG_INFO(m_log, "Consume snapshot %d.", snapshot);
         m_value = snapshot;
     }
 
     int
     operator()(const io::aux::frozen<counter_machine::inc>& req) {
         auto val = m_value.fetch_add(std::get<0>(req.tuple)) + std::get<0>(req.tuple);
+        //COCAINE_LOG_INFO(m_log, "Inc request: %d; %d.", std::get<0>(req.tuple), val);
         return val;
     }
 
     int
     operator()(const io::aux::frozen<counter_machine::dec>& req) {
         auto val = m_value.fetch_sub(std::get<0>(req.tuple)) - std::get<0>(req.tuple);
+        //COCAINE_LOG_INFO(m_log, "Dec request: %d; %d.", std::get<0>(req.tuple), val);
         return val;
     }
 
@@ -129,11 +134,13 @@ struct counter_t::counter_machine_t {
         int expected, desired;
         std::tie(expected, desired) = req.tuple;
         auto res = m_value.compare_exchange_strong(expected, desired);
+        //COCAINE_LOG_INFO(m_log, "CAS request: %d %d; %d.", std::get<0>(req.tuple), std::get<1>(req.tuple), int(res));
 
         return res;
     }
 
 private:
+    std::unique_ptr<logging::log_t> m_log;
     std::atomic<int> m_value;
 };
 
@@ -151,9 +158,7 @@ counter_t::counter_t(context_t& context,
     on<io::counter::dec>(std::bind(&counter_t::on_dec, this, _1));
     on<io::counter::cas>(std::bind(&counter_t::on_cas, this, _1, _2));
 
-    m_raft = context.raft->insert(name, counter_machine_t());
-
-    COCAINE_LOG_INFO(m_log, "Start counter service with name %s.", name);
+    m_raft = context.raft->insert(name, counter_machine_t(context));
 }
 
 namespace {
@@ -177,7 +182,6 @@ deferred_producer(deferred<T> promise,
 
 deferred<int>
 counter_t::on_inc(int value) {
-    COCAINE_LOG_INFO(m_log, "Inc received %d.", value);
     deferred<int> promise;
     m_raft->call<counter_machine::inc>(
         std::bind(deferred_producer<int>, promise, std::placeholders::_1),
@@ -188,7 +192,6 @@ counter_t::on_inc(int value) {
 
 deferred<int>
 counter_t::on_dec(int value) {
-    COCAINE_LOG_INFO(m_log, "Dec received %d.", value);
     deferred<int> promise;
     m_raft->call<counter_machine::dec>(
         std::bind(deferred_producer<int>, promise, std::placeholders::_1),
@@ -199,7 +202,6 @@ counter_t::on_dec(int value) {
 
 deferred<bool>
 counter_t::on_cas(int expected, int desired) {
-    COCAINE_LOG_INFO(m_log, "CAS received %d %d.", expected, desired);
     deferred<bool> promise;
     m_raft->call<counter_machine::cas>(
         std::bind(deferred_producer<bool>, promise, std::placeholders::_1),
