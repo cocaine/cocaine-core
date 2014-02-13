@@ -96,20 +96,18 @@ public:
     void
     truncate(uint64_t index) {
         BOOST_ASSERT(index >= m_first_index);
-        m_entries.resize(index - m_first_index);
+        m_entries.resize(std::min(m_entries.size(), index - m_first_index));
     }
 
     template<class T>
     void
     set_snapshot(uint64_t index, uint64_t term, T&& snapshot) {
-        BOOST_ASSERT(index - m_first_index + 1 > 0);
-
         m_snapshot.reset(new snapshot_type(std::forward<T>(snapshot)));
 
-        if(index > last_index()) {
+        if(index >= last_index() || index < m_first_index) {
             m_entries.clear();
         } else {
-            m_entries.erase(m_entries.begin(), m_entries.begin() + index - m_first_index + 1);
+            m_entries.erase(m_entries.begin(), m_entries.begin() + (index - m_first_index + 1));
         }
         m_first_index = index + 1;
         m_snapshot_term = term;

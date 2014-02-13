@@ -82,13 +82,6 @@ public:
     {
         COCAINE_LOG_INFO(m_log, "Initialize Raft actor with name %s.", name);
 
-        for(auto it = this->config().cluster().begin();
-            it != this->config().cluster().end();
-            ++it)
-        {
-            m_cluster.emplace_back(std::make_shared<remote_type>(*this, *it));
-        }
-
 #if defined(__clang__) || defined(HAVE_GCC46)
         std::random_device device;
         m_random_generator.seed(device());
@@ -110,6 +103,13 @@ public:
         m_election_timer.set<actor, &actor::on_disown>(this);
         m_applier.set<actor, &actor::apply_entries>(this);
         m_replicator.set<actor, &actor::replicate>(this);
+
+        for(auto it = this->config().cluster().begin();
+            it != this->config().cluster().end();
+            ++it)
+        {
+            m_cluster.emplace_back(std::make_shared<remote_type>(*this, *it));
+        }
     }
 
     ~actor() {
@@ -563,9 +563,12 @@ private:
                               "Truncate the log up to %d index and save snapshot of the state machine.",
                               m_snapshot_index);
 
-            config().log().set_snapshot(m_snapshot_index,
-                                        m_snapshot_term,
-                                        std::move(*m_next_snapshot));
+            if(m_snapshot_index > config().log().snapshot_index()) {
+                config().log().set_snapshot(m_snapshot_index,
+                                            m_snapshot_term,
+                                            std::move(*m_next_snapshot));
+            }
+
             m_next_snapshot.reset();
         }
     }
