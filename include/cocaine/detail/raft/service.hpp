@@ -30,6 +30,8 @@
 
 namespace cocaine { namespace raft {
 
+// The service provides messages from other Raft nodes to proper Raft actors.
+// Protocol is defined in cocaine/idl/raft.hpp.
 class service_t:
     public api::service_t,
     public implements<io::raft_tag<msgpack::object, msgpack::object>>

@@ -43,6 +43,8 @@ struct command_traits {
     typedef std::function<void(const variant_type&)> callback_type;
 };
 
+// Entry of state machine log.
+// Now it can store a command for state machine or NOP (such entry does nothing and is used internally by the algorithm).
 template<class StateMachine>
 class log_entry {
     typedef StateMachine machine_type;

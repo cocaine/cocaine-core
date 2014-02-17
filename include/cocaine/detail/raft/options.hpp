@@ -23,6 +23,7 @@
 
 namespace cocaine { namespace raft {
 
+// Some arguments of Raft actor.
 struct options_t {
     unsigned int election_timeout;
 

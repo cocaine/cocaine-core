@@ -38,7 +38,8 @@ typedef std::pair<std::string, uint16_t> node_id_t;
 // NOTE: May be removed in the future.
 typedef std::set<node_id_t> cluster_t;
 
-// Concept of RAFT actor.
+// Concept of Raft actor, which should implement the algorithm.
+// Here are defined methods to handle messages from leader and candidates. These methods must be thread-safe.
 class actor_concept_t {
 public:
     virtual

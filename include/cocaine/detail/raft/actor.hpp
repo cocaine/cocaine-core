@@ -36,6 +36,10 @@
 
 namespace cocaine { namespace raft {
 
+// Implementation of Raft actor concept (see cocaine/detail/raft/forwards.hpp).
+// This is actually implementation of Raft consensus algorithm.
+// It parametrized with state machine and configuration (by default actor is created with empty in-memory log and in-memory configuration).
+// User can provide configuration with different levels of persistence.
 template<class StateMachine, class Configuration>
 class actor:
     public actor_concept_t,
@@ -64,7 +68,7 @@ public:
 public:
     actor(context_t& context,
           io::reactor_t& reactor,
-          const std::string& name,
+          const std::string& name, // name of the state machine
           machine_type&& state_machine,
           config_type&& config,
           const options_t& options):
@@ -93,8 +97,10 @@ public:
         m_random_generator.seed(random_init);
 #endif
 
+        // If the log is empty, then assume that it contains one NOP entry and create initial snapshot.
+        // Because all nodes do the same thing, this entry is always committed.
+        // It is not necessary, but it allows me to don't think about corner cases in other code.
         if(this->config().log().empty()) {
-            this->config().log().push(entry_type(0, nop_t()));
             this->config().log().set_snapshot(0, 0, m_machine.snapshot());
             this->config().set_commit_index(0);
             this->config().set_last_applied(0);
@@ -104,6 +110,7 @@ public:
         m_applier.set<actor, &actor::apply_entries>(this);
         m_replicator.set<actor, &actor::replicate>(this);
 
+        // Create handlers for other nodes in the cluster.
         for(auto it = this->config().cluster().begin();
             it != this->config().cluster().end();
             ++it)
@@ -136,12 +143,6 @@ public:
     const options_t&
     options() const {
         return m_options;
-    }
-
-    // TODO: Add some synchronization here.
-    bool
-    is_leader() const {
-        return m_state == state_t::leader;
     }
 
     node_id_t
@@ -184,6 +185,11 @@ private:
         return m_configuration;
     }
 
+    bool
+    is_leader() const {
+        return m_state == state_t::leader;
+    }
+
     // Add new command to the log.
     template<class Event>
     void
@@ -200,6 +206,8 @@ private:
         config().log().push(config().current_term(), cmd);
         config().log()[config().log().last_index()].template bind<Event>(handler);
 
+        replace_snapshot();
+
         if(!m_replicator.is_active()) {
             m_replicator.start();
         }
@@ -213,20 +221,23 @@ private:
     // Add nop entry to the log.
     void
     add_nop() {
-        if(is_leader()) {
-            config().log().push(config().current_term(), nop_t());
+        config().log().push(config().current_term(), nop_t());
 
-            if(!m_replicator.is_active()) {
-                m_replicator.start();
-            }
+        replace_snapshot();
 
-            COCAINE_LOG_DEBUG(m_log,
-                              "New entry has been added to the log in term %d and index %d.",
-                              config().log().last_term(),
-                              config().log().last_index());
+        if(!m_replicator.is_active()) {
+            m_replicator.start();
         }
+
+        COCAINE_LOG_DEBUG(m_log,
+                          "New entry has been added to the log in term %d and index %d.",
+                          config().log().last_term(),
+                          config().log().last_index());
     }
 
+    // 'call' method starts this background task.
+    // When all requests in reactor queue are processed, event-loop calls this method, which replicates the new entries to remote nodes.
+    // Idle watcher is just way to push many entries to the log and then replicate them at once.
     void
     replicate(ev::idle&, int) {
         m_replicator.stop();
@@ -250,6 +261,8 @@ private:
         promise.write(f());
     }
 
+    // These methods are just wrappers over implementations, which are posted to one reactor (to provide thread-safety).
+    virtual
     deferred<std::tuple<uint64_t, bool>>
     append(uint64_t term,
            node_id_t leader,
@@ -274,10 +287,11 @@ private:
             unpacked,
             commit_index
         );
-        reactor().post(std::bind(&actor::deferred_writer, promise, producer));
+        reactor().post(std::bind(&actor::deferred_writer, promise, std::move(producer)));
         return promise;
     }
 
+    virtual
     deferred<std::tuple<uint64_t, bool>>
     apply(uint64_t term,
           node_id_t leader,
@@ -298,10 +312,11 @@ private:
             unpacked,
             commit_index
         );
-        reactor().post(std::bind(&actor::deferred_writer, promise, producer));
+        reactor().post(std::bind(&actor::deferred_writer, promise, std::move(producer)));
         return promise;
     }
 
+    virtual
     deferred<std::tuple<uint64_t, bool>>
     request_vote(uint64_t term,
                  node_id_t candidate,
@@ -315,7 +330,7 @@ private:
             candidate,
             last_entry
         );
-        reactor().post(std::bind(&actor::deferred_writer, promise, producer));
+        reactor().post(std::bind(&actor::deferred_writer, promise, std::move(producer)));
         return promise;
     }
 
@@ -345,32 +360,48 @@ private:
 
         *m_leader.synchronize() = leader;
 
-        // Check if the append is possible and oldest common terms match.
+        // Check if append is possible and oldest common entries match.
         if(config().log().snapshot_index() > prev_index &&
            config().log().snapshot_index() <= prev_index + entries.size())
         {
+            // Entry with index snapshot_index is committed and applied.
+            // If entry with this index from request has different term, then something is wrong and the actor can't accept such request.
+            // Such situation may appear only due to mistake in the Raft implementation.
             uint64_t remote_term = entries[config().log().snapshot_index() - prev_index - 1].term();
 
             if(config().log().snapshot_term() != remote_term) {
+                // NOTE: May be we should do std::terminate here to avoid state machine corruption?
+                COCAINE_LOG_WARNING(
+                    m_log,
+                    "Bad append request received from %s:%d, term: %d, prev_entry: (%d, %d), commit index: %d.",
+                    leader.first, leader.second,
+                    term,
+                    prev_index, prev_term,
+                    commit_index
+                );
                 return std::make_tuple(config().current_term(), false);
             }
         } else if(prev_index >= config().log().snapshot_index() &&
                   prev_index <= config().log().last_index())
         {
+            // prev_entry must match with corresponding entry in local log.
+            // Otherwise leader should replicate older entries first.
             uint64_t local_term = config().log().snapshot_index() == prev_index ?
-                                 config().log().snapshot_term() :
-                                 config().log()[prev_index].term();
+                                  config().log().snapshot_term() :
+                                  config().log()[prev_index].term();
 
             if(local_term != prev_term) {
                 return std::make_tuple(config().current_term(), false);
             }
         } else {
+            // Here the log doesn't have entry corresponding to prev_entry, and leader should replicate older entries first.
             return std::make_tuple(config().current_term(), false);
         }
 
         // Append.
         uint64_t entry_index = prev_index + 1;
         for(auto it = entries.begin(); it != entries.end(); ++it, ++entry_index) {
+            // If terms of entries don't match, then actor must replace local entries with ones from leader.
             if(entry_index > config().log().snapshot_index() &&
                entry_index <= config().log().last_index() &&
                it->term() != config().log()[entry_index].term())
@@ -382,6 +413,8 @@ private:
                 config().log().push(*it);
             }
         }
+
+        replace_snapshot();
 
         set_commit_index(commit_index);
 
@@ -416,6 +449,7 @@ private:
            std::get<0>(snapshot_entry) <= config().log().last_index() &&
            std::get<1>(snapshot_entry) != config().log()[std::get<0>(snapshot_entry)].term())
         {
+            // If term of entry corresponding to snapshot doesn't match snapshot term, then actor should replace them with ones from leader.
             config().log().truncate(std::get<0>(snapshot_entry));
         }
 
@@ -471,6 +505,8 @@ private:
             COCAINE_LOG_DEBUG(m_log, "Stepping down to term %d.", term);
 
             config().set_current_term(term);
+
+            // The actor has not voted in the new term.
             m_voted_for.reset();
         }
 
@@ -482,8 +518,6 @@ private:
 
         m_state = state_t::follower;
     }
-
-    // Entries application. These methods are used both by follower and by leader.
 
     struct invocation_visitor_t:
         public boost::static_visitor<>
@@ -504,11 +538,15 @@ private:
         entry_type& m_entry;
     };
 
+    // This background task applies committed entries to the state machine.
     void
     apply_entries(ev::idle&, int) {
+        // Compute index of last entry to apply on this iteration.
+        // At most options().message_size entries will be applied.
         uint64_t to_apply = std::min(config().last_applied() + options().message_size,
                                      std::min(config().commit_index(), config().log().last_index()));
 
+        // Stop the watcher when all committed entries are applied.
         if(to_apply <= config().last_applied()) {
             COCAINE_LOG_DEBUG(m_log, "Stop applier.");
             m_applier.stop();
@@ -520,6 +558,8 @@ private:
                           config().last_applied() + 1,
                           to_apply);
 
+        // Apply snapshot if it's not applied yet.
+        // Entries will be applied on the next iterations, because we don't want occupy event loop for a long time.
         if(config().log().snapshot_index() > config().last_applied()) {
             try {
                 m_machine.consume(config().log().snapshot());
@@ -544,8 +584,9 @@ private:
 
             config().set_last_applied(config().last_applied() + 1);
 
-            replace_snapshot();
-
+            // If enough entries from previous snapshot are applied, then we should take new snapshot.
+            // We will apply this new snapshot to the log later, when enough new entries will be committed,
+            // because we want to have some amount of entries in the log to replicate them to stale followers.
             if(config().last_applied() == config().log().snapshot_index() + options().snapshot_threshold) {
                 m_next_snapshot.reset(new snapshot_type(m_machine.snapshot()));
                 m_snapshot_index = config().last_applied();
@@ -554,10 +595,12 @@ private:
         }
     }
 
+    // Update snapshot in the log, if there are enough entries after new snapshot.
+    // This method should be called, when new entries are added to the log.
     void
     replace_snapshot() {
         if(m_next_snapshot &&
-           config().commit_index() > m_snapshot_index + options().snapshot_threshold / 2)
+           config().log().last_index() > m_snapshot_index + options().snapshot_threshold / 2)
         {
             COCAINE_LOG_DEBUG(m_log,
                               "Truncate the log up to %d index and save snapshot of the state machine.",
@@ -599,22 +642,23 @@ private:
 
         uniform_uint distribution(options().election_timeout, 2 * options().election_timeout);
 
+        // We use random timeout to avoid infinite elections in synchronized nodes.
         float timeout = distribution(m_random_generator);
         m_election_timer.start(timeout / 1000.0);
 
         COCAINE_LOG_DEBUG(m_log, "Election timer will fire in %f milliseconds.", timeout);
     }
 
+    // Instance of this class counts obtained votes and moves the actor to leader state, when it obtains votes from quorum.
     class election_state_t {
     public:
         election_state_t(actor &actor):
             m_active(true),
             m_granted(1),
             m_actor(actor)
-        {
-            // Empty.
-        }
+        { }
 
+        // When the actor doesn't need results of the election, it disables the state.
         void
         disable() {
             m_active = false;
@@ -636,11 +680,11 @@ private:
                     m_granted++;
 
                     if(m_granted > (m_actor.config().cluster().size() + 1) / 2) {
-                        m_active = false;
+                        // Actor has won the election.
                         m_actor.switch_to_leader();
                     }
                 } else if(std::get<0>(*result) > m_actor.config().current_term()) {
-                    m_active = false;
+                    // Actor lives in the past. Stepdown to follower with new term.
                     m_actor.step_down(std::get<0>(*result));
                 }
             } else {
@@ -660,12 +704,14 @@ private:
 
         using namespace std::placeholders;
 
+        // Start new term.
         step_down(config().current_term() + 1);
 
         m_election_state = std::make_shared<election_state_t>(*this);
 
         m_state = state_t::candidate;
 
+        // Vote for self.
         m_voted_for = config().id();
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
@@ -689,11 +735,13 @@ private:
     switch_to_leader() {
         COCAINE_LOG_DEBUG(m_log, "Begin leadership.");
 
+        // Stop election timer, because we no longer wait messages from leader.
         stop_election_timer();
         reset_election_state();
 
         m_state = state_t::leader;
 
+        // Trying to commit NOP entry to assume older entries committed (see commitment restriction in the paper).
         add_nop();
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
@@ -710,6 +758,8 @@ private:
         if(is_leader()) {
             COCAINE_LOG_DEBUG(m_log, "Finish leadership.");
 
+            // If leader becomes follower, uncommitted entries may eventually become committed or discarded.
+            // So leader notifies handler with corresponding error code.
             for(auto i = config().last_applied() + 1; i <= config().log().last_index(); ++i) {
                 config().log()[i].notify(std::error_code(raft_errc::unknown));
             }
@@ -724,8 +774,10 @@ private:
         return left->match_index() < right->match_index();
     }
 
+    // Compute new commit index based on information about replicated entries.
     void
     update_commit_index() {
+        // Find median in nodes match_index'es. This median is index of last entry replicated to quorum.
         size_t pivot = (m_cluster.size() % 2 == 0) ? (m_cluster.size() / 2) : (m_cluster.size() / 2 + 1);
         std::nth_element(m_cluster.begin(),
                          m_cluster.begin() + pivot,
@@ -734,6 +786,8 @@ private:
 
         uint64_t just_commited = m_cluster[pivot]->match_index();
 
+        // Leader can't assume any new entry to be committed until entry from current term is replicated to quorum
+        // (see commitment restriction in the paper).
         if(just_commited > config().commit_index() &&
            config().log()[just_commited].term() == config().current_term())
         {
@@ -741,6 +795,7 @@ private:
         }
     }
 
+    // Update commit index to new value, update snapshot in the log and start applier, if it's needed.
     void
     set_commit_index(uint64_t index) {
         auto new_index = std::min(index, config().log().last_index());
@@ -773,12 +828,14 @@ private:
 
     std::vector<std::shared_ptr<remote_type>> m_cluster;
 
+    // Actually we need only flag leader/not leader to reject requests, when the actor is not leader.
     state_t m_state;
 
-    // The node for which the actor voted in current term.
+    // The node for which the actor voted in current term. The node can vote only once in one term.
     boost::optional<node_id_t> m_voted_for;
 
     // The leader from the last append message.
+    // It may be incorrect and actually it's just a tip, where to find current leader.
     synchronized<node_id_t> m_leader;
 
     // When the timer fires, the follower will switch to the candidate state.

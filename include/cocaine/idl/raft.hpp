@@ -31,6 +31,7 @@ struct raft_tag;
 
 template<class Entry, class Snapshot>
 struct raft {
+    // Append new entries to the log. Leader sends this message to followers to replicate state machine.
     struct append {
         typedef raft_tag<Entry, Snapshot> tag;
 
@@ -63,6 +64,8 @@ struct raft {
         >::tag drain_type;
     };
 
+    // Store snapshot of state machine on the follower.
+    // When follower is far behind leader, leader firstly sends snapshot to the follower and then new entries.
     struct apply {
         typedef raft_tag<Entry, Snapshot> tag;
 

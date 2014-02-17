@@ -29,6 +29,9 @@
 
 namespace cocaine { namespace raft {
 
+// This class stores Raft actors, which replicate named state machines.
+// Raft service uses this class to deliver messages from other nodes to actors.
+// Core uses it to setup new state machines.
 class repository_t {
     friend class cocaine::context_t;
 

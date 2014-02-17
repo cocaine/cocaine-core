@@ -25,6 +25,8 @@
 
 namespace cocaine { namespace raft {
 
+// This class stores state of the Raft algorithm when it's running.
+// User can write his own implementation of this class and specialize the algorithm with it (for example to store the log and the state in persistent storage).
 template<class Log, class Cluster = cluster_t>
 class configuration {
     COCAINE_DECLARE_NONCOPYABLE(configuration)
