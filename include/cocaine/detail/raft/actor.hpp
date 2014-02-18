@@ -135,7 +135,7 @@ public:
     void
     run() {
         COCAINE_LOG_INFO(m_log, "Running the Raft actor.");
-        step_down(config().current_term() + 1);
+        step_down(config().current_term());
     }
 
     const std::string&
