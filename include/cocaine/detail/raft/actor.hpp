@@ -33,13 +33,14 @@
 #include <memory>
 #include <random>
 #include <vector>
+#include <iostream>
 
 namespace cocaine { namespace raft {
 
 // Implementation of Raft actor concept (see cocaine/detail/raft/forwards.hpp).
-// This is actually implementation of Raft consensus algorithm.
-// It parametrized with state machine and configuration (by default actor is created with empty in-memory log and in-memory configuration).
-// User can provide configuration with different levels of persistence.
+// Actually it is implementation of Raft consensus algorithm.
+// It's parametrized with state machine and configuration (by default actor is created with empty in-memory log and in-memory configuration).
+// User can provide own configuration with various levels of persistence.
 template<class StateMachine, class Configuration>
 class actor:
     public actor_concept_t,
@@ -99,8 +100,9 @@ public:
 
         // If the log is empty, then assume that it contains one NOP entry and create initial snapshot.
         // Because all nodes do the same thing, this entry is always committed.
-        // It is not necessary, but it allows me to don't think about corner cases in other code.
+        // It is not necessary, but it allows me to don't think about corner cases in rest of code.
         if(this->config().log().empty()) {
+            this->config().log().push();
             this->config().log().set_snapshot(0, 0, m_machine.snapshot());
             this->config().set_commit_index(0);
             this->config().set_last_applied(0);
@@ -110,12 +112,17 @@ public:
         m_applier.set<actor, &actor::apply_entries>(this);
         m_replicator.set<actor, &actor::replicate>(this);
 
+        std::cerr << "My id: " << this->config().id().first << ":" << this->config().id().second << std::endl;
+
         // Create handlers for other nodes in the cluster.
         for(auto it = this->config().cluster().begin();
             it != this->config().cluster().end();
             ++it)
         {
-            m_cluster.emplace_back(std::make_shared<remote_type>(*this, *it));
+            if(*it != this->config().id()) {
+                std::cerr << "Add remote: " << it->first << ":" << it->second << std::endl;
+                m_cluster.emplace_back(std::make_shared<remote_type>(*this, *it));
+            }
         }
     }
 
@@ -213,7 +220,7 @@ private:
         }
 
         COCAINE_LOG_DEBUG(m_log,
-                          "New entry has been added to the log in term %d and index %d.",
+                          "New entry has been added to the log in term %d with index %d.",
                           config().log().last_term(),
                           config().log().last_index());
     }
@@ -230,14 +237,14 @@ private:
         }
 
         COCAINE_LOG_DEBUG(m_log,
-                          "New entry has been added to the log in term %d and index %d.",
+                          "New nop entry has been added to the log in term %d with index %d.",
                           config().log().last_term(),
                           config().log().last_index());
     }
 
     // 'call' method starts this background task.
     // When all requests in reactor queue are processed, event-loop calls this method, which replicates the new entries to remote nodes.
-    // Idle watcher is just way to push many entries to the log and then replicate them at once.
+    // Idle watcher is just a way to push many entries to the log and then replicate them at once.
     void
     replicate(ev::idle&, int) {
         m_replicator.stop();
@@ -261,7 +268,7 @@ private:
         promise.write(f());
     }
 
-    // These methods are just wrappers over implementations, which are posted to one reactor (to provide thread-safety).
+    // These methods are just wrappers over implementations, which are posted to one reactor to provide thread-safety.
     virtual
     deferred<std::tuple<uint64_t, bool>>
     append(uint64_t term,
@@ -365,7 +372,7 @@ private:
            config().log().snapshot_index() <= prev_index + entries.size())
         {
             // Entry with index snapshot_index is committed and applied.
-            // If entry with this index from request has different term, then something is wrong and the actor can't accept such request.
+            // If entry with this index from request has different term, then something is wrong and the actor can't accept this request.
             // Such situation may appear only due to mistake in the Raft implementation.
             uint64_t remote_term = entries[config().log().snapshot_index() - prev_index - 1].term();
 
@@ -449,7 +456,7 @@ private:
            std::get<0>(snapshot_entry) <= config().log().last_index() &&
            std::get<1>(snapshot_entry) != config().log()[std::get<0>(snapshot_entry)].term())
         {
-            // If term of entry corresponding to snapshot doesn't match snapshot term, then actor should replace them with ones from leader.
+            // If term of entry corresponding to snapshot doesn't match snapshot term, then actor should replace local entries with ones from leader.
             config().log().truncate(std::get<0>(snapshot_entry));
         }
 
@@ -492,10 +499,32 @@ private:
                               "In term %d vote granted to %s:%d.",
                               config().current_term(),
                               candidate.first, candidate.second);
-        }
 
-        return std::make_tuple(config().current_term(),
-                               term == config().current_term() && m_voted_for == candidate);
+            return std::make_tuple(config().current_term(), true);
+        } else {
+            return std::make_tuple(config().current_term(), false);
+        }
+    }
+
+    // Update snapshot in the log, if there are enough entries after new snapshot.
+    // This method should be called, when new entries are added to the log.
+    void
+    replace_snapshot() {
+        if(m_next_snapshot &&
+           config().log().last_index() > m_snapshot_index + options().snapshot_threshold / 2)
+        {
+            COCAINE_LOG_DEBUG(m_log,
+                              "Truncate the log up to %d index and save snapshot of the state machine.",
+                              m_snapshot_index);
+
+            if(m_snapshot_index > config().log().snapshot_index()) {
+                config().log().set_snapshot(m_snapshot_index,
+                                            m_snapshot_term,
+                                            std::move(*m_next_snapshot));
+            }
+
+            m_next_snapshot.reset();
+        }
     }
 
     // Switch to follower state with given term.
@@ -585,34 +614,13 @@ private:
             config().set_last_applied(config().last_applied() + 1);
 
             // If enough entries from previous snapshot are applied, then we should take new snapshot.
-            // We will apply this new snapshot to the log later, when enough new entries will be committed,
+            // We will apply this new snapshot to the log later, when there will be enough new entries,
             // because we want to have some amount of entries in the log to replicate them to stale followers.
             if(config().last_applied() == config().log().snapshot_index() + options().snapshot_threshold) {
                 m_next_snapshot.reset(new snapshot_type(m_machine.snapshot()));
                 m_snapshot_index = config().last_applied();
                 m_snapshot_term = config().log()[config().last_applied()].term();
             }
-        }
-    }
-
-    // Update snapshot in the log, if there are enough entries after new snapshot.
-    // This method should be called, when new entries are added to the log.
-    void
-    replace_snapshot() {
-        if(m_next_snapshot &&
-           config().log().last_index() > m_snapshot_index + options().snapshot_threshold / 2)
-        {
-            COCAINE_LOG_DEBUG(m_log,
-                              "Truncate the log up to %d index and save snapshot of the state machine.",
-                              m_snapshot_index);
-
-            if(m_snapshot_index > config().log().snapshot_index()) {
-                config().log().set_snapshot(m_snapshot_index,
-                                            m_snapshot_term,
-                                            std::move(*m_next_snapshot));
-            }
-
-            m_next_snapshot.reset();
         }
     }
 
@@ -795,7 +803,7 @@ private:
         }
     }
 
-    // Update commit index to new value, update snapshot in the log and start applier, if it's needed.
+    // Update commit index to new value and start applier, if it's needed.
     void
     set_commit_index(uint64_t index) {
         auto new_index = std::min(index, config().log().last_index());
@@ -803,8 +811,6 @@ private:
         config().set_commit_index(new_index);
 
         COCAINE_LOG_DEBUG(m_log, "Commit index has been updated to %d.", new_index);
-
-        replace_snapshot();
 
         if(config().last_applied() < config().commit_index() && !m_applier.is_active()) {
             m_applier.start();
@@ -851,7 +857,8 @@ private:
     std::shared_ptr<election_state_t> m_election_state;
 
     // The snapshot to be written to the log.
-    // The actor ensures that log contains at least (m_snapshot_threshold / 2) committed entries after a snapshot.
+    // The actor ensures that log contains at least (m_snapshot_threshold / 2) entries after a snapshot,
+    // because we want to have enough entries to replicate to stale followers.
     // So the actor stores the next snapshot here until the log contains enough entries.
     std::unique_ptr<snapshot_type> m_next_snapshot;
 
