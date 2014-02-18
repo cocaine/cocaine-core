@@ -96,7 +96,7 @@ repository_t::insert(const std::string& name, Machine&& machine) {
     typedef raft::actor<machine_type, raft::configuration<raft::log<machine_type>>> actor_type;
 
     raft::configuration<raft::log<machine_type>> config(
-        std::make_pair(m_context.config.network.endpoint, m_context.config.network.locator),
+        std::make_pair(m_context.config.network.hostname, m_context.config.network.locator),
         m_context.config.raft.cluster
     );
 
