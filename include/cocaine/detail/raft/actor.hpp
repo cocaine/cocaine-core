@@ -224,6 +224,8 @@ private:
     // Add nop entry to the log.
     void
     add_nop() {
+        BOOST_ASSERT(is_leader());
+
         config().log().push(config().current_term(), nop_t());
 
         replace_snapshot();
