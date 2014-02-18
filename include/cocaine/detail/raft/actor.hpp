@@ -33,7 +33,6 @@
 #include <memory>
 #include <random>
 #include <vector>
-#include <iostream>
 
 namespace cocaine { namespace raft {
 
@@ -112,15 +111,12 @@ public:
         m_applier.set<actor, &actor::apply_entries>(this);
         m_replicator.set<actor, &actor::replicate>(this);
 
-        std::cerr << "My id: " << this->config().id().first << ":" << this->config().id().second << std::endl;
-
         // Create handlers for other nodes in the cluster.
         for(auto it = this->config().cluster().begin();
             it != this->config().cluster().end();
             ++it)
         {
             if(*it != this->config().id()) {
-                std::cerr << "Add remote: " << it->first << ":" << it->second << std::endl;
                 m_cluster.emplace_back(std::make_shared<remote_type>(*this, *it));
             }
         }
