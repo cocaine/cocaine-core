@@ -411,6 +411,13 @@ private:
                entry_index <= config().log().last_index() &&
                it->term() != config().log()[entry_index].term())
             {
+                // Now truncated entries may be eventually committed (if they were replicated
+                // to some node which will be leader in the future) or discarded.
+                // So leader notifies handler with corresponding error code.
+                for(auto i = entry_index; i <= config().log().last_index(); ++i) {
+                    config().log()[i].notify(std::error_code(raft_errc::unknown));
+                }
+
                 config().log().truncate(entry_index);
             }
 
@@ -454,6 +461,13 @@ private:
            std::get<0>(snapshot_entry) <= config().log().last_index() &&
            std::get<1>(snapshot_entry) != config().log()[std::get<0>(snapshot_entry)].term())
         {
+            // Now truncated entries may be eventually committed (if they were replicated
+            // to some node which will be leader in the future) or discarded.
+            // So leader notifies handler with corresponding error code.
+            for(auto i = std::get<0>(snapshot_entry); i <= config().log().last_index(); ++i) {
+                config().log()[i].notify(std::error_code(raft_errc::unknown));
+            }
+
             // If term of entry corresponding to snapshot doesn't match snapshot term, then actor should replace local entries with ones from leader.
             config().log().truncate(std::get<0>(snapshot_entry));
         }
@@ -528,6 +542,8 @@ private:
     // Switch to follower state with given term.
     void
     step_down(uint64_t term) {
+        BOOST_ASSERT(term >= config().current_term());
+
         if(term > config().current_term()) {
             COCAINE_LOG_DEBUG(m_log, "Stepping down to term %d.", term);
 
@@ -722,6 +738,9 @@ private:
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
             try {
+                // Force reconnection to the remote node, just in case.
+                (*it)->reset();
+
                 (*it)->request_vote(std::bind(&election_state_t::vote_handler, m_election_state, _1));
             } catch(const std::exception&) {
                 // Ignore.
@@ -751,23 +770,20 @@ private:
         add_nop();
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
+            // Force reconnection to the remote node, just in case.
+            (*it)->reset();
+
             (*it)->begin_leadership();
         }
     }
 
     void
     finish_leadership() {
-        for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
-            (*it)->finish_leadership();
-        }
-
         if(is_leader()) {
             COCAINE_LOG_DEBUG(m_log, "Finish leadership.");
 
-            // If leader becomes follower, uncommitted entries may eventually become committed or discarded.
-            // So leader notifies handler with corresponding error code.
-            for(auto i = config().last_applied() + 1; i <= config().log().last_index(); ++i) {
-                config().log()[i].notify(std::error_code(raft_errc::unknown));
+            for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
+                (*it)->finish_leadership();
             }
         }
     }

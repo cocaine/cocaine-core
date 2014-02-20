@@ -228,7 +228,6 @@ public:
         reset();
     }
 
-private:
     // Reset current state of remote node.
     void
     reset() {
@@ -240,6 +239,7 @@ private:
         m_client.reset();
     }
 
+private:
     // Drop current append request.
     void
     reset_append_state() {
