@@ -878,13 +878,13 @@ private:
     // When the timer fires, the follower will switch to the candidate state.
     ev::timer m_election_timer;
 
-    // This watcher will apply committed entries in background.
+    // This watcher applies committed entries in background.
     ev::idle m_applier;
 
     // This watcher replicates entries in background.
     ev::idle m_replicator;
 
-    // This state will contain information about received votes and will be reset at finish of the election.
+    // This state contains information about received votes and will be reset at finish of the election.
     std::shared_ptr<election_state_t> m_election_state;
 
     // The snapshot to be written to the log.
