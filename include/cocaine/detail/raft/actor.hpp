@@ -701,7 +701,7 @@ private:
                 if(std::get<1>(*result)) {
                     m_granted++;
 
-                    if(m_granted > (m_actor.config().cluster().size() + 1) / 2) {
+                    if(m_granted > m_actor.config().cluster().size() / 2) {
                         // Actor has won the election.
                         m_actor.switch_to_leader();
                     }
@@ -799,8 +799,12 @@ private:
     // Compute new commit index based on information about replicated entries.
     void
     update_commit_index() {
-        // Find median in nodes match_index'es. This median is index of last entry replicated to quorum.
-        size_t pivot = (m_cluster.size() % 2 == 0) ? (m_cluster.size() / 2) : (m_cluster.size() / 2 + 1);
+        // If we sort ascending match_index'es of entire cluster (not m_cluster, which is cluster without local node),
+        // then median item (if cluster has odd number of nodes) or greatest item of smaller half of match_index'es
+        // (if cluster has even number of nodes) will define last entry replicated to quorum.
+        // Pivot is index of this item.
+        size_t pivot = m_cluster.size() / 2;
+
         std::nth_element(m_cluster.begin(),
                          m_cluster.begin() + pivot,
                          m_cluster.end(),
