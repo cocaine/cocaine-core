@@ -775,9 +775,6 @@ private:
         add_nop();
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
-            // Force reconnection to the remote node, just in case.
-            (*it)->reset();
-
             (*it)->begin_leadership();
         }
     }
