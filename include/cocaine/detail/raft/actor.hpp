@@ -247,6 +247,10 @@ private:
     replicate(ev::idle&, int) {
         m_replicator.stop();
 
+        // Each remote_node instance calls this method, when replicates something.
+        // We call it here, because some entries are already replicated to the local node.
+        update_commit_index();
+
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
             try {
                 (*it)->replicate();
@@ -676,7 +680,7 @@ private:
     public:
         election_state_t(actor &actor):
             m_active(true),
-            m_granted(1),
+            m_granted(0),
             m_actor(actor)
         { }
 
@@ -735,6 +739,7 @@ private:
 
         // Vote for self.
         m_voted_for = config().id();
+        m_election_state->vote_handler(std::make_tuple(config().current_term(), true));
 
         for(auto it = m_cluster.begin(); it != m_cluster.end(); ++it) {
             try {
@@ -799,25 +804,33 @@ private:
     // Compute new commit index based on information about replicated entries.
     void
     update_commit_index() {
-        // If we sort ascending match_index'es of entire cluster (not m_cluster, which is cluster without local node),
-        // then median item (if cluster has odd number of nodes) or greatest item of smaller half of match_index'es
-        // (if cluster has even number of nodes) will define last entry replicated to quorum.
-        // Pivot is index of this item.
-        size_t pivot = m_cluster.size() / 2;
+        // Index of last entry replicated to a quorum.
+        uint64_t just_committed = 0;
 
-        std::nth_element(m_cluster.begin(),
-                         m_cluster.begin() + pivot,
-                         m_cluster.end(),
-                         &actor::compare_match_index);
+        if(m_cluster.size() == 0) {
+            // Our cluster contains only this local node and all entries are replicated to a "quorum"
+            just_committed = config().log().last_index();
+        } else {
+            // If we sort ascending match_index'es of entire cluster (not m_cluster, which is cluster without local node),
+            // then median item (if cluster has odd number of nodes) or greatest item of smaller half of match_index'es
+            // (if cluster has even number of nodes) will define last entry replicated to a quorum.
+            // Pivot is index of this item.
+            size_t pivot = m_cluster.size() / 2;
 
-        uint64_t just_commited = m_cluster[pivot]->match_index();
+            std::nth_element(m_cluster.begin(),
+                             m_cluster.begin() + pivot,
+                             m_cluster.end(),
+                             &actor::compare_match_index);
 
-        // Leader can't assume any new entry to be committed until entry from current term is replicated to quorum
+            just_committed = m_cluster[pivot]->match_index();
+        }
+
+        // Leader can't assume any new entry to be committed until entry from current term is replicated to a quorum
         // (see commitment restriction in the paper).
-        if(just_commited > config().commit_index() &&
-           config().log()[just_commited].term() == config().current_term())
+        if(just_committed > config().commit_index() &&
+           config().log()[just_committed].term() == config().current_term())
         {
-            set_commit_index(just_commited);
+            set_commit_index(just_committed);
         }
     }
 
