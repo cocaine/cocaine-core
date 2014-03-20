@@ -21,9 +21,6 @@
 #ifndef COCAINE_RAFT_FORWARD_DECLARATIONS_HPP
 #define COCAINE_RAFT_FORWARD_DECLARATIONS_HPP
 
-#include "cocaine/detail/raft/options.hpp"
-#include "cocaine/detail/raft/entry.hpp"
-
 #include "cocaine/rpc/slots/deferred.hpp"
 
 #include <set>
@@ -35,8 +32,11 @@ namespace cocaine { namespace raft {
 // Identifier of RAFT node. In fact this is endpoint of locator of the node.
 typedef std::pair<std::string, uint16_t> node_id_t;
 
-// NOTE: May be removed in the future.
-typedef std::set<node_id_t> cluster_t;
+// Type of entire snapshot (with machine state and cluster configuration).
+template<class StateMachine, class Cluster>
+struct log_traits {
+    typedef std::tuple<typename StateMachine::snapshot_type, Cluster> snapshot_type;
+};
 
 // Concept of Raft actor, which should implement the algorithm.
 // Here are defined methods to handle messages from leader and candidates. These methods must be thread-safe.
@@ -63,8 +63,15 @@ public:
     request_vote(uint64_t term,
                  node_id_t candidate,
                  std::tuple<uint64_t, uint64_t> last_entry) = 0;
+
+    virtual
+    node_id_t
+    leader_id() const = 0;
 };
 
 }} // namespace cocaine::raft
+
+#include "cocaine/detail/raft/options.hpp"
+#include "cocaine/detail/raft/entry.hpp"
 
 #endif // COCAINE_RAFT_FORWARD_DECLARATIONS_HPP

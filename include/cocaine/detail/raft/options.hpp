@@ -21,6 +21,8 @@
 #ifndef COCAINE_RAFT_ACTOR_OPTIONS_HPP
 #define COCAINE_RAFT_ACTOR_OPTIONS_HPP
 
+#include "cocaine/detail/raft/forwards.hpp"
+
 namespace cocaine { namespace raft {
 
 // Some arguments of Raft actor.
@@ -36,6 +38,9 @@ struct options_t {
     // Leader will send at most message_size entries in one append message.
     // Also actor will apply at most message_size entries at once.
     unsigned int message_size;
+
+    // List of 2-3 nodes, which will be used to join cluster at start.
+    std::set<node_id_t> some_nodes;
 };
 
 }} // namespace cocaine::raft

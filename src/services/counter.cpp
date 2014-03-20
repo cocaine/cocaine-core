@@ -183,9 +183,9 @@ deferred_producer(deferred<T> promise,
 deferred<int>
 counter_t::on_inc(int value) {
     deferred<int> promise;
-    m_raft->call<counter_machine::inc>(
+    m_raft->call<io::aux::frozen<counter_machine::inc>>(
         std::bind(deferred_producer<int>, promise, std::placeholders::_1),
-        value
+        io::aux::make_frozen<counter_machine::inc>(value)
     );
     return promise;
 }
@@ -193,9 +193,9 @@ counter_t::on_inc(int value) {
 deferred<int>
 counter_t::on_dec(int value) {
     deferred<int> promise;
-    m_raft->call<counter_machine::dec>(
+    m_raft->call<io::aux::frozen<counter_machine::dec>>(
         std::bind(deferred_producer<int>, promise, std::placeholders::_1),
-        value
+        io::aux::make_frozen<counter_machine::dec>(value)
     );
     return promise;
 }
@@ -203,10 +203,9 @@ counter_t::on_dec(int value) {
 deferred<bool>
 counter_t::on_cas(int expected, int desired) {
     deferred<bool> promise;
-    m_raft->call<counter_machine::cas>(
+    m_raft->call<io::aux::frozen<counter_machine::cas>>(
         std::bind(deferred_producer<bool>, promise, std::placeholders::_1),
-        expected,
-        desired
+        io::aux::make_frozen<counter_machine::cas>(expected, desired)
     );
     return promise;
 }

@@ -22,15 +22,21 @@
 #define COCAINE_IO_RAFT_SERIALIZATION_TRAITS_HPP
 
 #include "cocaine/detail/raft/forwards.hpp"
+#include "cocaine/detail/raft/entry.hpp"
+#include "cocaine/detail/raft/configuration.hpp"
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/frozen.hpp"
 #include "cocaine/traits/variant.hpp"
+#include "cocaine/traits/tuple.hpp"
+#include "cocaine/traits/optional.hpp"
+
+#include <boost/mpl/list.hpp>
 
 namespace cocaine { namespace io {
 
 template<class StateMachine>
 struct type_traits<cocaine::raft::log_entry<StateMachine>> {
-    typedef typename cocaine::raft::log_entry<StateMachine>::value_type
+    typedef typename cocaine::raft::log_entry<StateMachine>::command_type
             value_type;
 
     template<class Stream>
@@ -75,6 +81,83 @@ struct type_traits<cocaine::raft::nop_t> {
         if(source.type != msgpack::type::NIL) {
             throw std::bad_cast();
         }
+    }
+};
+
+template<>
+struct type_traits<cocaine::raft::insert_node_t> {
+    typedef cocaine::raft::insert_node_t value_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const value_type& source) {
+        type_traits<cocaine::raft::node_id_t>::pack(target, source.node);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, value_type& target) {
+        type_traits<cocaine::raft::node_id_t>::unpack(source, target.node);
+    }
+};
+
+template<>
+struct type_traits<cocaine::raft::erase_node_t> {
+    typedef cocaine::raft::erase_node_t value_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const value_type& source) {
+        type_traits<cocaine::raft::node_id_t>::pack(target, source.node);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, value_type& target) {
+        type_traits<cocaine::raft::node_id_t>::unpack(source, target.node);
+    }
+};
+
+template<>
+struct type_traits<cocaine::raft::commit_node_t> {
+    typedef cocaine::raft::commit_node_t value_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const value_type& source) {
+        type_traits<std::tuple<>>::pack(target, std::tuple<>());
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, value_type& target) {
+        std::tuple<> targ;
+        type_traits<std::tuple<>>::unpack(source, targ);
+    }
+};
+
+template<>
+struct type_traits<cocaine::raft::cluster_config_t> {
+    typedef cocaine::raft::cluster_config_t value_type;
+    typedef boost::mpl::list<std::set<cocaine::raft::node_id_t>,
+                             boost::optional<std::set<cocaine::raft::node_id_t>>>
+            seq_type;
+
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const value_type& source) {
+        type_traits<seq_type>::pack(target, source.current, source.next);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, value_type& target) {
+        type_traits<seq_type>::unpack(source, target.current, target.next);
     }
 };
 

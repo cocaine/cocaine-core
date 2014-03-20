@@ -41,36 +41,47 @@ public:
         m_reactor(std::make_shared<io::reactor_t>())
     { }
 
-    const std::shared_ptr<raft::actor_concept_t>&
+    const std::shared_ptr<actor_concept_t>&
     get(const std::string& name) const;
 
     template<class Machine, class Config>
-    std::shared_ptr<raft::actor<Machine, typename std::decay<Config>::type>>
+    std::shared_ptr<actor<
+        typename std::decay<Machine>::type,
+        typename std::decay<Config>::type
+    >>
     insert(const std::string& name, Machine&& machine, Config&& config);
 
     template<class Machine>
-    std::shared_ptr<raft::actor<Machine, raft::configuration<raft::log<Machine>>>>
+    std::shared_ptr<actor<
+        typename std::decay<Machine>::type,
+        configuration<typename std::decay<Machine>::type>
+    >>
     insert(const std::string& name, Machine&& machine);
 
 private:
     context_t& m_context;
     std::shared_ptr<io::reactor_t> m_reactor;
 
-    synchronized<std::map<std::string, std::shared_ptr<raft::actor_concept_t>>> m_actors;
+    synchronized<std::map<std::string, std::shared_ptr<actor_concept_t>>> m_actors;
 };
 
 template<class Machine, class Config>
-std::shared_ptr<raft::actor<Machine, typename std::decay<Config>::type>>
+std::shared_ptr<actor<
+    typename std::decay<Machine>::type,
+    typename std::decay<Config>::type
+>>
 repository_t::insert(const std::string& name, Machine&& machine, Config&& config) {
     auto actors = m_actors.synchronize();
 
     typedef typename std::decay<Machine>::type machine_type;
-    typedef raft::actor<machine_type, typename std::decay<Config>::type> actor_type;
+    typedef typename std::decay<Config>::type config_type;
+    typedef actor<machine_type, config_type> actor_type;
 
-    raft::options_t opt = { m_context.config.raft.election_timeout,
-                            m_context.config.raft.heartbeat_timeout,
-                            m_context.config.raft.snapshot_threshold,
-                            m_context.config.raft.message_size };
+    options_t opt = { m_context.config.raft.election_timeout,
+                      m_context.config.raft.heartbeat_timeout,
+                      m_context.config.raft.snapshot_threshold,
+                      m_context.config.raft.message_size,
+                      m_context.config.raft.some_nodes };
 
     auto actor = std::make_shared<actor_type>(m_context,
                                               *m_reactor,
@@ -88,22 +99,27 @@ repository_t::insert(const std::string& name, Machine&& machine, Config&& config
 }
 
 template<class Machine>
-std::shared_ptr<raft::actor<Machine, raft::configuration<raft::log<Machine>>>>
+std::shared_ptr<actor<
+    typename std::decay<Machine>::type,
+    configuration<typename std::decay<Machine>::type>
+>>
 repository_t::insert(const std::string& name, Machine&& machine) {
     auto actors = m_actors.synchronize();
 
     typedef typename std::decay<Machine>::type machine_type;
-    typedef raft::actor<machine_type, raft::configuration<raft::log<machine_type>>> actor_type;
+    typedef configuration<typename std::decay<Machine>::type> config_type;
+    typedef actor<machine_type, config_type> actor_type;
 
-    raft::configuration<raft::log<machine_type>> config(
+    config_type config(
         std::make_pair(m_context.config.network.hostname, m_context.config.network.locator),
-        m_context.config.raft.cluster
+        cluster_config_t {m_context.config.raft.cluster, boost::none}
     );
 
-    raft::options_t opt = { m_context.config.raft.election_timeout,
-                            m_context.config.raft.heartbeat_timeout,
-                            m_context.config.raft.snapshot_threshold,
-                            m_context.config.raft.message_size };
+    options_t opt = { m_context.config.raft.election_timeout,
+                      m_context.config.raft.heartbeat_timeout,
+                      m_context.config.raft.snapshot_threshold,
+                      m_context.config.raft.message_size,
+                      m_context.config.raft.some_nodes };
 
     auto actor = std::make_shared<actor_type>(m_context,
                                               *m_reactor,

@@ -60,7 +60,7 @@ private:
 
     struct counter_machine_t;
 
-    typedef raft::actor<counter_machine_t, raft::configuration<raft::log<counter_machine_t>>>
+    typedef raft::actor<counter_machine_t, raft::configuration<counter_machine_t>>
             raft_actor_type;
 
     std::shared_ptr<raft_actor_type> m_raft;

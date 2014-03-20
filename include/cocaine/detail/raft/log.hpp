@@ -33,16 +33,15 @@ namespace cocaine { namespace raft {
 // This class stores log of state machine. Actually instance of this class is part of Raft configuration.
 // User can write his own implementation of this class and provide it to the algorithm through configuration (for example to store the log in persistent storage).
 // All methods of the log are called only with correct arguments and only when it has sense (i.e. snapshot() is called only after set_snapshot()).
-template<class StateMachine>
+template<class StateMachine, class Cluster>
 class log {
     COCAINE_DECLARE_NONCOPYABLE(log)
 
-    typedef std::deque<log_entry<StateMachine>> container_type;
+    typedef log_entry<StateMachine> entry_type;
+    typedef typename log_traits<StateMachine, Cluster>::snapshot_type snapshot_type;
+    typedef std::deque<entry_type> container_type;
 
 public:
-    typedef log_entry<StateMachine> entry_type;
-    typedef typename StateMachine::snapshot_type snapshot_type;
-
     log():
         m_first_index(0)
     { }
@@ -111,10 +110,9 @@ public:
     // Last entry applied to the state machine before taking the snapshot has given index and term.
     // It's safe to remove all entries older of the snapshot from the log, because they will not be used.
     // This method must clean the log and setup given snapshot, when the snapshot is newer then last entry or older of current snapshot.
-    template<class T>
     void
-    set_snapshot(uint64_t index, uint64_t term, T&& snapshot) {
-        m_snapshot.reset(new snapshot_type(std::forward<T>(snapshot)));
+    set_snapshot(uint64_t index, uint64_t term, snapshot_type&& snapshot) {
+        m_snapshot.reset(new snapshot_type(std::move(snapshot)));
 
         if(index >= last_index() || index < m_first_index) {
             m_entries.clear();
