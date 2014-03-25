@@ -52,8 +52,7 @@ class actor:
     enum class state_t {
         leader,
         candidate,
-        follower,
-        not_in_cluster
+        follower
     };
 
     typedef actor<StateMachine, Configuration> actor_type;

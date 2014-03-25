@@ -76,9 +76,11 @@ public:
         m_next = m_current;
         m_next.emplace_back(std::make_shared<remote_type>(*this, node));
 
-        if(actor().is_leader()) {
-            actor().step_down(actor().config().current_term(), true);
-        }
+        // Stepdown to disable self if we are not in cluster now or just become a follower if we were a leader
+        // (because leadership in old configuration diesn't mean leadership in new configuration).
+        // If this node is a leader now and in the cluster,
+        // it starts new election immediately to become a leader in new configuration.
+        actor().step_down(actor().config().current_term(), actor().is_leader());
     }
 
     void
@@ -91,9 +93,11 @@ public:
             }
         }
 
-        if(actor().is_leader()) {
-            actor().step_down(actor().config().current_term(), true);
-        }
+        // Stepdown to disable self if we are not in cluster now or just become a follower if we were a leader
+        // (because leadership in old configuration diesn't mean leadership in new configuration).
+        // If this node is a leader now and in the cluster,
+        // it starts new election immediately to become a leader in new configuration.
+        actor().step_down(actor().config().current_term(), actor().is_leader());
     }
 
     void
@@ -103,6 +107,7 @@ public:
         m_current = std::move(m_next);
         m_next = std::vector<std::shared_ptr<remote_type>>();
 
+        // Stepdown to disable self if we are not in cluster.
         if(!in_cluster()) {
             m_actor.step_down(m_actor.config().current_term());
         }
@@ -121,6 +126,7 @@ public:
         actor().config().cluster() = snapshot;
         create_clients();
 
+        // Stepdown to disable self if we are not in cluster
         if(actor().is_leader()) {
             actor().step_down(actor().config().current_term(), true);
         }
@@ -142,6 +148,7 @@ public:
         }
     }
 
+    // Start replication and heartbeating.
     void
     begin_leadership() {
         for(auto it = m_current.begin(); it != m_current.end(); ++it) {
@@ -194,6 +201,7 @@ public:
         }
     }
 
+    // Check if the node has won in the current term.
     void
     register_vote() {
         if (won_elections(m_current) && (m_next.size() == 0 || won_elections(m_next))) {
@@ -282,6 +290,7 @@ private:
         return nodes[pivot]->match_index();
     }
 
+    // Check if majority of set of nodes has voted for us in the current term.
     bool
     won_elections(const std::vector<std::shared_ptr<remote_type>> &nodes) {
         size_t votes = 0;
