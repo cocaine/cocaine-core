@@ -48,9 +48,7 @@ raft::repository_t::get(const std::string& name) const {
     }
 }
 
-service_t::service_t(context_t& context,
-                     io::reactor_t& reactor,
-                     const std::string& name):
+service_t::service_t(context_t& context, io::reactor_t& reactor, const std::string& name):
     api::service_t(context, reactor, name, dynamic_t::empty_object),
     implements<io::raft_tag<msgpack::object, msgpack::object>>(context, name),
     m_context(context),
@@ -61,6 +59,8 @@ service_t::service_t(context_t& context,
     on<io::raft<msgpack::object, msgpack::object>::append>(std::bind(&service_t::append, this, _1, _2, _3, _4, _5, _6));
     on<io::raft<msgpack::object, msgpack::object>::apply>(std::bind(&service_t::apply, this, _1, _2, _3, _4, _5, _6));
     on<io::raft<msgpack::object, msgpack::object>::request_vote>(std::bind(&service_t::request_vote, this, _1, _2, _3, _4));
+    on<io::raft<msgpack::object, msgpack::object>::insert>(std::bind(&service_t::insert, this, _1, _2));
+    on<io::raft<msgpack::object, msgpack::object>::erase>(std::bind(&service_t::erase, this, _1, _2));
 }
 
 deferred<std::tuple<uint64_t, bool>>
@@ -92,4 +92,14 @@ service_t::request_vote(const std::string& state_machine,
                         std::tuple<uint64_t, uint64_t> last_entry)
 {
     return m_context.raft->get(state_machine)->request_vote(term, candidate, last_entry);
+}
+
+deferred<command_result<void>>
+service_t::insert(const std::string& machine, const raft::node_id_t& node) {
+    return m_context.raft->get(machine)->insert(node);
+}
+
+deferred<command_result<void>>
+service_t::erase(const std::string& machine, const raft::node_id_t& node) {
+    return m_context.raft->get(machine)->erase(node);
 }

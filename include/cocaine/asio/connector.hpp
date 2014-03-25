@@ -128,6 +128,10 @@ struct connector<socket<Medium>> {
         m_socket_watcher.set<connector, &connector::on_event>(this);
     }
 
+    ~connector() {
+        unbind();
+    }
+
     template<class ConnectionHandler, class ErrorHandler>
     void
     bind(ConnectionHandler&& connection_handler, ErrorHandler&& error_handler) {

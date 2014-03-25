@@ -32,11 +32,16 @@ namespace cocaine {
 enum class raft_errc {
     // Only leader can append an entry to the log.
     // If not-leader tries to append an entry, algorithm returns this error code to callback.
-    not_leader,
+    not_leader = 1,
 
     // When leader becomes follower, some uncommitted entries may eventually become committed or discarded.
     // So, when leader becomes follower, it returns this error code to callbacks of all uncommitted entries.
-    unknown
+    unknown,
+
+    // State machine replies with this code on configuration changes commands,
+    // when configuration is in transitional state. Configuration changes protocol allows
+    // only one operation at the same time.
+    busy
 };
 
 struct raft_category_t :

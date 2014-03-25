@@ -66,7 +66,7 @@ public:
 
     void
     set_current_term(uint64_t value) {
-        m_config.set_commit_index(value);
+        m_config.set_current_term(value);
     }
 
     uint64_t

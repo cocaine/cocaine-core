@@ -21,6 +21,8 @@
 #ifndef COCAINE_RAFT_SERVICE_INTERFACE_HPP
 #define COCAINE_RAFT_SERVICE_INTERFACE_HPP
 
+#include "cocaine/detail/raft/forwards.hpp"
+
 #include "cocaine/rpc/protocol.hpp"
 #include "cocaine/traits/vector.hpp"
 
@@ -126,6 +128,50 @@ struct raft {
         >::tag drain_type;
     };
 
+    struct insert {
+        typedef raft_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "insert";
+        }
+
+        typedef boost::mpl::list<
+        /* Name of state machine. */
+            std::string,
+        /* Node. */
+            cocaine::raft::node_id_t
+        > tuple_type;
+
+        typedef stream_of<
+        /* If not error, then everything is ok. */
+            cocaine::raft::command_result<void>
+        >::tag drain_type;
+    };
+
+    struct erase {
+        typedef raft_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "erase";
+        }
+
+        typedef boost::mpl::list<
+        /* Name of state machine. */
+            std::string,
+        /* Node. */
+            cocaine::raft::node_id_t
+        > tuple_type;
+
+        typedef stream_of<
+        /* If not error, then everything is ok. */
+            cocaine::raft::command_result<void>
+        >::tag drain_type;
+    };
+
 }; // struct raft
 
 template<class Entry, class Snapshot>
@@ -137,7 +183,9 @@ struct protocol<raft_tag<Entry, Snapshot>> {
     typedef boost::mpl::list<
         typename raft<Entry, Snapshot>::append,
         typename raft<Entry, Snapshot>::apply,
-        typename raft<Entry, Snapshot>::request_vote
+        typename raft<Entry, Snapshot>::request_vote,
+        typename raft<Entry, Snapshot>::insert,
+        typename raft<Entry, Snapshot>::erase
     > messages;
 
     typedef raft<Entry, Snapshot> type;

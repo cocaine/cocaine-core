@@ -70,6 +70,12 @@ private:
                  raft::node_id_t candidate,
                  std::tuple<uint64_t, uint64_t> last_entry);
 
+    deferred<command_result<void>>
+    insert(const std::string& machine, const node_id_t& node);
+
+    deferred<command_result<void>>
+    erase(const std::string& machine, const node_id_t& node);
+
 private:
     context_t& m_context;
     io::reactor_t& m_reactor;

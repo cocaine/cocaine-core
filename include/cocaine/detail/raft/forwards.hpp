@@ -21,6 +21,8 @@
 #ifndef COCAINE_RAFT_FORWARD_DECLARATIONS_HPP
 #define COCAINE_RAFT_FORWARD_DECLARATIONS_HPP
 
+#include "cocaine/detail/raft/error.hpp"
+
 #include "cocaine/rpc/slots/deferred.hpp"
 
 #include <set>
@@ -36,6 +38,90 @@ typedef std::pair<std::string, uint16_t> node_id_t;
 template<class StateMachine, class Cluster>
 struct log_traits {
     typedef std::tuple<typename StateMachine::snapshot_type, Cluster> snapshot_type;
+};
+
+template<class T>
+class command_result {
+    template<class> friend struct cocaine::io::type_traits;
+
+    typedef boost::variant<raft_errc, T> value_type;
+
+public:
+    explicit
+    command_result(const T& value) :
+        m_value(value)
+    { }
+
+    explicit
+    command_result(const raft_errc& errc, const node_id_t& leader = node_id_t()) :
+        m_value(errc),
+        m_leader(leader)
+    { }
+
+    std::error_code
+    error() const {
+        if(boost::get<raft_errc>(&m_value)) {
+            return std::error_code(boost::get<raft_errc>(m_value));
+        } else {
+            return std::error_code();
+        }
+    }
+
+    T&
+    value() {
+        return boost::get<T>(m_value);
+    }
+
+    const T&
+    value() const {
+        return boost::get<T>(m_value);
+    }
+
+    const node_id_t&
+    leader() const {
+        return m_leader;
+    }
+
+private:
+    value_type m_value;
+    node_id_t m_leader;
+};
+
+template<>
+class command_result<void> {
+    template<class> friend struct cocaine::io::type_traits;
+
+    typedef boost::optional<raft_errc> value_type;
+
+public:
+    explicit
+    command_result() :
+        m_value(boost::none)
+    { }
+
+    explicit
+    command_result(const raft_errc& errc, const node_id_t& leader = node_id_t()) :
+        m_value(errc),
+        m_leader(leader)
+    { }
+
+    std::error_code
+    error() const {
+        if(boost::get<raft_errc>(&m_value)) {
+            return std::error_code(boost::get<raft_errc>(m_value));
+        } else {
+            return std::error_code();
+        }
+    }
+
+    const node_id_t&
+    leader() const {
+        return m_leader;
+    }
+
+private:
+    value_type m_value;
+    node_id_t m_leader;
 };
 
 // Concept of Raft actor, which should implement the algorithm.
@@ -65,8 +151,17 @@ public:
                  std::tuple<uint64_t, uint64_t> last_entry) = 0;
 
     virtual
+    deferred<command_result<void>>
+    insert(const node_id_t& node) = 0;
+
+    virtual
+    deferred<command_result<void>>
+    erase(const node_id_t& node) = 0;
+
+    virtual
     node_id_t
     leader_id() const = 0;
+
 };
 
 }} // namespace cocaine::raft

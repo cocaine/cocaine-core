@@ -59,12 +59,21 @@ public:
     }
 
     ~client_t() {
-        m_session->detach();
+        unbind();
     }
 
     void
     bind(std::function<void(const std::error_code&)> error_handler) {
         m_error_handler = error_handler;
+    }
+
+    void
+    unbind() {
+        auto session = std::move(m_session);
+        if(session) {
+            // The client can be destroyed here.
+            session->detach();
+        }
     }
 
     template<class Event, class... Args>
@@ -86,10 +95,12 @@ private:
 
     void
     on_error(const std::error_code& ec) {
-        m_session->detach();
+        auto error_handler = m_error_handler;
 
-        if (m_error_handler) {
-            m_error_handler(ec);
+        unbind();
+
+        if (error_handler) {
+            error_handler(ec);
         }
     }
 

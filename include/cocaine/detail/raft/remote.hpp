@@ -118,6 +118,10 @@ class remote_node {
                 return;
             }
 
+            // Keep our client alive while the handler works.
+            auto client = m_remote.m_client;
+            (void)client;
+
             // Parent node stores pointer to handler of current uncompleted request.
             // We should reset this pointer, when the request becomes completed.
             m_remote.reset_vote_state();
@@ -169,6 +173,10 @@ class remote_node {
                 return;
             }
 
+            // Keep our client alive while the handler works.
+            auto client = m_remote.m_client;
+            (void)client;
+
             // Parent node stores pointer to handler of current uncompleted append request.
             // We should reset this pointer, when the request becomes completed.
             m_remote.reset_append_state();
@@ -186,12 +194,31 @@ class remote_node {
                         m_remote.m_match_index = m_last_index;
                         m_remote.m_cluster.update_commit_index();
                     }
+
+                    COCAINE_LOG_DEBUG(
+                        m_remote.m_logger,
+                        "Append request has been accepted. New match index: %d, next entry to replicate: %d.",
+                        m_remote.m_match_index,
+                        m_remote.m_next_index
+                    );
                 } else if(m_remote.m_next_index > 1) {
                     // If follower discarded current request, try to replicate older entries.
                     m_remote.m_next_index -= std::min<uint64_t>(
                         m_remote.m_actor.options().message_size,
                         m_remote.m_next_index - 1
                     );
+
+                    COCAINE_LOG_DEBUG(
+                        m_remote.m_logger,
+                        "Append request has been discarded. Match index: %d, next entry to replicate: %d.",
+                        m_remote.m_match_index,
+                        m_remote.m_next_index
+                    );
+                } else {
+                    // The remote node discarded our oldest entries.
+                    // There is no sense to retry immediately.
+                    // Probably there is no sense to retry at all, but what should the node do then?
+                    return;
                 }
 
                 // Continue replication. If there is no entries to replicate, this call does nothing.
@@ -225,9 +252,14 @@ public:
         m_id(id),
         m_heartbeat_timer(m_actor.reactor().native()),
         m_next_index(std::max<uint64_t>(1, m_actor.log().last_index())),
-        m_match_index(0)
+        m_match_index(0),
+        m_won_term(0)
     {
         m_heartbeat_timer.set<remote_node, &remote_node::heartbeat>(this);
+    }
+
+    ~remote_node() {
+        finish_leadership();
     }
 
     const node_id_t&
@@ -282,10 +314,15 @@ public:
     // Begin leadership. Actually it starts to send heartbeats.
     void
     begin_leadership() {
-        m_heartbeat_timer.start(0.0, float(m_actor.options().heartbeat_timeout) / 1000.0);
-        // Now we don't know which entries are replicated to the remote.
-        m_match_index = 0;
-        m_next_index = std::max<uint64_t>(1, m_actor.log().last_index());
+        if(m_id == m_actor.config().id()) {
+            m_match_index = m_actor.log().last_index();
+            m_next_index = m_match_index + 1;
+        } else {
+            m_heartbeat_timer.start(0.0, float(m_actor.options().heartbeat_timeout) / 1000.0);
+            // Now we don't know which entries are replicated to the remote.
+            m_match_index = 0;
+            m_next_index = std::max<uint64_t>(1, m_actor.log().last_index());
+        }
     }
 
     // Stop sending heartbeats.
@@ -300,13 +337,13 @@ public:
     // Reset current state of remote node.
     void
     reset() {
-        // Drop current requests.
-        reset_vote_state();
-        reset_append_state();
-
         // Close connection.
         m_resolver.reset();
         m_client.reset();
+
+        // Drop current requests.
+        reset_vote_state();
+        reset_append_state();
     }
 
 private:

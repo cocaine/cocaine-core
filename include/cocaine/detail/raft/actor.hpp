@@ -190,8 +190,9 @@ public:
     }
 
     // Switch to follower state with given term.
+    // If reelection is true, then start new elections immediately.
     void
-    step_down(uint64_t term) {
+    step_down(uint64_t term, bool reelection = false) {
         BOOST_ASSERT(term >= config().current_term());
 
         if(term > config().current_term()) {
@@ -203,12 +204,12 @@ public:
             m_voted_for.reset();
         }
 
-        restart_election_timer();
-
         // Disable all non-follower activity.
         m_cluster.cancel();
 
         m_state = state_t::follower;
+
+        restart_election_timer(reelection);
     }
 
 private:
@@ -224,7 +225,7 @@ private:
         }
 
         log().push(config().current_term(), cmd);
-        log().back().template bind<Command>(handler);
+        log().template bind_last<Command>(handler);
 
         COCAINE_LOG_DEBUG(m_logger,
                           "New entry has been added to the log in term %d with index %d.",
@@ -232,17 +233,16 @@ private:
                           log().last_index());
     }
 
-    // Follower stuff.
-
+    // Interface implementation.
+    template<class T>
     static
     void
-    deferred_writer(deferred<std::tuple<uint64_t, bool>> promise,
-                    std::function<std::tuple<uint64_t, bool>()> f)
-    {
+    deferred_pipe(deferred<T> promise, std::function<T()> f) {
         promise.write(f());
     }
 
-    // These methods are just wrappers over implementations, which are posted to one reactor to provide thread-safety.
+    // These methods are just wrappers over implementations,
+    // which are posted to one reactor to provide thread-safety.
     virtual
     deferred<std::tuple<uint64_t, bool>>
     append(uint64_t term,
@@ -268,7 +268,9 @@ private:
             unpacked,
             commit_index
         );
-        reactor().post(std::bind(&actor::deferred_writer, promise, std::move(producer)));
+        reactor().post(std::bind(&actor::deferred_pipe<std::tuple<uint64_t, bool>>,
+                                 promise,
+                                 std::move(producer)));
         return promise;
     }
 
@@ -293,7 +295,9 @@ private:
             unpacked,
             commit_index
         );
-        reactor().post(std::bind(&actor::deferred_writer, promise, std::move(producer)));
+        reactor().post(std::bind(&actor::deferred_pipe<std::tuple<uint64_t, bool>>,
+                                 promise,
+                                 std::move(producer)));
         return promise;
     }
 
@@ -311,9 +315,74 @@ private:
             candidate,
             last_entry
         );
-        reactor().post(std::bind(&actor::deferred_writer, promise, std::move(producer)));
+        reactor().post(std::bind(&actor::deferred_pipe<std::tuple<uint64_t, bool>>,
+                                 promise,
+                                 std::move(producer)));
         return promise;
     }
+
+    void
+    deferred_setter(deferred<command_result<void>> promise, const std::error_code& ec) {
+        if(ec) {
+            promise.write(command_result<void>(static_cast<raft_errc>(ec.value()), leader_id()));
+        } else {
+            promise.write(command_result<void>());
+        }
+    }
+
+    virtual
+    deferred<command_result<void>>
+    insert(const node_id_t& node) {
+        deferred<command_result<void>> promise;
+
+        m_reactor.post(std::bind(&actor::insert_impl, this->shared_from_this(), promise, node));
+
+        return promise;
+    }
+
+    void
+    insert_impl(deferred<command_result<void>> promise, const node_id_t& node) {
+        if(cluster().transitional()) {
+            promise.write(command_result<void>(raft_errc::busy));
+        } else if(cluster().has(node)) {
+            promise.write(command_result<void>());
+        } else {
+            using namespace std::placeholders;
+
+            call_impl<insert_node_t>(
+                std::bind(&actor::deferred_setter, this, promise, _1),
+                insert_node_t {node}
+            );
+        }
+    }
+
+    virtual
+    deferred<command_result<void>>
+    erase(const node_id_t& node) {
+        deferred<command_result<void>> promise;
+
+        m_reactor.post(std::bind(&actor::erase_impl, this->shared_from_this(), promise, node));
+
+        return promise;
+    }
+
+    void
+    erase_impl(deferred<command_result<void>> promise, const node_id_t& node) {
+        if(cluster().transitional()) {
+            promise.write(command_result<void>(raft_errc::busy));
+        } else if(!cluster().has(node)) {
+            promise.write(command_result<void>());
+        } else {
+            using namespace std::placeholders;
+
+            call_impl<erase_node_t>(
+                std::bind(&actor::deferred_setter, this, promise, _1),
+                erase_node_t {node}
+            );
+        }
+    }
+
+    // Follower stuff.
 
     std::tuple<uint64_t, bool>
     append_impl(uint64_t term,
@@ -327,15 +396,17 @@ private:
 
         COCAINE_LOG_DEBUG(
             m_logger,
-            "Append request received from %s:%d, term: %d, prev_entry: (%d, %d), commit index: %d.",
+            "Append request received from %s:%d; term: %d; prev_entry: (%d, %d); entries number: %d; commit index: %d.",
             leader.first, leader.second,
             term,
             prev_index, prev_term,
+            entries.size(),
             commit_index
         );
 
         // Reject stale leader.
         if(term < config().current_term()) {
+            COCAINE_LOG_DEBUG(m_logger, "Reject append request from stale leader.");
             return std::make_tuple(config().current_term(), false);
         }
 
@@ -374,9 +445,13 @@ private:
                                   log()[prev_index].term();
 
             if(local_term != prev_term) {
+                COCAINE_LOG_DEBUG(m_logger, "Term of previous entry doesn't match with the log. Reject the request.");
                 return std::make_tuple(config().current_term(), false);
             }
         } else {
+            COCAINE_LOG_DEBUG(m_logger,
+                              "There is no entry corresponding to prev_entry in the log."
+                              "Reject the request.");
             // Here the log doesn't have entry corresponding to prev_entry, and leader should replicate older entries first.
             return std::make_tuple(config().current_term(), false);
         }
@@ -492,23 +567,28 @@ private:
         }
     }
 
+    // If reelection is true, then start new elections immediately.
     void
-    restart_election_timer() {
+    restart_election_timer(bool reelection) {
         stop_election_timer();
 
+        if(cluster().in_cluster()) {
 #if defined(__clang__) || defined(HAVE_GCC46)
-        typedef std::uniform_int_distribution<unsigned int> uniform_uint;
+            typedef std::uniform_int_distribution<unsigned int> uniform_uint;
 #else
-        typedef std::uniform_int<unsigned int> uniform_uint;
+            typedef std::uniform_int<unsigned int> uniform_uint;
 #endif
 
-        uniform_uint distribution(options().election_timeout, 2 * options().election_timeout);
+            uniform_uint distribution(options().election_timeout, 2 * options().election_timeout);
 
-        // We use random timeout to avoid infinite elections in synchronized nodes.
-        float timeout = distribution(m_random_generator);
-        m_election_timer.start(timeout / 1000.0);
+            // We use random timeout to avoid infinite elections in synchronized nodes.
+            float timeout = reelection ? 0 : distribution(m_random_generator);
+            m_election_timer.start(timeout / 1000.0);
 
-        COCAINE_LOG_DEBUG(m_logger, "Election timer will fire in %f milliseconds.", timeout);
+            COCAINE_LOG_DEBUG(m_logger, "Election timer will fire in %f milliseconds.", timeout);
+        } else {
+            COCAINE_LOG_DEBUG(m_logger, "Not in cluster. Election timer is disabled.");
+        }
     }
 
     void

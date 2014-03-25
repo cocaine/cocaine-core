@@ -38,6 +38,7 @@ public:
 
     cluster(actor_type &actor):
         m_actor(actor),
+        m_logger(new logging::log_t(m_actor.context(), "raft/" + actor.name())),
         m_replicator(actor.reactor().native())
     {
         create_clients();
@@ -59,32 +60,57 @@ public:
         return actor().config().cluster().current.count(node) > 0;
     }
 
+    bool
+    in_cluster() const {
+        if(transitional()) {
+            return actor().config().cluster().next->count(actor().config().id()) > 0;
+        } else {
+            return actor().config().cluster().current.count(actor().config().id()) > 0;
+        }
+    }
+
     void
     insert(const node_id_t& node) {
+        COCAINE_LOG_DEBUG(m_logger, "Insert node: %s:%d", node.first, node.second);
         actor().config().cluster().insert(node);
         m_next = m_current;
         m_next.emplace_back(std::make_shared<remote_type>(*this, node));
+
+        if(actor().is_leader()) {
+            actor().step_down(actor().config().current_term(), true);
+        }
     }
 
     void
     erase(const node_id_t& node) {
+        COCAINE_LOG_DEBUG(m_logger, "Erase node: %s:%d", node.first, node.second);
         actor().config().cluster().erase(node);
         for(auto it = m_current.begin(); it != m_current.end(); ++it) {
             if((*it)->id() != node) {
                 m_next.push_back(*it);
             }
         }
+
+        if(actor().is_leader()) {
+            actor().step_down(actor().config().current_term(), true);
+        }
     }
 
     void
     commit() {
+        COCAINE_LOG_DEBUG(m_logger, "Commit configuration.");
         actor().config().cluster().commit();
         m_current = std::move(m_next);
         m_next = std::vector<std::shared_ptr<remote_type>>();
+
+        if(!in_cluster()) {
+            m_actor.step_down(m_actor.config().current_term());
+        }
     }
 
     void
     rollback() {
+        COCAINE_LOG_DEBUG(m_logger, "Rollback configuration.");
         actor().config().cluster().rollback();
         m_next = std::vector<std::shared_ptr<remote_type>>();
     }
@@ -94,6 +120,10 @@ public:
         cancel();
         actor().config().cluster() = snapshot;
         create_clients();
+
+        if(actor().is_leader()) {
+            actor().step_down(actor().config().current_term(), true);
+        }
     }
 
     // Handler will be called, when the node wins the election.
@@ -149,7 +179,11 @@ public:
     void
     update_commit_index() {
         // Index of last entry replicated to a quorum.
-        uint64_t just_committed = std::min(get_committed(m_current), get_committed(m_next));
+        uint64_t just_committed = get_committed(m_current);
+
+        if(m_next.size() != 0) {
+            just_committed = std::min(just_committed, get_committed(m_next));
+        }
 
         // Leader can't assume any new entry to be committed until entry
         // from current term is replicated to a quorum (see commitment restriction in the paper).
@@ -162,9 +196,11 @@ public:
 
     void
     register_vote() {
-        if (won_elections(m_current) && won_elections(m_next)) {
-            m_election_handler();
-            m_election_handler = nullptr;
+        if (won_elections(m_current) && (m_next.size() == 0 || won_elections(m_next))) {
+            if(m_election_handler) {
+                m_election_handler();
+                m_election_handler = nullptr;
+            }
         }
     }
 
@@ -172,11 +208,14 @@ private:
     void
     create_clients() {
         std::vector<node_id_t> intersec;
-        std::set_intersection(m_actor.config().cluster().current.begin(),
-                              m_actor.config().cluster().current.end(),
-                              m_actor.config().cluster().next->begin(),
-                              m_actor.config().cluster().next->end(),
-                              std::back_inserter(intersec));
+
+        if(m_actor.config().cluster().next) {
+            std::set_intersection(m_actor.config().cluster().current.begin(),
+                                  m_actor.config().cluster().current.end(),
+                                  m_actor.config().cluster().next->begin(),
+                                  m_actor.config().cluster().next->end(),
+                                  std::back_inserter(intersec));
+        }
 
         std::vector<node_id_t> diff1;
         std::set_difference(m_actor.config().cluster().current.begin(),
@@ -186,26 +225,31 @@ private:
                             std::back_inserter(diff1));
 
         std::vector<node_id_t> diff2;
-        std::set_difference(m_actor.config().cluster().next->begin(),
-                            m_actor.config().cluster().next->end(),
-                            intersec.begin(),
-                            intersec.end(),
-                            std::back_inserter(diff2));
+        if(m_actor.config().cluster().next) {
+            std::set_difference(m_actor.config().cluster().next->begin(),
+                                m_actor.config().cluster().next->end(),
+                                intersec.begin(),
+                                intersec.end(),
+                                std::back_inserter(diff2));
+        }
 
         std::vector<std::shared_ptr<remote_type>> common_remotes;
 
         for(auto it = intersec.begin(); it != intersec.end(); ++it) {
             common_remotes.emplace_back(std::make_shared<remote_type>(*this, *it));
+            COCAINE_LOG_DEBUG(m_logger, "Add common remote: %s:%d", it->first, it->second);
         }
 
         m_current = common_remotes;
         for(auto it = diff1.begin(); it != diff1.end(); ++it) {
             m_current.emplace_back(std::make_shared<remote_type>(*this, *it));
+            COCAINE_LOG_DEBUG(m_logger, "Add current remote: %s:%d", it->first, it->second);
         }
 
         m_next = std::move(common_remotes);
         for(auto it = diff2.begin(); it != diff2.end(); ++it) {
-            m_current.emplace_back(std::make_shared<remote_type>(*this, *it));
+            m_next.emplace_back(std::make_shared<remote_type>(*this, *it));
+            COCAINE_LOG_DEBUG(m_logger, "Add next remote: %s:%d", it->first, it->second);
         }
     }
 
@@ -228,7 +272,7 @@ private:
         // then median item (if cluster has odd number of nodes) or greatest item of smaller half of match_index'es
         // (if cluster has even number of nodes) will define last entry replicated to a quorum.
         // Pivot is index of this item.
-        size_t pivot = nodes.size() / 2;
+        size_t pivot = (nodes.size() - 1) / 2;
 
         std::nth_element(nodes.begin(),
                          nodes.begin() + pivot,
@@ -269,10 +313,12 @@ private:
     }
 
 private:
-    // We use pointer to enable copying of the cluster.
     actor_type &m_actor;
 
+    const std::unique_ptr<logging::log_t> m_logger;
+
     std::vector<std::shared_ptr<remote_type>> m_current;
+
     std::vector<std::shared_ptr<remote_type>> m_next;
 
     // This watcher replicates entries in background.

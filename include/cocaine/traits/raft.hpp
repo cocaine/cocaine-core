@@ -146,7 +146,6 @@ struct type_traits<cocaine::raft::cluster_config_t> {
                              boost::optional<std::set<cocaine::raft::node_id_t>>>
             seq_type;
 
-
     template<class Stream>
     static inline
     void
@@ -158,6 +157,24 @@ struct type_traits<cocaine::raft::cluster_config_t> {
     void
     unpack(const msgpack::object& source, value_type& target) {
         type_traits<seq_type>::unpack(source, target.current, target.next);
+    }
+};
+
+template<class T>
+struct type_traits<cocaine::raft::command_result<T>> {
+    typedef cocaine::raft::command_result<T> value_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const value_type& source) {
+        type_traits<typename value_type::value_type>::pack(target, source.m_value);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, value_type& target) {
+        type_traits<typename value_type::value_type>::unpack(source, target.m_value);
     }
 };
 

@@ -50,12 +50,15 @@ public:
         m_next_snapshot_term(0),
         m_background_worker(actor.reactor().native())
     {
-        // If the log is empty, then assume that it contains one NOP entry and create initial snapshot.
-        // Because all nodes do the same thing, this entry is always committed.
-        // It is not necessary, but it allows me to don't think about corner cases in rest of code.
+        // If the log is empty, then assume that it contains two NOP entries and create initial snapshot.
+        // Because all nodes do the same thing, we assume the first entry to be committed.
+        // It is not necessary, but it allows me to don't think about corner cases in rest of the code.
+        // The snapshot is not committed, because different nodes may start with different configuration.
+        // So the second entry is needed to push the leader's configuration to followers.
         if(m_log.empty()) {
             m_log.push(entry_type());
-            m_log.set_snapshot(0, 0, snapshot_type(m_machine.snapshot(), m_actor.config().cluster()));
+            m_log.push(entry_type());
+            m_log.set_snapshot(1, 0, snapshot_type(m_machine.snapshot(), m_actor.config().cluster()));
             actor.config().set_last_applied(0);
             actor.config().set_commit_index(0);
         }
@@ -103,6 +106,11 @@ public:
     push(Args&&... args) {
         m_log.push(std::forward<Args>(args)...);
 
+        COCAINE_LOG_DEBUG(m_logger,
+                          "New entry has been pushed to the log with index %d and term %d.",
+                          last_index(),
+                          last_term());
+
         // Apply new configuration immediately as we see it.
         if (boost::get<insert_node_t>(&back().value())) {
             m_actor.cluster().insert(boost::get<insert_node_t>(back().value()).node);
@@ -119,6 +127,18 @@ public:
         m_actor.cluster().replicate();
     }
 
+    template<class Command, class Handler>
+    void
+    bind_last(const Handler& callback) {
+        if(std::is_same<Command, insert_node_t>::value ||
+           std::is_same<Command, erase_node_t>::value)
+        {
+            m_config_handler = callback;
+        } else {
+            back().template bind<Command>(callback);
+        }
+    }
+
     void
     truncate(uint64_t index) {
         // Now we don't know if truncated entries will be committed,
@@ -132,11 +152,17 @@ public:
                  boost::get<erase_node_t>(&entry.value())))
             {
                 m_actor.cluster().rollback();
+                if(m_config_handler) {
+                    m_config_handler(std::error_code(raft_errc::unknown));
+                    m_config_handler = nullptr;
+                }
             }
 
             entry.set_error(std::error_code(raft_errc::unknown));
         }
         m_log.truncate(index);
+
+        COCAINE_LOG_DEBUG(m_logger, "The log has been truncated to index %d.", index);
     }
 
     void
@@ -147,6 +173,11 @@ public:
         m_log.set_snapshot(index, term, std::move(snapshot));
         m_actor.config().set_last_applied(index - 1);
         m_next_snapshot.reset();
+
+        COCAINE_LOG_DEBUG(m_logger,
+                          "New snapshot has been pushed to the log with index %d and term %d.",
+                          index,
+                          term);
     }
 
     uint64_t
@@ -197,6 +228,7 @@ private:
     struct entry_visitor_t {
         machine_type& machine;
         actor_type& actor;
+        std::function<void(const std::error_code&)>& config_handler;
 
         template<class Event>
         typename command_traits<io::aux::frozen<Event>>::value_type
@@ -206,12 +238,14 @@ private:
 
         void
         operator()(const insert_node_t&) const {
-            actor.template call<commit_node_t>(nullptr, commit_node_t());
+            actor.template call<commit_node_t>(config_handler, commit_node_t());
+            config_handler = nullptr;
         }
 
         void
         operator()(const erase_node_t&) const {
-            actor.template call<commit_node_t>(nullptr, commit_node_t());
+            actor.template call<commit_node_t>(config_handler, commit_node_t());
+            config_handler = nullptr;
         }
 
         void
@@ -263,7 +297,7 @@ private:
         for(size_t index = m_actor.config().last_applied() + 1; index <= to_apply; ++index) {
             auto& entry = m_log[index];
             try {
-                entry.visit(entry_visitor_t {m_machine, m_actor});
+                entry.visit(entry_visitor_t {m_machine, m_actor, m_config_handler});
             } catch(const std::exception&) {
                 // Unable to apply the entry right now. Try later.
                 return;
@@ -307,6 +341,11 @@ private:
 
     // This watcher applies committed entries in background.
     ev::idle m_background_worker;
+
+    // Log handler calls this callback, when current configuration change is applied.
+    // We don't use callback in log_entry, because configuration change is complex process and
+    // requires commitment of two entries.
+    std::function<void(const std::error_code&)> m_config_handler;
 };
 
 }} // namespace cocaine::raft
