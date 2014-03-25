@@ -115,6 +115,21 @@ struct counter_t::counter_machine_t {
         m_value = snapshot;
     }
 
+    void
+    begin_leadership() {
+        COCAINE_LOG_INFO(m_log, "Begin leadership.");
+    }
+
+    void
+    finish_leadership() {
+        COCAINE_LOG_INFO(m_log, "Finish leadership.");
+    }
+
+    void
+    complete_log() {
+        COCAINE_LOG_INFO(m_log, "Complete log.");
+    }
+
     int
     operator()(const io::aux::frozen<counter_machine::inc>& req) {
         auto val = m_value.fetch_add(std::get<0>(req.tuple)) + std::get<0>(req.tuple);

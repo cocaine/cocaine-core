@@ -38,6 +38,56 @@
 
 namespace cocaine { namespace raft {
 
+namespace detail {
+
+    template<class Machine, class = void>
+    struct begin_leadership_caller {
+        static
+        inline
+        void
+        call(Machine&) {
+            // Empty.
+        }
+    };
+
+    template<class Machine>
+    struct begin_leadership_caller<
+        Machine,
+        typename aux::require_method<void(Machine::*)(), &Machine::begin_leadership>::type
+    > {
+        static
+        inline
+        void
+        call(Machine& machine) {
+            machine.begin_leadership();
+        }
+    };
+
+    template<class Machine, class = void>
+    struct finish_leadership_caller {
+        static
+        inline
+        void
+        call(Machine&) {
+            // Empty.
+        }
+    };
+
+    template<class Machine>
+    struct finish_leadership_caller<
+        Machine,
+        typename aux::require_method<void(Machine::*)(), &Machine::finish_leadership>::type
+    > {
+        static
+        inline
+        void
+        call(Machine& machine) {
+            machine.finish_leadership();
+        }
+    };
+
+} // namespace detail
+
 // Implementation of Raft actor concept (see cocaine/detail/raft/forwards.hpp).
 // Actually it is implementation of Raft consensus algorithm.
 // It's parametrized with state machine and configuration (by default actor is created with empty in-memory log and in-memory configuration).
@@ -205,6 +255,10 @@ public:
 
         // Disable all non-follower activity.
         m_cluster.cancel();
+
+        if(m_state == state_t::leader) {
+            detail::finish_leadership_caller<machine_type>::call(log().machine());
+        }
 
         m_state = state_t::follower;
 
@@ -620,6 +674,8 @@ private:
         stop_election_timer();
 
         m_state = state_t::leader;
+
+        detail::begin_leadership_caller<machine_type>::call(log().machine());
 
         // Trying to commit NOP entry to assume older entries to be committed
         // (see commitment restriction in the paper).

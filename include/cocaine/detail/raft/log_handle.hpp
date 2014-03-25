@@ -28,6 +28,33 @@
 
 namespace cocaine { namespace raft {
 
+namespace detail {
+
+    template<class Machine, class = void>
+    struct complete_log_caller {
+        static
+        inline
+        void
+        call(Machine&) {
+            // Empty.
+        }
+    };
+
+    template<class Machine>
+    struct complete_log_caller<
+        Machine,
+        typename aux::require_method<void(Machine::*)(), &Machine::complete_log>::type
+    > {
+        static
+        inline
+        void
+        call(Machine& machine) {
+            machine.complete_log();
+        }
+    };
+
+} // namespace detail
+
 // This class works with log and state machine and provides snapshotting.
 template<class Actor>
 class log_handle {
@@ -205,6 +232,11 @@ public:
         }
     }
 
+    machine_type&
+    machine() {
+        return m_machine;
+    }
+
 private:
     void
     update_snapshot() {
@@ -317,6 +349,10 @@ private:
 
                 update_snapshot();
             }
+        }
+
+        if(last_index() <= m_actor.config().last_applied()) {
+            detail::complete_log_caller<machine_type>::call(m_machine);
         }
     }
 

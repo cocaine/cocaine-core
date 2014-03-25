@@ -164,6 +164,17 @@ public:
 
 };
 
+namespace aux {
+
+    // Use it instead of enable_if, when you want to check if a class has some method.
+    // Usage: typename require_method<void(T::*)(int, int), &T::required_method>::type
+    template<class T, T>
+    struct require_method {
+        typedef void type;
+    };
+
+}
+
 }} // namespace cocaine::raft
 
 #include "cocaine/detail/raft/options.hpp"
