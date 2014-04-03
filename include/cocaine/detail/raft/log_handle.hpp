@@ -237,6 +237,11 @@ public:
         return m_machine;
     }
 
+    const machine_type&
+    machine() const {
+        return m_machine;
+    }
+
 private:
     void
     update_snapshot() {

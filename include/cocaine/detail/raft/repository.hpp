@@ -21,11 +21,12 @@
 #ifndef COCAINE_RAFT_REPOSITORY_HPP
 #define COCAINE_RAFT_REPOSITORY_HPP
 
-#include "cocaine/context.hpp"
-#include "cocaine/locked_ptr.hpp"
 #include "cocaine/detail/raft/actor.hpp"
 #include "cocaine/detail/raft/configuration.hpp"
 #include "cocaine/detail/raft/log.hpp"
+
+#include "cocaine/context.hpp"
+#include "cocaine/locked_ptr.hpp"
 
 namespace cocaine { namespace raft {
 
@@ -36,12 +37,21 @@ class repository_t {
     friend class cocaine::context_t;
 
 public:
-    repository_t(context_t& context):
-        m_context(context),
-        m_reactor(std::make_shared<io::reactor_t>())
-    { }
+    typedef std::map<std::string, lockable_config_t> configs_type;
 
-    const std::shared_ptr<actor_concept_t>&
+    repository_t(context_t& context);
+
+    const node_id_t&
+    id() const {
+        return m_id;
+    }
+
+    locked_ptr<const configs_type>
+    configuration() const {
+        return m_configs.synchronize();
+    }
+
+    std::shared_ptr<actor_concept_t>
     get(const std::string& name) const;
 
     template<class Machine, class Config>
@@ -54,15 +64,28 @@ public:
     template<class Machine>
     std::shared_ptr<actor<
         typename std::decay<Machine>::type,
-        configuration<typename std::decay<Machine>::type>
+        cocaine::raft::configuration<typename std::decay<Machine>::type>
     >>
     insert(const std::string& name, Machine&& machine);
 
 private:
+    friend class configuration_machine_t;
+
+    locked_ptr<configs_type>
+    configuration() {
+        return m_configs.synchronize();
+    }
+
+private:
     context_t& m_context;
+
     std::shared_ptr<io::reactor_t> m_reactor;
 
+    node_id_t m_id;
+
     synchronized<std::map<std::string, std::shared_ptr<actor_concept_t>>> m_actors;
+
+    synchronized<configs_type> m_configs;
 };
 
 template<class Machine, class Config>
@@ -101,13 +124,13 @@ repository_t::insert(const std::string& name, Machine&& machine, Config&& config
 template<class Machine>
 std::shared_ptr<actor<
     typename std::decay<Machine>::type,
-    configuration<typename std::decay<Machine>::type>
+    cocaine::raft::configuration<typename std::decay<Machine>::type>
 >>
 repository_t::insert(const std::string& name, Machine&& machine) {
     auto actors = m_actors.synchronize();
 
     typedef typename std::decay<Machine>::type machine_type;
-    typedef configuration<typename std::decay<Machine>::type> config_type;
+    typedef cocaine::raft::configuration<typename std::decay<Machine>::type> config_type;
     typedef actor<machine_type, config_type> actor_type;
 
     config_type config(

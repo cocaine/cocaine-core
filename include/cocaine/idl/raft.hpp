@@ -24,6 +24,7 @@
 #include "cocaine/detail/raft/forwards.hpp"
 
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/idl/streaming.hpp"
 #include "cocaine/traits/vector.hpp"
 
 namespace cocaine { namespace io {
@@ -128,6 +129,48 @@ struct raft {
         >::tag drain_type;
     };
 
+    struct insert_internal {
+        typedef raft_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "insert_internal";
+        }
+
+        typedef boost::mpl::list<
+        /* Name of state machine. */
+            std::string,
+        /* Node. */
+            cocaine::raft::node_id_t
+        > tuple_type;
+
+        typedef stream_of<
+            cocaine::raft::command_result<void>
+        >::tag drain_type;
+    };
+
+    struct erase_internal {
+        typedef raft_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "erase_internal";
+        }
+
+        typedef boost::mpl::list<
+        /* Name of state machine. */
+            std::string,
+        /* Node. */
+            cocaine::raft::node_id_t
+        > tuple_type;
+
+        typedef stream_of<
+            cocaine::raft::command_result<void>
+        >::tag drain_type;
+    };
+
     struct insert {
         typedef raft_tag<Entry, Snapshot> tag;
 
@@ -143,11 +186,6 @@ struct raft {
         /* Node. */
             cocaine::raft::node_id_t
         > tuple_type;
-
-        typedef stream_of<
-        /* If not error, then everything is ok. */
-            cocaine::raft::command_result<void>
-        >::tag drain_type;
     };
 
     struct erase {
@@ -165,9 +203,44 @@ struct raft {
         /* Node. */
             cocaine::raft::node_id_t
         > tuple_type;
+    };
+
+    struct lock {
+        typedef raft_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "lock";
+        }
+
+        typedef boost::mpl::list<
+        /* Name of state machine. */
+            std::string
+        > tuple_type;
 
         typedef stream_of<
-        /* If not error, then everything is ok. */
+            cocaine::raft::command_result<void>
+        >::tag drain_type;
+    };
+
+    struct reset {
+        typedef raft_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "reset";
+        }
+
+        typedef boost::mpl::list<
+        /* Name of state machine. */
+            std::string,
+        /* New value of the configuration. */
+            cocaine::raft::cluster_config_t
+        > tuple_type;
+
+        typedef stream_of<
             cocaine::raft::command_result<void>
         >::tag drain_type;
     };
@@ -184,8 +257,12 @@ struct protocol<raft_tag<Entry, Snapshot>> {
         typename raft<Entry, Snapshot>::append,
         typename raft<Entry, Snapshot>::apply,
         typename raft<Entry, Snapshot>::request_vote,
+        typename raft<Entry, Snapshot>::insert_internal,
+        typename raft<Entry, Snapshot>::erase_internal,
         typename raft<Entry, Snapshot>::insert,
-        typename raft<Entry, Snapshot>::erase
+        typename raft<Entry, Snapshot>::erase,
+        typename raft<Entry, Snapshot>::lock,
+        typename raft<Entry, Snapshot>::reset
     > messages;
 
     typedef raft<Entry, Snapshot> type;

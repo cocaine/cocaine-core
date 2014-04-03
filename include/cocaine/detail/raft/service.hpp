@@ -36,6 +36,9 @@ class service_t:
     public api::service_t,
     public implements<io::raft_tag<msgpack::object, msgpack::object>>
 {
+    typedef actor<configuration_machine_t, cocaine::raft::configuration<configuration_machine_t>>
+            config_actor_type;
+
 public:
     service_t(context_t& context,
               io::reactor_t& reactor,
@@ -47,7 +50,13 @@ public:
         return *this;
     }
 
+    const std::shared_ptr<config_actor_type>&
+    configuration_actor() const;
+
 private:
+    std::shared_ptr<raft::actor_concept_t>
+    find_machine(const std::string& name) const;
+
     deferred<std::tuple<uint64_t, bool>>
     append(const std::string& state_machine,
            uint64_t term,
@@ -71,14 +80,35 @@ private:
                  std::tuple<uint64_t, uint64_t> last_entry);
 
     deferred<command_result<void>>
-    insert(const std::string& machine, const node_id_t& node);
+    insert_internal(const std::string& machine, const node_id_t& node);
 
     deferred<command_result<void>>
+    erase_internal(const std::string& machine, const node_id_t& node);
+
+    void
+    insert(const std::string& machine, const node_id_t& node);
+
+    void
     erase(const std::string& machine, const node_id_t& node);
+
+    deferred<command_result<void>>
+    lock(const std::string& machine);
+
+    deferred<command_result<void>>
+    reset(const std::string& machine, const cluster_config_t& new_config);
+
+    void
+    on_config_result(deferred<command_result<void>> promise,
+                     const std::error_code& ec);
 
 private:
     context_t& m_context;
+
     io::reactor_t& m_reactor;
+
+    std::unique_ptr<logging::log_t> m_log;
+
+    std::shared_ptr<config_actor_type> m_config_actor;
 };
 
 }} // namespace cocaine::service

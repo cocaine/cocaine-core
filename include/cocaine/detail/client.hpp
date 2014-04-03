@@ -35,6 +35,8 @@
 #include "cocaine/detail/atomic.hpp"
 #include "cocaine/memory.hpp"
 
+#include <boost/variant.hpp>
+
 #include <type_traits>
 #include <utility>
 
@@ -50,10 +52,14 @@ public:
     client_t(std::unique_ptr<stream_t>&& s):
         m_next_channel(1)
     {
-        s->rd->bind(std::bind(&client_t::on_message, this, std::placeholders::_1),
-                    std::bind(&client_t::on_error, this, std::placeholders::_1));
+        m_on_error = std::make_shared<std::function<void(const std::error_code&)>>(
+            std::bind(&client_t::on_error, this, std::placeholders::_1)
+        );
 
-        s->wr->bind(std::bind(&client_t::on_error, this, std::placeholders::_1));
+        s->rd->bind(std::bind(&client_t::on_message, this, std::placeholders::_1),
+                    io::make_task(m_on_error));
+
+        s->wr->bind(io::make_task(m_on_error));
 
         m_session = std::make_shared<session_t>(std::move(s));
     }
@@ -109,6 +115,7 @@ private:
     std::atomic<uint64_t> m_next_channel;
 
     std::function<void(const std::error_code&)> m_error_handler;
+    std::shared_ptr<std::function<void(const std::error_code&)>> m_on_error;
 };
 
 class service_resolver_t {
@@ -153,6 +160,8 @@ public:
             m_resolve_upstream.reset();
         }
 
+        m_locator_client.reset();
+
         m_callback = nullptr;
         m_error_handler = nullptr;
     }
@@ -163,11 +172,9 @@ private:
     {
     public:
         resolve_dispatch_t(context_t &context,
-                           service_resolver_t &resolver,
-                           const std::shared_ptr<client_t>& locator):
+                           service_resolver_t &resolver):
             implements<io::locator::resolve::drain_type>(context, "resolve"),
-            m_resolver(resolver),
-            m_locator(locator)
+            m_resolver(resolver)
         {
             using namespace std::placeholders;
 
@@ -190,8 +197,9 @@ private:
                 endpoints = io::resolver<io::tcp>::query(std::get<0>(endpoint),
                                                          std::get<1>(endpoint));
             } catch(const std::system_error& e) {
-                m_resolver.m_reactor.post(std::bind(m_resolver.m_error_handler, e.code()));
+                auto error_handler = m_resolver.m_error_handler;
                 m_resolver.m_resolve_upstream->revoke();
+                error_handler(e.code());
                 return;
             }
 
@@ -211,23 +219,22 @@ private:
         }
 
         void
-        on_error(int, const std::string&) {
-            // TODO: Provide some useful error_code.
-            m_resolver.m_reactor.post(std::bind(m_resolver.m_error_handler, std::error_code()));
+        on_error(int, const std::string& msg) {
+            auto error_handler = m_resolver.m_error_handler;
             m_resolver.m_resolve_upstream->revoke();
+            // TODO: Provide some useful error_code.
+            error_handler(std::error_code());
         }
 
         void
         on_choke() {
-            // Empty.
+            auto error_handler = m_resolver.m_error_handler;
+            m_resolver.m_resolve_upstream->revoke();
+            error_handler(std::error_code());
         }
 
     private:
         service_resolver_t& m_resolver;
-
-        // The dispatch keeps locator client alive.
-        // When the request will be finished, the dispatch will be removed from the client.
-        const std::shared_ptr<client_t> m_locator;
     };
 
     void
@@ -235,12 +242,12 @@ private:
         m_connector.reset();
 
         auto channel = std::make_unique<io::channel<io::socket<io::tcp>>>(m_reactor, socket);
-        auto locator = std::make_shared<client_t>(std::move(channel));
+        m_locator_client = std::make_shared<client_t>(std::move(channel));
 
-        locator->bind(m_error_handler);
+        m_locator_client->bind(m_error_handler);
 
-        m_resolve_upstream = locator->call<cocaine::io::locator::resolve>(
-            std::make_shared<resolve_dispatch_t>(m_context, *this, locator),
+        m_resolve_upstream = m_locator_client->call<cocaine::io::locator::resolve>(
+            std::make_shared<resolve_dispatch_t>(m_context, *this),
             m_service
         );
     }
@@ -252,13 +259,16 @@ private:
         auto channel = std::make_unique<io::channel<io::socket<io::tcp>>>(m_reactor, socket);
         auto client = std::make_shared<client_t>(std::move(channel));
 
-        m_reactor.post(std::bind(m_callback, client));
+        auto callback = m_callback;
+        callback(client);
     }
 
     void
     on_connection_error(const std::error_code& ec) {
         m_connector.reset();
-        m_reactor.post(std::bind(m_error_handler, ec));
+
+        auto error_handler = m_error_handler;
+        error_handler(ec);
     }
 
 private:
@@ -269,11 +279,130 @@ private:
     std::string m_service;
 
     std::shared_ptr<io::connector<io::socket<io::tcp>>> m_connector;
+    std::shared_ptr<client_t> m_locator_client;
     std::shared_ptr<upstream_t> m_resolve_upstream;
 
     std::function<void(const std::shared_ptr<client_t>&)> m_callback;
     std::function<void(const std::error_code&)> m_error_handler;
 };
+
+template<class T>
+class proxy_dispatch :
+    public implements<io::streaming_tag<T>>
+{
+    typedef boost::variant<std::error_code, T> result_type;
+    typedef io::streaming<T> protocol_type;
+
+public:
+    proxy_dispatch(const std::function<void(result_type)>& callback,
+                   context_t &context,
+                   const std::string& name = ""):
+        implements<io::streaming_tag<T>>(context, name),
+        m_callback(callback)
+    {
+        using namespace std::placeholders;
+
+        this->template on<typename protocol_type::chunk>(std::bind(&proxy_dispatch::on_write, this, _1));
+        this->template on<typename protocol_type::error>(std::bind(&proxy_dispatch::on_error, this, _1, _2));
+        this->template on<typename protocol_type::choke>(std::bind(&proxy_dispatch::on_choke, this));
+    }
+
+private:
+    void
+    on_write(const T& result) {
+        if(m_callback) {
+            m_callback(result);
+            m_callback = nullptr;
+        }
+    }
+
+    void
+    on_error(int, const std::string&) {
+        if(m_callback) {
+            m_callback(std::error_code());
+            m_callback = nullptr;
+        }
+    }
+
+    void
+    on_choke() {
+        if(m_callback) {
+            m_callback(std::error_code());
+            m_callback = nullptr;
+        }
+    }
+
+private:
+    std::function<void(result_type)> m_callback;
+};
+
+template<class... Args>
+class proxy_dispatch<std::tuple<Args...>> :
+    public implements<io::streaming_tag<std::tuple<Args...>>>
+{
+    typedef std::tuple<Args...> tuple_type;
+    typedef boost::variant<std::error_code, tuple_type> result_type;
+    typedef io::streaming<tuple_type> protocol_type;
+
+    struct write_handler {
+        typedef void result_type;
+
+        proxy_dispatch<std::tuple<Args...>> *dispatch;
+
+        void
+        operator()(const Args&... args) const {
+            dispatch->on_write(args...);
+        }
+    };
+
+public:
+    proxy_dispatch(const std::function<void(result_type)>& callback,
+                   context_t &context,
+                   const std::string& name = ""):
+        implements<io::streaming_tag<tuple_type>>(context, name),
+        m_callback(callback)
+    {
+        using namespace std::placeholders;
+
+        this->template on<typename protocol_type::chunk>(write_handler {this});
+        this->template on<typename protocol_type::error>(std::bind(&proxy_dispatch::on_error, this, _1, _2));
+        this->template on<typename protocol_type::choke>(std::bind(&proxy_dispatch::on_choke, this));
+    }
+
+private:
+    void
+    on_write(const Args&... args) {
+        if(m_callback) {
+            m_callback(tuple_type(args...));
+            m_callback = nullptr;
+        }
+    }
+
+    void
+    on_error(int, const std::string&) {
+        if(m_callback) {
+            m_callback(std::error_code());
+            m_callback = nullptr;
+        }
+    }
+
+    void
+    on_choke() {
+        if(m_callback) {
+            m_callback(std::error_code());
+            m_callback = nullptr;
+        }
+    }
+
+private:
+    std::function<void(result_type)> m_callback;
+};
+
+template<class T, class... Args>
+std::shared_ptr<proxy_dispatch<T>>
+make_proxy(Args&&... args) {
+    return std::make_shared<proxy_dispatch<T>>(std::forward<Args>(args)...);
+}
 
 } // namespace cocaine
 

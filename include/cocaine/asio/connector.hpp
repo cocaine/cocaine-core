@@ -23,6 +23,7 @@
 
 #include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/acceptor.hpp"
+#include "cocaine/asio/cancelable_task.hpp"
 
 namespace cocaine { namespace io {
 
@@ -109,6 +110,8 @@ struct connector<socket<Medium>> {
 
     typedef socket<Medium> socket_type;
     typedef typename socket_type::endpoint_type endpoint_type;
+    typedef std::function<void(const std::shared_ptr<socket_type>&)> callback_type;
+    typedef std::function<void(const std::error_code&)> error_handler_type;
 
     connector(reactor_t& reactor, endpoint_type endpoint):
         m_endpoints(1, endpoint),
@@ -135,10 +138,14 @@ struct connector<socket<Medium>> {
     template<class ConnectionHandler, class ErrorHandler>
     void
     bind(ConnectionHandler&& connection_handler, ErrorHandler&& error_handler) {
-        connect();
+        m_callback = std::make_shared<callback_type>(
+            std::forward<ConnectionHandler>(connection_handler)
+        );
+        m_error_handler = std::make_shared<error_handler_type>(
+            std::forward<ErrorHandler>(error_handler)
+        );
 
-        m_callback = connection_handler;
-        m_error_handler = error_handler;
+        connect();
     }
 
     void
@@ -147,8 +154,8 @@ struct connector<socket<Medium>> {
             m_socket_watcher.stop();
         }
 
-        m_callback = nullptr;
-        m_error_handler = nullptr;
+        m_callback.reset();
+        m_error_handler.reset();
     }
 
     endpoint_type
@@ -160,7 +167,7 @@ private:
     void
     connect() {
         if(m_next >= m_endpoints.size()) {
-            m_reactor.post(std::bind(m_error_handler, m_last_error));
+            m_reactor.post(std::bind(make_task(m_error_handler), m_last_error));
             return;
         }
 
@@ -192,7 +199,7 @@ private:
             m_last_error = std::error_code(errc, std::system_category());
         } else {
             m_socket_watcher.stop();
-            m_reactor.post(std::bind(m_callback, m_socket));
+            m_reactor.post(std::bind(make_task(m_callback), m_socket));
             return;
         }
 
@@ -210,8 +217,8 @@ private:
     reactor_t& m_reactor;
     ev::io m_socket_watcher;
 
-    std::function<void(const std::shared_ptr<socket_type>&)> m_callback;
-    std::function<void(const std::error_code&)> m_error_handler;
+    std::shared_ptr<callback_type> m_callback;
+    std::shared_ptr<error_handler_type> m_error_handler;
 };
 
 }} // namespace cocaine::io

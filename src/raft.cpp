@@ -19,6 +19,7 @@
 */
 
 #include "cocaine/detail/raft/service.hpp"
+#include "cocaine/detail/raft/configuration_machine.hpp"
 #include "cocaine/raft.hpp"
 #include "cocaine/logging.hpp"
 
@@ -35,7 +36,13 @@ cocaine::make_error_condition(raft_errc e) {
     return std::error_condition(static_cast<int>(e), raft_category());
 }
 
-const std::shared_ptr<raft::actor_concept_t>&
+raft::repository_t::repository_t(context_t& context):
+    m_context(context),
+    m_reactor(std::make_shared<io::reactor_t>()),
+    m_id(m_context.config.network.hostname, m_context.config.network.locator)
+{ }
+
+std::shared_ptr<raft::actor_concept_t>
 raft::repository_t::get(const std::string& name) const {
     auto actors = m_actors.synchronize();
 
@@ -44,7 +51,7 @@ raft::repository_t::get(const std::string& name) const {
     if(it != actors->end()) {
         return it->second;
     } else {
-        throw error_t("There is no such state machine.");
+        throw std::shared_ptr<raft::actor_concept_t>();
     }
 }
 
@@ -52,15 +59,39 @@ service_t::service_t(context_t& context, io::reactor_t& reactor, const std::stri
     api::service_t(context, reactor, name, dynamic_t::empty_object),
     implements<io::raft_tag<msgpack::object, msgpack::object>>(context, name),
     m_context(context),
-    m_reactor(reactor)
+    m_reactor(reactor),
+    m_log(new logging::log_t(context, name))
 {
     using namespace std::placeholders;
 
     on<io::raft<msgpack::object, msgpack::object>::append>(std::bind(&service_t::append, this, _1, _2, _3, _4, _5, _6));
     on<io::raft<msgpack::object, msgpack::object>::apply>(std::bind(&service_t::apply, this, _1, _2, _3, _4, _5, _6));
     on<io::raft<msgpack::object, msgpack::object>::request_vote>(std::bind(&service_t::request_vote, this, _1, _2, _3, _4));
+    on<io::raft<msgpack::object, msgpack::object>::insert_internal>(std::bind(&service_t::insert_internal, this, _1, _2));
+    on<io::raft<msgpack::object, msgpack::object>::erase_internal>(std::bind(&service_t::erase_internal, this, _1, _2));
     on<io::raft<msgpack::object, msgpack::object>::insert>(std::bind(&service_t::insert, this, _1, _2));
     on<io::raft<msgpack::object, msgpack::object>::erase>(std::bind(&service_t::erase, this, _1, _2));
+    on<io::raft<msgpack::object, msgpack::object>::lock>(std::bind(&service_t::lock, this, _1));
+    on<io::raft<msgpack::object, msgpack::object>::reset>(std::bind(&service_t::reset, this, _1, _2));
+
+    m_config_actor = m_context.raft->insert("configuration",
+                                            configuration_machine_t(m_context, m_reactor, *this));
+}
+
+const std::shared_ptr<service_t::config_actor_type>&
+service_t::configuration_actor() const {
+    return m_config_actor;
+}
+
+std::shared_ptr<raft::actor_concept_t>
+service_t::find_machine(const std::string& name) const {
+    auto machine = m_context.raft->get(name);
+
+    if(machine) {
+        return machine;
+    } else {
+        throw error_t("There is no such state machine.");
+    }
 }
 
 deferred<std::tuple<uint64_t, bool>>
@@ -71,7 +102,7 @@ service_t::append(const std::string& machine,
                   const std::vector<msgpack::object>& entries,
                   uint64_t commit_index)
 {
-    return m_context.raft->get(machine)->append(term, leader, prev_entry, entries, commit_index);
+    return find_machine(machine)->append(term, leader, prev_entry, entries, commit_index);
 }
 
 deferred<std::tuple<uint64_t, bool>>
@@ -82,7 +113,7 @@ service_t::apply(const std::string& machine,
                  const msgpack::object& snapshot,
                  uint64_t commit_index)
 {
-    return m_context.raft->get(machine)->apply(term, leader, snapshot_entry, snapshot, commit_index);
+    return find_machine(machine)->apply(term, leader, snapshot_entry, snapshot, commit_index);
 }
 
 deferred<std::tuple<uint64_t, bool>>
@@ -91,15 +122,71 @@ service_t::request_vote(const std::string& state_machine,
                         raft::node_id_t candidate,
                         std::tuple<uint64_t, uint64_t> last_entry)
 {
-    return m_context.raft->get(state_machine)->request_vote(term, candidate, last_entry);
+    return find_machine(state_machine)->request_vote(term, candidate, last_entry);
 }
 
 deferred<command_result<void>>
+service_t::insert_internal(const std::string& machine, const raft::node_id_t& node) {
+    return find_machine(machine)->insert(node);
+}
+
+deferred<command_result<void>>
+service_t::erase_internal(const std::string& machine, const raft::node_id_t& node) {
+    return find_machine(machine)->erase(node);
+}
+
+void
 service_t::insert(const std::string& machine, const raft::node_id_t& node) {
-    return m_context.raft->get(machine)->insert(node);
+    COCAINE_LOG_DEBUG(m_log, "Insert request received: %s.", machine);
+    m_config_actor->call<io::aux::frozen<configuration_machine::insert>>(
+        nullptr,
+        io::aux::make_frozen<configuration_machine::insert>(machine, node)
+    );
+}
+
+void
+service_t::erase(const std::string& machine, const raft::node_id_t& node) {
+    m_config_actor->call<io::aux::frozen<configuration_machine::erase>>(
+        nullptr,
+        io::aux::make_frozen<configuration_machine::erase>(machine, node)
+    );
 }
 
 deferred<command_result<void>>
-service_t::erase(const std::string& machine, const raft::node_id_t& node) {
-    return m_context.raft->get(machine)->erase(node);
+service_t::lock(const std::string& machine) {
+    deferred<command_result<void>> promise;
+
+    m_config_actor->call<io::aux::frozen<configuration_machine::lock>>(
+        std::bind(&service_t::on_config_result, this, promise, std::placeholders::_1),
+        io::aux::make_frozen<configuration_machine::lock>(machine)
+    );
+
+    return promise;
+}
+
+deferred<command_result<void>>
+service_t::reset(const std::string& machine, const cluster_config_t& new_config) {
+    COCAINE_LOG_DEBUG(m_log, "Reset request received: %s.", machine);
+
+    deferred<command_result<void>> promise;
+
+    m_config_actor->call<io::aux::frozen<configuration_machine::reset>>(
+        std::bind(&service_t::on_config_result, this, promise, std::placeholders::_1),
+        io::aux::make_frozen<configuration_machine::reset>(machine, new_config)
+    );
+
+    return promise;
+}
+
+void
+service_t::on_config_result(deferred<command_result<void>> promise,
+                            const std::error_code& ec)
+{
+    if(ec) {
+        promise.write(
+            command_result<void>(static_cast<raft_errc>(ec.value()), m_config_actor->leader_id())
+        );
+    } else {
+        promise.write(command_result<void>());
+    }
 }

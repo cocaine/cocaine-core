@@ -22,6 +22,7 @@
 #define COCAINE_IO_BUFFERED_READABLE_STREAM_HPP
 
 #include "cocaine/asio/reactor.hpp"
+#include "cocaine/asio/cancelable_task.hpp"
 
 #include <cstring>
 
@@ -70,7 +71,7 @@ struct readable_stream {
         }
 
         m_handle_read = read_handler;
-        m_handle_error = error_handler;
+        m_handle_error = std::make_shared<std::function<void(const std::error_code&)>>(error_handler);
     }
 
     void
@@ -84,7 +85,7 @@ struct readable_stream {
         }
 
         m_handle_read = nullptr;
-        m_handle_error = nullptr;
+        m_handle_error.reset();
     }
 
     size_t
@@ -122,7 +123,7 @@ private:
         );
 
         if(ec) {
-            m_reactor.post(std::bind(m_handle_error, ec));
+            m_reactor.post(std::bind(make_task(m_handle_error), ec));
             return;
         }
 
@@ -131,7 +132,7 @@ private:
                 m_socket_watcher.stop();
 
                 // NOTE: This means that the remote peer has closed the connection.
-                m_reactor.post(std::bind(m_handle_error, ec));
+                m_reactor.post(std::bind(make_task(m_handle_error), ec));
             }
 
             return;
@@ -142,7 +143,7 @@ private:
         try {
             m_rx_offset += m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
         } catch(const std::system_error& e) {
-            m_reactor.post(std::bind(m_handle_error, e.code()));
+            m_reactor.post(std::bind(make_task(m_handle_error), e.code()));
             return;
         }
 
@@ -158,7 +159,7 @@ private:
         try {
             parsed = m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
         } catch(const std::system_error& e) {
-            m_reactor.post(std::bind(m_handle_error, e.code()));
+            m_reactor.post(std::bind(make_task(m_handle_error), e.code()));
             return;
         }
 
@@ -191,9 +192,9 @@ private:
     > m_handle_read;
 
     // Socket error callback.
-    std::function<
+    std::shared_ptr<std::function<
         void(const std::error_code&)
-    > m_handle_error;
+    >> m_handle_error;
 };
 
 }} // namespace cocaine::io

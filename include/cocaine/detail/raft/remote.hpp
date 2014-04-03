@@ -28,70 +28,9 @@
 
 #include "cocaine/logging.hpp"
 
-#include <boost/optional.hpp>
 #include <algorithm>
 
 namespace cocaine { namespace raft {
-
-namespace detail {
-
-// Dispatch to handle responses from remote node (see cocaine/idl/raft.hpp).
-// It just provides response to callback or boost::none if something was bad.
-class raft_dispatch :
-    public implements<io::streaming_tag<std::tuple<uint64_t, bool>>>
-{
-    typedef boost::optional<std::tuple<uint64_t, bool>> result_type;
-public:
-    raft_dispatch(context_t &context,
-                  const std::string& name,
-                  const std::function<void(result_type)>& callback):
-        implements<io::streaming_tag<std::tuple<uint64_t, bool>>>(context, name),
-        m_callback(callback)
-    {
-        using namespace std::placeholders;
-
-        on<io::streaming<std::tuple<uint64_t, bool>>::chunk>(std::bind(&raft_dispatch::on_write, this, _1, _2));
-        on<io::streaming<std::tuple<uint64_t, bool>>::error>(std::bind(&raft_dispatch::on_error, this, _1, _2));
-        on<io::streaming<std::tuple<uint64_t, bool>>::choke>(std::bind(&raft_dispatch::on_choke, this));
-    }
-
-    ~raft_dispatch() {
-        if(m_callback) {
-            m_callback(boost::none);
-            m_callback = nullptr;
-        }
-    }
-
-private:
-    void
-    on_write(uint64_t term, bool success) {
-        if(m_callback) {
-            m_callback(std::make_tuple(term, success));
-            m_callback = nullptr;
-        }
-    }
-
-    void
-    on_error(int, const std::string&) {
-        if(m_callback) {
-            m_callback(boost::none);
-            m_callback = nullptr;
-        }
-    }
-
-    void
-    on_choke() {
-        if(m_callback) {
-            m_callback(boost::none);
-            m_callback = nullptr;
-        }
-    }
-
-private:
-    std::function<void(result_type)> m_callback;
-};
-
-} // namespace detail
 
 // This class holds communication with remote Raft node. It replicates entries and provides method to request vote.
 template<class Cluster>
@@ -112,7 +51,7 @@ class remote_node {
         { }
 
         void
-        handle(boost::optional<std::tuple<uint64_t, bool>> result) {
+        handle(boost::variant<std::error_code, std::tuple<uint64_t, bool>> result) {
             // If the request is outdated, do nothing.
             if(!m_active) {
                 return;
@@ -127,12 +66,14 @@ class remote_node {
             m_remote.reset_vote_state();
 
             // Do nothing if the request has failed.
-            if(result) {
-                if(std::get<0>(*result) > m_remote.m_actor.config().current_term()) {
+            if(boost::get<std::tuple<uint64_t, bool>>(&result)) {
+                const auto &response = boost::get<std::tuple<uint64_t, bool>>(result);
+
+                if(std::get<0>(response) > m_remote.m_actor.config().current_term()) {
                     // Stepdown to follower state if we live in old term.
-                    m_remote.m_actor.step_down(std::get<0>(*result));
+                    m_remote.m_actor.step_down(std::get<0>(response));
                     return;
-                } else if(std::get<1>(*result)) {
+                } else if(std::get<1>(response)) {
                     m_remote.m_won_term = m_remote.m_actor.config().current_term();
                     m_remote.m_cluster.register_vote();
                 }
@@ -167,7 +108,7 @@ class remote_node {
         }
 
         void
-        handle(boost::optional<std::tuple<uint64_t, bool>> result) {
+        handle(boost::variant<std::error_code, std::tuple<uint64_t, bool>> result) {
             // If the request is outdated, do nothing.
             if(!m_active) {
                 return;
@@ -182,12 +123,14 @@ class remote_node {
             m_remote.reset_append_state();
 
             // Do nothing if the request has failed. Next append request will be sent with first heartbeat.
-            if(result) {
-                if(std::get<0>(*result) > m_remote.m_actor.config().current_term()) {
+            if(boost::get<std::tuple<uint64_t, bool>>(&result)) {
+                const auto &response = boost::get<std::tuple<uint64_t, bool>>(result);
+
+                if(std::get<0>(response) > m_remote.m_actor.config().current_term()) {
                     // Stepdown to follower state if we live in old term.
-                    m_remote.m_actor.step_down(std::get<0>(*result));
+                    m_remote.m_actor.step_down(std::get<0>(response));
                     return;
-                } else if(std::get<1>(*result)) {
+                } else if(std::get<1>(response)) {
                     // Mark entries replicated and update commit index, if remote node returned success.
                     m_remote.m_next_index = std::max(m_last_index + 1, m_remote.m_next_index);
                     if(m_remote.m_match_index < m_last_index) {
@@ -375,7 +318,7 @@ private:
             auto handler = std::bind(&vote_handler_t::handle, m_vote_state, std::placeholders::_1);
 
             m_client->call<typename io::raft<entry_type, snapshot_type>::request_vote>(
-                std::make_shared<detail::raft_dispatch>(m_actor.context(), m_id.first, handler),
+                make_proxy<std::tuple<uint64_t, bool>>(handler, m_actor.context(), m_id.first),
                 m_actor.name(),
                 m_actor.config().current_term(),
                 m_actor.config().id(),
@@ -383,7 +326,7 @@ private:
             );
         } else {
             COCAINE_LOG_DEBUG(m_logger, "Client isn't connected. Unable to send vote request.");
-            m_vote_state->handle(boost::none);
+            m_vote_state->handle(std::error_code());
         }
     }
 
@@ -395,7 +338,7 @@ private:
             COCAINE_LOG_DEBUG(m_logger,
                               "Client isn't connected or the local node is not the leader. "
                               "Unable to send append request.");
-            m_append_state->handle(boost::none);
+            m_append_state->handle(std::error_code());
         } else if(m_next_index <= m_actor.log().snapshot_index()) {
             // If leader is far behind the leader, send snapshot.
             send_apply();
@@ -408,7 +351,7 @@ private:
     void
     send_apply() {
         auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
-        auto dispatch = std::make_shared<detail::raft_dispatch>(m_actor.context(), "", handler);
+        auto dispatch = make_proxy<std::tuple<uint64_t, bool>>(handler, m_actor.context());
 
         auto snapshot_entry = std::make_tuple(
             m_actor.log().snapshot_index(),
@@ -437,7 +380,7 @@ private:
     void
     send_append() {
         auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
-        auto dispatch = std::make_shared<detail::raft_dispatch>(m_actor.context(), "", handler);
+        auto dispatch = make_proxy<std::tuple<uint64_t, bool>>(handler, m_actor.context());
 
         // Term of prev_entry. Probably this logic could be in the log, but I wanted to make log implementation as simple as possible, because user can implement own log.
         uint64_t prev_term = (m_actor.log().snapshot_index() + 1 == m_next_index) ?

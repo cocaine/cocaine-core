@@ -675,6 +675,8 @@ private:
 
         m_state = state_t::leader;
 
+        *m_leader.synchronize() = config().id();
+
         detail::begin_leadership_caller<machine_type>::call(log().machine());
 
         // Trying to commit NOP entry to assume older entries to be committed

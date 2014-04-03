@@ -30,54 +30,6 @@
 
 namespace cocaine { namespace raft {
 
-struct cluster_config_t {
-    // Set of nodes in the cluster.
-    std::set<node_id_t> current;
-
-    // Set to be applied. If this field is set, then the configuration is transitional.
-    boost::optional<std::set<node_id_t>> next;
-
-    // Check if the configuration is transitional (see Raft paper).
-    bool
-    transitional() const {
-        return next;
-    }
-
-    // Modifiers of configuration. These two methods move the configuration to transitional state.
-    void
-    insert(const node_id_t& node) {
-        BOOST_ASSERT(!transitional());
-
-        next = current;
-        next->insert(node);
-    }
-
-    void
-    erase(const node_id_t& node) {
-        BOOST_ASSERT(!transitional());
-
-        next = current;
-        next->erase(node);
-    }
-
-    // Apply new set of nodes. This method moves the configuration from transitional state.
-    void
-    commit() {
-        BOOST_ASSERT(next);
-
-        current = std::move(*next);
-        next = boost::none;
-    }
-
-    // If current configuration change fails, it should be undone.
-    void
-    rollback() {
-        BOOST_ASSERT(next);
-
-        next = boost::none;
-    }
-};
-
 // This class stores state of the Raft algorithm when it's running.
 // User can write his own implementation of this class and specialize the algorithm with it
 // (for example to store the log and the state in persistent storage).

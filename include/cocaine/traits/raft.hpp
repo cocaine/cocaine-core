@@ -23,7 +23,6 @@
 
 #include "cocaine/detail/raft/forwards.hpp"
 #include "cocaine/detail/raft/entry.hpp"
-#include "cocaine/detail/raft/configuration.hpp"
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/frozen.hpp"
 #include "cocaine/traits/variant.hpp"
@@ -175,6 +174,25 @@ struct type_traits<cocaine::raft::command_result<T>> {
     void
     unpack(const msgpack::object& source, value_type& target) {
         type_traits<typename value_type::value_type>::unpack(source, target.m_value);
+    }
+};
+
+template<>
+struct type_traits<cocaine::raft::lockable_config_t> {
+    typedef cocaine::raft::lockable_config_t value_type;
+    typedef boost::mpl::list<bool, cocaine::raft::cluster_config_t> sequence_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const value_type& source) {
+        type_traits<sequence_type>::pack(target, source.locked, source.cluster);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, value_type& target) {
+        type_traits<sequence_type>::unpack(source, target.locked, target.cluster);
     }
 };
 
