@@ -61,6 +61,10 @@ struct readable_stream {
         m_ring.resize(65536);
     }
 
+    ~readable_stream() {
+        unbind();
+    }
+
     template<class ReadHandler, class ErrorHandler>
     void
     bind(ReadHandler read_handler,
@@ -71,7 +75,9 @@ struct readable_stream {
         }
 
         m_handle_read = read_handler;
-        m_handle_error = std::make_shared<std::function<void(const std::error_code&)>>(error_handler);
+
+        typedef std::function<void(const std::error_code&)> error_handler_type;
+        m_handle_error = std::make_shared<error_handler_type>(error_handler);
     }
 
     void

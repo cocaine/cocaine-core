@@ -57,14 +57,23 @@ struct writable_stream {
         m_ring.resize(65536);
     }
 
+    ~writable_stream() {
+        unbind();
+    }
+
     template<class ErrorHandler>
     void
     bind(ErrorHandler error_handler) {
-        m_handle_error = std::make_shared<std::function<void(const std::error_code&)>>(error_handler);
+        typedef std::function<void(const std::error_code&)> error_handler_type;
+        m_handle_error = std::make_shared<error_handler_type>(error_handler);
     }
 
     void
     unbind() {
+        if(m_socket_watcher.is_active()) {
+            m_socket_watcher.stop();
+        }
+
         m_handle_error.reset();
     }
 
