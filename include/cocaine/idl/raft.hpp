@@ -186,6 +186,10 @@ struct raft {
         /* Node. */
             cocaine::raft::node_id_t
         > tuple_type;
+
+        typedef stream_of<
+            cocaine::raft::command_result<cocaine::raft::cluster_change_result>
+        >::tag drain_type;
     };
 
     struct erase {
@@ -203,6 +207,10 @@ struct raft {
         /* Node. */
             cocaine::raft::node_id_t
         > tuple_type;
+
+        typedef stream_of<
+            cocaine::raft::command_result<cocaine::raft::cluster_change_result>
+        >::tag drain_type;
     };
 
     struct lock {

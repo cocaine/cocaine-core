@@ -215,6 +215,16 @@ public:
         return m_cluster;
     }
 
+    machine_type&
+    machine() {
+        return log().machine();
+    }
+
+    const machine_type&
+    machine() const {
+        return log().machine();
+    }
+
     bool
     is_leader() const {
         return m_state == state_t::leader;

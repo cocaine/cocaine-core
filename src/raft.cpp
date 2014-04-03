@@ -135,21 +135,66 @@ service_t::erase_internal(const std::string& machine, const raft::node_id_t& nod
     return find_machine(machine)->erase(node);
 }
 
-void
+deferred<command_result<cluster_change_result>>
 service_t::insert(const std::string& machine, const raft::node_id_t& node) {
-    COCAINE_LOG_DEBUG(m_log, "Insert request received: %s.", machine);
+    COCAINE_LOG_DEBUG(m_log,
+                      "Insert request received: %s, %s:%d.",
+                      machine,
+                      node.first,
+                      node.second);
+
+    deferred<command_result<cluster_change_result>> promise;
+
+    using namespace std::placeholders;
+
+    auto success_handler = std::bind(&service_t::on_config_change_result, this, promise, _1);
+
+    auto op_id = m_config_actor->machine().push_operation(machine, success_handler);
+
+    auto error_handler = std::bind(&service_t::on_config_change_error,
+                                   this,
+                                   machine,
+                                   op_id,
+                                   promise,
+                                   _1);
+
     m_config_actor->call<io::aux::frozen<configuration_machine::insert>>(
-        nullptr,
-        io::aux::make_frozen<configuration_machine::insert>(machine, node)
+        error_handler,
+        io::aux::make_frozen<configuration_machine::insert>(op_id, machine, node)
     );
+
+    return promise;
 }
 
-void
+deferred<command_result<cluster_change_result>>
 service_t::erase(const std::string& machine, const raft::node_id_t& node) {
+    COCAINE_LOG_DEBUG(m_log,
+                      "Erase request received: %s, %s:%d.",
+                      machine,
+                      node.first,
+                      node.second);
+
+    deferred<command_result<cluster_change_result>> promise;
+
+    using namespace std::placeholders;
+
+    auto success_handler = std::bind(&service_t::on_config_change_result, this, promise, _1);
+
+    auto op_id = m_config_actor->machine().push_operation(machine, success_handler);
+
+    auto error_handler = std::bind(&service_t::on_config_change_error,
+                                   this,
+                                   machine,
+                                   op_id,
+                                   promise,
+                                   _1);
+
     m_config_actor->call<io::aux::frozen<configuration_machine::erase>>(
-        nullptr,
-        io::aux::make_frozen<configuration_machine::erase>(machine, node)
+        error_handler,
+        io::aux::make_frozen<configuration_machine::erase>(op_id, machine, node)
     );
+
+    return promise;
 }
 
 deferred<command_result<void>>
@@ -157,7 +202,7 @@ service_t::lock(const std::string& machine) {
     deferred<command_result<void>> promise;
 
     m_config_actor->call<io::aux::frozen<configuration_machine::lock>>(
-        std::bind(&service_t::on_config_result, this, promise, std::placeholders::_1),
+        std::bind(&service_t::on_config_void_result, this, promise, std::placeholders::_1),
         io::aux::make_frozen<configuration_machine::lock>(machine)
     );
 
@@ -171,7 +216,7 @@ service_t::reset(const std::string& machine, const cluster_config_t& new_config)
     deferred<command_result<void>> promise;
 
     m_config_actor->call<io::aux::frozen<configuration_machine::reset>>(
-        std::bind(&service_t::on_config_result, this, promise, std::placeholders::_1),
+        std::bind(&service_t::on_config_void_result, this, promise, std::placeholders::_1),
         io::aux::make_frozen<configuration_machine::reset>(machine, new_config)
     );
 
@@ -179,8 +224,8 @@ service_t::reset(const std::string& machine, const cluster_config_t& new_config)
 }
 
 void
-service_t::on_config_result(deferred<command_result<void>> promise,
-                            const std::error_code& ec)
+service_t::on_config_void_result(deferred<command_result<void>> promise,
+                                 const std::error_code& ec)
 {
     if(ec) {
         promise.write(
@@ -190,3 +235,36 @@ service_t::on_config_result(deferred<command_result<void>> promise,
         promise.write(command_result<void>());
     }
 }
+
+void
+service_t::on_config_change_error(const std::string& machine,
+                                  uint64_t operation_id,
+                                  deferred<command_result<cluster_change_result>> promise,
+                                  const std::error_code& ec)
+{
+    if(ec) {
+        m_config_actor->machine().pop_operation(machine, operation_id);
+
+        auto errc = static_cast<raft_errc>(ec.value());
+        promise.write(
+            command_result<cluster_change_result>(errc, m_config_actor->leader_id())
+        );
+    }
+}
+
+void
+service_t::on_config_change_result(
+    deferred<command_result<cluster_change_result>> promise,
+    const boost::variant<std::error_code, cluster_change_result>& result
+) {
+    if(boost::get<std::error_code>(&result)) {
+        auto errc = static_cast<raft_errc>(boost::get<std::error_code>(result).value());
+        promise.write(
+            command_result<cluster_change_result>(errc, m_config_actor->leader_id())
+        );
+    } else {
+        auto result_code = boost::get<cluster_change_result>(result);
+        promise.write(command_result<cluster_change_result>(result_code));
+    }
+}
+

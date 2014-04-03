@@ -85,10 +85,10 @@ private:
     deferred<command_result<void>>
     erase_internal(const std::string& machine, const node_id_t& node);
 
-    void
+    deferred<command_result<cluster_change_result>>
     insert(const std::string& machine, const node_id_t& node);
 
-    void
+    deferred<command_result<cluster_change_result>>
     erase(const std::string& machine, const node_id_t& node);
 
     deferred<command_result<void>>
@@ -98,8 +98,18 @@ private:
     reset(const std::string& machine, const cluster_config_t& new_config);
 
     void
-    on_config_result(deferred<command_result<void>> promise,
-                     const std::error_code& ec);
+    on_config_void_result(deferred<command_result<void>> promise,
+                          const std::error_code& ec);
+
+    void
+    on_config_change_error(const std::string& machine,
+                           uint64_t operation_id,
+                           deferred<command_result<cluster_change_result>> promise,
+                           const std::error_code& ec);
+
+    void
+    on_config_change_result(deferred<command_result<cluster_change_result>> promise,
+                            const boost::variant<std::error_code, cluster_change_result>& result);
 
 private:
     context_t& m_context;

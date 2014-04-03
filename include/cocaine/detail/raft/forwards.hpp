@@ -177,6 +177,11 @@ struct lockable_config_t {
     cluster_config_t cluster;
 };
 
+enum class cluster_change_result {
+    new_cluster,
+    done
+};
+
 // Concept of Raft actor, which should implement the algorithm.
 // Here are defined methods to handle messages from leader and candidates. These methods must be thread-safe.
 class actor_concept_t {
