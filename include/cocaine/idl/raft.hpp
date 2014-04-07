@@ -278,6 +278,39 @@ struct raft_control {
         >::tag drain_type;
     };
 
+    struct dump {
+        typedef raft_control_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "dump";
+        }
+
+        typedef stream_of<
+            std::map<std::string, cocaine::raft::lockable_config_t>
+        >::tag drain_type;
+    };
+
+    struct leader {
+        typedef raft_control_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "leader";
+        }
+
+        typedef boost::mpl::list<
+        /* Name of state machine. */
+            std::string
+        > tuple_type;
+
+        typedef stream_of<
+            cocaine::raft::node_id_t
+        >::tag drain_type;
+    };
+
 }; // struct raft_control
 
 template<class Entry, class Snapshot>
@@ -290,7 +323,9 @@ struct protocol<raft_control_tag<Entry, Snapshot>> {
         typename raft_control<Entry, Snapshot>::insert,
         typename raft_control<Entry, Snapshot>::erase,
         typename raft_control<Entry, Snapshot>::lock,
-        typename raft_control<Entry, Snapshot>::reset
+        typename raft_control<Entry, Snapshot>::reset,
+        typename raft_control<Entry, Snapshot>::dump,
+        typename raft_control<Entry, Snapshot>::leader
     > messages;
 
     typedef raft_control<Entry, Snapshot> type;

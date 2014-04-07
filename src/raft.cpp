@@ -144,6 +144,8 @@ control_service_t::control_service_t(context_t& context,
     on<protocol_type::erase>(std::bind(&control_service_t::erase, this, _1, _2));
     on<protocol_type::lock>(std::bind(&control_service_t::lock, this, _1));
     on<protocol_type::reset>(std::bind(&control_service_t::reset, this, _1, _2));
+    on<protocol_type::dump>(std::bind(&control_service_t::dump, this));
+    on<protocol_type::leader>(std::bind(&control_service_t::leader, this, _1));
 
     if(m_context.config.raft.create_configuration_cluster) {
         typedef log_entry<configuration_machine_t> entry_type;
@@ -297,6 +299,16 @@ control_service_t::reset(const std::string& machine, const cluster_config_t& new
     );
 
     return promise;
+}
+
+std::map<std::string, cocaine::raft::lockable_config_t>
+control_service_t::dump() {
+    return *m_context.raft->configuration();
+}
+
+node_id_t
+control_service_t::leader(const std::string& machine) {
+    return find_machine(machine)->leader_id();
 }
 
 void
