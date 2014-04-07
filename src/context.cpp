@@ -362,6 +362,7 @@ config_t::config_t(const std::string& config_path) {
     raft.snapshot_threshold = raft_config.at("snapshot_threshold", 100000).to<unsigned int>();
     raft.message_size = raft_config.at("message_size", 1000).to<unsigned int>();
     raft.create_configuration_cluster = false;
+    raft.enable = root.as_object().count("raft") > 0;
 
     // Component configuration
 
@@ -585,14 +586,16 @@ context_t::bootstrap() {
 
     // Initialize Raft service.
     try {
-        std::unique_ptr<api::service_t> raft_service(std::make_unique<raft::service_t>(
-            *this,
-            *raft->m_reactor,
-            std::string("service/") + config.raft.service_name
-        ));
+        if(config.raft.enable) {
+            std::unique_ptr<api::service_t> raft_service(std::make_unique<raft::service_t>(
+                *this,
+                *raft->m_reactor,
+                std::string("service/") + config.raft.service_name
+            ));
 
-        insert(config.raft.service_name,
-               std::make_unique<actor_t>(*this, raft->m_reactor, std::move(raft_service)));
+            insert(config.raft.service_name,
+                   std::make_unique<actor_t>(*this, raft->m_reactor, std::move(raft_service)));
+        }
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(blog,
                           "unable to initialize RAFT service - %s - [%d] %s",

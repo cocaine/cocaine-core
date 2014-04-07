@@ -100,6 +100,7 @@ struct config_t {
         unsigned int snapshot_threshold;
         unsigned int message_size;
         bool create_configuration_cluster;
+        bool enable;
     } raft;
 
     typedef std::map<std::string, component_t> component_map_t;

@@ -112,12 +112,14 @@ repository_t::insert(const std::string& name, Machine&& machine, Config&& config
                                               opt);
 
     if(actors->insert(std::make_pair(name, actor)).second) {
-        if(name == m_context.config.raft.config_machine_name &&
-           m_context.config.raft.create_configuration_cluster)
-        {
-            m_reactor->post(std::bind(&actor_type::create_cluster, actor));
-        } else {
-            m_reactor->post(std::bind(&actor_type::join_cluster, actor));
+        if(m_context.config.raft.enable) {
+            if(name == m_context.config.raft.config_machine_name &&
+               m_context.config.raft.create_configuration_cluster)
+            {
+                m_reactor->post(std::bind(&actor_type::create_cluster, actor));
+            } else {
+                m_reactor->post(std::bind(&actor_type::join_cluster, actor));
+            }
         }
         return actor;
     } else {
@@ -156,12 +158,14 @@ repository_t::insert(const std::string& name, Machine&& machine) {
                                               opt);
 
     if(actors->insert(std::make_pair(name, actor)).second) {
-        if(name == m_context.config.raft.config_machine_name &&
-           m_context.config.raft.create_configuration_cluster)
-        {
-            m_reactor->post(std::bind(&actor_type::create_cluster, actor));
-        } else {
-            m_reactor->post(std::bind(&actor_type::join_cluster, actor));
+        if(m_context.config.raft.enable) {
+            if(name == m_context.config.raft.config_machine_name &&
+               m_context.config.raft.create_configuration_cluster)
+            {
+                m_reactor->post(std::bind(&actor_type::create_cluster, actor));
+            } else {
+                m_reactor->post(std::bind(&actor_type::join_cluster, actor));
+            }
         }
         return actor;
     } else {
