@@ -56,8 +56,6 @@ raft::repository_t::get(const std::string& name) const {
     }
 }
 
-#include <iostream>
-
 service_t::service_t(context_t& context, io::reactor_t& reactor, const std::string& name):
     api::service_t(context, reactor, name, dynamic_t::empty_object),
     implements<io::raft_tag<msgpack::object, msgpack::object>>(context, name),
@@ -256,8 +254,6 @@ service_t::lock(const std::string& machine) {
 
 deferred<command_result<void>>
 service_t::reset(const std::string& machine, const cluster_config_t& new_config) {
-    COCAINE_LOG_DEBUG(m_log, "Reset request received: %s.", machine);
-
     deferred<command_result<void>> promise;
 
     m_config_actor->call<io::aux::frozen<configuration_machine::reset>>(
@@ -287,9 +283,7 @@ service_t::on_config_change_error(const std::string& machine,
                                   deferred<command_result<cluster_change_result>> promise,
                                   const std::error_code& ec)
 {
-    COCAINE_LOG_DEBUG(m_log, "on_config_change_error: [%d] %s.", ec.value(), ec.message());
     if(ec) {
-        // COCAINE_LOG_DEBUG(m_log, "on_config_change_error: Error code! : %s.", ec.message());
         m_config_actor->machine().pop_operation(machine, operation_id);
 
         auto errc = static_cast<raft_errc>(ec.value());
@@ -304,15 +298,12 @@ service_t::on_config_change_result(
     deferred<command_result<cluster_change_result>> promise,
     const boost::variant<std::error_code, cluster_change_result>& result
 ) {
-    COCAINE_LOG_DEBUG(m_log, "on_config_change_result");
     if(boost::get<std::error_code>(&result)) {
-        COCAINE_LOG_DEBUG(m_log, "on_config_change_result: Error code! : %s.", boost::get<std::error_code>(result).message());
         auto errc = static_cast<raft_errc>(boost::get<std::error_code>(result).value());
         promise.write(
             command_result<cluster_change_result>(errc, m_config_actor->leader_id())
         );
     } else {
-        COCAINE_LOG_DEBUG(m_log, "on_config_change_result: Okedoke");
         auto result_code = boost::get<cluster_change_result>(result);
         promise.write(command_result<cluster_change_result>(result_code));
     }

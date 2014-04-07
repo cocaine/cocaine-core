@@ -140,13 +140,13 @@ class remote_node {
                         m_remote.m_cluster.update_commit_index();
                     }
 
-                    COCAINE_LOG_DEBUG(
+                    /* COCAINE_LOG_DEBUG(
                         m_remote.m_logger,
                         "Append request has been accepted. "
                         "New match index: %d, next entry to replicate: %d.",
                         m_remote.m_match_index,
                         m_remote.m_next_index
-                    );
+                    ); */
                 } else if(m_remote.m_next_index > 1) {
                     // If follower discarded current request, try to replicate older entries.
                     m_remote.m_next_index -= std::min<uint64_t>(
@@ -154,13 +154,13 @@ class remote_node {
                         m_remote.m_next_index - 1
                     );
 
-                    COCAINE_LOG_DEBUG(
+                    /* COCAINE_LOG_DEBUG(
                         m_remote.m_logger,
                         "Append request has been discarded. "
                         "Match index: %d, next entry to replicate: %d.",
                         m_remote.m_match_index,
                         m_remote.m_next_index
-                    );
+                    ); */
                 } else {
                     // The remote node discarded our oldest entries.
                     // There is no sense to retry immediately.

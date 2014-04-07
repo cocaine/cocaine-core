@@ -250,9 +250,11 @@ private:
         if(m_next_snapshot &&
            last_index() > m_next_snapshot_index + m_actor.options().snapshot_threshold / 2)
         {
-            COCAINE_LOG_DEBUG(m_logger,
-                              "Truncate the log up to %d index and save snapshot of the state machine.",
-                              m_next_snapshot_index);
+            COCAINE_LOG_DEBUG(
+                m_logger,
+                "Truncate the log up to %d index and save snapshot of the state machine.",
+                m_next_snapshot_index
+            );
 
             if(m_next_snapshot_index > snapshot_index()) {
                 m_log.set_snapshot(m_next_snapshot_index,

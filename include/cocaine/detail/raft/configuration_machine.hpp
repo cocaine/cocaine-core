@@ -377,11 +377,11 @@ public:
             m_context->raft->m_configs.synchronize()->erase(machine_name);
             m_modified.erase(machine_name);
             m_appliers.erase(machine_name);
-            COCAINE_LOG_DEBUG(m_log, "%s's configuration has been removed.", machine_name);
         } else {
-            (*m_context->raft->m_configs.synchronize())[machine_name] = lockable_config_t {false,
-                                                                                   new_value};
-            COCAINE_LOG_DEBUG(m_log, "%s's configuration has been reset.", machine_name);
+            (*m_context->raft->m_configs.synchronize())[machine_name] = lockable_config_t {
+                false,
+                new_value
+            };
         }
 
         update_appliers();

@@ -141,7 +141,7 @@ public:
         m_received_entries(false),
         m_election_timer(reactor.native())
     {
-        COCAINE_LOG_INFO(m_logger, "Initialize Raft actor with name %s.", name);
+        COCAINE_LOG_INFO(m_logger, "Initializing Raft actor with name %s.", name);
 
 #if defined(__clang__) || defined(HAVE_GCC46)
         std::random_device device;
@@ -369,11 +369,6 @@ private:
 
         log().push(config().current_term(), cmd);
         log().template bind_last<Command>(handler);
-
-        COCAINE_LOG_DEBUG(m_logger,
-                          "New entry has been added to the log in term %d with index %d.",
-                          log().last_term(),
-                          log().last_index());
     }
 
     // Interface implementation.

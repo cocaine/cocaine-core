@@ -73,7 +73,6 @@ public:
     insert(const node_id_t& node) {
         COCAINE_LOG_DEBUG(m_logger, "Insert node: %s:%d", node.first, node.second);
         actor().config().cluster().insert(node);
-        COCAINE_LOG_DEBUG(m_logger, "Are we in the cluster? %d", in_cluster());
         m_next = m_current;
         m_next.emplace_back(std::make_shared<remote_type>(*this, node));
 
