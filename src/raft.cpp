@@ -211,12 +211,6 @@ control_service_t::find_machine(const std::string& name) const {
 
 deferred<command_result<cluster_change_result>>
 control_service_t::insert(const std::string& machine, const raft::node_id_t& node) {
-    COCAINE_LOG_DEBUG(m_log,
-                      "Insert request received: %s, %s:%d.",
-                      machine,
-                      node.first,
-                      node.second);
-
     deferred<command_result<cluster_change_result>> promise;
 
     using namespace std::placeholders;
@@ -245,12 +239,6 @@ control_service_t::insert(const std::string& machine, const raft::node_id_t& nod
 
 deferred<command_result<cluster_change_result>>
 control_service_t::erase(const std::string& machine, const raft::node_id_t& node) {
-    COCAINE_LOG_DEBUG(m_log,
-                      "Erase request received: %s, %s:%d.",
-                      machine,
-                      node.first,
-                      node.second);
-
     deferred<command_result<cluster_change_result>> promise;
 
     using namespace std::placeholders;

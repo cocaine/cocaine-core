@@ -100,6 +100,14 @@ class actor:
 {
     COCAINE_DECLARE_NONCOPYABLE(actor)
 
+    template<class T> friend class remote_node;
+
+    template<class T> friend class cluster;
+
+    template<class T> friend class log_handle;
+
+    template<class T> friend class config_handle;
+
     typedef actor<StateMachine, Configuration> actor_type;
 
     typedef cocaine::raft::cluster<actor_type> cluster_type;
@@ -246,36 +254,6 @@ public:
         return m_options;
     }
 
-    config_handle<actor_type>&
-    config() {
-        return m_config_handle;
-    }
-
-    const config_handle<actor_type>&
-    config() const {
-        return m_config_handle;
-    }
-
-    log_handle<actor_type>&
-    log() {
-        return m_log;
-    }
-
-    const log_handle<actor_type>&
-    log() const {
-        return m_log;
-    }
-
-    cluster_type&
-    cluster() {
-        return m_cluster;
-    }
-
-    const cluster_type&
-    cluster() const {
-        return m_cluster;
-    }
-
     machine_type&
     machine() {
         return log().machine();
@@ -309,35 +287,37 @@ public:
         ));
     }
 
-    // Switch to follower state with given term.
-    // If reelection is true, then start new elections immediately.
-    void
-    step_down(uint64_t term, bool reelection = false) {
-        BOOST_ASSERT(term >= config().current_term());
-
-        if(term > config().current_term()) {
-            COCAINE_LOG_DEBUG(m_logger, "Stepping down to term %d.", term);
-
-            config().set_current_term(term);
-
-            // The actor has not voted in the new term.
-            m_voted_for.reset();
-        }
-
-        // Disable all non-follower activity.
-        m_cluster.cancel();
-
-        if(is_leader()) {
-            *m_leader.synchronize() = node_id_t();
-            detail::finish_leadership_caller<machine_type>::call(log().machine());
-        }
-
-        m_is_leader = false;
-
-        restart_election_timer(reelection);
+private:
+    config_handle<actor_type>&
+    config() {
+        return m_config_handle;
     }
 
-private:
+    const config_handle<actor_type>&
+    config() const {
+        return m_config_handle;
+    }
+
+    log_handle<actor_type>&
+    log() {
+        return m_log;
+    }
+
+    const log_handle<actor_type>&
+    log() const {
+        return m_log;
+    }
+
+    cluster_type&
+    cluster() {
+        return m_cluster;
+    }
+
+    const cluster_type&
+    cluster() const {
+        return m_cluster;
+    }
+
     void
     on_join(const command_result<cluster_change_result>& result) {
         if(!result.error()) {
@@ -708,6 +688,34 @@ private:
         }
 
         return std::make_tuple(config().current_term(), false);
+    }
+
+    // Switch to follower state with given term.
+    // If reelection is true, then start new elections immediately.
+    void
+    step_down(uint64_t term, bool reelection = false) {
+        BOOST_ASSERT(term >= config().current_term());
+
+        if(term > config().current_term()) {
+            COCAINE_LOG_DEBUG(m_logger, "Stepping down to term %d.", term);
+
+            config().set_current_term(term);
+
+            // The actor has not voted in the new term.
+            m_voted_for.reset();
+        }
+
+        // Disable all non-follower activity.
+        m_cluster.cancel();
+
+        if(is_leader()) {
+            *m_leader.synchronize() = node_id_t();
+            detail::finish_leadership_caller<machine_type>::call(log().machine());
+        }
+
+        m_is_leader = false;
+
+        restart_election_timer(reelection);
     }
 
     // Election.
