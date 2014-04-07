@@ -73,6 +73,7 @@ public:
     insert(const node_id_t& node) {
         COCAINE_LOG_DEBUG(m_logger, "Insert node: %s:%d", node.first, node.second);
         actor().config().cluster().insert(node);
+        COCAINE_LOG_DEBUG(m_logger, "Are we in the cluster? %d", in_cluster());
         m_next = m_current;
         m_next.emplace_back(std::make_shared<remote_type>(*this, node));
 
@@ -126,7 +127,7 @@ public:
         actor().config().cluster() = snapshot;
         create_clients();
 
-        // Stepdown to disable self if we are not in cluster
+        // Stepdown to disable self if we are a leader.
         if(actor().is_leader()) {
             actor().step_down(actor().config().current_term(), true);
         }

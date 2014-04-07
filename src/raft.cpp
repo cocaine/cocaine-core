@@ -20,6 +20,7 @@
 
 #include "cocaine/detail/raft/service.hpp"
 #include "cocaine/detail/raft/configuration_machine.hpp"
+#include "cocaine/detail/raft/entry.hpp"
 #include "cocaine/raft.hpp"
 #include "cocaine/logging.hpp"
 
@@ -55,6 +56,8 @@ raft::repository_t::get(const std::string& name) const {
     }
 }
 
+#include <iostream>
+
 service_t::service_t(context_t& context, io::reactor_t& reactor, const std::string& name):
     api::service_t(context, reactor, name, dynamic_t::empty_object),
     implements<io::raft_tag<msgpack::object, msgpack::object>>(context, name),
@@ -74,8 +77,55 @@ service_t::service_t(context_t& context, io::reactor_t& reactor, const std::stri
     on<io::raft<msgpack::object, msgpack::object>::lock>(std::bind(&service_t::lock, this, _1));
     on<io::raft<msgpack::object, msgpack::object>::reset>(std::bind(&service_t::reset, this, _1, _2));
 
-    m_config_actor = m_context.raft->insert("configuration",
-                                            configuration_machine_t(m_context, m_reactor, *this));
+    if(m_context.config.raft.create_configuration_cluster) {
+        typedef log_entry<configuration_machine_t> entry_type;
+        typedef configuration<configuration_machine_t> config_type;
+        typedef log_traits<configuration_machine_t, config_type::cluster_type>::snapshot_type
+                snapshot_type;
+
+        config_type config(
+            m_context.raft->id(),
+            cluster_config_t {std::set<node_id_t>(), boost::none}
+        );
+
+        configuration_machine_t config_machine(m_context, m_reactor, *this);
+
+        config.log().push(entry_type());
+        config.log().push(entry_type());
+
+        std::map<std::string, lockable_config_t> config_snapshot;
+
+        config_snapshot["configuration"] = lockable_config_t {
+            false,
+            cluster_config_t {
+                std::set<node_id_t>({m_context.raft->id()}),
+                boost::none
+            }
+        };
+
+        config_machine.consume(config_snapshot);
+        config.log().set_snapshot(1, 1, snapshot_type(std::move(config_snapshot), config.cluster()));
+
+        config.set_current_term(1);
+        config.set_commit_index(1);
+        config.set_last_applied(1);
+
+        m_config_actor = m_context.raft->insert(
+            "configuration",
+            std::move(config_machine),
+            std::move(config)
+        );
+
+        if(!m_config_actor) {
+            std::cerr << "Unable to create config actor!" << std::endl;
+            std::terminate();
+        }
+    } else {
+        m_config_actor = m_context.raft->insert(
+            "configuration",
+            configuration_machine_t(m_context, m_reactor, *this)
+        );
+    }
 }
 
 const std::shared_ptr<service_t::config_actor_type>&
@@ -242,7 +292,9 @@ service_t::on_config_change_error(const std::string& machine,
                                   deferred<command_result<cluster_change_result>> promise,
                                   const std::error_code& ec)
 {
+    COCAINE_LOG_DEBUG(m_log, "on_config_change_error: [%d] %s.", ec.value(), ec.message());
     if(ec) {
+        // COCAINE_LOG_DEBUG(m_log, "on_config_change_error: Error code! : %s.", ec.message());
         m_config_actor->machine().pop_operation(machine, operation_id);
 
         auto errc = static_cast<raft_errc>(ec.value());
@@ -257,12 +309,15 @@ service_t::on_config_change_result(
     deferred<command_result<cluster_change_result>> promise,
     const boost::variant<std::error_code, cluster_change_result>& result
 ) {
+    COCAINE_LOG_DEBUG(m_log, "on_config_change_result");
     if(boost::get<std::error_code>(&result)) {
+        COCAINE_LOG_DEBUG(m_log, "on_config_change_result: Error code! : %s.", boost::get<std::error_code>(result).message());
         auto errc = static_cast<raft_errc>(boost::get<std::error_code>(result).value());
         promise.write(
             command_result<cluster_change_result>(errc, m_config_actor->leader_id())
         );
     } else {
+        COCAINE_LOG_DEBUG(m_log, "on_config_change_result: Okedoke");
         auto result_code = boost::get<cluster_change_result>(result);
         promise.write(command_result<cluster_change_result>(result_code));
     }

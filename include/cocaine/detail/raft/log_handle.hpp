@@ -86,8 +86,8 @@ public:
             m_log.push(entry_type());
             m_log.push(entry_type());
             m_log.set_snapshot(1, 0, snapshot_type(m_machine.snapshot(), m_actor.config().cluster()));
-            actor.config().set_last_applied(0);
-            actor.config().set_commit_index(0);
+            actor.config().set_last_applied(1);
+            actor.config().set_commit_index(1);
         }
 
         m_background_worker.set<log_handle, &log_handle::apply_entries>(this);
@@ -200,6 +200,8 @@ public:
         m_log.set_snapshot(index, term, std::move(snapshot));
         m_actor.config().set_last_applied(index - 1);
         m_next_snapshot.reset();
+
+        m_actor.cluster().consume(std::get<1>(m_log.snapshot()));
 
         COCAINE_LOG_DEBUG(m_logger,
                           "New snapshot has been pushed to the log with index %d and term %d.",
@@ -322,7 +324,6 @@ private:
         if(snapshot_index() > m_actor.config().last_applied()) {
             try {
                 m_machine.consume(std::get<0>(m_log.snapshot()));
-                m_actor.cluster().consume(std::get<1>(m_log.snapshot()));
             } catch(...) {
                 return;
             }

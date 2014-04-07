@@ -179,7 +179,8 @@ main(int argc, char* argv[]) {
         ("daemonize,d", "daemonize on start")
         ("pidfile,p", po::value<std::string>(), "location of a pid file")
 #endif
-        ("version,v", "show version and build information");
+        ("version,v", "show version and build information")
+        ("bootstrap-raft", "create new raft cluster");
 
     try {
         po::store(po::command_line_parser(argc, argv).options(general_options).run(), vm);
@@ -231,6 +232,10 @@ main(int argc, char* argv[]) {
         ) << std::endl;
 
         return EXIT_FAILURE;
+    }
+
+    if(vm.count("bootstrap-raft")) {
+        config->raft.create_configuration_cluster = true;
     }
 
 #if !defined(__APPLE__)

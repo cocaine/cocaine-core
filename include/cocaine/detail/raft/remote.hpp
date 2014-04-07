@@ -32,7 +32,8 @@
 
 namespace cocaine { namespace raft {
 
-// This class holds communication with remote Raft node. It replicates entries and provides method to request vote.
+// This class holds communication with remote Raft node. It replicates entries and provides method
+// to request vote.
 template<class Cluster>
 class remote_node {
     COCAINE_DECLARE_NONCOPYABLE(remote_node)
@@ -122,7 +123,8 @@ class remote_node {
             // We should reset this pointer, when the request becomes completed.
             m_remote.reset_append_state();
 
-            // Do nothing if the request has failed. Next append request will be sent with first heartbeat.
+            // Do nothing if the request has failed.
+            // The next append request will be sent with the next heartbeat.
             if(boost::get<std::tuple<uint64_t, bool>>(&result)) {
                 const auto &response = boost::get<std::tuple<uint64_t, bool>>(result);
 
@@ -140,7 +142,8 @@ class remote_node {
 
                     COCAINE_LOG_DEBUG(
                         m_remote.m_logger,
-                        "Append request has been accepted. New match index: %d, next entry to replicate: %d.",
+                        "Append request has been accepted. "
+                        "New match index: %d, next entry to replicate: %d.",
                         m_remote.m_match_index,
                         m_remote.m_next_index
                     );
@@ -153,7 +156,8 @@ class remote_node {
 
                     COCAINE_LOG_DEBUG(
                         m_remote.m_logger,
-                        "Append request has been discarded. Match index: %d, next entry to replicate: %d.",
+                        "Append request has been discarded. "
+                        "Match index: %d, next entry to replicate: %d.",
                         m_remote.m_match_index,
                         m_remote.m_next_index
                     );
@@ -190,7 +194,7 @@ public:
         m_actor(cluster.actor()),
         m_logger(new logging::log_t(
             m_actor.context(),
-            "remote/" + cocaine::format("%s:%d", id.first, id.second)
+            "raft/" + m_actor.name() + "/remote/" + cocaine::format("%s:%d", id.first, id.second)
         )),
         m_id(id),
         m_heartbeat_timer(m_actor.reactor().native()),
@@ -224,10 +228,12 @@ public:
         }
     }
 
-    // When new entries are added to the log, Raft actor tells this class that it's time to replicate.
+    // When new entries are added to the log,
+    // Raft actor tells this class that it's time to replicate.
     void
     replicate() {
-        // TODO: Now leader sends one append request at the same time. Probably it's possible to send requests in pipeline manner.
+        // TODO: Now leader sends one append request at the same time.
+        // Probably it's possible to send requests in pipeline manner.
         // I should investigate this question.
         if(m_id == m_actor.config().id()) {
             m_match_index = m_actor.log().last_index();
@@ -287,6 +293,10 @@ public:
         // Drop current requests.
         reset_vote_state();
         reset_append_state();
+
+        // If connection error has occurred, then we don't know what entries are replicated.
+        m_match_index = 0;
+        m_next_index = std::max<uint64_t>(1, m_actor.log().last_index());
     }
 
 private:
@@ -382,7 +392,10 @@ private:
         auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
         auto dispatch = make_proxy<std::tuple<uint64_t, bool>>(handler, m_actor.context());
 
-        // Term of prev_entry. Probably this logic could be in the log, but I wanted to make log implementation as simple as possible, because user can implement own log.
+        // Term of prev_entry. Probably this logic could be in the log,
+        // but I wanted to make log implementation as simple as possible,
+        // because user can implement own log.
+        // TODO: now m_actor.log() is a wrapper around user defined log, so I can move this logic there.
         uint64_t prev_term = (m_actor.log().snapshot_index() + 1 == m_next_index) ?
                              m_actor.log().snapshot_term() :
                              m_actor.log()[m_next_index - 1].term();
@@ -398,7 +411,9 @@ private:
         }
 
         // This vector stores entries to be sent.
-        // TODO: We can send entries without copying. We just need to implement type_traits to something like boost::Range.
+
+        // TODO: We can send entries without copying.
+        // We just need to implement type_traits to something like boost::Range.
         std::vector<entry_type> entries;
 
         for(uint64_t i = m_next_index; i <= last_index; ++i) {
@@ -537,7 +552,8 @@ private:
 
     ev::timer m_heartbeat_timer;
 
-    // State of current append request. When there is no active request, this pointer equals nullptr.
+    // State of current append request.
+    // When there is no active request, this pointer equals nullptr.
     std::shared_ptr<append_handler_t> m_append_state;
 
     std::shared_ptr<vote_handler_t> m_vote_state;

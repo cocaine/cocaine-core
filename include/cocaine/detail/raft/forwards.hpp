@@ -48,12 +48,13 @@ class command_result {
 
 public:
     explicit
-    command_result(const T& value) :
+    command_result(const T& value):
         m_value(value)
     { }
 
     explicit
-    command_result(const raft_errc& errc, const node_id_t& leader = node_id_t()) :
+    command_result(const raft_errc& errc = raft_errc::unknown,
+                   const node_id_t& leader = node_id_t()):
         m_value(errc),
         m_leader(leader)
     { }
@@ -95,12 +96,12 @@ class command_result<void> {
 
 public:
     explicit
-    command_result() :
+    command_result():
         m_value(boost::none)
     { }
 
     explicit
-    command_result(const raft_errc& errc, const node_id_t& leader = node_id_t()) :
+    command_result(const raft_errc& errc, const node_id_t& leader = node_id_t()):
         m_value(errc),
         m_leader(leader)
     { }

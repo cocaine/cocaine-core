@@ -59,6 +59,8 @@ struct raft_category_t :
                 return "The node is not a leader";
             case static_cast<int>(raft_errc::unknown):
                 return "Status of the request is unknown";
+            case static_cast<int>(raft_errc::busy):
+                return "Some cluster change is in cluster";
             default:
                 return "Unexpected RAFT error";
         }

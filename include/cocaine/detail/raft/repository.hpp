@@ -21,7 +21,6 @@
 #ifndef COCAINE_RAFT_REPOSITORY_HPP
 #define COCAINE_RAFT_REPOSITORY_HPP
 
-#include "cocaine/detail/raft/actor.hpp"
 #include "cocaine/detail/raft/configuration.hpp"
 #include "cocaine/detail/raft/log.hpp"
 
@@ -35,6 +34,7 @@ namespace cocaine { namespace raft {
 // Core uses it to setup new state machines.
 class repository_t {
     friend class cocaine::context_t;
+    friend class configuration_machine_t;
 
 public:
     typedef std::map<std::string, lockable_config_t> configs_type;
@@ -69,14 +69,6 @@ public:
     insert(const std::string& name, Machine&& machine);
 
 private:
-    friend class configuration_machine_t;
-
-    locked_ptr<configs_type>
-    configuration() {
-        return m_configs.synchronize();
-    }
-
-private:
     context_t& m_context;
 
     std::shared_ptr<io::reactor_t> m_reactor;
@@ -87,6 +79,12 @@ private:
 
     synchronized<configs_type> m_configs;
 };
+
+}} // namespace cocaine::raft
+
+#include "cocaine/detail/raft/actor.hpp"
+
+namespace cocaine { namespace raft {
 
 template<class Machine, class Config>
 std::shared_ptr<actor<
@@ -114,7 +112,11 @@ repository_t::insert(const std::string& name, Machine&& machine, Config&& config
                                               opt);
 
     if(actors->insert(std::make_pair(name, actor)).second) {
-        m_reactor->post(std::bind(&actor_type::run, actor));
+        if(name == "configuration" && m_context.config.raft.create_configuration_cluster) {
+            m_reactor->post(std::bind(&actor_type::create_cluster, actor));
+        } else {
+            m_reactor->post(std::bind(&actor_type::join_cluster, actor));
+        }
         return actor;
     } else {
         return std::shared_ptr<actor_type>();
@@ -134,8 +136,8 @@ repository_t::insert(const std::string& name, Machine&& machine) {
     typedef actor<machine_type, config_type> actor_type;
 
     config_type config(
-        std::make_pair(m_context.config.network.hostname, m_context.config.network.locator),
-        cluster_config_t {m_context.config.raft.cluster, boost::none}
+        id(),
+        cluster_config_t {std::set<node_id_t>(), boost::none}
     );
 
     options_t opt = { m_context.config.raft.election_timeout,
@@ -152,7 +154,11 @@ repository_t::insert(const std::string& name, Machine&& machine) {
                                               opt);
 
     if(actors->insert(std::make_pair(name, actor)).second) {
-        m_reactor->post(std::bind(&actor_type::run, actor));
+        if(name == "configuration" && m_context.config.raft.create_configuration_cluster) {
+            m_reactor->post(std::bind(&actor_type::create_cluster, actor));
+        } else {
+            m_reactor->post(std::bind(&actor_type::join_cluster, actor));
+        }
         return actor;
     } else {
         return std::shared_ptr<actor_type>();

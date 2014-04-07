@@ -21,11 +21,11 @@
 #ifndef COCAINE_RAFT_ACTOR_HPP
 #define COCAINE_RAFT_ACTOR_HPP
 
-#include "cocaine/detail/raft/forwards.hpp"
 #include "cocaine/detail/raft/config_handle.hpp"
 #include "cocaine/detail/raft/log_handle.hpp"
 #include "cocaine/detail/raft/cluster.hpp"
-#include "cocaine/detail/raft/error.hpp"
+#include "cocaine/detail/raft/client.hpp"
+#include "cocaine/detail/raft/forwards.hpp"
 
 #include "cocaine/traits/raft.hpp"
 
@@ -90,7 +90,8 @@ namespace detail {
 
 // Implementation of Raft actor concept (see cocaine/detail/raft/forwards.hpp).
 // Actually it is implementation of Raft consensus algorithm.
-// It's parametrized with state machine and configuration (by default actor is created with empty in-memory log and in-memory configuration).
+// It's parametrized with state machine and configuration
+// (by default actor is created with empty in-memory log and in-memory configuration).
 // User can provide own configuration with various levels of persistence.
 template<class StateMachine, class Configuration>
 class actor:
@@ -136,6 +137,8 @@ public:
         m_log(*this, m_configuration.log(), std::move(state_machine)),
         m_cluster(*this),
         m_state(state_t::follower),
+        m_booted(false),
+        m_received_entries(false),
         m_election_timer(reactor.native())
     {
         COCAINE_LOG_INFO(m_logger, "Initialize Raft actor with name %s.", name);
@@ -157,11 +160,75 @@ public:
     ~actor() {
         stop_election_timer();
         m_cluster.cancel();
+        m_joiner.reset();
     }
 
     void
-    run() {
-        COCAINE_LOG_INFO(m_logger, "Running the Raft actor.");
+    join_cluster() {
+        COCAINE_LOG_INFO(m_logger, "Joining a cluster.");
+
+        std::vector<node_id_t> remotes;
+
+        auto config_actor = m_context.raft->get("configuration");
+
+        if(config_actor) {
+            auto leader = config_actor->leader_id();
+            if(leader != node_id_t()) {
+                remotes.push_back(leader);
+            }
+        }
+
+        {
+            auto configs = m_context.raft->configuration();
+
+            auto config_machine_iter = configs->find("configuration");
+
+            if(config_machine_iter != configs->end()) {
+                auto &current_config = config_machine_iter->second.cluster.current;
+
+                std::copy(current_config.begin(),
+                          current_config.end(),
+                          std::back_inserter(remotes));
+            }
+        }
+
+        std::copy(options().some_nodes.begin(),
+                  options().some_nodes.end(),
+                  std::back_inserter(remotes));
+
+        m_joiner.reset();
+
+        m_joiner = std::make_shared<disposable_client_t>(m_context,
+                                                         m_reactor,
+                                                         m_context.config.raft.service_name,
+                                                         remotes);
+
+        auto success_handler = std::bind(&actor::on_join, this, std::placeholders::_1);
+        auto error_handler = std::bind(&actor::join_cluster, this);
+
+        typedef io::raft<msgpack::object, msgpack::object> protocol;
+
+        m_joiner->call<protocol::insert>(success_handler,
+                                         error_handler,
+                                         name(),
+                                         config().id());
+    }
+
+    void
+    create_cluster() {
+        COCAINE_LOG_INFO(m_logger, "Creating new cluster and running the Raft actor.");
+
+        cluster().insert(config().id());
+        cluster().commit();
+
+        step_down(std::max<uint64_t>(1, config().current_term()));
+
+        log().reset_snapshot(config().last_applied(),
+                             config().current_term(),
+                             snapshot_type(log().machine().snapshot(), config().cluster()));
+
+        m_booted = true;
+        m_received_entries = true;
         step_down(config().current_term());
     }
 
@@ -276,6 +343,19 @@ public:
     }
 
 private:
+    void
+    on_join(const command_result<cluster_change_result>& result) {
+        if(!result.error()) {
+            m_joiner.reset();
+            m_booted = true;
+            if(result.value() == cluster_change_result::new_cluster) {
+                create_cluster();
+            }
+        } else {
+            join_cluster();
+        }
+    }
+
     // Add new command to the log.
     template<class Command>
     void
@@ -459,7 +539,8 @@ private:
 
         COCAINE_LOG_DEBUG(
             m_logger,
-            "Append request received from %s:%d; term: %d; prev_entry: (%d, %d); entries number: %d; commit index: %d.",
+            "Append request received from %s:%d; term: %d; prev_entry: (%d, %d); "
+            "entries number: %d; commit index: %d.",
             leader.first, leader.second,
             term,
             prev_index, prev_term,
@@ -482,7 +563,8 @@ private:
            log().snapshot_index() <= prev_index + entries.size())
         {
             // Entry with index snapshot_index is committed and applied.
-            // If entry with this index from request has different term, then something is wrong and the actor can't accept this request.
+            // If entry with this index from request has different term,
+            // then something is wrong and the actor can't accept this request.
             // Such situation may appear only due to mistake in the Raft implementation.
             uint64_t remote_term = entries[log().snapshot_index() - prev_index - 1].term();
 
@@ -490,7 +572,8 @@ private:
                 // NOTE: May be we should do std::terminate here to avoid state machine corruption?
                 COCAINE_LOG_WARNING(
                     m_logger,
-                    "Bad append request received from %s:%d, term: %d, prev_entry: (%d, %d), commit index: %d.",
+                    "Bad append request received from %s:%d; "
+                    "term: %d; prev_entry: (%d, %d); commit index: %d.",
                     leader.first, leader.second,
                     term,
                     prev_index, prev_term,
@@ -508,16 +591,20 @@ private:
                                   log()[prev_index].term();
 
             if(local_term != prev_term) {
-                COCAINE_LOG_DEBUG(m_logger, "Term of previous entry doesn't match with the log. Reject the request.");
+                COCAINE_LOG_DEBUG(m_logger,
+                                  "Term of previous entry doesn't match with the log. "
+                                  "Reject the request.");
                 return std::make_tuple(config().current_term(), false);
             }
         } else {
             COCAINE_LOG_DEBUG(m_logger,
-                              "There is no entry corresponding to prev_entry in the log."
+                              "There is no entry corresponding to prev_entry in the log. "
                               "Reject the request.");
             // Here the log doesn't have entry corresponding to prev_entry, and leader should replicate older entries first.
             return std::make_tuple(config().current_term(), false);
         }
+
+        auto received_before = m_received_entries;
 
         // Append.
         uint64_t entry_index = prev_index + 1;
@@ -532,10 +619,15 @@ private:
 
             if(entry_index > log().last_index()) {
                 log().push(*it);
+                m_received_entries = true;
             }
         }
 
         config().set_commit_index(commit_index);
+
+        if(received_before != m_received_entries) {
+            step_down(config().current_term());
+        }
 
         return std::make_tuple(config().current_term(), true);
     }
@@ -580,6 +672,11 @@ private:
                              snapshot_type(snapshot));
         config().set_last_applied(std::get<0>(snapshot_entry) - 1);
         config().set_commit_index(commit_index);
+
+        if(!m_received_entries) {
+            m_received_entries = true;
+            step_down(config().current_term());
+        }
 
         return std::make_tuple(config().current_term(), true);
     }
@@ -635,7 +732,7 @@ private:
     restart_election_timer(bool reelection) {
         stop_election_timer();
 
-        if(cluster().in_cluster()) {
+        if(m_booted && m_received_entries && cluster().in_cluster()) {
 #if defined(__clang__) || defined(HAVE_GCC46)
             typedef std::uniform_int_distribution<unsigned int> uniform_uint;
 #else
@@ -724,6 +821,14 @@ private:
     // The leader from the last append message.
     // It may be incorrect and actually it's just a tip, where to find current leader.
     synchronized<node_id_t> m_leader;
+
+    // The actor will try to become a leader only if these two variable are true.
+    // The first one indicates, that the actor successfully joined cluster via configuration machine.
+    // The second one indicates, that the actor has some entries from some former leader.
+    bool m_booted;
+    bool m_received_entries;
+
+    std::shared_ptr<disposable_client_t> m_joiner;
 
     // When the timer fires, the follower will switch to the candidate state.
     ev::timer m_election_timer;

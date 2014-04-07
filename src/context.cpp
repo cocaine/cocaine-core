@@ -361,6 +361,7 @@ config_t::config_t(const std::string& config_path) {
     raft.heartbeat_timeout = raft_config.at("heartbeat_timeout", raft.election_timeout / 2).to<unsigned int>();
     raft.snapshot_threshold = raft_config.at("snapshot_threshold", 100000).to<unsigned int>();
     raft.message_size = raft_config.at("message_size", 1000).to<unsigned int>();
+    raft.create_configuration_cluster = false;
 
     // Component configuration
 
