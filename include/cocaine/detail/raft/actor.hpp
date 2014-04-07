@@ -328,6 +328,7 @@ public:
         m_cluster.cancel();
 
         if(is_leader()) {
+            *m_leader.synchronize() = node_id_t();
             detail::finish_leadership_caller<machine_type>::call(log().machine());
         }
 
