@@ -157,10 +157,16 @@ public:
 #endif
 
         m_election_timer.set<actor, &actor::on_disown>(this);
+        m_rejoin_timer.set<actor, &actor::on_rejoin>(this);
     }
 
     ~actor() {
         stop_election_timer();
+
+        if(m_rejoin_timer.is_active()) {
+            m_rejoin_timer.stop();
+        }
+
         m_cluster.cancel();
         m_joiner.reset();
     }
@@ -200,20 +206,19 @@ public:
 
         m_joiner.reset();
 
-        m_joiner = std::make_shared<disposable_client_t>(m_context,
-                                                         m_reactor,
-                                                         m_context.config.raft.control_service_name,
-                                                         remotes);
+        m_joiner = std::make_shared<disposable_client_t>(
+            m_context,
+            m_reactor,
+            m_context.config.raft.control_service_name,
+            remotes
+        );
 
         auto success_handler = std::bind(&actor::on_join, this, std::placeholders::_1);
-        auto error_handler = std::bind(&actor::join_cluster, this);
+        auto error_handler = std::bind(&actor::on_join_error, this);
 
         typedef io::raft_control<msgpack::object, msgpack::object> protocol;
 
-        m_joiner->call<protocol::insert>(success_handler,
-                                         error_handler,
-                                         name(),
-                                         config().id());
+        m_joiner->call<protocol::insert>(success_handler, error_handler, name(), config().id());
     }
 
     void
@@ -319,9 +324,24 @@ private:
     }
 
     void
+    on_join_error() {
+        m_joiner.reset();
+        COCAINE_LOG_DEBUG(m_logger, "on_join_error");
+        m_rejoin_timer.start(0.5); // Hardcode!
+    }
+
+    void
+    on_rejoin(ev::timer&, int) {
+        m_rejoin_timer.stop();
+        COCAINE_LOG_DEBUG(m_logger, "on_rejoin");
+        join_cluster();
+    }
+
+    void
     on_join(const command_result<cluster_change_result>& result) {
+        m_joiner.reset();
+
         if(!result.error()) {
-            m_joiner.reset();
             m_booted = true;
             if(result.value() == cluster_change_result::new_cluster) {
                 create_cluster();
@@ -826,6 +846,8 @@ private:
     bool m_received_entries;
 
     std::shared_ptr<disposable_client_t> m_joiner;
+
+    ev::timer m_rejoin_timer;
 
     // When the timer fires, the follower will switch to the candidate state.
     ev::timer m_election_timer;

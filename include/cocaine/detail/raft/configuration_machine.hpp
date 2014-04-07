@@ -514,10 +514,12 @@ private:
             }
         }
 
-        *applier = std::make_shared<disposable_client_t>(*m_context,
-                                                         *m_reactor,
-                                                         m_context->config.raft.node_service_name,
-                                                         intersection);
+        *applier = std::make_shared<disposable_client_t>(
+            *m_context,
+            *m_reactor,
+            m_context->config.raft.node_service_name,
+            intersection
+        );
 
         using namespace std::placeholders;
 

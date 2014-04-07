@@ -51,12 +51,17 @@ struct event_result<cocaine::io::streaming_tag<std::tuple<Args...>>> {
 
 class disposable_client_t {
 public:
-    disposable_client_t(context_t &context,
-                        io::reactor_t &reactor,
-                        const std::string& name,
-                        const std::vector<node_id_t>& remotes,
-                        unsigned int follow_redirect = 2,
-                        float request_timeout = 2.0):
+    disposable_client_t(
+        context_t &context,
+        io::reactor_t &reactor,
+        const std::string& name,
+        const std::vector<node_id_t>& remotes,
+        // Probably there is no sense to do more then 2 jumps,
+        // because usually most of nodes know where is leader.
+        unsigned int follow_redirect = 2,
+        // Boost optional is needed to provide default value dependent on the context.
+        boost::optional<float> request_timeout = boost::none
+    ):
         m_context(context),
         m_reactor(reactor),
         m_logger(new logging::log_t(context, "raft_client/" + name)),
@@ -64,11 +69,20 @@ public:
         m_retry_timer(reactor.native()),
         m_name(name),
         m_follow_redirect(follow_redirect),
-        m_request_timeout(request_timeout),
+        m_request_timeout(2.0),
         m_remotes(remotes),
         m_next_remote(0),
         m_redirection_counter(0)
     {
+        if(request_timeout) {
+            m_request_timeout = *request_timeout;
+        } else {
+            // Currently this client is used to configuration changes.
+            // One configuration change requires 5-7 roundtrips,
+            // so 6 election timeouts is a reasonable value for configuration change timeout.
+            m_request_timeout = float(6 * context.config.raft.election_timeout) / 1000.0;
+        }
+
         m_timeout_timer.set<disposable_client_t, &disposable_client_t::on_timeout>(this);
         m_retry_timer.set<disposable_client_t, &disposable_client_t::resend_request>(this);
     }
