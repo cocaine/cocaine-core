@@ -92,9 +92,9 @@ struct config_t {
     } network;
 
     struct {
-        std::set<std::pair<std::string, uint16_t>> cluster;
         std::set<std::pair<std::string, uint16_t>> some_nodes;
         std::string service_name;
+        std::string config_machine_name;
         unsigned int election_timeout;
         unsigned int heartbeat_timeout;
         unsigned int snapshot_threshold;

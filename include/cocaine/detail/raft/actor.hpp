@@ -169,7 +169,7 @@ public:
 
         std::vector<node_id_t> remotes;
 
-        auto config_actor = m_context.raft->get("configuration");
+        auto config_actor = m_context.raft->get(m_context.config.raft.config_machine_name);
 
         if(config_actor) {
             auto leader = config_actor->leader_id();
@@ -181,7 +181,7 @@ public:
         {
             auto configs = m_context.raft->configuration();
 
-            auto config_machine_iter = configs->find("configuration");
+            auto config_machine_iter = configs->find(m_context.config.raft.config_machine_name);
 
             if(config_machine_iter != configs->end()) {
                 auto &current_config = config_machine_iter->second.cluster.current;

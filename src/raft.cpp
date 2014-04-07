@@ -95,7 +95,7 @@ service_t::service_t(context_t& context, io::reactor_t& reactor, const std::stri
 
         std::map<std::string, lockable_config_t> config_snapshot;
 
-        config_snapshot["configuration"] = lockable_config_t {
+        config_snapshot[m_context.config.raft.config_machine_name] = lockable_config_t {
             false,
             cluster_config_t {
                 std::set<node_id_t>({m_context.raft->id()}),
@@ -111,18 +111,13 @@ service_t::service_t(context_t& context, io::reactor_t& reactor, const std::stri
         config.set_last_applied(1);
 
         m_config_actor = m_context.raft->insert(
-            "configuration",
+            m_context.config.raft.config_machine_name,
             std::move(config_machine),
             std::move(config)
         );
-
-        if(!m_config_actor) {
-            std::cerr << "Unable to create config actor!" << std::endl;
-            std::terminate();
-        }
     } else {
         m_config_actor = m_context.raft->insert(
-            "configuration",
+            m_context.config.raft.config_machine_name,
             configuration_machine_t(m_context, m_reactor, *this)
         );
     }

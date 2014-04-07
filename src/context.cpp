@@ -355,8 +355,8 @@ config_t::config_t(const std::string& config_path) {
     // Raft configuration.
 
     raft.service_name = "raft";
+    raft.config_machine_name = "configuration";
     raft.some_nodes = raft_config.at("some_nodes", dynamic_t::empty_array).to<std::set<raft::node_id_t>>();
-    raft.cluster = raft_config.at("cluster", dynamic_t::empty_array).to<std::set<raft::node_id_t>>();
     raft.election_timeout = raft_config.at("election_timeout", 500).to<unsigned int>();
     raft.heartbeat_timeout = raft_config.at("heartbeat_timeout", raft.election_timeout / 2).to<unsigned int>();
     raft.snapshot_threshold = raft_config.at("snapshot_threshold", 100000).to<unsigned int>();
