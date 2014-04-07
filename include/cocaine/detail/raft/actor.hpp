@@ -100,12 +100,6 @@ class actor:
 {
     COCAINE_DECLARE_NONCOPYABLE(actor)
 
-    enum class state_t {
-        leader,
-        candidate,
-        follower
-    };
-
     typedef actor<StateMachine, Configuration> actor_type;
 
     typedef cocaine::raft::cluster<actor_type> cluster_type;
@@ -136,7 +130,7 @@ public:
         m_config_handle(*this, m_configuration),
         m_log(*this, m_configuration.log(), std::move(state_machine)),
         m_cluster(*this),
-        m_state(state_t::follower),
+        m_is_leader(false),
         m_booted(false),
         m_received_entries(false),
         m_election_timer(reactor.native())
@@ -294,7 +288,7 @@ public:
 
     bool
     is_leader() const {
-        return m_state == state_t::leader;
+        return m_is_leader;
     }
 
     virtual
@@ -333,11 +327,11 @@ public:
         // Disable all non-follower activity.
         m_cluster.cancel();
 
-        if(m_state == state_t::leader) {
+        if(is_leader()) {
             detail::finish_leadership_caller<machine_type>::call(log().machine());
         }
 
-        m_state = state_t::follower;
+        m_is_leader = false;
 
         restart_election_timer(reelection);
     }
@@ -360,7 +354,7 @@ private:
     template<class Command>
     void
     call_impl(const typename command_traits<Command>::callback_type& handler, const Command& cmd) {
-        if(m_state != state_t::leader) {
+        if(!is_leader()) {
             if(handler) {
                 handler(std::error_code(raft_errc::not_leader));
             }
@@ -762,8 +756,6 @@ private:
         // Start new term.
         step_down(config().current_term() + 1);
 
-        m_state = state_t::candidate;
-
         // Vote for self.
         m_voted_for = config().id();
 
@@ -777,7 +769,7 @@ private:
         // Stop election timer, because we no longer wait messages from leader.
         stop_election_timer();
 
-        m_state = state_t::leader;
+        m_is_leader = true;
 
         *m_leader.synchronize() = config().id();
 
@@ -809,8 +801,7 @@ private:
 
     cluster_type m_cluster;
 
-    // Actually we need only flag leader/not leader to reject requests, when the actor is not leader.
-    state_t m_state;
+    std::atomic<bool> m_is_leader;
 
     // The node for which the actor voted in current term. The node can vote only once in one term.
     boost::optional<node_id_t> m_voted_for;
