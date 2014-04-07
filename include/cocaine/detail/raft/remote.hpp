@@ -42,6 +42,7 @@ class remote_node {
     typedef typename cluster_type::actor_type actor_type;
     typedef typename actor_type::entry_type entry_type;
     typedef typename actor_type::snapshot_type snapshot_type;
+    typedef io::raft_node<entry_type, snapshot_type> protocol_type;
 
     // This class handles response from remote node on append request.
     class vote_handler_t {
@@ -327,7 +328,7 @@ private:
 
             auto handler = std::bind(&vote_handler_t::handle, m_vote_state, std::placeholders::_1);
 
-            m_client->call<typename io::raft<entry_type, snapshot_type>::request_vote>(
+            m_client->call<typename protocol_type::request_vote>(
                 make_proxy<std::tuple<uint64_t, bool>>(handler, m_actor.context(), m_id.first),
                 m_actor.name(),
                 m_actor.config().current_term(),
@@ -370,7 +371,7 @@ private:
 
         m_append_state->set_last(m_actor.log().snapshot_index());
 
-        m_client->call<typename io::raft<entry_type, snapshot_type>::apply>(
+        m_client->call<typename protocol_type::apply>(
             dispatch,
             m_actor.name(),
             m_actor.config().current_term(),
@@ -422,7 +423,7 @@ private:
 
         m_append_state->set_last(last_index);
 
-        m_client->call<typename io::raft<entry_type, snapshot_type>::append>(
+        m_client->call<typename protocol_type::append>(
             dispatch,
             m_actor.name(),
             m_actor.config().current_term(),
@@ -456,7 +457,7 @@ private:
                                              m_actor.log()[m_next_index - 1].term());
             }
 
-            m_client->call<typename io::raft<entry_type, snapshot_type>::append>(
+            m_client->call<typename protocol_type::append>(
                 std::shared_ptr<io::dispatch_t>(),
                 m_actor.name(),
                 m_actor.config().current_term(),
@@ -496,7 +497,7 @@ private:
                 m_actor.context(),
                 m_actor.reactor(),
                 io::resolver<io::tcp>::query(m_id.first, m_id.second),
-                m_actor.context().config.raft.service_name
+                m_actor.context().config.raft.node_service_name
             );
 
             using namespace std::placeholders;

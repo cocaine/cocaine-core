@@ -22,7 +22,7 @@
 #define COCAINE_RAFT_CONFIGURATION_MACHINE_HPP
 
 #include "cocaine/detail/raft/repository.hpp"
-#include "cocaine/detail/raft/service.hpp"
+#include "cocaine/detail/raft/control_service.hpp"
 #include "cocaine/detail/raft/client.hpp"
 #include "cocaine/traits/raft.hpp"
 #include "cocaine/traits/map.hpp"
@@ -139,7 +139,7 @@ public:
             operation_callback_t;
     typedef std::queue<std::pair<operation_id_t, operation_callback_t>> operaitons_queue_t;
 
-    configuration_machine_t(context_t &context, io::reactor_t &reactor, service_t &service):
+    configuration_machine_t(context_t &context, io::reactor_t &reactor, control_service_t &service):
         m_context(&context),
         m_reactor(&reactor),
         m_service(&service),
@@ -516,7 +516,7 @@ private:
 
         *applier = std::make_shared<disposable_client_t>(*m_context,
                                                          *m_reactor,
-                                                         m_context->config.raft.service_name,
+                                                         m_context->config.raft.node_service_name,
                                                          intersection);
 
         using namespace std::placeholders;
@@ -530,18 +530,18 @@ private:
                                         name,
                                         _1);
 
-        typedef io::raft<msgpack::object, msgpack::object> protocol;
+        typedef io::raft_node<msgpack::object, msgpack::object> protocol;
 
         if(!added.empty()) {
-            (*applier)->call<protocol::insert_internal>(result_handler,
-                                                        error_handler,
-                                                        name,
-                                                        added.front());
+            (*applier)->call<protocol::insert>(result_handler,
+                                               error_handler,
+                                               name,
+                                               added.front());
         } else if(!removed.empty()) {
-            (*applier)->call<protocol::erase_internal>(result_handler,
-                                                       error_handler,
-                                                       name,
-                                                       removed.front());
+            (*applier)->call<protocol::erase>(result_handler,
+                                              error_handler,
+                                              name,
+                                              removed.front());
         }
     }
 
@@ -573,7 +573,7 @@ private:
 
     io::reactor_t *m_reactor;
 
-    service_t *m_service;
+    control_service_t *m_service;
 
     std::unique_ptr<logging::log_t> m_log;
 

@@ -35,7 +35,8 @@
 #include "cocaine/memory.hpp"
 
 #include "cocaine/detail/raft/repository.hpp"
-#include "cocaine/detail/raft/service.hpp"
+#include "cocaine/detail/raft/node_service.hpp"
+#include "cocaine/detail/raft/control_service.hpp"
 
 #include <cstring>
 
@@ -354,7 +355,8 @@ config_t::config_t(const std::string& config_path) {
 
     // Raft configuration.
 
-    raft.service_name = "raft";
+    raft.node_service_name = "raft_node";
+    raft.control_service_name = "raft_control";
     raft.config_machine_name = "configuration";
     raft.some_nodes = raft_config.at("some_nodes", dynamic_t::empty_array).to<std::set<raft::node_id_t>>();
     raft.election_timeout = raft_config.at("election_timeout", 500).to<unsigned int>();
@@ -587,14 +589,24 @@ context_t::bootstrap() {
     // Initialize Raft service.
     try {
         if(config.raft.enable) {
-            std::unique_ptr<api::service_t> raft_service(std::make_unique<raft::service_t>(
+            std::unique_ptr<api::service_t> node_service(std::make_unique<raft::node_service_t>(
                 *this,
                 *raft->m_reactor,
-                std::string("service/") + config.raft.service_name
+                std::string("service/") + config.raft.node_service_name
             ));
 
-            insert(config.raft.service_name,
-                   std::make_unique<actor_t>(*this, raft->m_reactor, std::move(raft_service)));
+            insert(config.raft.node_service_name,
+                   std::make_unique<actor_t>(*this, raft->m_reactor, std::move(node_service)));
+
+            std::unique_ptr<api::service_t> control_service(
+                std::make_unique<raft::control_service_t>(
+                    *this,
+                    *raft->m_reactor,
+                    std::string("service/") + config.raft.control_service_name
+            ));
+
+            insert(config.raft.control_service_name,
+                   std::make_unique<actor_t>(*this, raft->m_reactor, std::move(control_service)));
         }
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(blog,

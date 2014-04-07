@@ -93,7 +93,8 @@ struct config_t {
 
     struct {
         std::set<std::pair<std::string, uint16_t>> some_nodes;
-        std::string service_name;
+        std::string node_service_name;
+        std::string control_service_name;
         std::string config_machine_name;
         unsigned int election_timeout;
         unsigned int heartbeat_timeout;

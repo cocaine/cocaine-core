@@ -194,13 +194,13 @@ public:
 
         m_joiner = std::make_shared<disposable_client_t>(m_context,
                                                          m_reactor,
-                                                         m_context.config.raft.service_name,
+                                                         m_context.config.raft.control_service_name,
                                                          remotes);
 
         auto success_handler = std::bind(&actor::on_join, this, std::placeholders::_1);
         auto error_handler = std::bind(&actor::join_cluster, this);
 
-        typedef io::raft<msgpack::object, msgpack::object> protocol;
+        typedef io::raft_control<msgpack::object, msgpack::object> protocol;
 
         m_joiner->call<protocol::insert>(success_handler,
                                          error_handler,

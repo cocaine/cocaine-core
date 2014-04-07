@@ -30,13 +30,13 @@
 namespace cocaine { namespace io {
 
 template<class Entry, class Snapshot>
-struct raft_tag;
+struct raft_node_tag;
 
 template<class Entry, class Snapshot>
-struct raft {
+struct raft_node {
     // Append new entries to the log. Leader sends this message to followers to replicate state machine.
     struct append {
-        typedef raft_tag<Entry, Snapshot> tag;
+        typedef raft_node_tag<Entry, Snapshot> tag;
 
         static
         const char*
@@ -50,7 +50,7 @@ struct raft {
         /* Leader's term. */
             uint64_t,
         /* Leader's id. */
-            std::pair<std::string, uint16_t>,
+            cocaine::raft::node_id_t,
         /* Index and term of log entry immediately preceding new ones. (prev_log_index, prev_log_term) */
             std::tuple<uint64_t, uint64_t>,
         /* Entries to append. */
@@ -70,7 +70,7 @@ struct raft {
     // Store snapshot of state machine on the follower.
     // When follower is far behind leader, leader firstly sends snapshot to the follower and then new entries.
     struct apply {
-        typedef raft_tag<Entry, Snapshot> tag;
+        typedef raft_node_tag<Entry, Snapshot> tag;
 
         static
         const char*
@@ -84,7 +84,7 @@ struct raft {
         /* Leader's term. */
             uint64_t,
         /* Leader's id. */
-            std::pair<std::string, uint16_t>,
+            cocaine::raft::node_id_t,
         /* Index and term of the last log entry participating in the snapshot. */
             std::tuple<uint64_t, uint64_t>,
         /* Snapshot. */
@@ -102,7 +102,7 @@ struct raft {
     };
 
     struct request_vote {
-        typedef raft_tag<Entry, Snapshot> tag;
+        typedef raft_node_tag<Entry, Snapshot> tag;
 
         static
         const char*
@@ -116,7 +116,7 @@ struct raft {
         /* Candidate's term. */
             uint64_t,
         /* Candidate's id. */
-            std::pair<std::string, uint16_t>,
+            cocaine::raft::node_id_t,
         /* Index and term of candidate's last log entry. */
             std::tuple<uint64_t, uint64_t>
         > tuple_type;
@@ -129,50 +129,75 @@ struct raft {
         >::tag drain_type;
     };
 
-    struct insert_internal {
-        typedef raft_tag<Entry, Snapshot> tag;
-
-        static
-        const char*
-        alias() {
-            return "insert_internal";
-        }
-
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string,
-        /* Node. */
-            cocaine::raft::node_id_t
-        > tuple_type;
-
-        typedef stream_of<
-            cocaine::raft::command_result<void>
-        >::tag drain_type;
-    };
-
-    struct erase_internal {
-        typedef raft_tag<Entry, Snapshot> tag;
-
-        static
-        const char*
-        alias() {
-            return "erase_internal";
-        }
-
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string,
-        /* Node. */
-            cocaine::raft::node_id_t
-        > tuple_type;
-
-        typedef stream_of<
-            cocaine::raft::command_result<void>
-        >::tag drain_type;
-    };
-
     struct insert {
-        typedef raft_tag<Entry, Snapshot> tag;
+        typedef raft_node_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "insert";
+        }
+
+        typedef boost::mpl::list<
+        /* Name of state machine. */
+            std::string,
+        /* Node. */
+            cocaine::raft::node_id_t
+        > tuple_type;
+
+        typedef stream_of<
+            cocaine::raft::command_result<void>
+        >::tag drain_type;
+    };
+
+    struct erase {
+        typedef raft_node_tag<Entry, Snapshot> tag;
+
+        static
+        const char*
+        alias() {
+            return "erase";
+        }
+
+        typedef boost::mpl::list<
+        /* Name of state machine. */
+            std::string,
+        /* Node. */
+            cocaine::raft::node_id_t
+        > tuple_type;
+
+        typedef stream_of<
+            cocaine::raft::command_result<void>
+        >::tag drain_type;
+    };
+
+}; // struct raft_node
+
+template<class Entry, class Snapshot>
+struct protocol<raft_node_tag<Entry, Snapshot>> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        typename raft_node<Entry, Snapshot>::append,
+        typename raft_node<Entry, Snapshot>::apply,
+        typename raft_node<Entry, Snapshot>::request_vote,
+        typename raft_node<Entry, Snapshot>::insert,
+        typename raft_node<Entry, Snapshot>::erase
+    > messages;
+
+    typedef raft_node<Entry, Snapshot> type;
+};
+
+template<class Entry, class Snapshot>
+struct raft_control_tag;
+
+template<class Entry, class Snapshot>
+struct raft_control {
+    // Add node to state machine.
+    struct insert {
+        typedef raft_control_tag<Entry, Snapshot> tag;
 
         static
         const char*
@@ -193,7 +218,7 @@ struct raft {
     };
 
     struct erase {
-        typedef raft_tag<Entry, Snapshot> tag;
+        typedef raft_control_tag<Entry, Snapshot> tag;
 
         static
         const char*
@@ -214,7 +239,7 @@ struct raft {
     };
 
     struct lock {
-        typedef raft_tag<Entry, Snapshot> tag;
+        typedef raft_control_tag<Entry, Snapshot> tag;
 
         static
         const char*
@@ -233,7 +258,7 @@ struct raft {
     };
 
     struct reset {
-        typedef raft_tag<Entry, Snapshot> tag;
+        typedef raft_control_tag<Entry, Snapshot> tag;
 
         static
         const char*
@@ -253,27 +278,22 @@ struct raft {
         >::tag drain_type;
     };
 
-}; // struct raft
+}; // struct raft_control
 
 template<class Entry, class Snapshot>
-struct protocol<raft_tag<Entry, Snapshot>> {
+struct protocol<raft_control_tag<Entry, Snapshot>> {
     typedef boost::mpl::int_<
         1
     >::type version;
 
     typedef boost::mpl::list<
-        typename raft<Entry, Snapshot>::append,
-        typename raft<Entry, Snapshot>::apply,
-        typename raft<Entry, Snapshot>::request_vote,
-        typename raft<Entry, Snapshot>::insert_internal,
-        typename raft<Entry, Snapshot>::erase_internal,
-        typename raft<Entry, Snapshot>::insert,
-        typename raft<Entry, Snapshot>::erase,
-        typename raft<Entry, Snapshot>::lock,
-        typename raft<Entry, Snapshot>::reset
+        typename raft_control<Entry, Snapshot>::insert,
+        typename raft_control<Entry, Snapshot>::erase,
+        typename raft_control<Entry, Snapshot>::lock,
+        typename raft_control<Entry, Snapshot>::reset
     > messages;
 
-    typedef raft<Entry, Snapshot> type;
+    typedef raft_control<Entry, Snapshot> type;
 };
 
 }} // namespace cocaine::io
