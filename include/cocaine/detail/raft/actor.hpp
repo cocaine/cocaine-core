@@ -687,30 +687,32 @@ private:
                           term,
                           std::get<0>(last_entry), std::get<1>(last_entry));
 
-        if(term > config().current_term()) {
-            step_down(term);
-        }
-
         // Check if log of the candidate is as up to date as local log,
         // and vote was not granted to other candidate in the current term.
-        if(term == config().current_term() &&
-           !m_voted_for &&
-           (std::get<1>(last_entry) > log().last_term() ||
-            (std::get<1>(last_entry) == log().last_term() &&
-             std::get<0>(last_entry) >= log().last_index())))
+        if(std::get<1>(last_entry) > log().last_term() ||
+           (std::get<1>(last_entry) == log().last_term() &&
+            std::get<0>(last_entry) >= log().last_index()))
         {
             step_down(term);
-            m_voted_for = candidate;
 
-            COCAINE_LOG_DEBUG(m_logger,
-                              "In term %d vote granted to %s:%d.",
-                              config().current_term(),
-                              candidate.first, candidate.second);
+            if(term == config().current_term() && !m_voted_for) {
+                m_voted_for = candidate;
 
-            return std::make_tuple(config().current_term(), true);
-        } else {
-            return std::make_tuple(config().current_term(), false);
+                COCAINE_LOG_DEBUG(m_logger,
+                                  "In term %d vote granted to %s:%d.",
+                                  config().current_term(),
+                                  candidate.first, candidate.second);
+
+                return std::make_tuple(config().current_term(), true);
+            }
+        } else if(term > config().current_term() && cluster().has(candidate)) {
+            // Don't step down if the candidate has old log and is not in the cluster.
+            // Probably it's stale node, which is already removed but doesn't know it.
+            // So it shouldn't initiate meaningless reelections.
+            step_down(term);
         }
+
+        return std::make_tuple(config().current_term(), false);
     }
 
     // Election.
