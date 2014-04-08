@@ -34,6 +34,11 @@ class counter_t:
     public implements<io::counter_tag>
 {
 public:
+    struct counter_machine_t;
+
+    typedef raft::actor<counter_machine_t, raft::configuration<counter_machine_t>>
+            raft_actor_type;
+
     counter_t(context_t& context,
               io::reactor_t& reactor,
               const std::string& name,
@@ -46,22 +51,17 @@ public:
     }
 
 private:
-    deferred<int>
+    deferred<raft::command_result<int>>
     on_inc(int value);
 
-    deferred<int>
+    deferred<raft::command_result<int>>
     on_dec(int value);
 
-    deferred<bool>
+    deferred<raft::command_result<bool>>
     on_cas(int expected, int desired);
 
 private:
     const std::unique_ptr<logging::log_t> m_log;
-
-    struct counter_machine_t;
-
-    typedef raft::actor<counter_machine_t, raft::configuration<counter_machine_t>>
-            raft_actor_type;
 
     std::shared_ptr<raft_actor_type> m_raft;
 };

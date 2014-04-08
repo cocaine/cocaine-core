@@ -42,7 +42,7 @@ struct counter {
             int
         > tuple_type;
 
-        typedef stream_of<int>::tag drain_type;
+        typedef stream_of<raft::command_result<int>>::tag drain_type;
     };
 
     struct dec {
@@ -58,7 +58,7 @@ struct counter {
             int
         > tuple_type;
 
-        typedef stream_of<int>::tag drain_type;
+        typedef stream_of<raft::command_result<int>>::tag drain_type;
     };
 
     struct cas {
@@ -75,7 +75,7 @@ struct counter {
             int
         > tuple_type;
 
-        typedef stream_of<bool>::tag drain_type;
+        typedef stream_of<raft::command_result<bool>>::tag drain_type;
     };
 
 }; // struct counter
