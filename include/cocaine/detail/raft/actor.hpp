@@ -141,6 +141,7 @@ public:
         m_is_leader(false),
         m_booted(false),
         m_received_entries(false),
+        m_rejoin_timer(reactor.native()),
         m_election_timer(reactor.native())
     {
         COCAINE_LOG_INFO(m_logger, "Initializing Raft actor with name %s.", name);
@@ -326,14 +327,12 @@ private:
     void
     on_join_error() {
         m_joiner.reset();
-        COCAINE_LOG_DEBUG(m_logger, "on_join_error");
-        m_rejoin_timer.start(0.5); // Hardcode!
+        m_rejoin_timer.start(0.5f); // Hardcode!
     }
 
     void
     on_rejoin(ev::timer&, int) {
         m_rejoin_timer.stop();
-        COCAINE_LOG_DEBUG(m_logger, "on_rejoin");
         join_cluster();
     }
 
