@@ -21,43 +21,43 @@
 #ifndef COCAINE_IO_SLOT_HPP
 #define COCAINE_IO_SLOT_HPP
 
+#include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
-namespace cocaine { namespace io { namespace detail {
+#include "cocaine/tuple.hpp"
 
-struct slot_concept_t {
-    slot_concept_t(const std::string& name):
-        m_name(name)
-    { }
+#include <boost/mpl/lambda.hpp>
+#include <boost/mpl/transform.hpp>
 
+namespace cocaine { namespace io {
+
+namespace mpl = boost::mpl;
+
+template<class Event>
+class basic_slot {
+    typedef typename mpl::transform<
+        typename io::event_traits<Event>::tuple_type,
+        typename mpl::lambda<io::detail::unwrap_type<mpl::_1>>
+    >::type sequence_type;
+
+public:
     virtual
-   ~slot_concept_t() {
+   ~basic_slot() {
        // Empty.
     }
 
+    // A tuple of pristine parameter types, stripped of any tags.
+    typedef typename tuple::fold<sequence_type>::type tuple_type;
+
     virtual
     std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) = 0;
+    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) = 0;
 
 public:
     std::string
     name() const {
-        return m_name;
+        return Event::alias();
     }
-
-private:
-    const std::string m_name;
-};
-
-} // namespace detail
-
-template<class Event>
-struct basic_slot:
-    public detail::slot_concept_t
-{
-    basic_slot():
-        slot_concept_t(Event::alias())
-    { }
 };
 
 }} // namespace cocaine::io

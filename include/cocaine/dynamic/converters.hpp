@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <tuple>
 #include <unordered_map>
+#include <set>
 
 namespace cocaine {
 
@@ -188,6 +189,34 @@ struct dynamic_converter<std::vector<T>> {
     }
 };
 
+template<class T>
+struct dynamic_converter<std::set<T>> {
+    typedef std::set<T> result_type;
+
+    static inline
+    result_type
+    convert(const dynamic_t& from) {
+        std::set<T> result;
+        const dynamic_t::array_t& array = from.as_array();
+
+        for(size_t i = 0; i < array.size(); ++i) {
+            result.insert(array[i].to<T>());
+        }
+
+        return result;
+    }
+
+    static inline
+    bool
+    convertible(const dynamic_t& from) {
+        return from.is_array() && std::all_of(
+            from.as_array().begin(),
+            from.as_array().end(),
+            std::bind(&dynamic_t::convertible_to<T>, std::placeholders::_1)
+        );
+    }
+};
+
 template<class... Args>
 struct dynamic_converter<std::tuple<Args...>> {
     typedef std::tuple<Args...> result_type;
@@ -253,6 +282,32 @@ private:
             return from[0].convertible_to<typename std::tuple_element<0, result_type>::type>();
         }
     };
+};
+
+template<class First, class Second>
+struct dynamic_converter<std::pair<First, Second>> {
+    typedef std::pair<First, Second> result_type;
+
+    static inline
+    result_type
+    convert(const dynamic_t& from) {
+        if(from.as_array().size() == 2) {
+            return std::make_pair(from.as_array()[0].to<First>(), from.as_array()[1].to<Second>());
+        } else {
+            throw std::bad_cast();
+        }
+    }
+
+    static inline
+    bool
+    convertible(const dynamic_t& from) {
+        if(from.is_array() && from.as_array().size() == 2) {
+            return from.as_array()[0].convertible_to<First>() &&
+                   from.as_array()[1].convertible_to<Second>();
+        } else {
+            return false;
+        }
+    }
 };
 
 template<>

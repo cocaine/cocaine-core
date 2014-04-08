@@ -237,13 +237,15 @@ public:
             impl(impl_)
         { }
 
+        typedef basic_slot<protocol::chunk>::tuple_type tuple_type;
+
         std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& /* upstream */) {
+        operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& /* upstream */) {
             auto service = impl.lock();
 
-            io::invoke<event_traits<protocol::chunk>::tuple_type>::apply(
+            tuple::invoke(
                 boost::bind(&remote_client_t::announce, service.get(), boost::arg<1>()),
-                unpacked
+                args
             );
 
             return service;
@@ -260,8 +262,10 @@ public:
             impl(impl_)
         { }
 
+        typedef basic_slot<protocol::choke>::tuple_type tuple_type;
+
         std::shared_ptr<dispatch_t>
-        operator()(const msgpack::object& /* unpacked */, const std::shared_ptr<upstream_t>& /* upstream */) {
+        operator()(const tuple_type& /* args */, const std::shared_ptr<upstream_t>& /* upstream */) {
             impl.lock()->shutdown();
 
             // Return an empty protocol dispatch.

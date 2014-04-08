@@ -22,6 +22,7 @@
 #include "cocaine/detail/gateways/adhoc.hpp"
 #include "cocaine/detail/loggers/files.hpp"
 #include "cocaine/detail/loggers/syslog.hpp"
+#include "cocaine/detail/services/counter.hpp"
 #include "cocaine/detail/services/logging.hpp"
 #include "cocaine/detail/services/node.hpp"
 #include "cocaine/detail/services/storage.hpp"
@@ -35,6 +36,7 @@ cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<gateway::adhoc_t>("adhoc");
     repository.insert<logger::files_t>("files");
     repository.insert<logger::syslog_t>("syslog");
+    repository.insert<service::counter_t>("counter");
     repository.insert<service::logging_t>("logging");
     repository.insert<service::node_t>("node");
     repository.insert<service::storage_t>("storage");

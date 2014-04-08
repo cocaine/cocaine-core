@@ -33,79 +33,79 @@ struct type_traits<dynamic_t> {
     struct pack_visitor:
         public boost::static_visitor<>
     {
-        pack_visitor(msgpack::packer<Stream>& packer):
-            m_packer(packer)
+        pack_visitor(msgpack::packer<Stream>& target):
+            m_target(target)
         { }
 
         void
-        operator()(const dynamic_t::null_t&) const {
-            m_packer << msgpack::type::nil();
+        operator()(const dynamic_t::null_t& /* source */) const {
+            m_target << msgpack::type::nil();
         }
 
         void
-        operator()(const dynamic_t::bool_t& v) const {
-            m_packer << v;
+        operator()(const dynamic_t::bool_t& source) const {
+            m_target << source;
         }
 
         void
-        operator()(const dynamic_t::int_t& v) const {
-            m_packer << v;
+        operator()(const dynamic_t::int_t& source) const {
+            m_target << source;
         }
 
         void
-        operator()(const dynamic_t::uint_t& v) const {
-            m_packer << v;
+        operator()(const dynamic_t::uint_t& source) const {
+            m_target << source;
         }
 
         void
-        operator()(const dynamic_t::double_t& v) const {
-            m_packer << v;
+        operator()(const dynamic_t::double_t& source) const {
+            m_target << source;
         }
 
         void
-        operator()(const dynamic_t::string_t& v) const {
-            m_packer << v;
+        operator()(const dynamic_t::string_t& source) const {
+            m_target << source;
         }
 
         void
-        operator()(const dynamic_t::array_t& v) const {
-            m_packer.pack_array(v.size());
+        operator()(const dynamic_t::array_t& source) const {
+            m_target.pack_array(source.size());
 
-            for(size_t i = 0; i < v.size(); ++i) {
-                v[i].apply(*this);
+            for(size_t i = 0; i < source.size(); ++i) {
+                source[i].apply(*this);
             }
         }
 
         void
-        operator()(const dynamic_t::object_t& v) const {
-            m_packer.pack_map(v.size());
+        operator()(const dynamic_t::object_t& source) const {
+            m_target.pack_map(source.size());
 
-            for(auto it = v.begin(); it != v.end(); ++it) {
-                m_packer << it->first;
+            for(auto it = source.begin(); it != source.end(); ++it) {
+                m_target << it->first;
                 it->second.apply(*this);
             }
         }
 
     private:
-        msgpack::packer<Stream>& m_packer;
+        msgpack::packer<Stream>& m_target;
     };
 
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer, const dynamic_t& source) {
-        source.apply(pack_visitor<Stream>(packer));
+    pack(msgpack::packer<Stream>& target, const dynamic_t& source) {
+        source.apply(pack_visitor<Stream>(target));
     }
 
     static inline
     void
-    unpack(const msgpack::object& object, dynamic_t& target) {
-        switch(object.type) {
+    unpack(const msgpack::object& source, dynamic_t& target) {
+        switch(source.type) {
         case msgpack::type::MAP: {
             dynamic_t::object_t container;
 
-            msgpack::object_kv *ptr = object.via.map.ptr,
-                               *const end = ptr + object.via.map.size;
+            msgpack::object_kv *ptr = source.via.map.ptr,
+                               *const end = ptr + source.via.map.size;
 
             for(; ptr < end; ++ptr) {
                 if(ptr->key.type != msgpack::type::RAW) {
@@ -121,10 +121,10 @@ struct type_traits<dynamic_t> {
 
         case msgpack::type::ARRAY: {
             dynamic_t::array_t container;
-            container.reserve(object.via.array.size);
+            container.reserve(source.via.array.size);
 
-            msgpack::object *ptr = object.via.array.ptr,
-                            *const end = ptr + object.via.array.size;
+            msgpack::object *ptr = source.via.array.ptr,
+                            *const end = ptr + source.via.array.size;
 
             for(unsigned int index = 0; ptr < end; ++ptr, ++index) {
                 container.push_back(dynamic_t());
@@ -135,23 +135,23 @@ struct type_traits<dynamic_t> {
         } break;
 
         case msgpack::type::RAW: {
-            target = object.as<std::string>();
+            target = source.as<std::string>();
         } break;
 
         case msgpack::type::DOUBLE: {
-            target = object.as<double>();
+            target = source.as<double>();
         } break;
 
         case msgpack::type::POSITIVE_INTEGER: {
-            target = object.as<dynamic_t::uint_t>();
+            target = source.as<dynamic_t::uint_t>();
         } break;
 
         case msgpack::type::NEGATIVE_INTEGER: {
-            target = object.as<dynamic_t::int_t>();
+            target = source.as<dynamic_t::int_t>();
         } break;
 
         case msgpack::type::BOOLEAN: {
-            target = object.as<bool>();
+            target = source.as<bool>();
         } break;
 
         case msgpack::type::NIL: {

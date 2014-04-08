@@ -91,6 +91,19 @@ struct config_t {
         boost::optional<component_t> gateway;
     } network;
 
+    struct {
+        std::set<std::pair<std::string, uint16_t>> some_nodes;
+        std::string node_service_name;
+        std::string control_service_name;
+        std::string config_machine_name;
+        unsigned int election_timeout;
+        unsigned int heartbeat_timeout;
+        unsigned int snapshot_threshold;
+        unsigned int message_size;
+        bool create_configuration_cluster;
+        bool enable;
+    } raft;
+
     typedef std::map<std::string, component_t> component_map_t;
 
     component_map_t loggers;
@@ -147,6 +160,8 @@ class context_t {
 
 public:
     const config_t config;
+
+    std::unique_ptr<raft::repository_t> raft;
 
 public:
     context_t(config_t config, const std::string& logger);

@@ -32,17 +32,17 @@ struct type_traits<boost::optional<T>> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer, const boost::optional<T>& source) {
+    pack(msgpack::packer<Stream>& target, const boost::optional<T>& source) {
         return source ?
-            type_traits<T>::pack(packer, *source)
-          : (void)(packer << msgpack::type::nil());
+            type_traits<T>::pack(target, *source)
+          : (void)(target << msgpack::type::nil());
     }
 
     static inline
     void
-    unpack(const msgpack::object& unpacked, boost::optional<T>& target) {
-        return unpacked.type != msgpack::type::NIL ?
-            target = T(), type_traits<T>::unpack(unpacked, *target)
+    unpack(const msgpack::object& source, boost::optional<T>& target) {
+        return source.type != msgpack::type::NIL ?
+            target = T(), type_traits<T>::unpack(source, *target)
           : (void)(target = boost::none);
     }
 };

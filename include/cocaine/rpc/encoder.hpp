@@ -38,7 +38,9 @@ struct encoder {
     { }
 
    ~encoder() {
-        // Empty.
+       if(m_stream) {
+           unbind();
+       }
     }
 
     void

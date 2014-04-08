@@ -22,14 +22,15 @@
 #define COCAINE_ENGINE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/locked_ptr.hpp"
 
-#include "cocaine/rpc/session.hpp"
+#include <system_error>
 
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/thread/thread.hpp>
 
 namespace cocaine {
+
+class session_t;
 
 class execution_unit_t {
     const std::unique_ptr<logging::log_t> m_log;

@@ -28,6 +28,8 @@
 
 namespace cocaine {
 
+class upstream_t;
+
 class session_t:
     public std::enable_shared_from_this<session_t>
 {
@@ -44,19 +46,27 @@ class session_t:
     // Virtual channels.
     typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
 
+    // Incoming channels counter. It stores maximum channel id processed by the session.
+    // The session assumes that id's of incoming channels are strongly increasing and discards messages with old channel id's.
+    uint64_t max_channel;
+
     // NOTE: Virtual channels use their own synchronization to decouple invocation and messaging.
     synchronized<channel_map_t> channels;
 
 public:
     friend class upstream_t;
 
-    session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<io::dispatch_t>& prototype_):
+    session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_,
+              const std::shared_ptr<io::dispatch_t>& prototype_ = std::shared_ptr<io::dispatch_t>()):
         ptr(std::move(ptr_)),
         prototype(prototype_)
     { }
 
     void
     invoke(const io::message_t& message);
+
+    std::shared_ptr<upstream_t>
+    invoke(uint64_t id, const std::shared_ptr<io::dispatch_t>& dispatch);
 
     void
     detach();

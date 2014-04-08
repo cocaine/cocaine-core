@@ -34,6 +34,10 @@
 
 #include "cocaine/memory.hpp"
 
+#include "cocaine/detail/raft/repository.hpp"
+#include "cocaine/detail/raft/node_service.hpp"
+#include "cocaine/detail/raft/control_service.hpp"
+
 #include <cstring>
 
 #include <boost/filesystem/convenience.hpp>
@@ -275,6 +279,7 @@ config_t::config_t(const std::string& config_path) {
     const auto &path_config    = root.as_object().at("paths", dynamic_t::empty_object).as_object();
     const auto &locator_config = root.as_object().at("locator", dynamic_t::empty_object).as_object();
     const auto &network_config = root.as_object().at("network", dynamic_t::empty_object).as_object();
+    const auto &raft_config    = root.as_object().at("raft", dynamic_t::empty_object).as_object();
 
     // Validation
 
@@ -348,6 +353,19 @@ config_t::config_t(const std::string& config_path) {
         }
     }
 
+    // Raft configuration.
+
+    raft.node_service_name = "raft_node";
+    raft.control_service_name = "raft_control";
+    raft.config_machine_name = "configuration";
+    raft.some_nodes = raft_config.at("some_nodes", dynamic_t::empty_array).to<std::set<raft::node_id_t>>();
+    raft.election_timeout = raft_config.at("election_timeout", 500).to<unsigned int>();
+    raft.heartbeat_timeout = raft_config.at("heartbeat_timeout", raft.election_timeout / 2).to<unsigned int>();
+    raft.snapshot_threshold = raft_config.at("snapshot_threshold", 100000).to<unsigned int>();
+    raft.message_size = raft_config.at("message_size", 1000).to<unsigned int>();
+    raft.create_configuration_cluster = false;
+    raft.enable = root.as_object().count("raft") > 0;
+
     // Component configuration
 
     loggers  = root.as_object().at("loggers",  dynamic_t::empty_object).to<config_t::component_map_t>();
@@ -363,7 +381,8 @@ config_t::version() {
 // Context
 
 context_t::context_t(config_t config_, const std::string& logger):
-    config(config_)
+    config(config_),
+    raft(std::make_unique<raft::repository_t>(*this))
 {
     m_repository.reset(new api::repository_t());
 
@@ -387,7 +406,8 @@ context_t::context_t(config_t config_, const std::string& logger):
 }
 
 context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t>&& logger):
-    config(config_)
+    config(config_),
+    raft(std::make_unique<raft::repository_t>(*this))
 {
     m_repository.reset(new api::repository_t());
 
@@ -566,6 +586,43 @@ context_t::bootstrap() {
 
     m_synchronization = std::make_shared<synchronization_t>(*this);
 
+    // Initialize Raft service.
+    try {
+        if(config.raft.enable) {
+            std::unique_ptr<api::service_t> node_service(std::make_unique<raft::node_service_t>(
+                *this,
+                *raft->m_reactor,
+                std::string("service/") + config.raft.node_service_name
+            ));
+
+            insert(config.raft.node_service_name,
+                   std::make_unique<actor_t>(*this, raft->m_reactor, std::move(node_service)));
+
+            std::unique_ptr<api::service_t> control_service(
+                std::make_unique<raft::control_service_t>(
+                    *this,
+                    *raft->m_reactor,
+                    std::string("service/") + config.raft.control_service_name
+            ));
+
+            insert(config.raft.control_service_name,
+                   std::make_unique<actor_t>(*this, raft->m_reactor, std::move(control_service)));
+        }
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_ERROR(blog,
+                          "unable to initialize RAFT service - %s - [%d] %s",
+                          e.what(),
+                          e.code().value(), e.code().message());
+        throw;
+    } catch(const std::exception& e) {
+        COCAINE_LOG_ERROR(blog, "unable to initialize RAFT service - %s", e.what());
+        throw;
+    } catch(...) {
+        COCAINE_LOG_ERROR(blog, "unable to initialize RAFT service - unknown exception");
+        throw;
+    }
+
+    // Initialize other services.
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto reactor = std::make_shared<reactor_t>();
 

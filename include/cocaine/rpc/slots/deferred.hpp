@@ -21,14 +21,12 @@
 #ifndef COCAINE_IO_DEFERRED_SLOT_HPP
 #define COCAINE_IO_DEFERRED_SLOT_HPP
 
+#include "cocaine/rpc/slots/function.hpp"
+
 #include "cocaine/rpc/queue.hpp"
 #include "cocaine/rpc/result_of.hpp"
 
-#include "cocaine/rpc/slots/function.hpp"
-
 namespace cocaine { namespace io {
-
-// Deferred slot
 
 template<
     template<class> class T,
@@ -47,11 +45,13 @@ struct deferred_slot:
         parent_type(callable)
     { }
 
+    typedef typename parent_type::tuple_type tuple_type;
+
     virtual
     std::shared_ptr<dispatch_t>
-    operator()(const msgpack::object& unpacked, const std::shared_ptr<upstream_t>& upstream) {
+    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
         try {
-            const T<R> result = this->call(unpacked);
+            const T<R> result = this->call(args);
 
             // Upstream is attached in a critical section, because the internal message queue might
             // be already in use in some other processing thread of the service.

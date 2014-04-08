@@ -23,8 +23,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/rpc/message.hpp"
-
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -37,34 +35,7 @@ dispatch_t::~dispatch_t() {
     // Empty.
 }
 
-std::shared_ptr<dispatch_t>
-dispatch_t::invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const {
-    slot_map_t::const_iterator lb, ub;
-
-    std::tie(lb, ub) = m_slots->equal_range(message.id());
-
-    if(lb == ub) {
-        // TODO: COCAINE-82 adds a 'client' error category.
-        throw cocaine::error_t("unbound type %d message", message.id());
-    }
-
-    // NOTE: The slot pointer is copied here so that the handling code could unregister the slot via
-    // dispatch_t::forget() without pulling the object from underneath itself.
-    slot_map_t::mapped_type slot = lb->second;
-
-    COCAINE_LOG_DEBUG(m_log, "processing type %d message using slot '%s'", message.id(), slot->name());
-
-    try {
-        return (*slot)(message.args(), upstream);
-    } catch(const std::exception& e) {
-        // TODO: COCAINE-82 adds a 'server' error category.
-        // This happens only when the underlying slot has miserably failed to manage its exceptions.
-        // In such case, the client is disconnected to prevent any further damage.
-        throw cocaine::error_t("unable to process type %d message - %s", message.id(), e.what());
-    }
-}
-
-std::string
-dispatch_t::name() const {
+auto
+dispatch_t::name() const -> std::string {
     return m_name;
 }

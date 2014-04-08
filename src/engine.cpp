@@ -25,6 +25,8 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
+#include "cocaine/rpc/session.hpp"
+
 #if defined(__linux__)
     #include <sys/prctl.h>
 #endif
@@ -109,7 +111,7 @@ execution_unit_t::on_message(int fd, const io::message_t& message) {
     try {
         it->second->invoke(message);
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(m_log, "client on fd %d has disconnected - %s", fd, e.what());
+        COCAINE_LOG_ERROR(m_log, "client on fd %d has been forced to disconnect - %s", fd, e.what());
 
         // NOTE: This destroys the connection but not necessarily the session itself, as it might be
         // still in use by shared upstreams even in other threads. In other words, this doesn't guarantee

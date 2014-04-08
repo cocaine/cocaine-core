@@ -28,7 +28,11 @@
 #include <boost/mpl/front.hpp>
 #include <boost/mpl/size.hpp>
 
-namespace cocaine { namespace io { namespace aux {
+namespace cocaine { namespace io {
+
+namespace mpl = boost::mpl;
+
+namespace aux {
 
 template<class T>
 struct result_of_impl;
@@ -36,8 +40,8 @@ struct result_of_impl;
 template<class T>
 struct result_of_impl<streaming_tag<T>> {
     typedef typename std::conditional<
-        boost::mpl::size<T>::value == 1,
-        typename boost::mpl::front<T>::type,
+        mpl::size<T>::value == 1,
+        typename mpl::front<T>::type,
         typename tuple::fold<T>::type
     >::type type;
 };

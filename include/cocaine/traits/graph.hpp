@@ -33,14 +33,14 @@ struct type_traits<dispatch_graph_t> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer, const dispatch_graph_t& source) {
-        packer << static_cast<const dispatch_graph_t::base_type&>(source);
+    pack(msgpack::packer<Stream>& target, const dispatch_graph_t& source) {
+        target << static_cast<const dispatch_graph_t::base_type&>(source);
     }
 
     static inline
     void
-    unpack(const msgpack::object& unpacked, dispatch_graph_t& target) {
-        unpacked >> static_cast<dispatch_graph_t::base_type&>(target);
+    unpack(const msgpack::object& source, dispatch_graph_t& target) {
+        source >> static_cast<dispatch_graph_t::base_type&>(target);
     }
 };
 

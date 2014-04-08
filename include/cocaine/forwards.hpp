@@ -102,4 +102,10 @@ struct log_t;
 
 }} // namespace cocaine::logging
 
+namespace cocaine { namespace raft {
+
+class repository_t;
+
+}} // namesapce cocaine::raft
+
 #endif

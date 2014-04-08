@@ -22,6 +22,7 @@
 #define COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 
 #include "cocaine/asio/reactor.hpp"
+#include "cocaine/asio/cancelable_task.hpp"
 
 #include <cstring>
 
@@ -56,15 +57,24 @@ struct writable_stream {
         m_ring.resize(65536);
     }
 
+    ~writable_stream() {
+        unbind();
+    }
+
     template<class ErrorHandler>
     void
     bind(ErrorHandler error_handler) {
-        m_handle_error = error_handler;
+        typedef std::function<void(const std::error_code&)> error_handler_type;
+        m_handle_error = std::make_shared<error_handler_type>(error_handler);
     }
 
     void
     unbind() {
-        m_handle_error = nullptr;
+        if(m_socket_watcher.is_active()) {
+            m_socket_watcher.stop();
+        }
+
+        m_handle_error.reset();
     }
 
     size_t
@@ -137,7 +147,7 @@ private:
         );
 
         if(ec) {
-            m_reactor.post(std::bind(m_handle_error, ec));
+            m_reactor.post(std::bind(make_task(m_handle_error), ec));
             return;
         }
 
@@ -168,9 +178,9 @@ private:
     std::mutex m_ring_mutex;
 
     // Write error handler.
-    std::function<
+    std::shared_ptr<std::function<
         void(const std::error_code&)
-    > m_handle_error;
+    >> m_handle_error;
 };
 
 }} // namespace cocaine::io

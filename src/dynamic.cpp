@@ -297,7 +297,7 @@ struct to_string_visitor:
 
     std::string
     operator()(const dynamic_t::bool_t& v) const {
-        return v ? "True" : "False";
+        return v ? "true" : "false";
     }
 
     template<class T>
