@@ -42,7 +42,7 @@ struct log_traits {
 
 template<class T>
 class command_result {
-    template<class> friend struct cocaine::io::type_traits;
+    template<class, class> friend struct cocaine::io::type_traits;
 
     typedef boost::variant<raft_errc, T> value_type;
 
@@ -90,7 +90,7 @@ private:
 
 template<>
 class command_result<void> {
-    template<class> friend struct cocaine::io::type_traits;
+    template<class, class> friend struct cocaine::io::type_traits;
 
     typedef boost::optional<raft_errc> value_type;
 
