@@ -59,7 +59,7 @@ raft::repository_t::get(const std::string& name) const {
 
 node_service_t::node_service_t(context_t& context, io::reactor_t& reactor, const std::string& name):
     api::service_t(context, reactor, name, dynamic_t::empty_object),
-    implements<io::raft_node_tag<msgpack::object, msgpack::object>>(context, name),
+    implements<io::raft_node_tag<msgpack::object, msgpack::object>>(name),
     m_context(context),
     m_log(new logging::log_t(context, name))
 {
@@ -130,7 +130,7 @@ control_service_t::control_service_t(context_t& context,
                                      io::reactor_t& reactor,
                                      const std::string& name):
     api::service_t(context, reactor, name, dynamic_t::empty_object),
-    implements<io::raft_control_tag<msgpack::object, msgpack::object>>(context, name),
+    implements<io::raft_control_tag<msgpack::object, msgpack::object>>(name),
     m_context(context),
     m_reactor(reactor),
     m_log(new logging::log_t(context, name))

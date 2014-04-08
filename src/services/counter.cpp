@@ -164,7 +164,7 @@ counter_t::counter_t(context_t& context,
                      const std::string& name,
                      const dynamic_t& args):
     api::service_t(context, reactor, name, args),
-    implements<io::counter_tag>(context, name),
+    implements<io::counter_tag>(name),
     m_log(new logging::log_t(context, name))
 {
     using namespace std::placeholders;
