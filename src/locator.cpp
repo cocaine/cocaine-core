@@ -56,7 +56,7 @@ using namespace std::placeholders;
 #include "routing.inl"
 
 locator_t::locator_t(context_t& context, reactor_t& reactor):
-    implements<io::locator_tag>(context, "service/locator"),
+    implements<io::locator_tag>("service/locator"),
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor),
@@ -277,7 +277,7 @@ public:
     };
 
     remote_client_t(locator_t& impl_, const remote_id_t& node_):
-        implements<tag>(impl_.m_context, impl_.name()),
+        implements<tag>(impl_.name()),
         impl(impl_),
         node(node_),
         uuid(std::get<0>(node))

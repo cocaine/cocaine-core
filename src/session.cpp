@@ -52,6 +52,11 @@ public:
     }
 };
 
+session_t::session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<io::dispatch_t>& prototype_):
+    ptr(std::move(ptr_)),
+    prototype(prototype_)
+{ }
+
 void
 session_t::invoke(const message_t& message) {
     channel_map_t::const_iterator lb, ub;

@@ -35,7 +35,7 @@ using namespace std::placeholders;
 
 logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& name, const dynamic_t& args):
     api::service_t(context, reactor, name, args),
-    implements<io::log_tag>(context, name)
+    implements<io::log_tag>(name)
 {
     auto backend = args.as_object().at("backend", "core").as_string();
 

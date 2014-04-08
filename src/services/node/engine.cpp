@@ -144,9 +144,7 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
     {
         std::lock_guard<session_queue_t> queue_guard(m_queue);
 
-        if(m_profile.queue_limit > 0 &&
-           m_queue.size() >= m_profile.queue_limit)
-        {
+        if(m_profile.queue_limit > 0 && m_queue.size() >= m_profile.queue_limit) {
             throw cocaine::error_t("the queue is full");
         }
 

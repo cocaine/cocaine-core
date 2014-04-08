@@ -151,8 +151,8 @@ public:
         const std::weak_ptr<streaming_service_t> impl;
     };
 
-    streaming_service_t(context_t& context, const std::string& name, const api::stream_ptr_t& downstream_):
-        implements<tag>(context, name),
+    streaming_service_t(const std::string& name, const api::stream_ptr_t& downstream_):
+        implements<tag>(name),
         downstream(downstream_)
     { }
 
@@ -177,7 +177,6 @@ private:
 class app_service_t:
     public implements<io::app_tag>
 {
-    context_t& context;
     app_t& app;
 
 private:
@@ -245,7 +244,7 @@ private:
             downstream = app.enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
         }
 
-        auto service = std::make_shared<streaming_service_t>(context, name(), downstream);
+        auto service = std::make_shared<streaming_service_t>(name(), downstream);
 
         typedef streaming_service_t::protocol protocol;
 
@@ -257,9 +256,8 @@ private:
     }
 
 public:
-    app_service_t(context_t& context_, const std::string& name_, app_t& app_):
-        implements<io::app_tag>(context_, cocaine::format("service/%1%", name_)),
-        context(context_),
+    app_service_t(const std::string& name_, app_t& app_):
+        implements<io::app_tag>(cocaine::format("service/%1%", name_)),
         app(app_)
     {
         on<io::app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
@@ -323,7 +321,7 @@ app_t::start() {
     m_context.insert(m_manifest->name, std::make_unique<actor_t>(
         m_context,
         std::make_shared<reactor_t>(),
-        std::unique_ptr<dispatch_t>(new app_service_t(m_context, m_manifest->name, *this))
+        std::unique_ptr<dispatch_t>(new app_service_t(m_manifest->name, *this))
     ));
 
     COCAINE_LOG_INFO(m_log, "the engine has started");

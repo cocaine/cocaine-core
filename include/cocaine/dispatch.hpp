@@ -55,17 +55,16 @@ namespace io {
 class dispatch_t {
     COCAINE_DECLARE_NONCOPYABLE(dispatch_t)
 
-    const std::unique_ptr<logging::log_t> m_log;
-
     // For actor's named threads feature.
     const std::string m_name;
 
 public:
-    dispatch_t(context_t& context, const std::string& name);
+    dispatch_t(const std::string& name);
 
     virtual
    ~dispatch_t();
 
+public:
     auto
     name() const -> std::string;
 
@@ -125,8 +124,8 @@ class implements:
     { };
 
 public:
-    implements(context_t& context, const std::string& name):
-        dispatch_t(context, name),
+    implements(const std::string& name):
+        dispatch_t(name),
         graph(io::traverse<Tag>().get())
     { }
 
@@ -140,7 +139,7 @@ public:
 
     template<class Visitor>
     typename Visitor::result_type
-    invoke(int id, Visitor&& visitor) const;
+    invoke(int id, const Visitor& visitor) const;
 
     template<class Event>
     void
@@ -236,7 +235,7 @@ implements<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
 template<class Tag>
 template<class Visitor>
 typename Visitor::result_type
-implements<Tag>::invoke(int id, Visitor&& visitor) const {
+implements<Tag>::invoke(int id, const Visitor& visitor) const {
     typename slot_map_t::const_iterator lb, ub;
 
     std::tie(lb, ub) = m_slots->equal_range(id);

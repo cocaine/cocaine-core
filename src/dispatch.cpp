@@ -20,14 +20,10 @@
 
 #include "cocaine/dispatch.hpp"
 
-#include "cocaine/context.hpp"
-#include "cocaine/logging.hpp"
-
 using namespace cocaine;
 using namespace cocaine::io;
 
-dispatch_t::dispatch_t(context_t& context, const std::string& name):
-    m_log(new logging::log_t(context, name)),
+dispatch_t::dispatch_t(const std::string& name):
     m_name(name)
 { }
 

@@ -81,17 +81,6 @@ private:
     const endpoint_type m_pipe;
 };
 
-namespace {
-
-struct ignore {
-    void
-    operator()(const std::error_code& /* ec */) {
-        // Do nothing.
-    }
-};
-
-} // namespace
-
 slave_t::slave_t(context_t& context, reactor_t& reactor, const manifest_t& manifest, const profile_t& profile, const std::string& id, engine_t& engine):
     m_context(context),
     m_log(new logging::log_t(context, cocaine::format("app/%s", manifest.name))),
@@ -149,7 +138,7 @@ slave_t::slave_t(context_t& context, reactor_t& reactor, const manifest_t& manif
 
     m_output_pipe->bind(
         std::bind(&slave_t::on_output, this, _1, _2),
-        ignore()
+        std::bind(&slave_t::on_failure, this, _1)
     );
 }
 
@@ -205,14 +194,14 @@ slave_t::assign(const std::shared_ptr<session_t>& session) {
 
     std::unique_lock<std::mutex> lock(m_mutex);
 
+    m_idle_timer->stop();
+
     if(m_sessions.size() >= m_profile.concurrency || m_state == states::unknown) {
         m_queue.push_back(session);
         return;
     }
 
     BOOST_ASSERT(m_state == states::active);
-
-    m_idle_timer->stop();
 
     m_sessions.insert(std::make_pair(session->id, session));
 
@@ -536,6 +525,8 @@ slave_t::pump() {
 
         assign(session);
     }
+
+    std::lock_guard<std::mutex> guard(m_mutex);
 
     if(m_sessions.empty() && m_profile.idle_timeout) {
         m_idle_timer->start(m_profile.idle_timeout);
