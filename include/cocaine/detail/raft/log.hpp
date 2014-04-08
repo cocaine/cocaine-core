@@ -27,6 +27,7 @@
 #include <boost/assert.hpp>
 
 #include <deque>
+#include <algorithm>
 
 namespace cocaine { namespace raft {
 
@@ -103,7 +104,7 @@ public:
     void
     truncate(uint64_t index) {
         BOOST_ASSERT(index >= m_first_index);
-        m_entries.resize(std::min(m_entries.size(), index - m_first_index));
+        m_entries.resize(std::min<uint64_t>(m_entries.size(), index - m_first_index));
     }
 
     // Store snapshot of state machine in the log.
