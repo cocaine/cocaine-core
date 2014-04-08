@@ -173,9 +173,8 @@ private:
         public implements<io::locator::resolve::drain_type>
     {
     public:
-        resolve_dispatch_t(context_t &context,
-                           service_resolver_t &resolver):
-            implements<io::locator::resolve::drain_type>(context, "resolve"),
+        resolve_dispatch_t(service_resolver_t &resolver):
+            implements<io::locator::resolve::drain_type>("resolve"),
             m_resolver(resolver)
         {
             using namespace std::placeholders;
@@ -256,7 +255,7 @@ private:
         m_locator_client->bind(*m_error_handler);
 
         m_resolve_upstream = m_locator_client->call<cocaine::io::locator::resolve>(
-            std::make_shared<resolve_dispatch_t>(m_context, *this),
+            std::make_shared<resolve_dispatch_t>(*this),
             m_service
         );
     }
@@ -304,9 +303,8 @@ class proxy_dispatch :
 
 public:
     proxy_dispatch(const std::function<void(result_type)>& callback,
-                   context_t &context,
                    const std::string& name = ""):
-        implements<io::streaming_tag<T>>(context, name),
+        implements<io::streaming_tag<T>>(name),
         m_callback(callback)
     {
         using namespace std::placeholders;
@@ -366,9 +364,8 @@ class proxy_dispatch<std::tuple<Args...>> :
 
 public:
     proxy_dispatch(const std::function<void(result_type)>& callback,
-                   context_t &context,
                    const std::string& name = ""):
-        implements<io::streaming_tag<tuple_type>>(context, name),
+        implements<io::streaming_tag<tuple_type>>(name),
         m_callback(callback)
     {
         using namespace std::placeholders;

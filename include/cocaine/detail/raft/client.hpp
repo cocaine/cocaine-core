@@ -158,8 +158,7 @@ private:
         using namespace std::placeholders;
 
         auto dispatch = make_proxy<Result>(
-            std::bind(&disposable_client_t::on_response<Result>, this, handler, _1),
-            m_context
+            std::bind(&disposable_client_t::on_response<Result>, this, handler, _1)
         );
 
         m_current_request = tuple::invoke(client_caller<Event> {m_client, dispatch}, event.tuple);

@@ -139,11 +139,16 @@ public:
                           last_term());
 
         // Apply new configuration immediately as we see it.
-        if (boost::get<insert_node_t>(&back().value())) {
-            m_actor.cluster().insert(boost::get<insert_node_t>(back().value()).node);
-        } else if (boost::get<erase_node_t>(&back().value())) {
-            m_actor.cluster().erase(boost::get<erase_node_t>(back().value()).node);
-        } else if (boost::get<commit_node_t>(&back().value()) &&
+        if (boost::get<io::aux::frozen<node_commands::insert>>(&back().value())) {
+            // We need to go deeper.
+            m_actor.cluster().insert(std::get<0>(
+                boost::get<io::aux::frozen<node_commands::insert>>(back().value()).tuple
+            ));
+        } else if (boost::get<io::aux::frozen<node_commands::erase>>(&back().value())) {
+            m_actor.cluster().erase(std::get<0>(
+                boost::get<io::aux::frozen<node_commands::erase>>(back().value()).tuple
+            ));
+        } else if (boost::get<io::aux::frozen<node_commands::commit>>(&back().value()) &&
                    m_actor.cluster().transitional())
         {
             // Here we can receive spurious commit, if previous commit was truncated from log due to leader change.
@@ -154,15 +159,15 @@ public:
         m_actor.cluster().replicate();
     }
 
-    template<class Command, class Handler>
+    template<class Event, class Handler>
     void
     bind_last(const Handler& callback) {
-        if(std::is_same<Command, insert_node_t>::value ||
-           std::is_same<Command, erase_node_t>::value)
+        if(std::is_same<Event, node_commands::insert>::value ||
+           std::is_same<Event, node_commands::erase>::value)
         {
             m_config_handler = callback;
         } else {
-            back().template bind<Command>(callback);
+            back().template bind<Event>(callback);
         }
     }
 
@@ -175,8 +180,8 @@ public:
             auto &entry = m_log[index];
 
             if (m_actor.cluster().transitional() &&
-                (boost::get<insert_node_t>(&entry.value()) ||
-                 boost::get<erase_node_t>(&entry.value())))
+                (boost::get<io::aux::frozen<node_commands::insert>>(&entry.value()) ||
+                 boost::get<io::aux::frozen<node_commands::erase>>(&entry.value())))
             {
                 m_actor.cluster().rollback();
                 if(m_config_handler) {
@@ -272,30 +277,30 @@ private:
         std::function<void(const std::error_code&)>& config_handler;
 
         template<class Event>
-        typename command_traits<io::aux::frozen<Event>>::value_type
+        typename command_traits<Event>::value_type
         operator()(const io::aux::frozen<Event>& command) const {
             return machine(command);
         }
 
         void
-        operator()(const insert_node_t&) const {
-            actor.template call<commit_node_t>(config_handler, commit_node_t());
+        operator()(const io::aux::frozen<node_commands::insert>&) const {
+            actor.template call<node_commands::commit>(config_handler);
             config_handler = nullptr;
         }
 
         void
-        operator()(const erase_node_t&) const {
-            actor.template call<commit_node_t>(config_handler, commit_node_t());
+        operator()(const io::aux::frozen<node_commands::erase>&) const {
+            actor.template call<node_commands::commit>(config_handler);
             config_handler = nullptr;
         }
 
         void
-        operator()(const commit_node_t&) const {
+        operator()(const io::aux::frozen<node_commands::commit>&) const {
             // Ignore.
         }
 
         void
-        operator()(const nop_t&) const {
+        operator()(const io::aux::frozen<node_commands::nop>&) const {
             // Ignore.
         }
     };

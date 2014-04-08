@@ -329,7 +329,7 @@ private:
             auto handler = std::bind(&vote_handler_t::handle, m_vote_state, std::placeholders::_1);
 
             m_client->call<typename protocol_type::request_vote>(
-                make_proxy<std::tuple<uint64_t, bool>>(handler, m_actor.context(), m_id.first),
+                make_proxy<std::tuple<uint64_t, bool>>(handler, m_id.first),
                 m_actor.name(),
                 m_actor.config().current_term(),
                 m_actor.config().id(),
@@ -362,7 +362,7 @@ private:
     void
     send_apply() {
         auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
-        auto dispatch = make_proxy<std::tuple<uint64_t, bool>>(handler, m_actor.context());
+        auto dispatch = make_proxy<std::tuple<uint64_t, bool>>(handler);
 
         auto snapshot_entry = std::make_tuple(
             m_actor.log().snapshot_index(),
@@ -391,7 +391,7 @@ private:
     void
     send_append() {
         auto handler = std::bind(&append_handler_t::handle, m_append_state, std::placeholders::_1);
-        auto dispatch = make_proxy<std::tuple<uint64_t, bool>>(handler, m_actor.context());
+        auto dispatch = make_proxy<std::tuple<uint64_t, bool>>(handler);
 
         // Term of prev_entry. Probably this logic could be in the log,
         // but I wanted to make log implementation as simple as possible,

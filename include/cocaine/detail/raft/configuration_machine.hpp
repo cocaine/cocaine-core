@@ -555,12 +555,7 @@ private:
         m_appliers.erase(name);
 
         if(m_is_leader && !result.error()) {
-            typedef io::aux::frozen<configuration_machine::commit> command_type;
-
-            m_service->configuration_actor()->call<command_type>(
-                nullptr,
-                io::aux::make_frozen<configuration_machine::commit>(name)
-            );
+            m_service->configuration_actor()->call<configuration_machine::commit>(nullptr, name);
         }
     }
 
