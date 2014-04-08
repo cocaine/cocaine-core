@@ -102,10 +102,10 @@ public:
 
         m_error_handler = error_handler;
 
-        m_operation = std::bind(&disposable_client_t::send_request<Event, result_type>,
-                                this,
-                                std::function<void(const result_type&)>(result_handler),
-                                io::aux::make_frozen<Event>(std::forward<Args>(args)...));
+        m_request_sender = std::bind(&disposable_client_t::send_request<Event, result_type>,
+                                     this,
+                                     std::function<void(const result_type&)>(result_handler),
+                                     io::aux::make_frozen<Event>(std::forward<Args>(args)...));
 
         try_next_remote();
     }
@@ -170,6 +170,8 @@ private:
     on_response(const std::function<void(const CommandResult&)>& callback,
                 const boost::variant<std::error_code, CommandResult>& response)
     {
+        reset_request();
+
         if(boost::get<CommandResult>(&response)) {
             const auto &result = boost::get<CommandResult>(response);
 
@@ -177,61 +179,53 @@ private:
 
             if(!ec) {
                 // Entry has been successfully committed to the state machine.
-                reset_request();
-                m_operation = nullptr;
+                std::function<void()> handler = std::bind(callback, result);
 
-                typedef std::function<void(const CommandResult&)> callback_type;
-                auto callback_ptr = std::make_shared<callback_type>(callback);
+                auto callback_ptr = std::make_shared<std::function<void()>>(
+                    std::bind(&disposable_client_t::reset_then, this, handler)
+                );
+
                 m_posted_task = callback_ptr;
-                m_reactor.post(std::bind(io::make_task(callback_ptr), result));
+
+                m_reactor.post(io::make_task(callback_ptr));
             } else if(ec == raft_errc::not_leader || ec == raft_errc::unknown) {
                 // Connect to leader received from the remote or try the next remote.
+
+                std::function<void()> connector;
+
                 if(m_redirection_counter < m_follow_redirect && result.leader() != node_id_t()) {
                     ++m_redirection_counter;
 
-                    std::function<void()> connector(
-                        std::bind(&disposable_client_t::ensure_connection, this, result.leader())
-                    );
-
-                    auto reseter = std::make_shared<std::function<void()>>(
-                        std::bind(&disposable_client_t::reset_then, this, connector)
-                    );
-
-                    m_posted_task = reseter;
-
-                    m_reactor.post(io::make_task(reseter));
+                    connector = std::bind(&disposable_client_t::ensure_connection,
+                                          this,
+                                          result.leader());
                 } else {
-                    std::function<void()> connector(
-                        std::bind(&disposable_client_t::try_next_remote, this)
-                    );
-
-                    auto reseter = std::make_shared<std::function<void()>>(
-                        std::bind(&disposable_client_t::reset_then, this, connector)
-                    );
-
-                    m_posted_task = reseter;
-
-                    m_reactor.post(io::make_task(reseter));
+                    connector = std::bind(&disposable_client_t::try_next_remote, this);
                 }
+
+                auto resetter = std::make_shared<std::function<void()>>(
+                    std::bind(&disposable_client_t::reset_then, this, connector)
+                );
+
+                m_posted_task = resetter;
+
+                m_reactor.post(io::make_task(resetter));
             } else {
                 // The state machine is busy (some configuration change is in progress).
                 // Retry after request timeout.
-                reset_request();
                 m_retry_timer.start(m_request_timeout);
             }
         } else {
             // Some error has occurred. Try the next host.
-            std::function<void()> connector(
-                std::bind(&disposable_client_t::try_next_remote, this)
-            );
+            std::function<void()> connector = std::bind(&disposable_client_t::try_next_remote, this);
 
-            auto reseter = std::make_shared<std::function<void()>>(
+            auto resetter = std::make_shared<std::function<void()>>(
                 std::bind(&disposable_client_t::reset_then, this, connector)
             );
 
-            m_posted_task = reseter;
+            m_posted_task = resetter;
 
-            m_reactor.post(io::make_task(reseter));
+            m_reactor.post(io::make_task(resetter));
         }
     }
 
@@ -269,8 +263,8 @@ private:
 
         m_timeout_timer.start(m_request_timeout);
 
-        if(m_client && m_operation) {
-            m_operation();
+        if(m_client) {
+            m_request_sender();
         } else {
             COCAINE_LOG_DEBUG(m_logger,
                               "Raft client is not connected. Connecting to %s:%d.",
@@ -299,9 +293,7 @@ private:
         m_client = client;
         m_client->bind(std::bind(&disposable_client_t::on_error, this, std::placeholders::_1));
 
-        if(m_operation) {
-            m_operation();
-        }
+        m_request_sender();
     }
 
     void
@@ -309,28 +301,26 @@ private:
         COCAINE_LOG_DEBUG(m_logger, "Connection error: [%d] %s.", ec.value(), ec.message());
 
         reset();
-
-        if(m_operation) {
-            try_next_remote();
-        }
+        try_next_remote();
     }
 
     void
     on_timeout(ev::timer&, int) {
         reset();
 
-        if(m_operation) {
-            try_next_remote();
-        }
+        auto reconnector = std::make_shared<std::function<void()>>(
+            std::bind(&disposable_client_t::try_next_remote, this)
+        );
+
+        m_posted_task = reconnector;
+
+        m_reactor.post(io::make_task(reconnector));
     }
 
     void
     resend_request(ev::timer&, int) {
         reset_request();
-
-        if(m_operation) {
-            m_operation();
-        }
+        m_request_sender();
     }
 
 private:
@@ -367,14 +357,12 @@ private:
     // node from m_remotes.
     unsigned int m_redirection_counter;
 
-    std::shared_ptr<void> m_posted_task;
-
     std::function<void()> m_error_handler;
 
-    typedef std::function<void()> sender_t;
-
     // Current operation. It's stored until it becomes committed to replicated state machine.
-    sender_t m_operation;
+    std::function<void()> m_request_sender;
+
+    std::shared_ptr<void> m_posted_task;
 
     std::shared_ptr<cocaine::client_t> m_client;
 

@@ -121,6 +121,8 @@ private:
 class service_resolver_t {
     COCAINE_DECLARE_NONCOPYABLE(service_resolver_t)
 
+    typedef std::function<void(const std::error_code&)> error_handler_t;
+
 public:
     typedef io::tcp::endpoint endpoint_type;
 
@@ -142,7 +144,7 @@ public:
     void
     bind(Handler callback, ErrorHandler error_handler) {
         m_callback = callback;
-        m_error_handler = error_handler;
+        m_error_handler = std::make_shared<error_handler_t>(error_handler);
 
         using namespace std::placeholders;
 
@@ -163,7 +165,7 @@ public:
         m_locator_client.reset();
 
         m_callback = nullptr;
-        m_error_handler = nullptr;
+        m_error_handler.reset();
     }
 
 private:
@@ -197,9 +199,11 @@ private:
                 endpoints = io::resolver<io::tcp>::query(std::get<0>(endpoint),
                                                          std::get<1>(endpoint));
             } catch(const std::system_error& e) {
-                auto error_handler = m_resolver.m_error_handler;
-                m_resolver.m_resolve_upstream->revoke();
-                error_handler(e.code());
+                auto &resolver = m_resolver;
+                resolver.m_resolve_upstream->revoke();
+                resolver.m_reactor.post(
+                    std::bind(io::make_task(resolver.m_error_handler), e.code())
+                );
                 return;
             }
 
@@ -220,21 +224,26 @@ private:
 
         void
         on_error(int, const std::string& msg) {
-            auto error_handler = m_resolver.m_error_handler;
-            m_resolver.m_resolve_upstream->revoke();
+            auto &resolver = m_resolver;
+            resolver.m_resolve_upstream->revoke();
             // TODO: Provide some useful error_code.
-            error_handler(std::error_code());
+            resolver.m_reactor.post(
+                std::bind(io::make_task(resolver.m_error_handler), std::error_code())
+            );
         }
 
         void
         on_choke() {
-            auto error_handler = m_resolver.m_error_handler;
-            m_resolver.m_resolve_upstream->revoke();
-            error_handler(std::error_code());
+            auto &resolver = m_resolver;
+            resolver.m_resolve_upstream->revoke();
+            resolver.m_reactor.post(
+                std::bind(io::make_task(resolver.m_error_handler), std::error_code())
+            );
+
         }
 
     private:
-        service_resolver_t& m_resolver;
+        service_resolver_t &m_resolver;
     };
 
     void
@@ -244,7 +253,7 @@ private:
         auto channel = std::make_unique<io::channel<io::socket<io::tcp>>>(m_reactor, socket);
         m_locator_client = std::make_shared<client_t>(std::move(channel));
 
-        m_locator_client->bind(m_error_handler);
+        m_locator_client->bind(*m_error_handler);
 
         m_resolve_upstream = m_locator_client->call<cocaine::io::locator::resolve>(
             std::make_shared<resolve_dispatch_t>(m_context, *this),
@@ -268,7 +277,7 @@ private:
         m_connector.reset();
 
         auto error_handler = m_error_handler;
-        error_handler(ec);
+        (*error_handler)(ec);
     }
 
 private:
@@ -283,7 +292,7 @@ private:
     std::shared_ptr<upstream_t> m_resolve_upstream;
 
     std::function<void(const std::shared_ptr<client_t>&)> m_callback;
-    std::function<void(const std::error_code&)> m_error_handler;
+    std::shared_ptr<error_handler_t> m_error_handler;
 };
 
 template<class T>
@@ -365,7 +374,9 @@ public:
         using namespace std::placeholders;
 
         this->template on<typename protocol_type::chunk>(write_handler {this});
-        this->template on<typename protocol_type::error>(std::bind(&proxy_dispatch::on_error, this, _1, _2));
+        this->template on<typename protocol_type::error>(
+            std::bind(&proxy_dispatch::on_error, this, _1, _2)
+        );
         this->template on<typename protocol_type::choke>(std::bind(&proxy_dispatch::on_choke, this));
     }
 
@@ -373,24 +384,27 @@ private:
     void
     on_write(const Args&... args) {
         if(m_callback) {
-            m_callback(tuple_type(args...));
+            auto callback = m_callback;
             m_callback = nullptr;
+            callback(tuple_type(args...));
         }
     }
 
     void
     on_error(int, const std::string&) {
         if(m_callback) {
-            m_callback(std::error_code());
+            auto callback = m_callback;
             m_callback = nullptr;
+            callback(std::error_code());
         }
     }
 
     void
     on_choke() {
         if(m_callback) {
-            m_callback(std::error_code());
+            auto callback = m_callback;
             m_callback = nullptr;
+            callback(std::error_code());
         }
     }
 
