@@ -228,10 +228,7 @@ control_service_t::insert(const std::string& machine, const raft::node_id_t& nod
                                    promise,
                                    _1);
 
-    m_config_actor->call<io::aux::frozen<configuration_machine::insert>>(
-        error_handler,
-        io::aux::make_frozen<configuration_machine::insert>(op_id, machine, node)
-    );
+    m_config_actor->call<configuration_machine::insert>(error_handler, op_id, machine, node);
 
     return promise;
 }
@@ -256,10 +253,7 @@ control_service_t::erase(const std::string& machine, const raft::node_id_t& node
                                    promise,
                                    _1);
 
-    m_config_actor->call<io::aux::frozen<configuration_machine::erase>>(
-        error_handler,
-        io::aux::make_frozen<configuration_machine::erase>(op_id, machine, node)
-    );
+    m_config_actor->call<configuration_machine::erase>(error_handler, op_id, machine, node);
 
     return promise;
 }
@@ -268,9 +262,9 @@ deferred<command_result<void>>
 control_service_t::lock(const std::string& machine) {
     deferred<command_result<void>> promise;
 
-    m_config_actor->call<io::aux::frozen<configuration_machine::lock>>(
+    m_config_actor->call<configuration_machine::lock>(
         std::bind(&control_service_t::on_config_void_result, this, promise, std::placeholders::_1),
-        io::aux::make_frozen<configuration_machine::lock>(machine)
+        machine
     );
 
     return promise;
@@ -280,9 +274,10 @@ deferred<command_result<void>>
 control_service_t::reset(const std::string& machine, const cluster_config_t& new_config) {
     deferred<command_result<void>> promise;
 
-    m_config_actor->call<io::aux::frozen<configuration_machine::reset>>(
+    m_config_actor->call<configuration_machine::reset>(
         std::bind(&control_service_t::on_config_void_result, this, promise, std::placeholders::_1),
-        io::aux::make_frozen<configuration_machine::reset>(machine, new_config)
+        machine,
+        new_config
     );
 
     return promise;

@@ -282,14 +282,14 @@ public:
     }
 
     // Send command to the replicated state machine. The actor must be a leader.
-    template<class Command, class... Args>
+    template<class Event, class... Args>
     void
-    call(const typename command_traits<Command>::callback_type& handler, Args&&... args) {
+    call(const typename command_traits<Event>::callback_type& handler, Args&&... args) {
         reactor().post(std::bind(
-            &actor::call_impl<Command>,
+            &actor::call_impl<Event>,
             this->shared_from_this(),
             handler,
-            Command(std::forward<Args>(args)...)
+            io::aux::make_frozen<Event>(std::forward<Args>(args)...)
         ));
     }
 
@@ -351,9 +351,11 @@ private:
     }
 
     // Add new command to the log.
-    template<class Command>
+    template<class Event>
     void
-    call_impl(const typename command_traits<Command>::callback_type& handler, const Command& cmd) {
+    call_impl(const typename command_traits<Event>::callback_type& handler,
+              const io::aux::frozen<Event>& command)
+    {
         if(!is_leader()) {
             if(handler) {
                 handler(std::error_code(raft_errc::not_leader));
@@ -361,8 +363,8 @@ private:
             return;
         }
 
-        log().push(config().current_term(), cmd);
-        log().template bind_last<Command>(handler);
+        log().push(config().current_term(), command);
+        log().template bind_last<Event>(handler);
     }
 
     // Interface implementation.
@@ -481,9 +483,9 @@ private:
         } else {
             using namespace std::placeholders;
 
-            call_impl<insert_node_t>(
+            call_impl<node_commands::insert>(
                 std::bind(&actor::deferred_setter, this, promise, _1),
-                insert_node_t {node}
+                io::aux::make_frozen<node_commands::insert>(node)
             );
         }
     }
@@ -507,9 +509,9 @@ private:
         } else {
             using namespace std::placeholders;
 
-            call_impl<erase_node_t>(
+            call_impl<node_commands::erase>(
                 std::bind(&actor::deferred_setter, this, promise, _1),
-                erase_node_t {node}
+                io::aux::make_frozen<node_commands::erase>(node)
             );
         }
     }
@@ -805,7 +807,7 @@ private:
 
         // Trying to commit NOP entry to assume older entries to be committed
         // (see commitment restriction in the paper).
-        call_impl<nop_t>(nullptr, nop_t());
+        call_impl<node_commands::nop>(nullptr, io::aux::make_frozen<node_commands::nop>());
 
         m_cluster.begin_leadership();
     }

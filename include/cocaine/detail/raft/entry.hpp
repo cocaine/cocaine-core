@@ -23,7 +23,8 @@
 
 #include "cocaine/rpc/queue.hpp"
 
-#include <boost/mpl/push_front.hpp>
+#include <boost/mpl/front_inserter.hpp>
+#include <boost/mpl/copy.hpp>
 
 #include <functional>
 #include <type_traits>
@@ -31,45 +32,96 @@
 namespace cocaine { namespace raft {
 
 // Some types of log entry used by RAFT.
+struct entry_tag;
 
-// This log entry does nothing. Leader tries to commit this entry at beginning of new term
-// (see commitment restriction).
-struct nop_t {
-    bool
-    operator==(const nop_t&) const {
-        return true;
-    }
+struct node_commands {
+    // This log entry does nothing. Leader tries to commit this entry at beginning of new term
+    // (see commitment restriction).
+    struct nop {
+        typedef entry_tag tag;
+
+        static
+        const char*
+        alias() {
+            return "nop";
+        }
+
+        typedef void result_type;
+    };
+
+    // Add new node to configuration.
+    // This command moves configuration to transitional state, if configuration doesn't contain this node.
+    struct insert {
+        typedef entry_tag tag;
+
+        static
+        const char*
+        alias() {
+            return "insert";
+        }
+
+        typedef boost::mpl::list<
+            node_id_t
+        > tuple_type;
+
+        typedef void result_type;
+    };
+
+    // Remove node from configuration.
+    // This command moves configuration to transitional state, if configuration contains this node.
+    struct erase {
+        typedef entry_tag tag;
+
+        static
+        const char*
+        alias() {
+            return "erase";
+        }
+
+        typedef boost::mpl::list<
+            node_id_t
+        > tuple_type;
+
+        typedef void result_type;
+    };
+
+    // Commit new configuration.
+    struct commit {
+        typedef entry_tag tag;
+
+        static
+        const char*
+        alias() {
+            return "commit";
+        }
+
+        typedef void result_type;
+    };
 };
 
-// Add new node to configuration.
-// This command moves configuration to transitional state, if configuration doesn't contain this node.
-struct insert_node_t {
-    bool
-    operator==(const insert_node_t& other) const {
-        return node == other.node;
-    }
+} // namespace raft
 
-    node_id_t node;
+namespace io {
+
+template<>
+struct protocol<cocaine::raft::entry_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        cocaine::raft::node_commands::nop,
+        cocaine::raft::node_commands::insert,
+        cocaine::raft::node_commands::erase,
+        cocaine::raft::node_commands::commit
+    > messages;
+
+    typedef cocaine::raft::node_commands type;
 };
 
-// Remove node from configuration.
-// This command moves configuration to transitional state, if configuration contains this node.
-struct erase_node_t {
-    bool
-    operator==(const erase_node_t& other) const {
-        return node == other.node;
-    }
+} // namespace io
 
-    node_id_t node;
-};
-
-// Commit new configuration.
-struct commit_node_t {
-    bool
-    operator==(const commit_node_t&) const {
-        return true;
-    }
-};
+namespace raft {
 
 namespace detail {
 
@@ -86,15 +138,8 @@ namespace detail {
 } // namespace detail
 
 // Some types related to command stored in log entry.
-template<class Command>
-struct command_traits {
-    typedef void value_type;
-    typedef typename detail::result_traits<value_type>::result_type result_type;
-    typedef std::function<void(const result_type&)> callback_type;
-};
-
 template<class Event>
-struct command_traits<io::aux::frozen<Event>> {
+struct command_traits {
     typedef typename Event::result_type value_type;
     typedef typename detail::result_traits<value_type>::result_type result_type;
     typedef std::function<void(const result_type&)> callback_type;
@@ -109,29 +154,31 @@ class log_entry {
     typedef typename boost::mpl::transform<
         typename io::protocol<typename machine_type::tag>::messages,
         typename boost::mpl::lambda<io::aux::frozen<boost::mpl::arg<1>>>
-    >::type events_list;
+    >::type machine_events_list;
+
+    typedef typename boost::mpl::transform<
+        typename io::protocol<entry_tag>::messages,
+        typename boost::mpl::lambda<io::aux::frozen<boost::mpl::arg<1>>>
+    >::type entry_events_list;
 
     // List of all command types, which may be stored in the entry.
-    typedef typename boost::mpl::push_front<
-            typename boost::mpl::push_front<
-            typename boost::mpl::push_front<
-            typename boost::mpl::push_front<
-                events_list,
-                commit_node_t>::type,
-                erase_node_t>::type,
-                insert_node_t>::type,
-                nop_t>::type
+    //typedef typename boost::mpl::joint_view<machine_events_list, entry_events_list>::type
+    //        commands_list;
+    typedef typename boost::mpl::copy<
+                entry_events_list,
+                boost::mpl::front_inserter<machine_events_list>
+            >::type
             commands_list;
 
     // We need callback type to store information about command type.
-    template<class Command>
+    template<class Event>
     struct handler_wrapper {
-        typename command_traits<Command>::callback_type callback;
+        typename command_traits<Event>::callback_type callback;
     };
 
     template<class Command>
     struct handler_type {
-        typedef handler_wrapper<Command> type;
+        typedef handler_wrapper<typename Command::event_type> type;
     };
 
     typedef typename boost::make_variant_over<typename boost::mpl::transform<
@@ -150,12 +197,12 @@ class log_entry {
             m_machine(machine)
         { }
 
-        template<class Command>
+        template<class Event>
         typename std::enable_if<
-            !std::is_same<typename command_traits<Command>::value_type, void>::value
+            !std::is_same<typename command_traits<Event>::value_type, void>::value
         >::type
-        operator()(const Command& command) const {
-            auto handler = boost::get<handler_wrapper<Command>>(&m_handler);
+        operator()(const io::aux::frozen<Event>& command) const {
+            auto handler = boost::get<handler_wrapper<Event>>(&m_handler);
             if (handler && handler->callback) {
                 handler->callback(m_machine(command));
             } else {
@@ -163,13 +210,13 @@ class log_entry {
             }
         }
 
-        template<class Command>
+        template<class Event>
         typename std::enable_if<
-            std::is_same<typename command_traits<Command>::value_type, void>::value
+            std::is_same<typename command_traits<Event>::value_type, void>::value
         >::type
-        operator()(const Command& command) const {
+        operator()(const io::aux::frozen<Event>& command) const {
             m_machine(command);
-            auto handler = boost::get<handler_wrapper<Command>>(&m_handler);
+            auto handler = boost::get<handler_wrapper<Event>>(&m_handler);
             if (handler && handler->callback) {
                 handler->callback(std::error_code());
             }
@@ -188,9 +235,9 @@ class log_entry {
             m_ec(ec)
         { }
 
-        template<class Command>
+        template<class Event>
         void
-        operator()(const handler_wrapper<Command>& handler) const {
+        operator()(const handler_wrapper<Event>& handler) const {
             if (handler.callback) {
                 handler.callback(m_ec);
             }
@@ -206,7 +253,7 @@ public:
 public:
     log_entry():
         m_term(0),
-        m_value(nop_t())
+        m_value(io::aux::make_frozen<node_commands::nop>())
     { }
 
     log_entry(uint64_t term, const command_type& value):
@@ -229,23 +276,23 @@ public:
         return m_value;
     }
 
-    template<class Command>
+    template<class Event>
     void
-    bind(const typename command_traits<Command>::callback_type& handler) {
-        m_handler = handler_wrapper<Command>{handler};
+    bind(const typename command_traits<Event>::callback_type& handler) {
+        m_handler = handler_wrapper<Event>{handler};
     }
 
     template<class Visitor>
     void
     visit(const Visitor& visitor) {
         boost::apply_visitor(value_visitor<Visitor>(m_handler, visitor), m_value);
-        m_handler = handler_wrapper<nop_t>();
+        m_handler = handler_wrapper<node_commands::nop>();
     }
 
     void
     set_error(const std::error_code& ec) {
         boost::apply_visitor(set_error_visitor(ec), m_handler);
-        m_handler = handler_wrapper<nop_t>();
+        m_handler = handler_wrapper<node_commands::nop>();
     }
 
 private:

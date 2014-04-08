@@ -47,6 +47,8 @@ namespace aux {
 
 template<class Event>
 struct frozen {
+    typedef Event event_type;
+
     typedef typename tuple::fold<typename event_traits<Event>::tuple_type>::type
             tuple_type;
 
