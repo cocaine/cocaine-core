@@ -124,7 +124,7 @@ struct blocking_slot<Event, true, void>:
 
     virtual
     std::shared_ptr<dispatch_t>
-    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
+    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& /*upstream*/) {
         try {
             this->call(args);
         } catch(const std::exception& e) {

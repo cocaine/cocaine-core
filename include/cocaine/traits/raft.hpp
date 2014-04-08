@@ -70,13 +70,13 @@ struct type_traits<cocaine::raft::nop_t> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& target, const value_type& source) {
+    pack(msgpack::packer<Stream>& target, const value_type& /*source*/) {
         target.pack_nil();
     }
 
     static inline
     void
-    unpack(const msgpack::object& source, value_type& target) {
+    unpack(const msgpack::object& source, value_type& /*target*/) {
         if(source.type != msgpack::type::NIL) {
             throw std::bad_cast();
         }
@@ -126,13 +126,13 @@ struct type_traits<cocaine::raft::commit_node_t> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& target, const value_type& source) {
+    pack(msgpack::packer<Stream>& target, const value_type& /*source*/) {
         type_traits<std::tuple<>>::pack(target, std::tuple<>());
     }
 
     static inline
     void
-    unpack(const msgpack::object& source, value_type& target) {
+    unpack(const msgpack::object& source, value_type& /*target*/) {
         std::tuple<> targ;
         type_traits<std::tuple<>>::unpack(source, targ);
     }

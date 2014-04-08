@@ -75,7 +75,7 @@ struct unpacker<
 > {
     static inline
     void
-    unpack(int which, const msgpack::object& source, Variant& target) {
+    unpack(int, const msgpack::object&, Variant&) {
         throw std::bad_cast();
     }
 };

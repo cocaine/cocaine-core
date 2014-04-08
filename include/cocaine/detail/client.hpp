@@ -223,7 +223,7 @@ private:
         }
 
         void
-        on_error(int, const std::string& msg) {
+        on_error(int, const std::string&) {
             auto &resolver = m_resolver;
             resolver.m_resolve_upstream->revoke();
             // TODO: Provide some useful error_code.
