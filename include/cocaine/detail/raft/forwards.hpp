@@ -183,6 +183,15 @@ enum class cluster_change_result {
     done
 };
 
+enum class actor_state {
+    not_in_cluster,
+    joined,
+    recognized,
+    follower,
+    candidate,
+    leader
+};
+
 // Concept of Raft actor, which should implement the algorithm.
 // Here are defined methods to handle messages from leader and candidates. These methods must be thread-safe.
 class actor_concept_t {
@@ -220,6 +229,10 @@ public:
     virtual
     node_id_t
     leader_id() const = 0;
+
+    virtual
+    actor_state
+    status() const = 0;
 };
 
 template<class, class>
