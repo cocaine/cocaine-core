@@ -494,7 +494,6 @@ private:
             COCAINE_LOG_DEBUG(m_logger, "Client is not connected. Connecting...");
 
             m_resolver = std::make_shared<service_resolver_t>(
-                m_actor.context(),
                 m_actor.reactor(),
                 io::resolver<io::tcp>::query(m_id.first, m_id.second),
                 m_actor.context().config.raft.node_service_name

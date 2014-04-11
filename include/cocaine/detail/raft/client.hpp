@@ -62,7 +62,6 @@ public:
         // Boost optional is needed to provide default value dependent on the context.
         boost::optional<float> request_timeout = boost::none
     ):
-        m_context(context),
         m_reactor(reactor),
         m_logger(new logging::log_t(context, "raft_client/" + name)),
         m_timeout_timer(reactor.native()),
@@ -271,7 +270,6 @@ private:
                               endpoint.second);
 
             m_resolver = std::make_shared<service_resolver_t>(
-                m_context,
                 m_reactor,
                 io::resolver<io::tcp>::query(endpoint.first, endpoint.second),
                 m_name
@@ -323,8 +321,6 @@ private:
     }
 
 private:
-    context_t &m_context;
-
     io::reactor_t &m_reactor;
 
     const std::unique_ptr<logging::log_t> m_logger;
