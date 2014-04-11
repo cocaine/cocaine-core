@@ -25,9 +25,13 @@
 
 #include "cocaine/rpc/slots/deferred.hpp"
 
+#include <boost/optional.hpp>
+#include <boost/variant.hpp>
+
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace cocaine { namespace raft {
 
