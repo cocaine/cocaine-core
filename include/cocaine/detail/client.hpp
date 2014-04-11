@@ -126,11 +126,10 @@ class service_resolver_t {
 public:
     typedef io::tcp::endpoint endpoint_type;
 
-    service_resolver_t(context_t& context,
+    service_resolver_t(context_t&,
                        io::reactor_t& reactor,
                        const std::vector<endpoint_type>& locator,
                        const std::string& service):
-        m_context(context),
         m_reactor(reactor),
         m_locator(locator),
         m_service(service)
@@ -280,7 +279,6 @@ private:
     }
 
 private:
-    context_t& m_context;
     io::reactor_t& m_reactor;
 
     std::vector<endpoint_type> m_locator;
