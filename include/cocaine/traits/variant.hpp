@@ -23,19 +23,22 @@
 
 #include "cocaine/traits.hpp"
 
-#include <boost/variant.hpp>
 #include <boost/mpl/at.hpp>
 #include <boost/mpl/size.hpp>
 
+#include <boost/variant/variant.hpp>
+#include <boost/variant/apply_visitor.hpp>
+#include <boost/variant/static_visitor.hpp>
+
 namespace cocaine { namespace io {
 
-namespace detail { namespace variant_traits {
+namespace aux {
 
 template<class Stream>
-struct packer :
+struct pack_variant:
     public boost::static_visitor<>
 {
-    packer(msgpack::packer<Stream>& target):
+    pack_variant(msgpack::packer<Stream>& target):
         m_target(target)
     { }
 
@@ -50,25 +53,26 @@ private:
 };
 
 template<class Variant, int N, class = void>
-struct unpacker {
+struct unpack_variant {
     static inline
     void
     unpack(int which, const msgpack::object& source, Variant& target) {
-        if(which == N) {
-            typedef typename boost::mpl::at<typename Variant::types, boost::mpl::int_<N>>::type
-                    result_type;
-
-            result_type result;
-            type_traits<result_type>::unpack(source, result);
-            target = result;
-        } else {
-            unpacker<Variant, N + 1>::unpack(which, source, target);
+        if(which != N) {
+            unpack_variant<Variant, N + 1>::unpack(which, source, target);
         }
+
+        typedef typename boost::mpl::at<typename Variant::types, boost::mpl::int_<N>>::type
+                result_type;
+
+        result_type result;
+
+        type_traits<result_type>::unpack(source, result);
+        target = result;
     }
 };
 
 template<class Variant, int N>
-struct unpacker<
+struct unpack_variant<
     Variant,
     N,
     typename std::enable_if<N == boost::mpl::size<typename Variant::types>::type::value>::type
@@ -80,12 +84,11 @@ struct unpacker<
     }
 };
 
-}} // namespace detail::variant_traits
+} // namespace aux
 
 template<BOOST_VARIANT_ENUM_PARAMS(typename T)>
 struct type_traits<boost::variant<BOOST_VARIANT_ENUM_PARAMS(T)>> {
-    typedef boost::variant<BOOST_VARIANT_ENUM_PARAMS(T)>
-            variant_type;
+    typedef boost::variant<BOOST_VARIANT_ENUM_PARAMS(T)> variant_type;
 
     template<class Stream>
     static inline
@@ -93,7 +96,7 @@ struct type_traits<boost::variant<BOOST_VARIANT_ENUM_PARAMS(T)>> {
     pack(msgpack::packer<Stream>& target, const variant_type& source) {
         target.pack_array(2);
         target << source.which();
-        boost::apply_visitor(detail::variant_traits::packer<Stream>(target), source);
+        boost::apply_visitor(aux::pack_variant<Stream>(target), source);
     }
 
     static inline
@@ -106,9 +109,11 @@ struct type_traits<boost::variant<BOOST_VARIANT_ENUM_PARAMS(T)>> {
             throw std::bad_cast();
         }
 
-        detail::variant_traits::unpacker<variant_type, 0>::unpack(source.via.array.ptr[0].via.u64,
-                                                                  source.via.array.ptr[1],
-                                                                  target);
+        aux::unpack_variant<variant_type, 0>::unpack(
+            source.via.array.ptr[0].via.u64,
+            source.via.array.ptr[1],
+            target
+        );
     }
 };
 

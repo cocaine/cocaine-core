@@ -24,8 +24,6 @@
 #include "cocaine/detail/raft/forwards.hpp"
 
 #include "cocaine/rpc/protocol.hpp"
-#include "cocaine/idl/streaming.hpp"
-#include "cocaine/traits/vector.hpp"
 
 namespace cocaine { namespace io {
 
@@ -34,142 +32,143 @@ struct raft_node_tag;
 
 template<class Entry, class Snapshot>
 struct raft_node {
-    // Append new entries to the log. Leader sends this message to followers to replicate state machine.
-    struct append {
-        typedef raft_node_tag<Entry, Snapshot> tag;
 
-        static
-        const char*
-        alias() {
-            return "append";
-        }
+// Append new entries to the log. Leader sends this message to followers to replicate state machine.
+struct append {
+    typedef raft_node_tag<Entry, Snapshot> tag;
 
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string,
-        /* Leader's term. */
-            uint64_t,
-        /* Leader's id. */
-            cocaine::raft::node_id_t,
-        /* Index and term of log entry immediately preceding new ones. (prev_log_index, prev_log_term) */
-            std::tuple<uint64_t, uint64_t>,
-        /* Entries to append. */
-            std::vector<Entry>,
-        /* Leader's commit_index. */
-            uint64_t
-        > tuple_type;
+    static
+    const char*
+    alias() {
+        return "append";
+    }
 
-        typedef stream_of<
-        /* Term of the follower. */
-            uint64_t,
-        /* Success. */
-            bool
-        >::tag drain_type;
-    };
+    typedef boost::mpl::list<
+     /* Name of state machine. */
+        std::string,
+     /* Leader's term. */
+        uint64_t,
+     /* Leader's id. */
+        cocaine::raft::node_id_t,
+     /* Index and term of log entry immediately preceding new ones. (prev_log_index, prev_log_term) */
+        std::tuple<uint64_t, uint64_t>,
+     /* Entries to append. */
+        std::vector<Entry>,
+     /* Leader's commit_index. */
+        uint64_t
+    > tuple_type;
 
-    // Store snapshot of state machine on the follower.
-    // When follower is far behind leader, leader firstly sends snapshot to the follower and then new entries.
-    struct apply {
-        typedef raft_node_tag<Entry, Snapshot> tag;
+    typedef stream_of<
+     /* Term of the follower. */
+        uint64_t,
+     /* Success. */
+        bool
+    >::tag drain_type;
+};
 
-        static
-        const char*
-        alias() {
-            return "apply";
-        }
+// Store snapshot of state machine on the follower.
+// When follower is far behind leader, leader firstly sends snapshot to the follower and then new entries.
+struct apply {
+    typedef raft_node_tag<Entry, Snapshot> tag;
 
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string,
-        /* Leader's term. */
-            uint64_t,
-        /* Leader's id. */
-            cocaine::raft::node_id_t,
-        /* Index and term of the last log entry participating in the snapshot. */
-            std::tuple<uint64_t, uint64_t>,
-        /* Snapshot. */
-            Snapshot,
-        /* Leader's commit_index. */
-            uint64_t
-        > tuple_type;
+    static
+    const char*
+    alias() {
+        return "apply";
+    }
 
-        typedef stream_of<
-        /* Term of the follower. */
-            uint64_t,
-        /* Success. */
-            bool
-        >::tag drain_type;
-    };
+    typedef boost::mpl::list<
+     /* Name of state machine. */
+        std::string,
+     /* Leader's term. */
+        uint64_t,
+     /* Leader's id. */
+        cocaine::raft::node_id_t,
+     /* Index and term of the last log entry participating in the snapshot. */
+        std::tuple<uint64_t, uint64_t>,
+     /* Snapshot. */
+        Snapshot,
+     /* Leader's commit_index. */
+        uint64_t
+    > tuple_type;
 
-    struct request_vote {
-        typedef raft_node_tag<Entry, Snapshot> tag;
+    typedef stream_of<
+     /* Term of the follower. */
+        uint64_t,
+     /* Success. */
+        bool
+    >::tag drain_type;
+};
 
-        static
-        const char*
-        alias() {
-            return "request_vote";
-        }
+struct request_vote {
+    typedef raft_node_tag<Entry, Snapshot> tag;
 
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string,
-        /* Candidate's term. */
-            uint64_t,
-        /* Candidate's id. */
-            cocaine::raft::node_id_t,
-        /* Index and term of candidate's last log entry. */
-            std::tuple<uint64_t, uint64_t>
-        > tuple_type;
+    static
+    const char*
+    alias() {
+        return "request_vote";
+    }
 
-        typedef stream_of<
-        /* Term of the follower. */
-            uint64_t,
-        /* Vote granted. */
-            bool
-        >::tag drain_type;
-    };
+    typedef boost::mpl::list<
+     /* Name of state machine. */
+        std::string,
+     /* Candidate's term. */
+        uint64_t,
+     /* Candidate's id. */
+        cocaine::raft::node_id_t,
+     /* Index and term of candidate's last log entry. */
+        std::tuple<uint64_t, uint64_t>
+    > tuple_type;
 
-    struct insert {
-        typedef raft_node_tag<Entry, Snapshot> tag;
+    typedef stream_of<
+     /* Term of the follower. */
+        uint64_t,
+     /* Vote granted. */
+        bool
+    >::tag drain_type;
+};
 
-        static
-        const char*
-        alias() {
-            return "insert";
-        }
+struct insert {
+    typedef raft_node_tag<Entry, Snapshot> tag;
 
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string,
-        /* Node. */
-            cocaine::raft::node_id_t
-        > tuple_type;
+    static
+    const char*
+    alias() {
+        return "insert";
+    }
 
-        typedef stream_of<
-            cocaine::raft::command_result<void>
-        >::tag drain_type;
-    };
+    typedef boost::mpl::list<
+     /* Name of state machine. */
+        std::string,
+     /* Node. */
+        cocaine::raft::node_id_t
+    > tuple_type;
 
-    struct erase {
-        typedef raft_node_tag<Entry, Snapshot> tag;
+    typedef stream_of<
+        cocaine::raft::command_result<void>
+    >::tag drain_type;
+};
 
-        static
-        const char*
-        alias() {
-            return "erase";
-        }
+struct erase {
+    typedef raft_node_tag<Entry, Snapshot> tag;
 
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string,
-        /* Node. */
-            cocaine::raft::node_id_t
-        > tuple_type;
+    static
+    const char*
+    alias() {
+        return "erase";
+    }
 
-        typedef stream_of<
-            cocaine::raft::command_result<void>
-        >::tag drain_type;
-    };
+    typedef boost::mpl::list<
+     /* Name of state machine. */
+        std::string,
+     /* Node. */
+        cocaine::raft::node_id_t
+    > tuple_type;
+
+    typedef stream_of<
+        cocaine::raft::command_result<void>
+    >::tag drain_type;
+};
 
 }; // struct raft_node
 
@@ -195,121 +194,122 @@ struct raft_control_tag;
 
 template<class Entry, class Snapshot>
 struct raft_control {
-    // Add node to state machine.
-    struct insert {
-        typedef raft_control_tag<Entry, Snapshot> tag;
 
-        static
-        const char*
-        alias() {
-            return "insert";
-        }
+// Add node to state machine.
+struct insert {
+    typedef raft_control_tag<Entry, Snapshot> tag;
 
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string,
-        /* Node. */
-            cocaine::raft::node_id_t
-        > tuple_type;
+    static
+    const char*
+    alias() {
+        return "insert";
+    }
 
-        typedef stream_of<
-            cocaine::raft::command_result<cocaine::raft::cluster_change_result>
-        >::tag drain_type;
-    };
+    typedef boost::mpl::list<
+     /* Name of state machine. */
+        std::string,
+     /* Node. */
+        cocaine::raft::node_id_t
+    > tuple_type;
 
-    struct erase {
-        typedef raft_control_tag<Entry, Snapshot> tag;
+    typedef stream_of<
+        cocaine::raft::command_result<cocaine::raft::cluster_change_result>
+    >::tag drain_type;
+};
 
-        static
-        const char*
-        alias() {
-            return "erase";
-        }
+struct erase {
+    typedef raft_control_tag<Entry, Snapshot> tag;
 
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string,
-        /* Node. */
-            cocaine::raft::node_id_t
-        > tuple_type;
+    static
+    const char*
+    alias() {
+        return "erase";
+    }
 
-        typedef stream_of<
-            cocaine::raft::command_result<cocaine::raft::cluster_change_result>
-        >::tag drain_type;
-    };
+    typedef boost::mpl::list<
+     /* Name of state machine. */
+        std::string,
+     /* Node. */
+        cocaine::raft::node_id_t
+    > tuple_type;
 
-    struct lock {
-        typedef raft_control_tag<Entry, Snapshot> tag;
+    typedef stream_of<
+        cocaine::raft::command_result<cocaine::raft::cluster_change_result>
+    >::tag drain_type;
+};
 
-        static
-        const char*
-        alias() {
-            return "lock";
-        }
+struct lock {
+    typedef raft_control_tag<Entry, Snapshot> tag;
 
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string
-        > tuple_type;
+    static
+    const char*
+    alias() {
+        return "lock";
+    }
 
-        typedef stream_of<
-            cocaine::raft::command_result<void>
-        >::tag drain_type;
-    };
+    typedef boost::mpl::list<
+     /* Name of state machine. */
+        std::string
+    > tuple_type;
 
-    struct reset {
-        typedef raft_control_tag<Entry, Snapshot> tag;
+    typedef stream_of<
+        cocaine::raft::command_result<void>
+    >::tag drain_type;
+};
 
-        static
-        const char*
-        alias() {
-            return "reset";
-        }
+struct reset {
+    typedef raft_control_tag<Entry, Snapshot> tag;
 
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string,
-        /* New value of the configuration. */
-            cocaine::raft::cluster_config_t
-        > tuple_type;
+    static
+    const char*
+    alias() {
+        return "reset";
+    }
 
-        typedef stream_of<
-            cocaine::raft::command_result<void>
-        >::tag drain_type;
-    };
+    typedef boost::mpl::list<
+     /* Name of state machine. */
+        std::string,
+     /* New value of the configuration. */
+        cocaine::raft::cluster_config_t
+    > tuple_type;
 
-    struct dump {
-        typedef raft_control_tag<Entry, Snapshot> tag;
+    typedef stream_of<
+        cocaine::raft::command_result<void>
+    >::tag drain_type;
+};
 
-        static
-        const char*
-        alias() {
-            return "dump";
-        }
+struct dump {
+    typedef raft_control_tag<Entry, Snapshot> tag;
 
-        typedef stream_of<
-            std::map<std::string, cocaine::raft::lockable_config_t>
-        >::tag drain_type;
-    };
+    static
+    const char*
+    alias() {
+        return "dump";
+    }
 
-    struct leader {
-        typedef raft_control_tag<Entry, Snapshot> tag;
+    typedef stream_of<
+        std::map<std::string, cocaine::raft::lockable_config_t>
+    >::tag drain_type;
+};
 
-        static
-        const char*
-        alias() {
-            return "leader";
-        }
+struct leader {
+    typedef raft_control_tag<Entry, Snapshot> tag;
 
-        typedef boost::mpl::list<
-        /* Name of state machine. */
-            std::string
-        > tuple_type;
+    static
+    const char*
+    alias() {
+        return "leader";
+    }
 
-        typedef stream_of<
-            cocaine::raft::node_id_t
-        >::tag drain_type;
-    };
+    typedef boost::mpl::list<
+     /* Name of state machine. */
+        std::string
+    > tuple_type;
+
+    typedef stream_of<
+        cocaine::raft::node_id_t
+    >::tag drain_type;
+};
 
 }; // struct raft_control
 
@@ -333,4 +333,4 @@ struct protocol<raft_control_tag<Entry, Snapshot>> {
 
 }} // namespace cocaine::io
 
-#endif // COCAINE_RAFT_SERVICE_INTERFACE_HPP
+#endif

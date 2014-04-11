@@ -57,4 +57,4 @@ struct type_traits<std::vector<T>> {
 
 }} // namespace cocaine::io
 
-#endif // COCAINE_IO_VECTOR_SERIALIZATION_TRAITS_HPP
+#endif

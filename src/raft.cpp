@@ -22,8 +22,11 @@
 #include "cocaine/detail/raft/control_service.hpp"
 #include "cocaine/detail/raft/configuration_machine.hpp"
 #include "cocaine/detail/raft/entry.hpp"
-#include "cocaine/raft.hpp"
+#include "cocaine/detail/raft/repository.hpp"
+
 #include "cocaine/logging.hpp"
+
+#include "cocaine/traits/vector.hpp"
 
 using namespace cocaine;
 using namespace cocaine::raft;
@@ -53,7 +56,7 @@ raft::repository_t::get(const std::string& name) const {
     if(it != actors->end()) {
         return it->second;
     } else {
-        throw std::shared_ptr<raft::actor_concept_t>();
+        return std::shared_ptr<raft::actor_concept_t>();
     }
 }
 

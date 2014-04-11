@@ -59,7 +59,8 @@ struct basic_factory:
 
 template<class T>
 struct plugin_traits {
-    typedef typename category_traits<typename T::category_type>::template default_factory<T> factory_type;
+    typedef typename category_traits<typename T::category_type>::template default_factory<T>
+            factory_type;
 };
 
 // Component repository

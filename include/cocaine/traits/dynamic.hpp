@@ -162,4 +162,4 @@ struct type_traits<dynamic_t> {
 
 }} // namespace cocaine::io
 
-#endif // COCAINE_DYNAMIC_TYPE_TRAITS_HPP
+#endif

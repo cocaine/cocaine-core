@@ -23,4 +23,4 @@
 
 #include "cocaine/detail/raft/repository.hpp"
 
-#endif // COCAINE_RAFT_INCLUDES_HPP
+#endif

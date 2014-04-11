@@ -19,7 +19,10 @@
 */
 
 #include "cocaine/detail/services/counter.hpp"
+
 #include "cocaine/logging.hpp"
+
+#include "cocaine/traits/vector.hpp"
 
 using namespace cocaine;
 using namespace cocaine::service;
@@ -30,36 +33,36 @@ struct counter_machine_tag;
 
 struct counter_machine {
 
-    struct inc {
-        typedef counter_machine_tag tag;
+struct inc {
+    typedef counter_machine_tag tag;
 
-        typedef boost::mpl::list<
-            int
-        > tuple_type;
+    typedef boost::mpl::list<
+        int
+    > tuple_type;
 
-        typedef int result_type;
-    };
+    typedef int result_type;
+};
 
-    struct dec {
-        typedef counter_machine_tag tag;
+struct dec {
+    typedef counter_machine_tag tag;
 
-        typedef boost::mpl::list<
-            int
-        > tuple_type;
+    typedef boost::mpl::list<
+        int
+    > tuple_type;
 
-        typedef int result_type;
-    };
+    typedef int result_type;
+};
 
-    struct cas {
-        typedef counter_machine_tag tag;
+struct cas {
+    typedef counter_machine_tag tag;
 
-        typedef boost::mpl::list<
-            int,
-            int
-        > tuple_type;
+    typedef boost::mpl::list<
+        int,
+        int
+    > tuple_type;
 
-        typedef bool result_type;
-    };
+    typedef bool result_type;
+};
 
 }; // struct counter_machine
 

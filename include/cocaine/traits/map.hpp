@@ -65,4 +65,4 @@ struct type_traits<std::map<K, V, Compare, Allocator>> {
 
 }} // namespace cocaine::io
 
-#endif // COCAINE_IO_MAP_SERIALIZATION_TRAITS_HPP
+#endif

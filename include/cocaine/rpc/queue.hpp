@@ -48,16 +48,14 @@ namespace aux {
 template<class Event>
 struct frozen {
     typedef Event event_type;
-
-    typedef typename tuple::fold<typename event_traits<Event>::tuple_type>::type
-            tuple_type;
+    typedef typename tuple::fold<typename event_traits<event_type>::tuple_type>::type tuple_type;
 
     frozen() {
         // Empty.
     }
 
     template<typename... Args>
-    frozen(Event, Args&&... args):
+    frozen(event_type, Args&&... args):
         tuple(std::forward<Args>(args)...)
     { }
 

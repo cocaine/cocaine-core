@@ -29,54 +29,54 @@ struct counter_tag;
 
 struct counter {
 
-    struct inc {
-        typedef counter_tag tag;
+struct inc {
+    typedef counter_tag tag;
 
-        static
-        const char*
-        alias() {
-            return "inc";
-        }
+    static
+    const char*
+    alias() {
+        return "inc";
+    }
 
-        typedef boost::mpl::list<
-            int
-        > tuple_type;
+    typedef boost::mpl::list<
+        int
+    > tuple_type;
 
-        typedef stream_of<raft::command_result<int>>::tag drain_type;
-    };
+    typedef stream_of<raft::command_result<int>>::tag drain_type;
+};
 
-    struct dec {
-        typedef counter_tag tag;
+struct dec {
+    typedef counter_tag tag;
 
-        static
-        const char*
-        alias() {
-            return "dec";
-        }
+    static
+    const char*
+    alias() {
+        return "dec";
+    }
 
-        typedef boost::mpl::list<
-            int
-        > tuple_type;
+    typedef boost::mpl::list<
+        int
+    > tuple_type;
 
-        typedef stream_of<raft::command_result<int>>::tag drain_type;
-    };
+    typedef stream_of<raft::command_result<int>>::tag drain_type;
+};
 
-    struct cas {
-        typedef counter_tag tag;
+struct cas {
+    typedef counter_tag tag;
 
-        static
-        const char*
-        alias() {
-            return "cas";
-        }
+    static
+    const char*
+    alias() {
+        return "cas";
+    }
 
-        typedef boost::mpl::list<
-            int,
-            int
-        > tuple_type;
+    typedef boost::mpl::list<
+        int,
+        int
+    > tuple_type;
 
-        typedef stream_of<raft::command_result<bool>>::tag drain_type;
-    };
+    typedef stream_of<raft::command_result<bool>>::tag drain_type;
+};
 
 }; // struct counter
 
@@ -97,4 +97,4 @@ struct protocol<counter_tag> {
 
 }} // namespace cocaine::io
 
-#endif // COCAINE_SERVICE_COUNTER_INTERFACE_HPP
+#endif
