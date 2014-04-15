@@ -59,6 +59,7 @@ struct unpack_variant {
     unpack(int which, const msgpack::object& source, Variant& target) {
         if(which != N) {
             unpack_variant<Variant, N + 1>::unpack(which, source, target);
+            return;
         }
 
         typedef typename boost::mpl::at<typename Variant::types, boost::mpl::int_<N>>::type
