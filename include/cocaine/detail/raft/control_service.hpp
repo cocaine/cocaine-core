@@ -71,6 +71,9 @@ private:
     std::map<std::string, cocaine::raft::lockable_config_t>
     dump();
 
+    actor_state
+    status(const std::string& machine);
+
     node_id_t
     leader(const std::string& machine);
 

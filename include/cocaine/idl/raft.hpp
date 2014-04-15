@@ -292,6 +292,25 @@ struct dump {
     >::tag drain_type;
 };
 
+struct status {
+    typedef raft_control_tag<Entry, Snapshot> tag;
+
+    static
+    const char*
+    alias() {
+        return "status";
+    }
+
+    typedef boost::mpl::list<
+    /* Name of state machine. */
+        std::string
+    > tuple_type;
+
+    typedef stream_of<
+        cocaine::raft::actor_state
+    >::tag drain_type;
+};
+
 struct leader {
     typedef raft_control_tag<Entry, Snapshot> tag;
 
@@ -325,6 +344,7 @@ struct protocol<raft_control_tag<Entry, Snapshot>> {
         typename raft_control<Entry, Snapshot>::lock,
         typename raft_control<Entry, Snapshot>::reset,
         typename raft_control<Entry, Snapshot>::dump,
+        typename raft_control<Entry, Snapshot>::status,
         typename raft_control<Entry, Snapshot>::leader
     > messages;
 

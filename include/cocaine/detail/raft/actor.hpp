@@ -138,9 +138,7 @@ public:
         m_config_handle(*this, m_configuration),
         m_log(*this, m_configuration.log(), std::move(state_machine)),
         m_cluster(*this),
-        m_is_leader(false),
-        m_booted(false),
-        m_received_entries(false),
+        m_state(actor_state::not_in_cluster),
         m_rejoin_timer(reactor.native()),
         m_election_timer(reactor.native())
     {
@@ -235,8 +233,7 @@ public:
                              config().current_term(),
                              snapshot_type(log().machine().snapshot(), config().cluster()));
 
-        m_booted = true;
-        m_received_entries = true;
+        m_state = actor_state::candidate;
         step_down(config().current_term());
     }
 
@@ -270,15 +267,21 @@ public:
         return log().machine();
     }
 
-    bool
-    is_leader() const {
-        return m_is_leader;
-    }
-
     virtual
     node_id_t
     leader_id() const {
         return *m_leader.synchronize();
+    }
+
+    virtual
+    actor_state
+    status() const {
+        return m_state;
+    }
+
+    bool
+    is_leader() const {
+        return m_state == actor_state::leader;
     }
 
     // Send command to the replicated state machine. The actor must be a leader.
@@ -341,9 +344,16 @@ private:
         m_joiner.reset();
 
         if(!result.error()) {
-            m_booted = true;
+            if(m_state == actor_state::not_in_cluster) {
+                m_state = actor_state::joined;
+            } else if(m_state == actor_state::recognized) {
+                m_state = actor_state::follower;
+            }
+
             if(result.value() == cluster_change_result::new_cluster) {
                 create_cluster();
+            } else if(m_state == actor_state::follower) {
+                step_down(config().current_term());
             }
         } else {
             join_cluster();
@@ -547,6 +557,7 @@ private:
 
         step_down(term);
 
+        m_state = actor_state::follower;
         *m_leader.synchronize() = leader;
 
         // Check if append is possible and oldest common entries match.
@@ -595,7 +606,7 @@ private:
             return std::make_tuple(config().current_term(), false);
         }
 
-        auto received_before = m_received_entries;
+        bool pushed_some_entries = false;
 
         // Append.
         uint64_t entry_index = prev_index + 1;
@@ -610,14 +621,19 @@ private:
 
             if(entry_index > log().last_index()) {
                 log().push(*it);
-                m_received_entries = true;
+                pushed_some_entries = true;
             }
         }
 
         config().set_commit_index(commit_index);
 
-        if(received_before != m_received_entries) {
-            step_down(config().current_term());
+        if(pushed_some_entries) {
+            if(m_state == actor_state::not_in_cluster) {
+                m_state = actor_state::recognized;
+            } else if(m_state == actor_state::joined) {
+                m_state = actor_state::follower;
+                step_down(config().current_term());
+            }
         }
 
         return std::make_tuple(config().current_term(), true);
@@ -646,6 +662,7 @@ private:
 
         step_down(term);
 
+        m_state = actor_state::follower;
         *m_leader.synchronize() = leader;
 
         // Truncate wrong entries.
@@ -664,8 +681,10 @@ private:
         config().set_last_applied(std::get<0>(snapshot_entry) - 1);
         config().set_commit_index(commit_index);
 
-        if(!m_received_entries) {
-            m_received_entries = true;
+        if(m_state == actor_state::not_in_cluster) {
+            m_state = actor_state::recognized;
+        } else if(m_state == actor_state::joined) {
+            m_state = actor_state::follower;
             step_down(config().current_term());
         }
 
@@ -730,11 +749,10 @@ private:
         m_cluster.cancel();
 
         if(is_leader()) {
+            m_state = actor_state::candidate;
             *m_leader.synchronize() = node_id_t();
             detail::finish_leadership_caller<machine_type>::call(log().machine());
         }
-
-        m_is_leader = false;
 
         restart_election_timer(reelection);
     }
@@ -753,7 +771,11 @@ private:
     restart_election_timer(bool reelection) {
         stop_election_timer();
 
-        if(m_booted && m_received_entries && cluster().in_cluster()) {
+        bool booted = m_state == actor_state::follower ||
+                      m_state == actor_state::candidate ||
+                      m_state == actor_state::leader;
+
+        if(booted && cluster().in_cluster()) {
 #if defined(__clang__) || defined(HAVE_GCC46)
             typedef std::uniform_int_distribution<unsigned int> uniform_uint;
 #else
@@ -789,6 +811,8 @@ private:
         // Vote for self.
         m_voted_for = config().id();
 
+        m_state = actor_state::candidate;
+
         m_cluster.start_election(std::bind(&actor::switch_to_leader, this));
     }
 
@@ -799,7 +823,7 @@ private:
         // Stop election timer, because we no longer wait messages from leader.
         stop_election_timer();
 
-        m_is_leader = true;
+        m_state = actor_state::leader;
 
         *m_leader.synchronize() = config().id();
 
@@ -831,7 +855,7 @@ private:
 
     cluster_type m_cluster;
 
-    std::atomic<bool> m_is_leader;
+    actor_state m_state;
 
     // The node for which the actor voted in current term. The node can vote only once in one term.
     boost::optional<node_id_t> m_voted_for;
@@ -839,12 +863,6 @@ private:
     // The leader from the last append message.
     // It may be incorrect and actually it's just a tip, where to find current leader.
     synchronized<node_id_t> m_leader;
-
-    // The actor will try to become a leader only if these two variable are true.
-    // The first one indicates, that the actor successfully joined cluster via configuration machine.
-    // The second one indicates, that the actor has some entries from some former leader.
-    bool m_booted;
-    bool m_received_entries;
 
     std::shared_ptr<disposable_client_t> m_joiner;
 

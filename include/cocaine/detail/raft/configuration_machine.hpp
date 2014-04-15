@@ -143,7 +143,7 @@ public:
         m_context(&context),
         m_reactor(&reactor),
         m_service(&service),
-        m_log(new logging::log_t(context, "configration_machine"))
+        m_log(new logging::log_t(context, "configuration_machine"))
     { }
 
     configuration_machine_t(configuration_machine_t&& other) {

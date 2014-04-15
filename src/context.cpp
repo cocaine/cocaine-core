@@ -587,15 +587,6 @@ context_t::bootstrap() {
     // Initialize Raft service.
     try {
         if(config.raft.enable) {
-            std::unique_ptr<api::service_t> node_service(std::make_unique<raft::node_service_t>(
-                *this,
-                *raft->m_reactor,
-                std::string("service/") + config.raft.node_service_name
-            ));
-
-            insert(config.raft.node_service_name,
-                   std::make_unique<actor_t>(*this, raft->m_reactor, std::move(node_service)));
-
             std::unique_ptr<api::service_t> control_service(
                 std::make_unique<raft::control_service_t>(
                     *this,
@@ -605,6 +596,17 @@ context_t::bootstrap() {
 
             insert(config.raft.control_service_name,
                    std::make_unique<actor_t>(*this, raft->m_reactor, std::move(control_service)));
+
+            auto node_reactor = std::make_shared<reactor_t>();
+
+            std::unique_ptr<api::service_t> node_service(std::make_unique<raft::node_service_t>(
+                *this,
+                *node_reactor,
+                std::string("service/") + config.raft.node_service_name
+            ));
+
+            insert(config.raft.node_service_name,
+                   std::make_unique<actor_t>(*this, node_reactor, std::move(node_service)));
         }
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(blog,
