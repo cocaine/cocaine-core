@@ -212,6 +212,17 @@ public:
         }
     }
 
+    // Step down if the node is not connected to a quorum.
+    void
+    check_connections() {
+        bool connected_to_quorums = connected_to_quorum(m_current) &&
+                                    (m_next.size() == 0 || connected_to_quorum(m_next));
+
+        if(m_actor.is_leader() && !connected_to_quorums) {
+            m_actor.step_down(m_actor.config().current_term(), true);
+        }
+    }
+
 private:
     void
     create_clients() {
@@ -302,6 +313,19 @@ private:
         }
 
         return votes > nodes.size() / 2;
+    }
+
+    bool
+    connected_to_quorum(const std::vector<std::shared_ptr<remote_type>> &nodes) {
+        size_t disconnected_number = 0;
+
+        for(auto it = nodes.begin(); it != nodes.end(); ++it) {
+            if((*it)->disconnected()) {
+                ++disconnected_number;
+            }
+        }
+
+        return disconnected_number < nodes.size() / 2;
     }
 
     // 'replicate' method starts this background task.

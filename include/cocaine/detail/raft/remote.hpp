@@ -201,7 +201,8 @@ public:
         m_heartbeat_timer(m_actor.reactor().native()),
         m_next_index(std::max<uint64_t>(1, m_actor.log().last_index())),
         m_match_index(0),
-        m_won_term(0)
+        m_won_term(0),
+        m_disconnected(false)
     {
         m_heartbeat_timer.set<remote_node, &remote_node::heartbeat>(this);
     }
@@ -282,6 +283,11 @@ public:
             m_heartbeat_timer.stop();
         }
         reset();
+    }
+
+    bool
+    disconnected() {
+        return m_id != m_actor.config().id() && m_disconnected;
     }
 
     // Reset current state of remote node.
@@ -515,6 +521,8 @@ private:
         m_client = client;
         m_client->bind(std::bind(&remote_node::on_error, this, std::placeholders::_1));
 
+        m_disconnected = false;
+
         handler();
     }
 
@@ -534,6 +542,8 @@ private:
     on_error(const std::error_code& ec) {
         COCAINE_LOG_DEBUG(m_logger, "Connection error: [%d] %s.", ec.value(), ec.message());
         reset();
+        m_disconnected = true;
+        m_cluster.check_connections();
     }
 
 private:
@@ -566,6 +576,9 @@ private:
 
     // The last term, in which the node received vote from the remote.
     uint64_t m_won_term;
+
+    // Indicates if the connection is lost (the connection can not be lost if it was not established).
+    bool m_disconnected;
 };
 
 }} // namespace cocaine::raft
