@@ -151,7 +151,8 @@ public:
         } else if (boost::get<io::aux::frozen<node_commands::commit>>(&back().value()) &&
                    m_actor.cluster().transitional())
         {
-            // Here we can receive spurious commit, if previous commit was truncated from log due to leader change.
+            // Here we can receive spurious commit,
+            // if previous commit was truncated from log due to leader change.
             m_actor.cluster().commit();
         }
 
@@ -296,7 +297,9 @@ private:
 
         void
         operator()(const io::aux::frozen<node_commands::commit>&) const {
-            // Ignore.
+            if(!actor.cluster().in_cluster()) {
+                actor.disable();
+            }
         }
 
         void

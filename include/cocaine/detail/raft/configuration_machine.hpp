@@ -280,34 +280,29 @@ public:
 
         if(!config.locked) {
             bool already_removed = (config.cluster.current.count(node) == 0) &&
-                                   (!config.cluster.transitional() ||
-                                    (config.cluster.next->count(node) == 0));
+                                   (config.cluster.next->count(node) == 0);
 
             if(already_removed) {
+                COCAINE_LOG_DEBUG(m_log, "Erase node: the node has been already removed.");
                 if(callback) {
                     callback(cluster_change_result::done);
                 }
                 return;
             } else if(!config.cluster.transitional()) {
+                COCAINE_LOG_DEBUG(m_log, "Erase node: scheduling change to apply.");
                 config.cluster.erase(node);
 
-                if(config.cluster.next->empty()) {
-                    config.cluster.commit();
+                m_modified.insert(machine_name);
 
-                    configs->erase(map_pair);
-                    m_modified.erase(machine_name);
-                    m_appliers.erase(machine_name);
-                    if(callback) {
-                        callback(cluster_change_result::done);
-                    }
-                } else {
-                    m_modified.insert(machine_name);
-                    if(callback) {
-                        m_active_operations[machine_name] = callback;
-                    }
+                if(callback) {
+                    m_active_operations[machine_name] = callback;
                 }
+
                 return;
             }
+            COCAINE_LOG_DEBUG(m_log, "Erase node: the configuration is transitional.");
+        } else {
+            COCAINE_LOG_DEBUG(m_log, "Erase node: the configuration is locked.");
         }
 
         if(callback) {
@@ -338,6 +333,10 @@ public:
 
             if(config.cluster.transitional()) {
                 config.cluster.commit();
+            }
+
+            if(config.cluster.current.empty()) {
+                configs->erase(map_pair);
             }
         }
 

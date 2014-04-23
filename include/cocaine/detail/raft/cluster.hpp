@@ -62,11 +62,8 @@ public:
 
     bool
     in_cluster() const {
-        if(transitional()) {
-            return actor().config().cluster().next->count(actor().config().id()) > 0;
-        } else {
-            return actor().config().cluster().current.count(actor().config().id()) > 0;
-        }
+        return actor().config().cluster().next->count(actor().config().id()) > 0 ||
+               actor().config().cluster().current.count(actor().config().id()) > 0;
     }
 
     void
@@ -106,11 +103,6 @@ public:
         actor().config().cluster().commit();
         m_current = std::move(m_next);
         m_next = std::vector<std::shared_ptr<remote_type>>();
-
-        // Stepdown to disable self if we are not in cluster.
-        if(!in_cluster()) {
-            m_actor.step_down(m_actor.config().current_term());
-        }
     }
 
     void

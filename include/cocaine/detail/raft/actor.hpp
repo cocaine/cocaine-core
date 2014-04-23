@@ -237,6 +237,19 @@ public:
         step_down(config().current_term());
     }
 
+    // Disable the actor. You should call join_cluster method to activate the actor again.
+    void
+    disable() {
+        // Finish leadership correctly if needed.
+        if(is_leader()) {
+            step_down(config().current_term());
+        }
+
+        // The second step down disables election timer.
+        m_state = actor_state::not_in_cluster;
+        step_down(config().current_term());
+    }
+
     context_t&
     context() {
         return m_context;
@@ -486,6 +499,11 @@ private:
 
     void
     insert_impl(deferred<command_result<void>> promise, const node_id_t& node) {
+        if(!is_leader()) {
+            promise.write(command_result<void>(raft_errc::not_leader));
+            return;
+        }
+
         if(cluster().transitional()) {
             promise.write(command_result<void>(raft_errc::busy));
         } else if(cluster().has(node)) {
@@ -512,6 +530,11 @@ private:
 
     void
     erase_impl(deferred<command_result<void>> promise, const node_id_t& node) {
+        if(!is_leader()) {
+            promise.write(command_result<void>(raft_errc::not_leader));
+            return;
+        }
+
         if(cluster().transitional()) {
             promise.write(command_result<void>(raft_errc::busy));
         } else if(!cluster().has(node)) {
@@ -775,7 +798,7 @@ private:
                       m_state == actor_state::candidate ||
                       m_state == actor_state::leader;
 
-        if(booted && cluster().in_cluster()) {
+        if(booted) {
 #if defined(__clang__) || defined(HAVE_GCC46)
             typedef std::uniform_int_distribution<unsigned int> uniform_uint;
 #else
