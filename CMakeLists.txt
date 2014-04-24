@@ -120,8 +120,7 @@ ADD_LIBRARY(cocaine-core SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
-    boost_system-mt
-    boost_filesystem-mt
+    ${Boost_LIBRARIES}
     ${LIBCGROUP_LIBRARY}
     ${LIBCRYPTO_LIBRARY}
     ev
