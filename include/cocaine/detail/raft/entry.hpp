@@ -253,12 +253,14 @@ public:
 public:
     log_entry():
         m_term(0),
-        m_value(io::aux::make_frozen<node_commands::nop>())
+        m_value(io::aux::make_frozen<node_commands::nop>()),
+        m_disable_node(false)
     { }
 
     log_entry(uint64_t term, const command_type& value):
         m_term(term),
-        m_value(value)
+        m_value(value),
+        m_disable_node(false)
     { }
 
     uint64_t
@@ -295,10 +297,23 @@ public:
         m_handler = handler_wrapper<node_commands::nop>();
     }
 
+    // Disable local raft node, when the entry becomes committed.
+    // This ability is used to disable removed leader after it commits self removing.
+    void
+    set_disable_node(bool disable) {
+        m_disable_node = disable;
+    }
+
+    bool
+    disable_node() const {
+        return m_disable_node;
+    }
+
 private:
     uint64_t m_term;
     command_type m_value;
     handlers_type m_handler;
+    bool m_disable_node;
 };
 
 }} // namespace cocaine::raft

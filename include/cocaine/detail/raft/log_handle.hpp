@@ -139,21 +139,27 @@ public:
                           last_term());
 
         // Apply new configuration immediately as we see it.
-        if (boost::get<io::aux::frozen<node_commands::insert>>(&back().value())) {
+        if(boost::get<io::aux::frozen<node_commands::insert>>(&back().value())) {
             // We need to go deeper.
             m_actor.cluster().insert(std::get<0>(
                 boost::get<io::aux::frozen<node_commands::insert>>(back().value()).tuple
             ));
-        } else if (boost::get<io::aux::frozen<node_commands::erase>>(&back().value())) {
+        } else if(boost::get<io::aux::frozen<node_commands::erase>>(&back().value())) {
             m_actor.cluster().erase(std::get<0>(
                 boost::get<io::aux::frozen<node_commands::erase>>(back().value()).tuple
             ));
-        } else if (boost::get<io::aux::frozen<node_commands::commit>>(&back().value()) &&
-                   m_actor.cluster().transitional())
+        } else if(boost::get<io::aux::frozen<node_commands::commit>>(&back().value()) &&
+                  m_actor.cluster().transitional())
         {
             // Here we can receive spurious commit,
             // if previous commit was truncated from log due to leader change.
+
+            bool was_in_cluster = m_actor.cluster().has(m_actor.config().id());
             m_actor.cluster().commit();
+
+            if(was_in_cluster && !m_actor.cluster().has(m_actor.config().id())) {
+                back().set_disable_node(true);
+            }
         }
 
         update_snapshot();
@@ -180,9 +186,9 @@ public:
         for(auto i = last_index(); i >= index; --i) {
             auto &entry = m_log[index];
 
-            if (m_actor.cluster().transitional() &&
-                (boost::get<io::aux::frozen<node_commands::insert>>(&entry.value()) ||
-                 boost::get<io::aux::frozen<node_commands::erase>>(&entry.value())))
+            if(m_actor.cluster().transitional() &&
+               (boost::get<io::aux::frozen<node_commands::insert>>(&entry.value()) ||
+                boost::get<io::aux::frozen<node_commands::erase>>(&entry.value())))
             {
                 m_actor.cluster().rollback();
                 if(m_config_handler) {
@@ -297,9 +303,7 @@ private:
 
         void
         operator()(const io::aux::frozen<node_commands::commit>&) const {
-            if(!actor.cluster().in_cluster()) {
-                actor.disable();
-            }
+            // Ignore.
         }
 
         void
@@ -345,6 +349,10 @@ private:
         for(size_t index = m_actor.config().last_applied() + 1; index <= to_apply; ++index) {
             auto& entry = m_log[index];
             try {
+                if(entry.disable_node()) {
+                    m_actor.disable();
+                }
+
                 entry.visit(entry_visitor_t {m_machine, m_actor, m_config_handler});
             } catch(const std::exception&) {
                 // Unable to apply the entry right now. Try later.

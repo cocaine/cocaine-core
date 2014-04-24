@@ -283,13 +283,11 @@ public:
                                    (config.cluster.next->count(node) == 0);
 
             if(already_removed) {
-                COCAINE_LOG_DEBUG(m_log, "Erase node: the node has been already removed.");
                 if(callback) {
                     callback(cluster_change_result::done);
                 }
                 return;
             } else if(!config.cluster.transitional()) {
-                COCAINE_LOG_DEBUG(m_log, "Erase node: scheduling change to apply.");
                 config.cluster.erase(node);
 
                 m_modified.insert(machine_name);
@@ -300,9 +298,6 @@ public:
 
                 return;
             }
-            COCAINE_LOG_DEBUG(m_log, "Erase node: the configuration is transitional.");
-        } else {
-            COCAINE_LOG_DEBUG(m_log, "Erase node: the configuration is locked.");
         }
 
         if(callback) {
