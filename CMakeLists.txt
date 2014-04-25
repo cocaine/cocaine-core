@@ -130,7 +130,7 @@ ADD_EXECUTABLE(cocaine-runtime
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
     ${LIBBFD_LIBRARY}
-    boost_program_options-mt
+    ${Boost_LIBRARIES}
     cocaine-core)
 
 SET_TARGET_PROPERTIES(cocaine-core cocaine-runtime PROPERTIES
