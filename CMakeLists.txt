@@ -65,6 +65,7 @@ INCLUDE_DIRECTORIES(
 
 INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
+    ${PROJECT_SOURCE_DIR}/foreign/blackhole/src
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include
     ${PROJECT_SOURCE_DIR}/include)
 
@@ -91,8 +92,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/isolates/process/archive
     src/isolates/process/spooler
     src/locator
-    src/loggers/files
-    src/loggers/syslog
     src/logging
     src/raft
     src/repository

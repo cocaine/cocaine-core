@@ -20,7 +20,6 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/api/logger.hpp"
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/asio/reactor.hpp"
@@ -30,13 +29,13 @@
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
 #include "cocaine/detail/locator.hpp"
-#include "cocaine/detail/unique_id.hpp"
-
-#include "cocaine/memory.hpp"
-
 #include "cocaine/detail/raft/repository.hpp"
 #include "cocaine/detail/raft/node_service.hpp"
 #include "cocaine/detail/raft/control_service.hpp"
+#include "cocaine/detail/unique_id.hpp"
+
+#include "cocaine/logging.hpp"
+#include "cocaine/memory.hpp"
 
 #include <cstring>
 
@@ -47,6 +46,12 @@
 #include <netdb.h>
 
 #include "rapidjson/reader.h"
+
+#include <blackhole/detail/datetime.hpp>
+#include <blackhole/frontend/syslog.hpp>
+#include <blackhole/repository/config/base.hpp>
+#include <blackhole/repository/config/log.hpp>
+#include <blackhole/repository/config/parser.hpp>
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -205,26 +210,29 @@ private:
 
 } // namespace
 
-const bool defaults::log_output              = false;
-const float defaults::heartbeat_timeout      = 30.0f;
-const float defaults::idle_timeout           = 600.0f;
-const float defaults::startup_timeout        = 10.0f;
-const float defaults::termination_timeout    = 5.0f;
-const unsigned long defaults::concurrency    = 10L;
-const unsigned long defaults::crashlog_limit = 50L;
-const unsigned long defaults::pool_limit     = 10L;
-const unsigned long defaults::queue_limit    = 100L;
+const bool defaults::log_output                = false;
+const float defaults::heartbeat_timeout        = 30.0f;
+const float defaults::idle_timeout             = 600.0f;
+const float defaults::startup_timeout          = 10.0f;
+const float defaults::termination_timeout      = 5.0f;
+const unsigned long defaults::concurrency      = 10L;
+const unsigned long defaults::crashlog_limit   = 50L;
+const unsigned long defaults::pool_limit       = 10L;
+const unsigned long defaults::queue_limit      = 100L;
 
-const float defaults::control_timeout        = 5.0f;
-const unsigned defaults::decoder_granularity = 256;
+const float defaults::control_timeout          = 5.0f;
+const unsigned defaults::decoder_granularity   = 256;
 
-const char defaults::plugins_path[]          = "/usr/lib/cocaine";
-const char defaults::runtime_path[]          = "/var/run/cocaine";
+const char defaults::plugins_path[]            = "/usr/lib/cocaine";
+const char defaults::runtime_path[]            = "/var/run/cocaine";
 
-const char defaults::endpoint[]              = "::";
-const uint16_t defaults::locator_port        = 10053;
-const uint16_t defaults::min_port            = 32768;
-const uint16_t defaults::max_port            = 61000;
+const char defaults::endpoint[]                = "::";
+const uint16_t defaults::locator_port          = 10053;
+const uint16_t defaults::min_port              = 32768;
+const uint16_t defaults::max_port              = 61000;
+
+const std::string defaults::logging::timestamp = "%Y-%m-%d %H:%M:%S.%f";
+const std::string defaults::logging::verbosity = "info";
 
 // Config
 
@@ -245,6 +253,266 @@ struct dynamic_converter<cocaine::config_t::component_t, void> {
 };
 
 } // namespace cocaine
+
+// Helper dynamic_t -> blackhole config conversion specializations.
+namespace blackhole {
+
+namespace repository {
+
+namespace config {
+
+namespace adapter {
+
+template<class Builder, class Filler>
+struct builder_visitor_t : public boost::static_visitor<> {
+    const std::string& path;
+    const std::string& name;
+    Builder& builder;
+
+    builder_visitor_t(const std::string& path, const std::string& name, Builder& builder) :
+        path(path),
+        name(name),
+        builder(builder)
+    { }
+
+    void
+    operator()(const dynamic_t::null_t&) {
+        throw blackhole::error_t("both null and array parsing is not supported");
+    }
+
+    template<typename T>
+    void
+    operator()(const T& value) {
+        builder[name] = value;
+    }
+
+    void
+    operator()(const dynamic_t::array_t&) {
+        throw blackhole::error_t("both null and array parsing is not supported");
+    }
+
+    void
+    operator()(const dynamic_t::object_t& value) {
+        auto nested_builder = builder[name];
+        Filler::fill(nested_builder, value, path + "/" + name);
+    }
+};
+
+template<>
+struct array_traits<dynamic_t> {
+    typedef dynamic_t value_type;
+    typedef value_type::array_t::const_iterator const_iterator;
+
+    static
+    const_iterator
+    begin(const value_type& value) {
+        BOOST_ASSERT(value.is_array());
+        return value.as_array().begin();
+    }
+
+    static
+    const_iterator
+    end(const value_type& value) {
+        BOOST_ASSERT(value.is_array());
+        return value.as_array().end();
+    }
+};
+
+template<>
+struct object_traits<dynamic_t> {
+    typedef dynamic_t value_type;
+    typedef value_type::object_t::const_iterator const_iterator;
+
+    static
+    const_iterator
+    begin(const value_type& value) {
+        BOOST_ASSERT(value.is_object());
+        return value.as_object().begin();
+    }
+
+    static
+    const_iterator
+    end(const value_type& value) {
+        BOOST_ASSERT(value.is_object());
+        return value.as_object().end();
+    }
+
+    static
+    std::string
+    name(const const_iterator& it) {
+        return std::string(it->first);
+    }
+
+    static
+    bool
+    has(const value_type& value, const std::string& name) {
+        BOOST_ASSERT(value.is_object());
+        auto object = value.as_object();
+        return object.find(name) != object.end();
+    }
+
+    static
+    const value_type&
+    at(const value_type& value, const std::string& name) {
+        BOOST_ASSERT(has(value, name));
+        return value.as_object()[name];
+    }
+
+    static
+    const value_type&
+    value(const const_iterator& it) {
+        return it->second;
+    }
+
+    static
+    std::string
+    as_string(const value_type& value) {
+        BOOST_ASSERT(value.is_string());
+        return value.as_string();
+    }
+};
+
+} // namespace adapter
+
+template<>
+struct filler<dynamic_t> {
+    typedef adapter::object_traits<dynamic_t> object;
+
+    template<typename T>
+    static
+    void
+    fill(T& builder, const dynamic_t& node, const std::string& path) {
+        for(auto it = object::begin(node); it != object::end(node); ++it) {
+            const auto& name = object::name(it);
+            const auto& value = object::value(it);
+
+            if(name == "type") {
+                continue;
+            }
+
+            adapter::builder_visitor_t<T, filler<dynamic_t>> visitor {
+                path, name, builder
+            };
+            value.apply(visitor);
+        }
+    }
+};
+
+} // namespace config
+
+} // namespace repository
+
+} // namespace blackhole
+
+namespace cocaine {
+
+template<>
+struct dynamic_converter<cocaine::config_t::logging_t, void> {
+    typedef cocaine::config_t::logging_t result_type;
+
+    static
+    result_type
+    convert(const dynamic_t& from) {
+        result_type component;
+        const auto& logging = from.as_object();
+        for (auto it = logging.begin(); it != logging.end(); ++it) {
+            auto object = it->second.as_object();
+            auto loggers = object.at("loggers", dynamic_t::empty_array);
+            config_t::logging_t::logger_t log {
+                logmask(object.at("verbosity",
+                                  defaults::logging::verbosity).as_string()),
+                object.at("timestamp", defaults::logging::timestamp).as_string(),
+                blackhole::repository::config::parser_t<
+                    dynamic_t,
+                    blackhole::log_config_t
+                >::parse(it->first, loggers)
+            };
+
+            component.loggers[it->first] = log;
+        }
+        return component;
+    }
+
+    static
+    inline
+    logging::priorities
+    logmask(const std::string& verbosity) {
+        if(verbosity == "ignore") {
+            return logging::ignore;
+        } else if(verbosity == "debug") {
+            return logging::debug;
+        } else if(verbosity == "warning") {
+            return logging::warning;
+        } else if(verbosity == "error") {
+            return logging::error;
+        } else {
+            return logging::info;
+        }
+    }
+};
+
+} // namespace cocaine
+
+namespace {
+
+// Severity attribute converter from enumeration underlying type into string.
+void
+map_severity(blackhole::aux::attachable_ostringstream& stream,
+             const logging::priorities& lvl)
+{
+    static const char* describe[] = {
+        nullptr,
+        "ERROR",
+        "WARNING",
+        "INFO",
+        "DEBUG"
+    };
+
+    typedef blackhole::aux::underlying_type<
+        logging::priorities
+    >::type level_type;
+
+    auto value = static_cast<level_type>(lvl);
+    if(value < static_cast<level_type>(sizeof(describe) / sizeof(describe[0]))) {
+        stream << describe[value];
+    } else {
+        stream << value;
+    }
+}
+
+} // namespace
+
+// Mapping trait that is called by Blackhole each time when syslog mapping
+// is required.
+namespace blackhole {
+
+namespace sink {
+
+template<>
+struct priority_traits<logging::priorities> {
+    static priority_t map(logging::priorities lvl) {
+        switch (lvl) {
+        case logging::debug:
+            return priority_t::debug;
+        case logging::info:
+            return priority_t::info;
+        case logging::warning:
+            return priority_t::warning;
+        case logging::error:
+            return priority_t::err;
+        case logging::ignore:
+            return priority_t::info;
+        default:
+            return priority_t::debug;
+        }
+
+        return priority_t::debug;
+    }
+};
+
+} // namespace sink
+
+} // namespace blackhole
 
 config_t::config_t(const std::string& config_path) {
     path.config = config_path;
@@ -367,8 +635,7 @@ config_t::config_t(const std::string& config_path) {
     raft.enable = root.as_object().count("raft") > 0;
 
     // Component configuration
-
-    loggers  = root.as_object().at("loggers",  dynamic_t::empty_object).to<config_t::component_map_t>();
+    logging  = root.as_object().at("logging" , dynamic_t::empty_object).to<config_t::logging_t>();
     services = root.as_object().at("services", dynamic_t::empty_object).to<config_t::component_map_t>();
     storages = root.as_object().at("storages", dynamic_t::empty_object).to<config_t::component_map_t>();
 }
@@ -380,8 +647,8 @@ config_t::version() {
 
 // Context
 
-context_t::context_t(config_t config_, const std::string& logger):
-    config(config_),
+context_t::context_t(config_t config, const std::string& logger_name):
+    config(config),
     raft(std::make_unique<raft::repository_t>(*this))
 {
     m_repository.reset(new api::repository_t());
@@ -392,21 +659,51 @@ context_t::context_t(config_t config_, const std::string& logger):
     // Load the plugins.
     m_repository->load(config.path.plugins);
 
-    const auto it = config.loggers.find(logger);
+    // Register logging frontends.
+    auto& repository = blackhole::repository_t::instance();
+    repository.configure<
+        blackhole::sink::syslog_t<logging::priorities>,
+        blackhole::formatter::string_t
+    >();
 
-    if(it == config.loggers.end()) {
-        throw cocaine::error_t("the '%s' logger is not configured", logger);
+    // Try to initialize the logger. If this fails, there's no way to report
+    // the failure, unfortunately, except printing it to the standart output.
+    try {
+        using blackhole::keyword::tag::timestamp_t;
+        using blackhole::keyword::tag::severity_t;
+
+        // Fetch configuration object.
+        auto logger = config.logging.loggers.at(logger_name);
+
+        // Configure some mappings for timestamps and severity attributes.
+        blackhole::mapping::value_t mapper;
+        mapper.add<severity_t<logging::priorities>>(&map_severity);
+        mapper.add<timestamp_t>(logger.timestamp);
+
+        // Attach them into logging config.
+        auto& frontends = logger.config.frontends;
+        for (auto it = frontends.begin(); it != frontends.end(); ++it) {
+            it->formatter.mapper = mapper;
+        }
+
+        // Register logger configuration into Blackhole's repository.
+        repository.add_config(logger.config);
+
+        // And create just registered logger.
+        auto log = repository.create<logging::priorities>(logger_name);
+        m_logger = std::make_unique<logging::log_context_t>(
+            std::move(blackhole::synchronized<logger_t>(std::move(log)))
+        );
+        m_logger->set_verbosity(logger.verbosity);
+    } catch (const std::out_of_range&) {
+        throw cocaine::error_t("the '%s' logger is not configured", logger_name);
     }
-
-    // Try to initialize the logger. If this fails, there's no way to report the failure, unfortunately,
-    // except printing it to the standart output.
-    m_logger = get<api::logger_t>(it->second.type, config, it->second.args);
 
     bootstrap();
 }
 
-context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t>&& logger):
-    config(config_),
+context_t::context_t(config_t config, std::unique_ptr<logger_t>&& logger):
+    config(config),
     raft(std::make_unique<raft::repository_t>(*this))
 {
     m_repository.reset(new api::repository_t());
@@ -417,9 +714,12 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_concept_t
     // Load the plugins.
     m_repository->load(config.path.plugins);
 
-    // NOTE: The context takes the ownership of the passed logger, so it will become invalid at the
-    // calling site after this call.
-    m_logger = std::move(logger);
+    // NOTE: The context takes the ownership of the passed logger, so it will
+    // become invalid at the calling site after this call.
+    m_logger = std::make_unique<logging::log_context_t>(
+        std::move(blackhole::synchronized<logger_t>(std::move(*logger)))
+    );
+    logger.reset();
 
     bootstrap();
 }
@@ -437,13 +737,13 @@ context_t::~context_t() {
     m_synchronization.reset();
 
     COCAINE_LOG_INFO(blog, "stopping the services");
-    
+
     for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
         remove(it->first);
     }
 
     // Any services which haven't been explicitly removed by their owners must be terminated here,
-    // because otherwise their threads' destructors will terminate the whole program (13.3.1.3).
+    // because otherwise their thread's destructors will terminate the whole program (13.3.1.3).
 
     while(!unlocked.empty()) {
         unlocked.back().second->terminate();
@@ -576,7 +876,7 @@ context_t::bootstrap() {
         }
     }
 
-    COCAINE_LOG_INFO(blog, "growing the execution unit pool to %d units", pool);
+    COCAINE_LOG_INFO(blog, "growing the execution unit pool to %d units", pool)("units", pool);
 
     while(pool--) { m_pool.emplace_back(std::make_unique<execution_unit_t>(*this, "cocaine/execute")); }
 
