@@ -1,31 +1,30 @@
+%define cocaine_runtime_name      cocaine-runtime
+
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core2
 Version:	0.11.2.0
 Release:	2%{?dist}
-%define cocaine_runtime_name      cocaine-runtime
 
 
 License:	GPLv2+
 Group:		System Environment/Libraries
 URL:		http://www.github.com/cocaine
 Source0:	%{name}-%{version}.tar.bz2
-Source1:	%{cocaine_runtime_name}.service
-Source2:        %{cocaine_runtime_name}.tmpfiles
-Patch0:		libcocaine-boost-mt.patch
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-
-%if 0%{?rhel} < 6
-  %if 0%{?fedora} >= 19
-    %define distro_buildreq       gcc gcc-c++
-  %else
-    %define distro_buildreq       gcc44 gcc44-c++
-  %endif
+%if %{defined rhel} && 0%{?rhel} < 6
+BuildRequires: gcc44 gcc44-c++
 %endif
-BuildRequires:  %{distro_buildreq}
-BuildRequires: boost-python, boost-devel, boost-iostreams, boost-thread, boost-python, boost-system
+
+BuildRequires: boost-devel, boost-iostreams, boost-thread, boost-system
 BuildRequires: libev-devel, openssl-devel, libtool-ltdl-devel, libuuid-devel, libcgroup-devel
-BuildRequires: cmake28, msgpack-devel, libarchive-devel, binutils-devel
+BuildRequires: msgpack-devel, libarchive-devel, binutils-devel
+
+%if %{defined rhel} && 0%{?rhel} < 7
+BuildRequires: cmake28
+%else
+BuildRequires: cmake
+%endif
 
 Obsoletes: srw
 
@@ -50,22 +49,24 @@ Cocaine runtime components package.
 %prep
 %setup -q
 %if 0%{?fedora} >= 19
-%patch0 -p1
+patch -p1 < fedora/libcocaine-boost-mt.patch
 %endif
 
 %build
+%if %{defined rhel}
 %if 0%{?rhel} < 6
-%if 0%{?fedora} >= 19
-export CC=gcc
-export CXX=g++
-CXXFLAGS="-pthread -I/usr/include/boost141" LDFLAGS="-L/usr/lib64/boost141" %{cmake28} -DBoost_DIR=/usr/lib64/boost141 -DBOOST_INCLUDEDIR=/usr/include/boost141 -DCMAKE_CXX_COMPILER=g++ -DCMAKE_C_COMPILER=gcc -DCOCAINE_LIBDIR=%{_libdir} .
-%else
 export CC=gcc44
 export CXX=g++44
 CXXFLAGS="-pthread -I/usr/include/boost141" LDFLAGS="-L/usr/lib64/boost141" %{cmake28} -DBoost_DIR=/usr/lib64/boost141 -DBOOST_INCLUDEDIR=/usr/include/boost141 -DCMAKE_CXX_COMPILER=g++44 -DCMAKE_C_COMPILER=gcc44 -DCOCAINE_LIBDIR=%{_libdir} .
 %endif
-%else
+%if 0%{?rhel} == 6
 %{cmake28} -DCOCAINE_LIBDIR=%{_libdir} .
+%endif
+%if 0%{?rhel} > 6
+%{cmake} -DCOCAINE_LIBDIR=%{_libdir} .
+%endif
+%else
+%{cmake} -DCOCAINE_LIBDIR=%{_libdir} .
 %endif
 
 make %{?_smp_mflags}
@@ -80,11 +81,10 @@ rm -f %{buildroot}%{_libdir}/*.la
 
 %if 0%{?fedora} >= 19
 # Install systemd unit
-install -p -D -m 644 %{SOURCE1} %{buildroot}/%{_unitdir}/%{cocaine_runtime_name}.service
+install -p -D -m 644 fedora/cocaine-runtime.service %{buildroot}/%{_unitdir}/%{cocaine_runtime_name}.service
 %else
 install -dD %{buildroot}%{_sysconfdir}/init.d/
 install -m 755 debian/cocaine-runtime.init %{buildroot}%{_sysconfdir}/init.d/%{cocaine_runtime_name}
-%{_sysconfdir}/init.d/*
 %endif
 
 install -d -m 755 %{buildroot}%{_localstatedir}/run/cocaine
@@ -92,7 +92,7 @@ install -d -m 755 %{buildroot}%{_localstatedir}/run/cocaine
 %if 0%{?fedora} >= 19
 mkdir -p %{buildroot}%{_tmpfilesdir}
 # Install systemd tmpfiles config
-install -p -D -m 644 %{SOURCE2} %{buildroot}%{_tmpfilesdir}/%{cocaine_runtime_name}.conf
+install -p -D -m 644 fedora/cocaine-runtime.tmpfiles %{buildroot}%{_tmpfilesdir}/%{cocaine_runtime_name}.conf
 %endif
 
 install -d %{buildroot}%{_sysconfdir}/cocaine
