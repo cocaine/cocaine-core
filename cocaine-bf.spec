@@ -16,7 +16,7 @@ BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: gcc44 gcc44-c++
 %endif
 
-BuildRequires: boost-python, boost-devel, boost-iostreams, boost-thread, boost-python, boost-system
+BuildRequires: boost-devel, boost-iostreams, boost-thread, boost-system
 BuildRequires: libev-devel, openssl-devel, libtool-ltdl-devel, libuuid-devel, libcgroup-devel
 BuildRequires: msgpack-devel, libarchive-devel, binutils-devel
 
