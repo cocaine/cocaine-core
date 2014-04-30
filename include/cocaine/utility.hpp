@@ -33,6 +33,8 @@
 
 namespace cocaine {
 
+// Dependent type for SFINAE.
+
 template<class T>
 struct depend {
     typedef void type;
@@ -68,7 +70,7 @@ struct itemize {
     >::type type;
 };
 
-// Pristine type extraction
+// Type decay
 
 template<class T>
 struct pristine {

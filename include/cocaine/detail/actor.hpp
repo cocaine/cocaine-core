@@ -49,9 +49,11 @@ class actor_t {
     // switch to after the authentication process completes successfully.
     std::shared_ptr<io::dispatch_t> m_prototype;
 
-    // Actor I/O connectors. Actors have a separate thread to accept new connections. The same
-    // thread is also shared with the dispatch whenever it needs an event loop to do something.
-    std::list<io::connector<io::acceptor<io::tcp>>> m_connectors;
+    typedef io::connector<io::acceptor<io::tcp>> endpoint_type;
+
+    // I/O connectors. Actors have a separate thread to accept new connections. After a connection
+    // is accepted, it is assigned on a random thread from the main thread pool.
+    std::list<endpoint_type> m_connectors;
     std::unique_ptr<boost::thread> m_thread;
 
 public:

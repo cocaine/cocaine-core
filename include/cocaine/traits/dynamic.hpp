@@ -27,74 +27,81 @@
 
 namespace cocaine { namespace io {
 
+// Dynamic objects essentially have the same structure as msgpack objects, so this serialization traits
+// are pretty much straightforward.
+
+namespace aux {
+
+template<class Stream>
+struct pack_dynamic:
+    public boost::static_visitor<>
+{
+    pack_dynamic(msgpack::packer<Stream>& target):
+        m_target(target)
+    { }
+
+    void
+    operator()(const dynamic_t::null_t& /* source */) const {
+        m_target << msgpack::type::nil();
+    }
+
+    void
+    operator()(const dynamic_t::bool_t& source) const {
+        m_target << source;
+    }
+
+    void
+    operator()(const dynamic_t::int_t& source) const {
+        m_target << source;
+    }
+
+    void
+    operator()(const dynamic_t::uint_t& source) const {
+        m_target << source;
+    }
+
+    void
+    operator()(const dynamic_t::double_t& source) const {
+        m_target << source;
+    }
+
+    void
+    operator()(const dynamic_t::string_t& source) const {
+        m_target << source;
+    }
+
+    void
+    operator()(const dynamic_t::array_t& source) const {
+        m_target.pack_array(source.size());
+
+        for(size_t i = 0; i < source.size(); ++i) {
+            source[i].apply(*this);
+        }
+    }
+
+    void
+    operator()(const dynamic_t::object_t& source) const {
+        m_target.pack_map(source.size());
+
+        for(auto it = source.begin(); it != source.end(); ++it) {
+            m_target << it->first;
+            it->second.apply(*this);
+        }
+    }
+
+private:
+    msgpack::packer<Stream>& m_target;
+};
+
+} // namespace aux
+
 template<>
 struct type_traits<dynamic_t> {
-    template<class Stream>
-    struct pack_visitor:
-        public boost::static_visitor<>
-    {
-        pack_visitor(msgpack::packer<Stream>& target):
-            m_target(target)
-        { }
-
-        void
-        operator()(const dynamic_t::null_t& /* source */) const {
-            m_target << msgpack::type::nil();
-        }
-
-        void
-        operator()(const dynamic_t::bool_t& source) const {
-            m_target << source;
-        }
-
-        void
-        operator()(const dynamic_t::int_t& source) const {
-            m_target << source;
-        }
-
-        void
-        operator()(const dynamic_t::uint_t& source) const {
-            m_target << source;
-        }
-
-        void
-        operator()(const dynamic_t::double_t& source) const {
-            m_target << source;
-        }
-
-        void
-        operator()(const dynamic_t::string_t& source) const {
-            m_target << source;
-        }
-
-        void
-        operator()(const dynamic_t::array_t& source) const {
-            m_target.pack_array(source.size());
-
-            for(size_t i = 0; i < source.size(); ++i) {
-                source[i].apply(*this);
-            }
-        }
-
-        void
-        operator()(const dynamic_t::object_t& source) const {
-            m_target.pack_map(source.size());
-
-            for(auto it = source.begin(); it != source.end(); ++it) {
-                m_target << it->first;
-                it->second.apply(*this);
-            }
-        }
-
-    private:
-        msgpack::packer<Stream>& m_target;
-    };
-
     template<class Stream>
     static inline
     void
     pack(msgpack::packer<Stream>& target, const dynamic_t& source) {
-        source.apply(pack_visitor<Stream>(target));
+        source.apply(aux::pack_dynamic<Stream>(target));
     }
 
     static inline

@@ -32,6 +32,10 @@
 
 namespace cocaine { namespace io {
 
+// Variant packing is implemented by storing (type index, value) pair, so it is important that variant
+// definition stay the same on both sides, i.e. type sequence is identical in type positions as well
+// as in types themselves, including signedness and integral sizes.
+
 namespace aux {
 
 template<class Stream>
@@ -97,6 +101,7 @@ struct type_traits<boost::variant<BOOST_VARIANT_ENUM_PARAMS(T)>> {
     pack(msgpack::packer<Stream>& target, const variant_type& source) {
         target.pack_array(2);
         target << source.which();
+
         boost::apply_visitor(aux::pack_variant<Stream>(target), source);
     }
 

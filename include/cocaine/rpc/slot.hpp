@@ -35,8 +35,10 @@ namespace mpl = boost::mpl;
 
 template<class Event>
 class basic_slot {
+    typedef Event event_type;
+
     typedef typename mpl::transform<
-        typename io::event_traits<Event>::tuple_type,
+        typename io::event_traits<event_type>::tuple_type,
         typename mpl::lambda<io::detail::unwrap_type<mpl::_1>>
     >::type sequence_type;
 
@@ -56,7 +58,7 @@ public:
 public:
     std::string
     name() const {
-        return Event::alias();
+        return event_type::alias();
     }
 };
 
