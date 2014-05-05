@@ -21,6 +21,8 @@
 #ifndef COCAINE_FORWARDS_HPP
 #define COCAINE_FORWARDS_HPP
 
+#include <blackhole/forwards.hpp>
+
 namespace cocaine {
 
 struct config_t;
@@ -32,7 +34,6 @@ namespace cocaine { namespace api {
 
 struct gateway_t;
 struct isolate_t;
-struct logger_t;
 struct service_t;
 struct storage_t;
 
@@ -97,8 +98,9 @@ enum priorities: int {
     debug
 };
 
-struct logger_concept_t;
 struct log_t;
+struct log_context_t;
+struct logger_concept_t;
 
 }} // namespace cocaine::logging
 
@@ -107,5 +109,11 @@ namespace cocaine { namespace raft {
 class repository_t;
 
 }} // namesapce cocaine::raft
+
+namespace cocaine {
+
+typedef blackhole::verbose_logger_t<logging::priorities> logger_t;
+
+} // namespace cocaine
 
 #endif

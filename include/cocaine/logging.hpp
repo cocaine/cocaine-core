@@ -23,8 +23,14 @@
 
 #include "cocaine/common.hpp"
 
+#include <blackhole/keyword.hpp>
+
+DECLARE_KEYWORD(source, std::string)
+
 #define COCAINE_LOG(_log_, _level_, ...) \
-    if(_log_->verbosity() >= _level_) _log_->emit(_level_, __VA_ARGS__);
+    if(::blackhole::log::record_t record = _log_->logger().open_record(_level_)) \
+        ::blackhole::aux::make_scoped_pump(_log_->logger(), record, __VA_ARGS__) \
+        (::blackhole::keyword::source() = _log_->source())
 
 #define COCAINE_LOG_DEBUG(_log_, ...) \
     COCAINE_LOG(_log_, ::cocaine::logging::debug, __VA_ARGS__)
@@ -38,47 +44,67 @@
 #define COCAINE_LOG_ERROR(_log_, ...) \
     COCAINE_LOG(_log_, ::cocaine::logging::error, __VA_ARGS__)
 
-namespace cocaine { namespace logging {
+#define BOOST_BIND_NO_PLACEHOLDERS
+#include <blackhole/blackhole.hpp>
+#include <blackhole/synchronized.hpp>
 
-struct logger_concept_t {
-    virtual
-   ~logger_concept_t() {
-        // Empty.
+namespace cocaine {
+
+namespace logging {
+
+struct log_context_t {
+    COCAINE_DECLARE_NONCOPYABLE(log_context_t)
+
+    log_context_t();
+    log_context_t(blackhole::synchronized<logger_t>&& logger);
+    log_context_t(log_context_t&& other);
+
+    log_context_t&
+    operator=(log_context_t&& other);
+
+    priorities
+    verbosity() const {
+        return m_verbosity;
     }
 
-    virtual
-    priorities
-    verbosity() const = 0;
-
-    virtual
     void
-    emit(priorities priority, const std::string& source, const std::string& message) = 0;
+    set_verbosity(priorities value);
+
+    blackhole::synchronized<logger_t>&
+    logger() {
+        return m_logger;
+    }
+
+    void
+    emit(priorities level,
+         const std::string& source,
+         const std::string& message,
+         const blackhole::log::attributes_t& attributes);
+
+private:
+    priorities m_verbosity;
+    blackhole::synchronized<logger_t> m_logger;
 };
 
 struct log_t {
     log_t(context_t& context, const std::string& source);
 
-    priorities
-    verbosity() const {
-        return m_logger.verbosity();
+    const std::string&
+    source() const {
+        return m_source;
     }
 
-    template<typename... Args>
-    void
-    emit(priorities level, const std::string& format, const Args&... args) {
-        m_logger.emit(level, m_source, cocaine::format(format, args...));
-    }
-
-    void
-    emit(priorities level, const std::string& message) {
-        m_logger.emit(level, m_source, message);
+    blackhole::synchronized<logger_t>&
+    logger() {
+        return m_guard.logger();
     }
 
 private:
-    logger_concept_t& m_logger;
-
     // The name of this log, to be used as the logging source.
     const std::string m_source;
+
+    // Logger implementation reference.
+    log_context_t& m_guard;
 };
 
 }}

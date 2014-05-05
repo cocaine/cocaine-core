@@ -30,6 +30,9 @@
 
 #include <boost/optional.hpp>
 
+#define BOOST_BIND_NO_PLACEHOLDERS
+#include <blackhole/blackhole.hpp>
+
 namespace cocaine {
 
 struct defaults {
@@ -57,6 +60,12 @@ struct defaults {
     static const uint16_t locator_port;
     static const uint16_t min_port;
     static const uint16_t max_port;
+
+    // Defaults for logging service.
+    struct logging {
+        static const std::string verbosity;
+        static const std::string timestamp;
+    };
 };
 
 // Configuration
@@ -106,9 +115,18 @@ struct config_t {
 
     typedef std::map<std::string, component_t> component_map_t;
 
-    component_map_t loggers;
     component_map_t services;
     component_map_t storages;
+
+    struct logging_t {
+        struct logger_t {
+            logging::priorities verbosity;
+            std::string timestamp;
+            blackhole::log_config_t config;
+        };
+
+        std::map<std::string, logger_t> loggers;
+    } logging;
 
 public:
     static
@@ -135,7 +153,7 @@ class context_t {
 
     // NOTE: As the loggers themselves are components, the repository has to be initialized
     // first without a logger, unfortunately.
-    std::unique_ptr<logging::logger_concept_t> m_logger;
+    std::unique_ptr<logging::log_context_t> m_logger;
 
     // Ports available for allocation.
     reverse_priority_queue<uint16_t>::type m_ports;
@@ -165,7 +183,7 @@ public:
 
 public:
     context_t(config_t config, const std::string& logger);
-    context_t(config_t config, std::unique_ptr<logging::logger_concept_t>&& logger);
+    context_t(config_t config, std::unique_ptr<logger_t>&& logger);
    ~context_t();
 
     // Component API
@@ -177,7 +195,7 @@ public:
     // Logging
 
     auto
-    logger() -> logging::logger_concept_t& {
+    logger() -> logging::log_context_t& {
         return *m_logger;
     }
 
