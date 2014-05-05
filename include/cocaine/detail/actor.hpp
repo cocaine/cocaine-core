@@ -44,9 +44,9 @@ class actor_t {
     const std::unique_ptr<logging::log_t> m_log;
     const std::shared_ptr<io::reactor_t> m_reactor;
 
-    // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the
-    // new sessions. In case of secure actors, this might as well be the protocol dispatch to
-    // switch to after the authentication process completes successfully.
+    // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
+    // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
+    // after the authentication process completes successfully.
     std::shared_ptr<io::dispatch_t> m_prototype;
 
     typedef io::connector<io::acceptor<io::tcp>> endpoint_type;
@@ -71,6 +71,9 @@ public:
 public:
     auto
     location() const -> std::vector<io::tcp::endpoint>;
+
+    // TODO: Metadata about the service should be sent by the service itself on connection. Actors
+    // are only responsible for the messaging, not the high-level protocol stuff.
 
     typedef result_of<io::locator::resolve>::type metadata_t;
 
