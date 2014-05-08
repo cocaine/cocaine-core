@@ -162,12 +162,12 @@ public:
 
     snapshot_type
     snapshot() const {
-        return *m_context->raft->m_configs.synchronize();
+        return *m_context->raft().m_configs.synchronize();
     }
 
     void
     consume(const snapshot_type& snapshot) {
-        *m_context->raft->m_configs.synchronize() = snapshot;
+        *m_context->raft().m_configs.synchronize() = snapshot;
         update_appliers();
     }
 
@@ -212,7 +212,7 @@ public:
             {"node_port", node.second}
         }));
 
-        auto configs = m_context->raft->m_configs.synchronize();
+        auto configs = m_context->raft().m_configs.synchronize();
 
         auto &config = configs->insert(
             std::make_pair(machine_name, lockable_config_t {false, cluster_config_t()})
@@ -275,7 +275,7 @@ public:
             {"node_port", node.second}
         }));
 
-        auto configs = m_context->raft->m_configs.synchronize();
+        auto configs = m_context->raft().m_configs.synchronize();
 
         auto map_pair = configs->find(machine_name);
 
@@ -323,7 +323,7 @@ public:
         COCAINE_LOG_DEBUG(m_log, "commit %s's changes", machine_name);
 
         {
-            auto configs = m_context->raft->m_configs.synchronize();
+            auto configs = m_context->raft().m_configs.synchronize();
 
             auto map_pair = configs->find(machine_name);
 
@@ -363,7 +363,7 @@ public:
         std::string machine_name;
         std::tie(machine_name) = req.tuple;
 
-        auto configs = m_context->raft->m_configs.synchronize();
+        auto configs = m_context->raft().m_configs.synchronize();
 
         auto map_pair = configs->find(machine_name);
 
@@ -384,11 +384,11 @@ public:
         }));
 
         if((new_value.transitional() && new_value.next->empty()) || new_value.current.empty()) {
-            m_context->raft->m_configs.synchronize()->erase(machine_name);
+            m_context->raft().m_configs.synchronize()->erase(machine_name);
             m_modified.erase(machine_name);
             m_appliers.erase(machine_name);
         } else {
-            (*m_context->raft->m_configs.synchronize())[machine_name] = lockable_config_t {
+            (*m_context->raft().m_configs.synchronize())[machine_name] = lockable_config_t {
                 false,
                 new_value
             };
@@ -446,7 +446,7 @@ private:
         m_modified.clear();
         m_appliers.clear();
 
-        auto configs = m_context->raft->m_configs.synchronize();
+        auto configs = m_context->raft().m_configs.synchronize();
 
         for(auto it = configs->begin(); it != configs->end(); ++it) {
             const auto &name = it->first;
@@ -467,7 +467,7 @@ private:
         std::vector<node_id_t> removed;
 
         {
-            auto configs = m_context->raft->m_configs.synchronize();
+            auto configs = m_context->raft().m_configs.synchronize();
             auto map_pair = configs->find(name);
 
             if(map_pair != configs->end()) {
@@ -515,7 +515,7 @@ private:
             }
         }
 
-        auto local_actor = m_context->raft->get(name);
+        auto local_actor = m_context->raft().get(name);
 
         if(local_actor) {
             auto leader = local_actor->leader_id();

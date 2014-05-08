@@ -642,10 +642,11 @@ config_t::version() {
 
 context_t::context_t(config_t config, const std::string& logger_name):
     config(config)
-#ifdef COCAINE_ALLOW_RAFT
-  , raft(std::make_unique<raft::repository_t>(*this))
-#endif
 {
+#ifdef COCAINE_ALLOW_RAFT
+    m_raft = std::make_unique<raft::repository_t>(*this);
+#endif
+
     m_repository.reset(new api::repository_t());
 
     // Load the builtins.
@@ -704,10 +705,11 @@ context_t::context_t(config_t config, const std::string& logger_name):
 
 context_t::context_t(config_t config, std::unique_ptr<logger_t>&& logger):
     config(config)
-#ifdef COCAINE_ALLOW_RAFT
-  , raft(std::make_unique<raft::repository_t>(*this))
-#endif
 {
+#ifdef COCAINE_ALLOW_RAFT
+    m_raft = std::make_unique<raft::repository_t>(*this);
+#endif
+
     m_repository.reset(new api::repository_t());
 
     // Load the builtins.
@@ -893,18 +895,19 @@ context_t::bootstrap() {
     m_synchronization = std::make_shared<synchronization_t>(*this);
 
 #ifdef COCAINE_ALLOW_RAFT
-    // Initialize the Raft service.
-    if(config.raft.enable) {
-        try {
-            std::unique_ptr<api::service_t> control_service = std::make_unique<raft::control_service_t>(
-                *this,
-                *raft->m_reactor,
-                std::string("service/") + config.raft.control_service_name
-            );
+    // Initialize Raft service.
+    try {
+        if(config.raft.enable) {
+            std::unique_ptr<api::service_t> control_service(
+                std::make_unique<raft::control_service_t>(
+                    *this,
+                    *raft().m_reactor,
+                    std::string("service/") + config.raft.control_service_name
+            ));
 
             insert(config.raft.control_service_name, std::make_unique<actor_t>(
                 *this,
-                raft->m_reactor,
+                raft().m_reactor,
                 std::move(control_service)
             ));
 

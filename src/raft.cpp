@@ -79,7 +79,7 @@ node_service_t::node_service_t(context_t& context, io::reactor_t& reactor, const
 
 std::shared_ptr<raft::actor_concept_t>
 node_service_t::find_machine(const std::string& name) const {
-    auto machine = m_context.raft->get(name);
+    auto machine = m_context.raft().get(name);
 
     if(machine) {
         return machine;
@@ -157,7 +157,7 @@ control_service_t::control_service_t(context_t& context,
                 snapshot_type;
 
         config_type config(
-            m_context.raft->id(),
+            m_context.raft().id(),
             cluster_config_t {std::set<node_id_t>(), boost::none}
         );
 
@@ -171,7 +171,7 @@ control_service_t::control_service_t(context_t& context,
         config_snapshot[m_context.config.raft.config_machine_name] = lockable_config_t {
             false,
             cluster_config_t {
-                std::set<node_id_t>({m_context.raft->id()}),
+                std::set<node_id_t>({m_context.raft().id()}),
                 boost::none
             }
         };
@@ -183,13 +183,13 @@ control_service_t::control_service_t(context_t& context,
         config.set_commit_index(1);
         config.set_last_applied(1);
 
-        m_config_actor = m_context.raft->insert(
+        m_config_actor = m_context.raft().insert(
             m_context.config.raft.config_machine_name,
             std::move(config_machine),
             std::move(config)
         );
     } else {
-        m_config_actor = m_context.raft->insert(
+        m_config_actor = m_context.raft().insert(
             m_context.config.raft.config_machine_name,
             configuration_machine_t(m_context, m_reactor, *this)
         );
@@ -203,7 +203,7 @@ control_service_t::configuration_actor() const {
 
 std::shared_ptr<raft::actor_concept_t>
 control_service_t::find_machine(const std::string& name) const {
-    auto machine = m_context.raft->get(name);
+    auto machine = m_context.raft().get(name);
 
     if(machine) {
         return machine;
@@ -289,7 +289,7 @@ control_service_t::reset(const std::string& machine, const cluster_config_t& new
 
 std::map<std::string, cocaine::raft::lockable_config_t>
 control_service_t::dump() {
-    return *m_context.raft->configuration();
+    return *m_context.raft().configuration();
 }
 
 actor_state

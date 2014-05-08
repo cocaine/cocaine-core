@@ -173,7 +173,7 @@ counter_t::counter_t(context_t& context, io::reactor_t& reactor, const std::stri
     on<io::counter::dec>(std::bind(&counter_t::on_dec, this, _1));
     on<io::counter::cas>(std::bind(&counter_t::on_cas, this, _1, _2));
 
-    m_raft = context.raft->insert(name, counter_machine_t(context));
+    m_raft = context.raft().insert(name, counter_machine_t(context));
 }
 
 namespace {
