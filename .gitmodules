@@ -4,3 +4,6 @@
 [submodule "foreign/rapidjson"]
 	path = foreign/rapidjson
 	url = git://github.com/andrusha97/rapidjson.git
+[submodule "foreign/blackhole"]
+	path = foreign/blackhole
+	url = git://github.com/3Hren/blackhole.git

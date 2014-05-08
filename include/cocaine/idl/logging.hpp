@@ -23,6 +23,8 @@
 
 #include "cocaine/rpc/protocol.hpp"
 
+#include <blackhole/attribute.hpp>
+
 namespace cocaine { namespace io {
 
 // Logging service interface
@@ -49,7 +51,9 @@ struct emit {
         std::string,
      /* Log message. Some meaningful string, with no explicit limits on its length, although
         underlying loggers might silently truncate it. */
-        std::string
+        std::string,
+     /* Log event attached attributes. */
+        optional<blackhole::log::attributes_t>
     > tuple_type;
 };
 
@@ -68,17 +72,33 @@ struct verbosity {
     >::tag drain_type;
 };
 
-}; // struct logging
+struct set_verbosity {
+    typedef log_tag tag;
+
+    static
+    const char*
+    alias() {
+        return "set_verbosity";
+    }
+
+    typedef boost::mpl::list<
+     /* Proposed verbosity level. */
+        logging::priorities
+    > tuple_type;
+};
+
+}; // struct log
 
 template<>
 struct protocol<log_tag> {
     typedef boost::mpl::int_<
-        1
+        2
     >::type version;
 
     typedef boost::mpl::list<
         log::emit,
-        log::verbosity
+        log::verbosity,
+        log::set_verbosity
     > messages;
 
     typedef log type;
