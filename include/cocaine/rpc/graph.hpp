@@ -34,8 +34,12 @@ struct dispatch_graph_t;
 namespace aux {
 
 typedef std::map<
-    int,
-    std::tuple<std::string, boost::optional<dispatch_graph_t>>
+    /* message id */ int,
+    std::tuple<
+        /* message alias */ std::string,
+        /* transition graph */ boost::optional<dispatch_graph_t>,
+        /* drain graph */ boost::optional<dispatch_graph_t>
+    >
 > recursion_base_t;
 
 } // namespace aux

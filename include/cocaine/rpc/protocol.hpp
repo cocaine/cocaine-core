@@ -80,16 +80,6 @@ struct enumerate {
 };
 
 template<class Event, class = void>
-struct transition_type {
-    typedef void type;
-};
-
-template<class Event>
-struct transition_type<Event, typename depend<typename Event::transition_type>::type> {
-    typedef typename Event::transition_type type;
-};
-
-template<class Event, class = void>
 struct tuple_type {
     typedef mpl::list<> type;
 };
@@ -97,6 +87,16 @@ struct tuple_type {
 template<class Event>
 struct tuple_type<Event, typename depend<typename Event::tuple_type>::type> {
     typedef typename Event::tuple_type type;
+};
+
+template<class Event, class = void>
+struct transition_type {
+    typedef void type;
+};
+
+template<class Event>
+struct transition_type<Event, typename depend<typename Event::transition_type>::type> {
+    typedef typename Event::transition_type type;
 };
 
 template<class Event, class = void>
@@ -115,16 +115,16 @@ template<class Event>
 struct event_traits {
     enum constants { id = aux::enumerate<Event>::type::value };
 
+    // Tuple is the type list of the message arguments.
+    // By default, all messages have no arguments, the only information they provide is their type.
+    typedef typename aux::tuple_type<Event>::type tuple_type;
+
     // Transition is a protocol tag type of the service channel dispatch after the given message is
     // successfully processed. The possible transitions types are: void, recursive protocol tag or
     // some arbitrary protocol tag.
     // By default, all messages switch the service protocol to the void protocol, which means that
     // no other messages can be sent in the channel until the invocation is complete.
     typedef typename aux::transition_type<Event>::type transition_type;
-
-    // Tuple is the type list of the message arguments.
-    // By default, all messages have no arguments, the only information they provide is their type.
-    typedef typename aux::tuple_type<Event>::type tuple_type;
 
     // Drain is a protocol tag type of all the possible messages that a service might send back in
     // response to the given message, i.e. it's a protocol tag type of the client dispatch after the

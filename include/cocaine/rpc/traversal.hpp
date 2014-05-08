@@ -50,7 +50,8 @@ struct traverse_impl {
         object[traits_type::id] = std::make_tuple(message_type::alias(),
             std::is_same<typename traits_type::transition_type, typename message_type::tag>::value
               ? boost::none
-              : traverse<typename traits_type::transition_type>()
+              : traverse<typename traits_type::transition_type>(),
+            traverse<typename traits_type::drain_type>()
         );
 
         traverse_impl<typename mpl::next<It>::type, End>::apply(object);

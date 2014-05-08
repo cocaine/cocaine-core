@@ -27,7 +27,7 @@
 
 namespace cocaine { namespace io {
 
-// Value tags
+// Argument tags
 
 template<class T>
 struct optional;
@@ -35,7 +35,7 @@ struct optional;
 template<class T, T Default>
 struct optional_with_default;
 
-// Protocol tags
+// Forward common protocol tags
 
 template<class T>
 struct streaming_tag;
