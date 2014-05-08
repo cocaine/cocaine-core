@@ -134,9 +134,13 @@ public:
         m_log.push(std::forward<Args>(args)...);
 
         COCAINE_LOG_DEBUG(m_logger,
-                          "New entry has been pushed to the log with index %d and term %d.",
+                          "new entry has been pushed to the log with index %d and term %d",
                           last_index(),
-                          last_term());
+                          last_term())
+        (blackhole::attribute::list({
+            {"entry_index", last_index()},
+            {"entry_term", last_term()}
+        }));
 
         // Apply new configuration immediately as we see it.
         if(boost::get<io::aux::frozen<node_commands::insert>>(&back().value())) {
@@ -201,7 +205,10 @@ public:
         }
         m_log.truncate(index);
 
-        COCAINE_LOG_DEBUG(m_logger, "The log has been truncated to index %d.", index);
+        COCAINE_LOG_DEBUG(m_logger, "the log has been truncated to index %d", index)
+        (blackhole::attribute::list({
+            {"truncate_index", index}
+        }));
     }
 
     void
@@ -216,9 +223,13 @@ public:
         m_actor.cluster().consume(std::get<1>(m_log.snapshot()));
 
         COCAINE_LOG_DEBUG(m_logger,
-                          "New snapshot has been pushed to the log with index %d and term %d.",
+                          "new snapshot has been pushed to the log with index %d and term %d",
                           index,
-                          term);
+                          term)
+        (blackhole::attribute::list({
+            {"snapshot_index", index},
+            {"snapshot_term", term}
+        }));
     }
 
     uint64_t
@@ -264,9 +275,11 @@ private:
         {
             COCAINE_LOG_DEBUG(
                 m_logger,
-                "Truncate the log up to %d index and save snapshot of the state machine.",
+                "truncate the log up to %d index and save snapshot of the state machine",
                 m_next_snapshot_index
-            );
+            )(blackhole::attribute::list({
+                {"snapshot_index", m_next_snapshot_index}
+            }));
 
             if(m_next_snapshot_index > snapshot_index()) {
                 m_log.set_snapshot(m_next_snapshot_index,
@@ -323,15 +336,19 @@ private:
 
         // Stop the watcher when all committed entries are applied.
         if(to_apply <= m_actor.config().last_applied()) {
-            COCAINE_LOG_DEBUG(m_logger, "Stop applier.");
+            COCAINE_LOG_DEBUG(m_logger, "stop applier");
             m_background_worker.stop();
             return;
         }
 
         COCAINE_LOG_DEBUG(m_logger,
-                          "Applying entries from %d to %d.",
+                          "applying entries from %d to %d",
                           m_actor.config().last_applied() + 1,
-                          to_apply);
+                          to_apply)
+        (blackhole::attribute::list({
+            {"first_entry", m_actor.config().last_applied() + 1},
+            {"last_entry", to_apply}
+        }));
 
         // Apply snapshot if it's not applied yet.
         // Entries will be applied on the next iterations, because we don't want occupy event loop for a long time.

@@ -265,9 +265,13 @@ private:
             m_request_sender();
         } else {
             COCAINE_LOG_DEBUG(m_logger,
-                              "Raft client is not connected. Connecting to %s:%d.",
+                              "raft client is not connected, connecting to %s:%d",
                               endpoint.first,
-                              endpoint.second);
+                              endpoint.second)
+            (blackhole::attribute::list({
+                {"host", endpoint.first},
+                {"port", endpoint.second}
+            }));
 
             m_resolver = std::make_shared<service_resolver_t>(
                 m_reactor,
@@ -284,7 +288,7 @@ private:
 
     void
     on_client_connected(const std::shared_ptr<cocaine::client_t>& client) {
-        COCAINE_LOG_DEBUG(m_logger, "Client connected.");
+        COCAINE_LOG_DEBUG(m_logger, "client connected");
         m_resolver.reset();
 
         m_client = client;
@@ -295,7 +299,11 @@ private:
 
     void
     on_error(const std::error_code& ec) {
-        COCAINE_LOG_DEBUG(m_logger, "Connection error: [%d] %s.", ec.value(), ec.message());
+        COCAINE_LOG_DEBUG(m_logger, "connection error: [%d] %s", ec.value(), ec.message())
+        (blackhole::attribute::list({
+            {"error_code", ec.value()},
+            {"error_message", ec.message()}
+        }));
 
         reset();
         try_next_remote();

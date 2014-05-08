@@ -330,7 +330,7 @@ private:
     void
     request_vote_impl() {
         if(m_client) {
-            COCAINE_LOG_DEBUG(m_logger, "Sending vote request.");
+            COCAINE_LOG_DEBUG(m_logger, "sending vote request");
 
             auto handler = std::bind(&vote_handler_t::handle, m_vote_state, std::placeholders::_1);
 
@@ -342,7 +342,7 @@ private:
                 std::make_tuple(m_actor.log().last_index(), m_actor.log().last_term())
             );
         } else {
-            COCAINE_LOG_DEBUG(m_logger, "Client isn't connected. Unable to send vote request.");
+            COCAINE_LOG_DEBUG(m_logger, "client isn't connected, unable to send vote request");
             m_vote_state->handle(std::error_code());
         }
     }
@@ -353,8 +353,8 @@ private:
     replicate_impl() {
         if(!m_client || !m_actor.is_leader()) {
             COCAINE_LOG_DEBUG(m_logger,
-                              "Client isn't connected or the local node is not the leader. "
-                              "Unable to send append request.");
+                              "client isn't connected or the local node is not the leader, "
+                              "unable to send append request");
             m_append_state->handle(std::error_code());
         } else if(m_next_index <= m_actor.log().snapshot_index()) {
             // If leader is far behind the leader, send snapshot.
@@ -387,11 +387,12 @@ private:
             m_actor.config().commit_index()
         );
 
-        COCAINE_LOG_DEBUG(m_logger,
-                          "Sending apply request; term %d; next %d; index %d.",
-                          m_actor.config().current_term(),
-                          m_next_index,
-                          m_actor.log().snapshot_index());
+        COCAINE_LOG_DEBUG(m_logger, "sending apply request")
+        (blackhole::attribute::list({
+            {"current_term", m_actor.config().current_term()},
+            {"next_index", m_next_index},
+            {"snapshot_index", m_actor.log().snapshot_index()}
+        }));
     }
 
     void
@@ -439,17 +440,18 @@ private:
             m_actor.config().commit_index()
         );
 
-        COCAINE_LOG_DEBUG(m_logger,
-                          "Sending append request; term %d; next %d; last %d.",
-                          m_actor.config().current_term(),
-                          m_next_index,
-                          m_actor.log().last_index());
+        COCAINE_LOG_DEBUG(m_logger, "sending append request")
+        (blackhole::attribute::list({
+            {"current_term", m_actor.config().current_term()},
+            {"next_index", m_next_index},
+            {"last_index", m_actor.log().last_index()}
+        }));
     }
 
     void
     send_heartbeat() {
         if(m_client) {
-            COCAINE_LOG_DEBUG(m_logger, "Sending heartbeat.");
+            COCAINE_LOG_DEBUG(m_logger, "sending heartbeat");
 
             std::tuple<uint64_t, uint64_t> prev_entry(0, 0);
 
@@ -497,7 +499,7 @@ private:
             // Connection already exists.
             handler();
         } else {
-            COCAINE_LOG_DEBUG(m_logger, "Client is not connected. Connecting...");
+            COCAINE_LOG_DEBUG(m_logger, "client is not connected, connecting...");
 
             m_resolver = std::make_shared<service_resolver_t>(
                 m_actor.reactor(),
@@ -531,16 +533,26 @@ private:
                         const std::error_code& ec)
     {
         COCAINE_LOG_DEBUG(m_logger,
-                          "Unable to connect to Raft service: [%d] %s.",
+                          "unable to connect to raft service: [%d] %s",
                           ec.value(),
-                          ec.message());
+                          ec.message())
+        (blackhole::attribute::list({
+            {"error_code", ec.value()},
+            {"error_message", ec.message()}
+        }));
+
         handler();
         reset();
     }
 
     void
     on_error(const std::error_code& ec) {
-        COCAINE_LOG_DEBUG(m_logger, "Connection error: [%d] %s.", ec.value(), ec.message());
+        COCAINE_LOG_DEBUG(m_logger, "connection error: [%d] %s", ec.value(), ec.message())
+        (blackhole::attribute::list({
+            {"error_code", ec.value()},
+            {"error_message", ec.message()}
+        }));
+
         reset();
         m_disconnected = true;
         m_cluster.check_connections();

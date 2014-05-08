@@ -142,7 +142,7 @@ public:
         m_rejoin_timer(reactor.native()),
         m_election_timer(reactor.native())
     {
-        COCAINE_LOG_INFO(m_logger, "Initializing Raft actor with name %s.", name);
+        COCAINE_LOG_INFO(m_logger, "initializing raft actor");
 
 #if defined(__clang__) || defined(HAVE_GCC46)
         std::random_device device;
@@ -172,7 +172,7 @@ public:
 
     void
     join_cluster() {
-        COCAINE_LOG_INFO(m_logger, "Joining a cluster.");
+        COCAINE_LOG_INFO(m_logger, "joining the cluster");
 
         std::vector<node_id_t> remotes;
 
@@ -222,7 +222,7 @@ public:
 
     void
     create_cluster() {
-        COCAINE_LOG_INFO(m_logger, "Creating new cluster and running the Raft actor.");
+        COCAINE_LOG_INFO(m_logger, "creating new cluster and running the raft actor");
 
         cluster().insert(config().id());
         cluster().commit();
@@ -561,20 +561,23 @@ private:
         uint64_t prev_index, prev_term;
         std::tie(prev_index, prev_term) = prev_entry;
 
-        COCAINE_LOG_DEBUG(
-            m_logger,
-            "Append request received from %s:%d; term: %d; prev_entry: (%d, %d); "
-            "entries number: %d; commit index: %d.",
-            leader.first, leader.second,
-            term,
-            prev_index, prev_term,
-            entries.size(),
-            commit_index
-        );
+        COCAINE_LOG_DEBUG(m_logger,
+                          "append request received from %s:%d",
+                          leader.first,
+                          leader.second)
+        (blackhole::attribute::list({
+            {"leader_host", leader.first},
+            {"leader_port", leader.second},
+            {"leader_term", term},
+            {"previous_entry_index", prev_index},
+            {"previous_entry_term", prev_term},
+            {"entries_number", entries.size()},
+            {"leader_commit_index", commit_index}
+        }));
 
         // Reject stale leader.
         if(term < config().current_term()) {
-            COCAINE_LOG_DEBUG(m_logger, "Reject append request from stale leader.");
+            COCAINE_LOG_DEBUG(m_logger, "reject append request from stale leader");
             return std::make_tuple(config().current_term(), false);
         }
 
@@ -595,15 +598,10 @@ private:
 
             if(log().snapshot_term() != remote_term) {
                 // NOTE: May be we should do std::terminate here to avoid state machine corruption?
-                COCAINE_LOG_WARNING(
-                    m_logger,
-                    "Bad append request received from %s:%d; "
-                    "term: %d; prev_entry: (%d, %d); commit index: %d.",
-                    leader.first, leader.second,
-                    term,
-                    prev_index, prev_term,
-                    commit_index
-                );
+                COCAINE_LOG_WARNING(m_logger,
+                                    "bad append request received from %s:%d",
+                                    leader.first,
+                                    leader.second);
                 return std::make_tuple(config().current_term(), false);
             }
         } else if(prev_index >= log().snapshot_index() &&
@@ -617,14 +615,14 @@ private:
 
             if(local_term != prev_term) {
                 COCAINE_LOG_DEBUG(m_logger,
-                                  "Term of previous entry doesn't match with the log. "
-                                  "Reject the request.");
+                                  "term of previous entry doesn't match with the log, "
+                                  "reject the request");
                 return std::make_tuple(config().current_term(), false);
             }
         } else {
             COCAINE_LOG_DEBUG(m_logger,
-                              "There is no entry corresponding to prev_entry in the log. "
-                              "Reject the request.");
+                              "there is no entry corresponding to prev_entry in the log, "
+                              "reject the request");
             // Here the log doesn't have entry corresponding to prev_entry, and leader should replicate older entries first.
             return std::make_tuple(config().current_term(), false);
         }
@@ -669,14 +667,18 @@ private:
                const snapshot_type& snapshot,
                uint64_t commit_index)
     {
-        COCAINE_LOG_DEBUG(
-            m_logger,
-            "Apply request received from %s:%d, term: %d, entry: (%d, %d), commit index: %d.",
-            leader.first, leader.second,
-            term,
-            std::get<0>(snapshot_entry), std::get<1>(snapshot_entry),
-            commit_index
-        );
+        COCAINE_LOG_DEBUG(m_logger,
+                          "apply request received from %s:%d",
+                          leader.first,
+                          leader.second)
+        (blackhole::attribute::list({
+            {"leader_host", leader.first},
+            {"leader_port", leader.second},
+            {"leader_term", term},
+            {"snapshot_index", std::get<0>(snapshot_entry)},
+            {"snapshot_term", std::get<1>(snapshot_entry)},
+            {"leader_commit_index", commit_index}
+        }));
 
         // Reject stale leader.
         if(term < config().current_term()) {
@@ -720,10 +722,16 @@ private:
                       std::tuple<uint64_t, uint64_t> last_entry)
     {
         COCAINE_LOG_DEBUG(m_logger,
-                          "Vote request received from %s:%d, term: %d, last entry: (%d, %d).",
-                          candidate.first, candidate.second,
-                          term,
-                          std::get<0>(last_entry), std::get<1>(last_entry));
+                          "vote request received from %s:%d",
+                          candidate.first,
+                          candidate.second)
+        (blackhole::attribute::list({
+            {"candidate_host", candidate.first},
+            {"candidate_port", candidate.second},
+            {"candidate_term", term},
+            {"last_entry_index", std::get<0>(last_entry)},
+            {"last_entry_term", std::get<1>(last_entry)}
+        }));
 
         // Check if log of the candidate is as up to date as local log,
         // and vote was not granted to other candidate in the current term.
@@ -737,9 +745,10 @@ private:
                 m_voted_for = candidate;
 
                 COCAINE_LOG_DEBUG(m_logger,
-                                  "In term %d vote granted to %s:%d.",
+                                  "in term %d vote granted to %s:%d",
                                   config().current_term(),
-                                  candidate.first, candidate.second);
+                                  candidate.first,
+                                  candidate.second);
 
                 return std::make_tuple(config().current_term(), true);
             }
@@ -760,7 +769,10 @@ private:
         BOOST_ASSERT(term >= config().current_term());
 
         if(term > config().current_term()) {
-            COCAINE_LOG_DEBUG(m_logger, "Stepping down to term %d.", term);
+            COCAINE_LOG_DEBUG(m_logger, "stepping down to term %d", term)
+            (blackhole::attribute::list({
+                {"term", term}
+            }));
 
             config().set_current_term(term);
 
@@ -811,9 +823,12 @@ private:
             float timeout = reelection ? 0 : distribution(m_random_generator);
             m_election_timer.start(timeout / 1000.0);
 
-            COCAINE_LOG_DEBUG(m_logger, "Election timer will fire in %f milliseconds.", timeout);
+            COCAINE_LOG_DEBUG(m_logger, "election timer will fire in %f milliseconds", timeout)
+            (blackhole::attribute::list({
+                {"election_timeout", timeout}
+            }));
         } else {
-            COCAINE_LOG_DEBUG(m_logger, "Not in cluster. Election timer is disabled.");
+            COCAINE_LOG_DEBUG(m_logger, "not in cluster, election timer is disabled");
         }
     }
 
@@ -824,7 +839,7 @@ private:
 
     void
     start_election() {
-        COCAINE_LOG_DEBUG(m_logger, "Start new election.");
+        COCAINE_LOG_DEBUG(m_logger, "start new election");
 
         using namespace std::placeholders;
 
@@ -841,7 +856,7 @@ private:
 
     void
     switch_to_leader() {
-        COCAINE_LOG_DEBUG(m_logger, "Begin leadership.");
+        COCAINE_LOG_DEBUG(m_logger, "begin leadership");
 
         // Stop election timer, because we no longer wait messages from leader.
         stop_election_timer();

@@ -202,10 +202,15 @@ public:
         auto callback = pop_operation(machine_name, op_id);
 
         COCAINE_LOG_DEBUG(m_log,
-                          "Insert new node to %s's configuration: %s:%d.",
+                          "insert new node to %s's configuration: %s:%d",
                           machine_name,
                           node.first,
-                          node.second);
+                          node.second)
+        (blackhole::attribute::list({
+            {"machine_name", machine_name},
+            {"node_host", node.first},
+            {"node_port", node.second}
+        }));
 
         auto configs = m_context->raft->m_configs.synchronize();
 
@@ -260,10 +265,15 @@ public:
         auto callback = pop_operation(machine_name, op_id);
 
         COCAINE_LOG_DEBUG(m_log,
-                          "Erase node from %s's configuration: %s:%d.",
+                          "erase node from %s's configuration: %s:%d",
                           machine_name,
                           node.first,
-                          node.second);
+                          node.second)
+        (blackhole::attribute::list({
+            {"machine_name", machine_name},
+            {"node_host", node.first},
+            {"node_port", node.second}
+        }));
 
         auto configs = m_context->raft->m_configs.synchronize();
 
@@ -310,7 +320,7 @@ public:
         std::string machine_name;
         std::tie(machine_name) = req.tuple;
 
-        COCAINE_LOG_DEBUG(m_log, "Commit %s's changes.", machine_name);
+        COCAINE_LOG_DEBUG(m_log, "commit %s's changes", machine_name);
 
         {
             auto configs = m_context->raft->m_configs.synchronize();
@@ -319,8 +329,11 @@ public:
 
             if(map_pair == configs->end()) {
                 COCAINE_LOG_WARNING(m_log,
-                                    "Commit message for unknown state machine received: %s.",
-                                    machine_name);
+                                    "commit message for unknown state machine received: %s",
+                                    machine_name)
+                (blackhole::attribute::list({
+                    {"machine_name", machine_name}
+                }));
                 return;
             }
 
@@ -365,7 +378,10 @@ public:
         cluster_config_t new_value;
         std::tie(machine_name, new_value) = req.tuple;
 
-        COCAINE_LOG_DEBUG(m_log, "Reset %s's configuration.", machine_name);
+        COCAINE_LOG_DEBUG(m_log, "reset %s's configuration", machine_name)
+        (blackhole::attribute::list({
+            {"machine_name", machine_name}
+        }));
 
         if((new_value.transitional() && new_value.next->empty()) || new_value.current.empty()) {
             m_context->raft->m_configs.synchronize()->erase(machine_name);

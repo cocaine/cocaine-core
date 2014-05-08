@@ -68,7 +68,12 @@ public:
 
     void
     insert(const node_id_t& node) {
-        COCAINE_LOG_DEBUG(m_logger, "Insert node: %s:%d", node.first, node.second);
+        COCAINE_LOG_DEBUG(m_logger, "insert node: %s:%d", node.first, node.second)
+        (blackhole::attribute::list({
+            {"node_host", node.first},
+            {"node_port", node.second}
+        }));
+
         actor().config().cluster().insert(node);
         m_next = m_current;
         m_next.emplace_back(std::make_shared<remote_type>(*this, node));
@@ -82,7 +87,12 @@ public:
 
     void
     erase(const node_id_t& node) {
-        COCAINE_LOG_DEBUG(m_logger, "Erase node: %s:%d", node.first, node.second);
+        COCAINE_LOG_DEBUG(m_logger, "erase node: %s:%d", node.first, node.second)
+        (blackhole::attribute::list({
+            {"node_host", node.first},
+            {"node_port", node.second}
+        }));
+
         actor().config().cluster().erase(node);
         for(auto it = m_current.begin(); it != m_current.end(); ++it) {
             if((*it)->id() != node) {
@@ -99,7 +109,7 @@ public:
 
     void
     commit() {
-        COCAINE_LOG_DEBUG(m_logger, "Commit configuration.");
+        COCAINE_LOG_DEBUG(m_logger, "commit configuration");
         actor().config().cluster().commit();
         m_current = std::move(m_next);
         m_next = std::vector<std::shared_ptr<remote_type>>();
@@ -107,7 +117,7 @@ public:
 
     void
     rollback() {
-        COCAINE_LOG_DEBUG(m_logger, "Rollback configuration.");
+        COCAINE_LOG_DEBUG(m_logger, "rollback configuration");
         actor().config().cluster().rollback();
         m_next = std::vector<std::shared_ptr<remote_type>>();
     }
@@ -248,19 +258,31 @@ private:
 
         for(auto it = intersec.begin(); it != intersec.end(); ++it) {
             common_remotes.emplace_back(std::make_shared<remote_type>(*this, *it));
-            COCAINE_LOG_DEBUG(m_logger, "Add common remote: %s:%d", it->first, it->second);
+            COCAINE_LOG_DEBUG(m_logger, "add common remote: %s:%d", it->first, it->second)
+            (blackhole::attribute::list({
+                {"remote_host", it->first},
+                {"remote_port", it->second}
+            }));
         }
 
         m_current = common_remotes;
         for(auto it = diff1.begin(); it != diff1.end(); ++it) {
             m_current.emplace_back(std::make_shared<remote_type>(*this, *it));
-            COCAINE_LOG_DEBUG(m_logger, "Add current remote: %s:%d", it->first, it->second);
+            COCAINE_LOG_DEBUG(m_logger, "add current remote: %s:%d", it->first, it->second)
+            (blackhole::attribute::list({
+                {"remote_host", it->first},
+                {"remote_port", it->second}
+            }));
         }
 
         m_next = std::move(common_remotes);
         for(auto it = diff2.begin(); it != diff2.end(); ++it) {
             m_next.emplace_back(std::make_shared<remote_type>(*this, *it));
-            COCAINE_LOG_DEBUG(m_logger, "Add next remote: %s:%d", it->first, it->second);
+            COCAINE_LOG_DEBUG(m_logger, "add next remote: %s:%d", it->first, it->second)
+            (blackhole::attribute::list({
+                {"remote_host", it->first},
+                {"remote_port", it->second}
+            }));
         }
     }
 
