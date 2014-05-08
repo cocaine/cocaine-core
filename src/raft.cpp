@@ -84,7 +84,7 @@ node_service_t::find_machine(const std::string& name) const {
     if(machine) {
         return machine;
     } else {
-        throw error_t("There is no such state machine.");
+        throw error_t("There is no such state machine");
     }
 }
 
@@ -208,7 +208,7 @@ control_service_t::find_machine(const std::string& name) const {
     if(machine) {
         return machine;
     } else {
-        throw error_t("There is no such state machine.");
+        throw error_t("There is no such state machine");
     }
 }
 

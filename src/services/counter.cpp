@@ -114,23 +114,23 @@ struct counter_t::counter_machine_t {
 
     void
     consume(const snapshot_type& snapshot) {
-        COCAINE_LOG_INFO(m_log, "Consume snapshot %d.", snapshot);
+        COCAINE_LOG_INFO(m_log, "consume snapshot %d", snapshot);
         m_value = snapshot;
     }
 
     void
     begin_leadership() {
-        COCAINE_LOG_INFO(m_log, "Begin leadership.");
+        COCAINE_LOG_INFO(m_log, "begin leadership");
     }
 
     void
     finish_leadership() {
-        COCAINE_LOG_INFO(m_log, "Finish leadership.");
+        COCAINE_LOG_INFO(m_log, "finish leadership");
     }
 
     void
     complete_log() {
-        COCAINE_LOG_INFO(m_log, "Complete log.");
+        COCAINE_LOG_INFO(m_log, "complete log");
     }
 
     int
