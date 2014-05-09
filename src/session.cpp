@@ -54,7 +54,8 @@ public:
 
 session_t::session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<io::dispatch_t>& prototype_):
     ptr(std::move(ptr_)),
-    prototype(prototype_)
+    prototype(prototype_),
+    max_channel(0)
 { }
 
 void
