@@ -44,9 +44,9 @@ public:
             throw cocaine::error_t("dispatch has been deactivated");
         }
 
-        dispatch = dispatch->invoke(message, upstream);
-
-        if(!dispatch) {
+        if((dispatch = dispatch->invoke(message, upstream)) == nullptr) {
+            // NOTE: If the client has sent us the last message according to the dispatch graph, then
+            // revoke the channel.
             upstream->revoke();
         }
     }
@@ -71,19 +71,19 @@ session_t::invoke(const message_t& message) {
         std::tie(lb, ub) = locked->equal_range(index);
 
         if(lb == ub) {
+            // NOTE: Checking whether channel number is always higher than the previous channel number
+            // is kind of an infinite TIME_WAIT timeout for TCP sockets. Might be not the best aproach,
+            // but since we have 2^64 possible channels (unlike 2^16 ports for sockets), it's okay.
             if(!prototype || index <= max_channel) {
                 return;
             }
 
             max_channel = index;
 
-            auto upstream = std::make_shared<upstream_t>(shared_from_this(), index);
-            upstream->auto_revoke();
-
-            std::tie(lb, std::ignore) = locked->insert({
-                index,
-                std::make_shared<channel_t>(prototype, upstream)
-            });
+            std::tie(lb, std::ignore) = locked->insert({index, std::make_shared<channel_t>(
+                prototype,
+                std::make_shared<upstream_t>(shared_from_this(), index)
+            )});
         }
 
         // NOTE: The virtual channel pointer is copied here so that if the slot decides to close the

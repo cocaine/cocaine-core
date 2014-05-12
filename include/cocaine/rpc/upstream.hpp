@@ -33,8 +33,6 @@ class upstream_t {
     const std::shared_ptr<session_t> session;
     const uint64_t index;
 
-    bool automatically_revoke;
-
     struct states {
         enum values: int { active, sealed };
     };
@@ -47,18 +45,12 @@ public:
     upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_):
         session(session_),
         index(index_),
-        automatically_revoke(false),
         state(states::active)
     { }
 
     template<class Event, typename... Args>
     void
     send(Args&&... args);
-
-    void
-    auto_revoke(bool value = true) {
-        automatically_revoke = value;
-    }
 
     void
     revoke() {
@@ -75,13 +67,6 @@ upstream_t::send(Args&&... args) {
 
     if(std::is_same<typename io::event_traits<Event>::transition_type, void>::value) {
         state = states::sealed;
-
-        // If the message transition type is void, i.e. the remote dispatch will be destroyed after
-        // receiving this message, then revoke the channel with the given index in this session, so
-        // that new requests might reuse it in the future. This upstream will become sealed.
-        if(automatically_revoke) {
-            revoke();
-        }
     }
 
     std::lock_guard<std::mutex> guard(session->mutex);
