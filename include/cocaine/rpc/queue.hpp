@@ -24,6 +24,7 @@
 #include "cocaine/locked_ptr.hpp"
 
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/rpc/slot.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
 #include "cocaine/tuple.hpp"
@@ -48,7 +49,7 @@ namespace aux {
 template<class Event>
 struct frozen {
     typedef Event event_type;
-    typedef typename tuple::fold<typename event_traits<event_type>::tuple_type>::type tuple_type;
+    typedef typename basic_slot<event_type>::tuple_type tuple_type;
 
     frozen() {
         // Empty.
