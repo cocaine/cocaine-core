@@ -31,10 +31,7 @@
 #include "cocaine/tuple.hpp"
 
 #include <boost/function_types/function_type.hpp>
-
-#include <boost/mpl/lambda.hpp>
 #include <boost/mpl/push_front.hpp>
-#include <boost/mpl/transform.hpp>
 
 namespace cocaine { namespace io {
 
@@ -67,13 +64,8 @@ struct function_slot:
         typename event_traits<Event>::drain_type
     >::type protocol_type;
 
-    typedef typename mpl::transform<
-        typename event_traits<Event>::tuple_type,
-        typename mpl::lambda<detail::unwrap_type<mpl::arg<1>>>::type
-    >::type sequence_type;
-
     typedef typename boost::function_types::function_type<
-        typename mpl::push_front<sequence_type, R>::type
+        typename mpl::push_front<typename basic_slot<Event>::sequence_type, R>::type
     >::type function_type;
 
     typedef std::function<function_type> callable_type;

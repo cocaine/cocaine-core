@@ -37,19 +37,19 @@ template<class Event>
 class basic_slot {
     typedef Event event_type;
 
+public:
     typedef typename mpl::transform<
         typename io::event_traits<event_type>::tuple_type,
         typename mpl::lambda<io::detail::unwrap_type<mpl::_1>>
     >::type sequence_type;
 
-public:
+    // A tuple of pristine parameter types, stripped of any tags.
+    typedef typename tuple::fold<sequence_type>::type tuple_type;
+
     virtual
    ~basic_slot() {
        // Empty.
     }
-
-    // A tuple of pristine parameter types, stripped of any tags.
-    typedef typename tuple::fold<sequence_type>::type tuple_type;
 
     virtual
     std::shared_ptr<dispatch_t>
