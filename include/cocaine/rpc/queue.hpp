@@ -51,14 +51,12 @@ struct frozen {
     typedef Event event_type;
     typedef typename basic_slot<event_type>::tuple_type tuple_type;
 
-    frozen() {
-        // Empty.
-    }
-
     template<typename... Args>
     frozen(event_type, Args&&... args):
         tuple(std::forward<Args>(args)...)
     { }
+
+    frozen() = default;
 
     // NOTE: If the message cannot be sent right away, then the message arguments are placed into a
     // temporary storage until the upstream is attached.
