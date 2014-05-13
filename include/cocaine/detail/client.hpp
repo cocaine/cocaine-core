@@ -49,9 +49,7 @@ public:
     typedef cocaine::io::channel<cocaine::io::socket<cocaine::io::tcp>>
             stream_t;
 
-    client_t(std::unique_ptr<stream_t>&& s):
-        m_next_channel(1)
-    {
+    client_t(std::unique_ptr<stream_t>&& s) {
         m_on_error = std::make_shared<std::function<void(const std::error_code&)>>(
             std::bind(&client_t::on_error, this, std::placeholders::_1)
         );
@@ -88,7 +86,7 @@ public:
         auto dispatch = std::is_same<typename io::event_traits<Event>::drain_type, void>::value ?
                         std::shared_ptr<io::dispatch_t>() :
                         handler;
-        auto upstream = m_session->invoke(m_next_channel++, dispatch);
+        auto upstream = m_session->invoke(dispatch);
         upstream->template send<Event>(std::forward<Args>(args)...);
         return upstream;
     }
@@ -112,7 +110,6 @@ private:
 
 private:
     std::shared_ptr<session_t> m_session;
-    std::atomic<uint64_t> m_next_channel;
 
     std::function<void(const std::error_code&)> m_error_handler;
     std::shared_ptr<std::function<void(const std::error_code&)>> m_on_error;

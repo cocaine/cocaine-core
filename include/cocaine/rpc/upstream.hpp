@@ -53,9 +53,7 @@ public:
     send(Args&&... args);
 
     void
-    revoke() {
-        session->revoke(index);
-    }
+    revoke();
 };
 
 template<class Event, typename... Args>
@@ -74,6 +72,12 @@ upstream_t::send(Args&&... args) {
     if(session->ptr) {
         session->ptr->wr->write<Event>(index, std::forward<Args>(args)...);
     }
+}
+
+inline
+void
+upstream_t::revoke() {
+    session->revoke(index);
 }
 
 } // namespace cocaine

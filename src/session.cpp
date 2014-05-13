@@ -71,12 +71,14 @@ session_t::invoke(const message_t& message) {
         std::tie(lb, ub) = locked->equal_range(index);
 
         if(lb == ub) {
-            // NOTE: Checking whether channel number is always higher than the previous channel number
-            // is kind of an infinite TIME_WAIT timeout for TCP sockets. Might be not the best aproach,
-            // but since we have 2^64 possible channels (unlike 2^16 ports for sockets), it's okay.
             if(!prototype || index <= max_channel) {
                 return;
             }
+
+            // NOTE: Checking whether channel number is always higher than the previous channel number
+            // is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be not the best
+            // aproach, but since we have 2^64 possible channels, unlike 2^16 ports for sockets, it is
+            // fit to avoid stray messages.
 
             max_channel = index;
 
@@ -98,11 +100,14 @@ session_t::invoke(const message_t& message) {
 }
 
 std::shared_ptr<upstream_t>
-session_t::invoke(uint64_t id, const std::shared_ptr<io::dispatch_t>& dispatch) {
-    auto upstream = std::make_shared<upstream_t>(shared_from_this(), id);
+session_t::invoke(const std::shared_ptr<io::dispatch_t>& dispatch) {
+    auto locked = channels.synchronize();
+
+    auto index = ++max_channel;
+    auto upstream = std::make_shared<upstream_t>(shared_from_this(), index);
 
     if(dispatch) {
-        channels->insert({id, std::make_shared<channel_t>(dispatch, upstream)});
+        locked->insert({index, std::make_shared<channel_t>(dispatch, upstream)});
     }
 
     return upstream;
