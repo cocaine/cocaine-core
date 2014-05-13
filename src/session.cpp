@@ -106,9 +106,8 @@ session_t::invoke(const std::shared_ptr<io::dispatch_t>& dispatch) {
     auto index = ++max_channel;
     auto upstream = std::make_shared<upstream_t>(shared_from_this(), index);
 
-    if(dispatch) {
-        locked->insert({index, std::make_shared<channel_t>(dispatch, upstream)});
-    }
+    // TODO: Think about skipping dispatch registration in case of fire-and-forget service events.
+    locked->insert({index, std::make_shared<channel_t>(dispatch, upstream)});
 
     return upstream;
 }
