@@ -31,9 +31,7 @@ class dynamic_t::object_t :
     typedef std::map<std::string, cocaine::dynamic_t> base_type;
 
 public:
-    object_t() {
-        // Empty.
-    }
+    object_t() = default;
 
     template<class InputIt>
     object_t(InputIt first, InputIt last):

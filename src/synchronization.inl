@@ -28,10 +28,11 @@ struct context_t::synchronization_t:
 
     synchronization_t(context_t& self);
 
+    typedef basic_slot<io::locator::synchronize>::dispatch_type dispatch_type;
     typedef basic_slot<io::locator::synchronize>::tuple_type tuple_type;
 
     virtual
-    std::shared_ptr<dispatch_t>
+    std::shared_ptr<dispatch_type>
     operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream);
 
     void
@@ -55,15 +56,17 @@ context_t::synchronization_t::synchronization_t(context_t& self_):
     self(self_)
 { }
 
-std::shared_ptr<dispatch_t>
-context_t::synchronization_t::operator()(const tuple_type& /* args */, const std::shared_ptr<upstream_t>& upstream) {
+auto
+context_t::synchronization_t::operator()(const tuple_type& /* args */, const std::shared_ptr<upstream_t>& upstream)
+    -> std::shared_ptr<dispatch_type>
+{
     upstream->send<io::streaming<result_type>::chunk>(dump());
 
     // Save this upstream for the future notifications.
     upstreams.push_back(upstream);
 
     // Return an empty protocol dispatch.
-    return std::shared_ptr<dispatch_t>();
+    return std::shared_ptr<dispatch_type>();
 }
 
 void

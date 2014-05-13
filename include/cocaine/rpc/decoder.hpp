@@ -33,9 +33,7 @@ struct decoder {
 
     typedef Stream stream_type;
 
-    decoder() {
-        // Empty.
-    }
+    decoder() = default;
 
    ~decoder() {
        if(m_stream) {

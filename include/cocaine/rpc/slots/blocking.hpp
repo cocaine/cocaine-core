@@ -46,6 +46,7 @@ struct blocking_slot:
     typedef function_slot<Event, R> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
+    typedef typename parent_type::dispatch_type dispatch_type;
     typedef typename parent_type::protocol_type protocol;
 
     blocking_slot(callable_type callable):
@@ -55,7 +56,7 @@ struct blocking_slot:
     typedef typename parent_type::tuple_type tuple_type;
 
     virtual
-    std::shared_ptr<dispatch_t>
+    std::shared_ptr<dispatch_type>
     operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
         try {
             upstream->send<typename protocol::chunk>(this->call(args));
@@ -67,7 +68,7 @@ struct blocking_slot:
         }
 
         // Return an empty protocol dispatch.
-        return std::shared_ptr<dispatch_t>();
+        return std::shared_ptr<dispatch_type>();
     }
 };
 
@@ -80,6 +81,7 @@ struct blocking_slot<Event, false, void>:
     typedef function_slot<Event, void> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
+    typedef typename parent_type::dispatch_type dispatch_type;
     typedef typename parent_type::protocol_type protocol;
 
     blocking_slot(callable_type callable):
@@ -89,7 +91,7 @@ struct blocking_slot<Event, false, void>:
     typedef typename parent_type::tuple_type tuple_type;
 
     virtual
-    std::shared_ptr<dispatch_t>
+    std::shared_ptr<dispatch_type>
     operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
         try {
             this->call(args);
@@ -103,7 +105,7 @@ struct blocking_slot<Event, false, void>:
         }
 
         // Return an empty protocol dispatch.
-        return std::shared_ptr<dispatch_t>();
+        return std::shared_ptr<dispatch_type>();
     }
 };
 
@@ -114,6 +116,7 @@ struct blocking_slot<Event, true, void>:
     typedef function_slot<Event, void> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
+    typedef typename parent_type::dispatch_type dispatch_type;
     typedef typename parent_type::protocol_type protocol;
 
     blocking_slot(callable_type callable):
@@ -123,8 +126,8 @@ struct blocking_slot<Event, true, void>:
     typedef typename parent_type::tuple_type tuple_type;
 
     virtual
-    std::shared_ptr<dispatch_t>
-    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& /*upstream*/) {
+    std::shared_ptr<dispatch_type>
+    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& /* upstream */) {
         try {
             this->call(args);
         } catch(const std::exception& e) {
@@ -132,7 +135,7 @@ struct blocking_slot<Event, true, void>:
         }
 
         // Return an empty protocol dispatch.
-        return std::shared_ptr<dispatch_t>();
+        return std::shared_ptr<dispatch_type>();
     }
 };
 

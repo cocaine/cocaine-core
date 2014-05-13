@@ -34,9 +34,7 @@ struct channel {
     channel():
         rd(new decoder<readable_stream<Socket>>()),
         wr(new encoder<writable_stream<Socket>>())
-    {
-        // Empty.
-    }
+    { }
 
     channel(reactor_t& reactor, const std::shared_ptr<Socket>& socket):
         rd(new decoder<readable_stream<Socket>>()),
@@ -48,9 +46,7 @@ struct channel {
     channel(channel&& other):
         rd(std::move(other.rd)),
         wr(std::move(other.wr))
-    {
-        // pass
-    }
+    { }
 
     channel&
     operator=(channel&& other) {

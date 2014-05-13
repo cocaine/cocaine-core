@@ -43,16 +43,19 @@ public:
         typename mpl::lambda<io::detail::unwrap_type<mpl::_1>>
     >::type sequence_type;
 
-    // A tuple of pristine parameter types, stripped of any tags.
-    typedef typename tuple::fold<sequence_type>::type tuple_type;
-
     virtual
    ~basic_slot() {
        // Empty.
     }
 
+    // Expected transition dispatch type.
+    typedef implements<typename event_traits<event_type>::transition_type> dispatch_type;
+
+    // Expected parameter types, stripped of any tags.
+    typedef typename tuple::fold<sequence_type>::type tuple_type;
+
     virtual
-    std::shared_ptr<dispatch_t>
+    std::shared_ptr<dispatch_type>
     operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) = 0;
 
 public:

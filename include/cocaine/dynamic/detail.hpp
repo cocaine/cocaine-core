@@ -36,10 +36,8 @@ class incomplete_wrapper {
     std::unique_ptr<T> m_data;
 
 public:
-    // These *structors are needed just to satisfy the requirements of boost::variant.
-    incomplete_wrapper() {
-        // Empty.
-    }
+    // These constructors are needed just to satisfy the requirements of boost::variant.
+    incomplete_wrapper() = default;
 
     incomplete_wrapper(const incomplete_wrapper&) {
         // Empty.

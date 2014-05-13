@@ -28,6 +28,9 @@ namespace cocaine {
 struct config_t;
 class context_t;
 
+template<class Tag>
+class implements;
+
 } // namespace cocaine
 
 namespace cocaine { namespace api {

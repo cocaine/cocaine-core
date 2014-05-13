@@ -74,6 +74,7 @@ struct function_slot:
         callable(callable_)
     { }
 
+    typedef typename basic_slot<Event>::dispatch_type dispatch_type;
     typedef typename basic_slot<Event>::tuple_type tuple_type;
 
     R

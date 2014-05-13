@@ -53,9 +53,7 @@ public:
         m_current_term(term),
         m_commit_index(commit_index),
         m_last_applied(last_applied)
-    {
-        // Empty.
-    }
+    { };
 
     configuration(configuration&& other):
         m_id(std::move(other.m_id)),
@@ -64,9 +62,7 @@ public:
         m_current_term(other.m_current_term),
         m_commit_index(other.m_commit_index),
         m_last_applied(other.m_last_applied)
-    {
-        // Empty.
-    }
+    { };
 
     configuration&
     operator=(configuration&& other) {

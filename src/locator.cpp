@@ -237,9 +237,10 @@ public:
             impl(impl_)
         { }
 
+        typedef basic_slot<protocol::chunk>::dispatch_type dispatch_type;
         typedef basic_slot<protocol::chunk>::tuple_type tuple_type;
 
-        std::shared_ptr<dispatch_t>
+        std::shared_ptr<dispatch_type>
         operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& /* upstream */) {
             auto service = impl.lock();
 
@@ -262,14 +263,15 @@ public:
             impl(impl_)
         { }
 
+        typedef basic_slot<protocol::choke>::dispatch_type dispatch_type;
         typedef basic_slot<protocol::choke>::tuple_type tuple_type;
 
-        std::shared_ptr<dispatch_t>
+        std::shared_ptr<dispatch_type>
         operator()(const tuple_type& /* args */, const std::shared_ptr<upstream_t>& /* upstream */) {
             impl.lock()->shutdown();
 
             // Return an empty protocol dispatch.
-            return std::shared_ptr<dispatch_t>();
+            return std::shared_ptr<dispatch_type>();
         }
 
     private:

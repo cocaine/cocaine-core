@@ -39,6 +39,7 @@ struct deferred_slot:
     typedef function_slot<Event, T<R>> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
+    typedef typename parent_type::dispatch_type dispatch_type;
     typedef typename parent_type::protocol_type protocol;
 
     deferred_slot(callable_type callable):
@@ -48,7 +49,7 @@ struct deferred_slot:
     typedef typename parent_type::tuple_type tuple_type;
 
     virtual
-    std::shared_ptr<dispatch_t>
+    std::shared_ptr<dispatch_type>
     operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
         try {
             const T<R> result = this->call(args);
@@ -63,7 +64,7 @@ struct deferred_slot:
         }
 
         // Return an empty protocol dispatch.
-        return std::shared_ptr<dispatch_t>();
+        return std::shared_ptr<dispatch_type>();
     }
 };
 

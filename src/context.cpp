@@ -156,9 +156,7 @@ private:
 struct rapidjson_ifstream_t {
     rapidjson_ifstream_t(fs::ifstream* backend) :
         m_backend(backend)
-    {
-        // Empty.
-    }
+    { }
 
     char
     Peek() const {
