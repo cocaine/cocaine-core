@@ -23,7 +23,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/locked_ptr.hpp"
-#include "cocaine/dispatch.hpp"
+#include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/api/service.hpp"
 #include "cocaine/idl/raft.hpp"
 #include "cocaine/detail/raft/forwards.hpp"
@@ -33,7 +33,7 @@ namespace cocaine { namespace raft {
 // The service provides messages from other Raft nodes to proper Raft actors.
 class node_service_t:
     public api::service_t,
-    public implements<io::raft_node_tag<msgpack::object, msgpack::object>>
+    public dispatch<io::raft_node_tag<msgpack::object, msgpack::object>>
 {
 public:
     node_service_t(context_t& context,
@@ -42,7 +42,7 @@ public:
 
     virtual
     auto
-    prototype() -> dispatch_t& {
+    prototype() -> io::basic_dispatch_t& {
         return *this;
     }
 

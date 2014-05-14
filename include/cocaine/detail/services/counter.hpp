@@ -23,7 +23,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/raft.hpp"
-#include "cocaine/dispatch.hpp"
+#include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/api/service.hpp"
 #include "cocaine/idl/counter.hpp"
 
@@ -31,7 +31,7 @@ namespace cocaine { namespace service {
 
 class counter_t:
     public api::service_t,
-    public implements<io::counter_tag>
+    public dispatch<io::counter_tag>
 {
 public:
     struct counter_machine_t;
@@ -46,7 +46,7 @@ public:
 
     virtual
     auto
-    prototype() -> dispatch_t& {
+    prototype() -> io::basic_dispatch_t& {
         return *this;
     }
 

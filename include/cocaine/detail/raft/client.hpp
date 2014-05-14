@@ -137,13 +137,13 @@ private:
 
     template<class Event>
     struct client_caller {
-        typedef std::shared_ptr<upstream_t> result_type;
+        typedef std::shared_ptr<io::basic_upstream_t> result_type;
 
         const std::shared_ptr<cocaine::client_t>& m_client;
-        const std::shared_ptr<io::dispatch_t>& m_handler;
+        const std::shared_ptr<io::basic_dispatch_t>& m_handler;
 
         template<class... Args>
-        std::shared_ptr<upstream_t>
+        std::shared_ptr<io::basic_upstream_t>
         operator()(Args&&... args) const {
             return m_client->call<Event>(m_handler, std::forward<Args>(args)...);
         }
@@ -363,7 +363,7 @@ private:
 
     std::shared_ptr<service_resolver_t> m_resolver;
 
-    std::shared_ptr<upstream_t> m_current_request;
+    std::shared_ptr<io::basic_upstream_t> m_current_request;
 };
 
 }} // namespace cocaine::raft
