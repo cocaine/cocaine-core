@@ -52,7 +52,7 @@ struct protocol_impl<streaming_tag<T>> {
 
 template<>
 struct protocol_impl<void> {
-    typedef typename protocol<void>::type type;
+    typedef protocol<void>::type type;
 };
 
 } // namespace aux

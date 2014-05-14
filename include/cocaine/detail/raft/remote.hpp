@@ -458,7 +458,7 @@ private:
             }
 
             m_client->call<typename protocol_type::append>(
-                std::shared_ptr<io::dispatch_t>(),
+                std::shared_ptr<io::basic_dispatch_t>(),
                 m_actor.name(),
                 m_actor.config().current_term(),
                 m_actor.config().id(),

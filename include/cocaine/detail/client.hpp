@@ -26,8 +26,7 @@
 
 #include "cocaine/rpc/upstream.hpp"
 #include "cocaine/rpc/protocol.hpp"
-
-#include "cocaine/dispatch.hpp"
+#include "cocaine/rpc/dispatch.hpp"
 
 #include "cocaine/asio/connector.hpp"
 #include "cocaine/asio/resolver.hpp"
@@ -81,10 +80,10 @@ public:
     }
 
     template<class Event, class... Args>
-    std::shared_ptr<upstream_t>
-    call(const std::shared_ptr<io::dispatch_t>& handler, Args&&... args) {
+    std::shared_ptr<io::basic_upstream_t>
+    call(const std::shared_ptr<io::basic_dispatch_t>& handler, Args&&... args) {
         auto dispatch = std::is_same<typename io::event_traits<Event>::drain_type, void>::value ?
-                        std::shared_ptr<io::dispatch_t>() :
+                        std::shared_ptr<io::basic_dispatch_t>() :
                         handler;
         auto upstream = m_session->invoke(dispatch);
         upstream->template send<Event>(std::forward<Args>(args)...);
@@ -165,11 +164,11 @@ public:
 
 private:
     class resolve_dispatch_t :
-        public implements<io::locator::resolve::drain_type>
+        public dispatch<io::locator::resolve::drain_type>
     {
     public:
         resolve_dispatch_t(service_resolver_t &resolver):
-            implements<io::locator::resolve::drain_type>("resolve"),
+            dispatch<io::locator::resolve::drain_type>("resolve"),
             m_resolver(resolver)
         {
             using namespace std::placeholders;
@@ -282,7 +281,7 @@ private:
 
     std::shared_ptr<io::connector<io::socket<io::tcp>>> m_connector;
     std::shared_ptr<client_t> m_locator_client;
-    std::shared_ptr<upstream_t> m_resolve_upstream;
+    std::shared_ptr<io::basic_upstream_t> m_resolve_upstream;
 
     std::function<void(const std::shared_ptr<client_t>&)> m_callback;
     std::shared_ptr<error_handler_t> m_error_handler;
@@ -290,7 +289,7 @@ private:
 
 template<class T>
 class proxy_dispatch :
-    public implements<io::streaming_tag<T>>
+    public dispatch<io::streaming_tag<T>>
 {
     typedef boost::variant<std::error_code, T> result_type;
     typedef io::streaming<T> protocol_type;
@@ -298,7 +297,7 @@ class proxy_dispatch :
 public:
     proxy_dispatch(const std::function<void(result_type)>& callback,
                    const std::string& name = ""):
-        implements<io::streaming_tag<T>>(name),
+        dispatch<io::streaming_tag<T>>(name),
         m_callback(callback)
     {
         using namespace std::placeholders;
@@ -339,7 +338,7 @@ private:
 
 template<class... Args>
 class proxy_dispatch<std::tuple<Args...>> :
-    public implements<io::streaming_tag<std::tuple<Args...>>>
+    public dispatch<io::streaming_tag<std::tuple<Args...>>>
 {
     typedef std::tuple<Args...> tuple_type;
     typedef boost::variant<std::error_code, tuple_type> result_type;
@@ -359,7 +358,7 @@ class proxy_dispatch<std::tuple<Args...>> :
 public:
     proxy_dispatch(const std::function<void(result_type)>& callback,
                    const std::string& name = ""):
-        implements<io::streaming_tag<tuple_type>>(name),
+        dispatch<io::streaming_tag<tuple_type>>(name),
         m_callback(callback)
     {
         using namespace std::placeholders;
