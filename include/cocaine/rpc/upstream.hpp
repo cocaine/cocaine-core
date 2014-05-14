@@ -93,7 +93,7 @@ class upstream {
     const std::shared_ptr<io::basic_upstream_t> ptr;
 
 public:
-    friend class io::message_queue<T>;
+    template<class Tag> friend class io::message_queue;
 
     upstream(const std::shared_ptr<io::basic_upstream_t>& upstream_):
         ptr(upstream_)

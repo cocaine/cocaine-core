@@ -27,8 +27,10 @@ namespace cocaine {
 
 template<class T>
 struct streamed {
-    typedef io::message_queue<io::streaming_tag<T>> queue_type;
-    typedef io::streaming<T> protocol;
+    typedef typename aux::reconstruct<T>::type type;
+
+    typedef io::message_queue<io::streaming_tag<type>> queue_type;
+    typedef io::streaming<type> protocol;
 
     template<template<class> class, class, class> friend struct io::deferred_slot;
 

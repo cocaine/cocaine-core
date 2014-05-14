@@ -120,8 +120,9 @@ public:
         upstream_->send<Event>(std::forward<Args>(args)...);
     }
 
-    void
-    attach(upstream<Tag>&& u) {
+    template<class OtherTag>
+    typename std::enable_if<detail::is_compatible<Tag, OtherTag>::value>::type
+    attach(upstream<OtherTag>&& u) {
         upstream_ = std::move(u.ptr);
 
         if(operations.empty()) {

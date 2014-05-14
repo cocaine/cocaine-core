@@ -25,6 +25,8 @@
 
 #include <type_traits>
 
+#include <boost/mpl/equal.hpp>
+
 namespace cocaine { namespace io {
 
 // Argument tags
@@ -76,6 +78,18 @@ template<class T, T Default>
 struct unwrap_type<optional_with_default<T, Default>> {
     typedef T type;
 };
+
+// Protocol compatibility
+
+template<class T, class U>
+struct is_compatible:
+    public std::false_type
+{ };
+
+template<class T, class U>
+struct is_compatible<streaming_tag<T>, streaming_tag<U>>:
+    public boost::mpl::equal<T, U>::type
+{ };
 
 }}} // namespace cocaine::io::detail
 

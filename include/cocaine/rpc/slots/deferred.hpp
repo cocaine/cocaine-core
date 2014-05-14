@@ -58,7 +58,7 @@ struct deferred_slot:
 
             // Upstream is attached in a critical section, because the internal message queue might
             // be already in use in some other processing thread of the service.
-            (*result.queue_impl)->attach(upstream);
+            (*result.queue_impl)->attach(std::move(upstream));
         } catch(const std::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
@@ -72,10 +72,38 @@ struct deferred_slot:
 
 } // namespace io
 
+namespace aux {
+
+// Reconstructs an MPL list from the user-supplied return type.
+
+template<class T, class = void>
+struct reconstruct {
+    typedef typename boost::mpl::list<T>::type type;
+};
+
+template<class T>
+struct reconstruct<T, typename std::enable_if<std::is_same<T, void>::value>::type> {
+    typedef typename boost::mpl::list<>::type type;
+};
+
+template<class T>
+struct reconstruct<T, typename std::enable_if<boost::mpl::is_sequence<T>::value>::type> {
+    typedef T type;
+};
+
+template<typename... Args>
+struct reconstruct<std::tuple<Args...>> {
+    typedef typename itemize<Args...>::type type;
+};
+
+} // namespace aux
+
 template<class T>
 struct deferred {
-    typedef io::message_queue<io::streaming_tag<T>> queue_type;
-    typedef io::streaming<T> protocol;
+    typedef typename aux::reconstruct<T>::type type;
+
+    typedef io::message_queue<io::streaming_tag<type>> queue_type;
+    typedef io::streaming<type> protocol;
 
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
@@ -105,8 +133,10 @@ private:
 
 template<>
 struct deferred<void> {
-    typedef io::message_queue<io::streaming_tag<void>> queue_type;
-    typedef io::streaming<void> protocol;
+    typedef typename aux::reconstruct<void>::type type;
+
+    typedef io::message_queue<io::streaming_tag<type>> queue_type;
+    typedef io::streaming<type> protocol;
 
     template<template<class> class, class, class> friend struct io::deferred_slot;
 

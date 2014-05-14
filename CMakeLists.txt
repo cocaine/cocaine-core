@@ -79,6 +79,17 @@ LINK_DIRECTORIES(
     ${LIBARCHIVE_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
 
+IF(COCAINE_ALLOW_RAFT)
+    ADD_LIBRARY(cocaine-raft STATIC
+        src/raft
+        src/services/counter)
+
+    SET_TARGET_PROPERTIES(cocaine-raft PROPERTIES
+        COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
+
+    SET(LIBCOCAINE_RAFT cocaine-raft)
+ENDIF()
+
 ADD_LIBRARY(cocaine-core SHARED
     src/actor
     src/api
@@ -109,18 +120,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/session
     src/storages/files
     src/unique_id)
-
-IF(COCAINE_ALLOW_RAFT)
-    ADD_LIBRARY(cocaine-raft SHARED
-        src/raft
-        src/services/counter)
-
-    SET_TARGET_PROPERTIES(cocaine-raft PROPERTIES
-        COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic"
-        VERSION 2)
-
-    SET(LIBCOCAINE_RAFT cocaine-raft)
-ENDIF()
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
