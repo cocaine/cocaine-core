@@ -84,6 +84,8 @@ basic_upstream_t::revoke() {
     session->revoke(index);
 }
 
+template<class Tag> class message_queue;
+
 } // namespace io
 
 template<class T>

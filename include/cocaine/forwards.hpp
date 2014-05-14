@@ -25,7 +25,6 @@
 
 namespace cocaine {
 
-struct config_t;
 class context_t;
 
 template<class> class dispatch;
@@ -78,8 +77,6 @@ struct message_t;
 
 class basic_dispatch_t;
 class basic_upstream_t;
-
-template<class> class message_queue;
 
 // Messaging
 
