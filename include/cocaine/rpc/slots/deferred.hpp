@@ -133,7 +133,7 @@ private:
 
 template<>
 struct deferred<void> {
-    typedef typename aux::reconstruct<void>::type type;
+    typedef aux::reconstruct<void>::type type;
 
     typedef io::message_queue<io::streaming_tag<type>> queue_type;
     typedef io::streaming<type> protocol;

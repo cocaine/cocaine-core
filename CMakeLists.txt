@@ -85,7 +85,7 @@ IF(COCAINE_ALLOW_RAFT)
         src/services/counter)
 
     SET_TARGET_PROPERTIES(cocaine-raft PROPERTIES
-        COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
+        COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic -fPIC")
 
     SET(LIBCOCAINE_RAFT cocaine-raft)
 ENDIF()

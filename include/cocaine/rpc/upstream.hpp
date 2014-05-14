@@ -90,7 +90,8 @@ template<class Tag> class message_queue;
 
 template<class T>
 class upstream {
-    const std::shared_ptr<io::basic_upstream_t> ptr;
+    // It should be constant, but g++ 4.4 can't compile c++.
+    std::shared_ptr<io::basic_upstream_t> ptr;
 
 public:
     template<class Tag> friend class io::message_queue;

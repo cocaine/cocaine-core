@@ -63,10 +63,10 @@ auto
 context_t::synchronization_t::operator()(tuple_type&& /* args */, upstream_type&& upstream)
     -> std::shared_ptr<dispatch_type>
 {
-    upstream.template send<protocol::chunk>(dump());
+    upstream.send<protocol::chunk>(dump());
 
     // Save this upstream for the future notifications.
-    upstreams.push_back(std::move(upstream));
+    upstreams.emplace_back(std::move(upstream));
 
     // Return an empty protocol dispatch.
     return std::shared_ptr<dispatch_type>();

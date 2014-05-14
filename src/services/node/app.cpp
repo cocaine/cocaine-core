@@ -221,19 +221,19 @@ private:
         virtual
         void
         write(const char* chunk, size_t size) {
-            upstream.template send<protocol::chunk>(literal_t { chunk, size });
+            upstream.send<protocol::chunk>(literal_t { chunk, size });
         }
 
         virtual
         void
         error(int code, const std::string& reason) {
-            upstream.template send<protocol::error>(code, reason);
+            upstream.send<protocol::error>(code, reason);
         }
 
         virtual
         void
         close() {
-            upstream.template send<protocol::choke>();
+            upstream.send<protocol::choke>();
         }
 
     private:
