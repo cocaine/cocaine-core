@@ -113,9 +113,9 @@ struct protocol<streaming_tag<T>> {
         typename streaming<T>::chunk,
         typename streaming<T>::error,
         typename streaming<T>::choke
-    >::type messages;
+    > messages;
 
-    typedef streaming<T> type;
+    typedef streaming<T> scope;
 };
 
 }} // namespace cocaine::io

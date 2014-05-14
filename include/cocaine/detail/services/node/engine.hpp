@@ -68,7 +68,7 @@ struct protocol<control_tag> {
         control::report,
         control::info,
         control::terminate
-    >::type messages;
+    > messages;
 };
 
 } // namespace io

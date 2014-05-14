@@ -130,7 +130,7 @@ struct protocol<locator_tag> {
         locator::refresh
     > messages;
 
-    typedef locator type;
+    typedef locator scope;
 };
 
 }} // namespace cocaine::io

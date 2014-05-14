@@ -44,7 +44,7 @@ struct deferred_slot:
     typedef typename parent_type::tuple_type tuple_type;
     typedef typename parent_type::upstream_type upstream_type;
 
-    typedef typename parent_type::protocol_type protocol;
+    typedef typename parent_type::protocol protocol;
 
     deferred_slot(callable_type callable):
         parent_type(callable)
@@ -78,12 +78,12 @@ namespace aux {
 
 template<class T, class = void>
 struct reconstruct {
-    typedef typename boost::mpl::list<T>::type type;
+    typedef typename boost::mpl::list<T> type;
 };
 
 template<class T>
 struct reconstruct<T, typename std::enable_if<std::is_same<T, void>::value>::type> {
-    typedef typename boost::mpl::list<>::type type;
+    typedef typename boost::mpl::list<> type;
 };
 
 template<class T>

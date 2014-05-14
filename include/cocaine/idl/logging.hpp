@@ -101,7 +101,7 @@ struct protocol<log_tag> {
         log::set_verbosity
     > messages;
 
-    typedef log type;
+    typedef log scope;
 };
 
 }} // namespace cocaine::io

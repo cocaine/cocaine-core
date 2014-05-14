@@ -133,7 +133,7 @@ struct protocol<storage_tag> {
         storage::find
     > messages;
 
-    typedef storage type;
+    typedef storage scope;
 };
 
 }} // namespace cocaine::io

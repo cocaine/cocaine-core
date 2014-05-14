@@ -186,7 +186,7 @@ struct protocol<raft_node_tag<Entry, Snapshot>> {
         typename raft_node<Entry, Snapshot>::erase
     > messages;
 
-    typedef raft_node<Entry, Snapshot> type;
+    typedef raft_node<Entry, Snapshot> scope;
 };
 
 template<class Entry, class Snapshot>
@@ -348,7 +348,7 @@ struct protocol<raft_control_tag<Entry, Snapshot>> {
         typename raft_control<Entry, Snapshot>::leader
     > messages;
 
-    typedef raft_control<Entry, Snapshot> type;
+    typedef raft_control<Entry, Snapshot> scope;
 };
 
 }} // namespace cocaine::io

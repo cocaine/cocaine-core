@@ -68,13 +68,13 @@ node_service_t::node_service_t(context_t& context, io::reactor_t& reactor, const
 {
     using namespace std::placeholders;
 
-    typedef io::raft_node<msgpack::object, msgpack::object> protocol_type;
+    typedef io::raft_node<msgpack::object, msgpack::object> protocol;
 
-    on<protocol_type::append>(std::bind(&node_service_t::append, this, _1, _2, _3, _4, _5, _6));
-    on<protocol_type::apply>(std::bind(&node_service_t::apply, this, _1, _2, _3, _4, _5, _6));
-    on<protocol_type::request_vote>(std::bind(&node_service_t::request_vote, this, _1, _2, _3, _4));
-    on<protocol_type::insert>(std::bind(&node_service_t::insert, this, _1, _2));
-    on<protocol_type::erase>(std::bind(&node_service_t::erase, this, _1, _2));
+    on<protocol::append>(std::bind(&node_service_t::append, this, _1, _2, _3, _4, _5, _6));
+    on<protocol::apply>(std::bind(&node_service_t::apply, this, _1, _2, _3, _4, _5, _6));
+    on<protocol::request_vote>(std::bind(&node_service_t::request_vote, this, _1, _2, _3, _4));
+    on<protocol::insert>(std::bind(&node_service_t::insert, this, _1, _2));
+    on<protocol::erase>(std::bind(&node_service_t::erase, this, _1, _2));
 }
 
 std::shared_ptr<raft::actor_concept_t>
@@ -140,15 +140,15 @@ control_service_t::control_service_t(context_t& context,
 {
     using namespace std::placeholders;
 
-    typedef io::raft_control<msgpack::object, msgpack::object> protocol_type;
+    typedef io::raft_control<msgpack::object, msgpack::object> protocol;
 
-    on<protocol_type::insert>(std::bind(&control_service_t::insert, this, _1, _2));
-    on<protocol_type::erase>(std::bind(&control_service_t::erase, this, _1, _2));
-    on<protocol_type::lock>(std::bind(&control_service_t::lock, this, _1));
-    on<protocol_type::reset>(std::bind(&control_service_t::reset, this, _1, _2));
-    on<protocol_type::dump>(std::bind(&control_service_t::dump, this));
-    on<protocol_type::status>(std::bind(&control_service_t::status, this, _1));
-    on<protocol_type::leader>(std::bind(&control_service_t::leader, this, _1));
+    on<protocol::insert>(std::bind(&control_service_t::insert, this, _1, _2));
+    on<protocol::erase>(std::bind(&control_service_t::erase, this, _1, _2));
+    on<protocol::lock>(std::bind(&control_service_t::lock, this, _1));
+    on<protocol::reset>(std::bind(&control_service_t::reset, this, _1, _2));
+    on<protocol::dump>(std::bind(&control_service_t::dump, this));
+    on<protocol::status>(std::bind(&control_service_t::status, this, _1));
+    on<protocol::leader>(std::bind(&control_service_t::leader, this, _1));
 
     if(m_context.config.raft.create_configuration_cluster) {
         typedef log_entry<configuration_machine_t> entry_type;

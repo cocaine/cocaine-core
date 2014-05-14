@@ -228,7 +228,7 @@ class locator_t::remote_client_t:
 public:
     typedef io::protocol<
         io::event_traits<io::locator::synchronize>::drain_type
-    >::type protocol;
+    >::scope protocol;
 
     struct announce_slot_t:
         public basic_slot<protocol::chunk>

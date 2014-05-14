@@ -42,7 +42,7 @@ class remote_node {
     typedef typename cluster_type::actor_type actor_type;
     typedef typename actor_type::entry_type entry_type;
     typedef typename actor_type::snapshot_type snapshot_type;
-    typedef io::raft_node<entry_type, snapshot_type> protocol_type;
+    typedef io::raft_node<entry_type, snapshot_type> protocol;
 
     // This class handles response from remote node on append request.
     class vote_handler_t {
@@ -328,7 +328,7 @@ private:
 
             auto handler = std::bind(&vote_handler_t::handle, m_vote_state, std::placeholders::_1);
 
-            m_client->call<typename protocol_type::request_vote>(
+            m_client->call<typename protocol::request_vote>(
                 make_proxy<std::tuple<uint64_t, bool>>(handler, m_id.first),
                 m_actor.name(),
                 m_actor.config().current_term(),
@@ -371,7 +371,7 @@ private:
 
         m_append_state->set_last(m_actor.log().snapshot_index());
 
-        m_client->call<typename protocol_type::apply>(
+        m_client->call<typename protocol::apply>(
             dispatch,
             m_actor.name(),
             m_actor.config().current_term(),
@@ -423,7 +423,7 @@ private:
 
         m_append_state->set_last(last_index);
 
-        m_client->call<typename protocol_type::append>(
+        m_client->call<typename protocol::append>(
             dispatch,
             m_actor.name(),
             m_actor.config().current_term(),
@@ -457,7 +457,7 @@ private:
                                              m_actor.log()[m_next_index - 1].term());
             }
 
-            m_client->call<typename protocol_type::append>(
+            m_client->call<typename protocol::append>(
                 std::shared_ptr<io::basic_dispatch_t>(),
                 m_actor.name(),
                 m_actor.config().current_term(),

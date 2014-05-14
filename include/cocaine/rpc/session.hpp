@@ -56,7 +56,7 @@ public:
     friend class io::basic_upstream_t;
 
     session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr,
-              const std::shared_ptr<io::basic_dispatch_t>& prototype_ = std::shared_ptr<io::basic_dispatch_t>());
+              const std::shared_ptr<io::basic_dispatch_t>& prototype = std::shared_ptr<io::basic_dispatch_t>());
 
     void
     invoke(const io::message_t& message);

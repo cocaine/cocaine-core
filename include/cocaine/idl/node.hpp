@@ -85,7 +85,7 @@ struct protocol<app_tag> {
         app::info
     > messages;
 
-    typedef app type;
+    typedef app scope;
 };
 
 // Node service interface
@@ -164,7 +164,7 @@ struct protocol<node_tag> {
         node::list
     > messages;
 
-    typedef node type;
+    typedef node scope;
 };
 
 }} // namespace cocaine::io

@@ -92,7 +92,7 @@ struct protocol<counter_tag> {
         counter::cas
     > messages;
 
-    typedef counter type;
+    typedef counter scope;
 };
 
 }} // namespace cocaine::io

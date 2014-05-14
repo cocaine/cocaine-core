@@ -84,28 +84,30 @@ basic_upstream_t::revoke() {
     session->revoke(index);
 }
 
+// Forwards for the upstream<T> class
+
 template<class Tag> class message_queue;
 
 } // namespace io
 
-template<class T>
+template<class Tag>
 class upstream {
-    // It should be constant, but g++ 4.4 can't compile c++.
+    // It should be constant, but GCC 4.4 can't compile C++.
     std::shared_ptr<io::basic_upstream_t> ptr;
 
 public:
-    template<class Tag> friend class io::message_queue;
+    template<class> friend class io::message_queue;
 
     upstream(const std::shared_ptr<io::basic_upstream_t>& upstream_):
         ptr(upstream_)
     { }
 
     // Protocol constraint for this upstream.
-    typedef typename io::protocol<T>::type protocol;
+    typedef typename io::protocol<Tag>::scope protocol;
 
     template<class Event, typename... Args>
     typename std::enable_if<
-        std::is_same<typename Event::tag, T>::value
+        std::is_same<typename Event::tag, Tag>::value
     >::type
     send(Args&&... args) {
         ptr->send<Event>(std::forward<Args>(args)...);

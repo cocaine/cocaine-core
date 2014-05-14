@@ -51,7 +51,7 @@ struct blocking_slot:
     typedef typename parent_type::tuple_type tuple_type;
     typedef typename parent_type::upstream_type upstream_type;
 
-    typedef typename parent_type::protocol_type protocol;
+    typedef typename parent_type::protocol protocol;
 
     blocking_slot(callable_type callable):
         parent_type(callable)
@@ -88,7 +88,7 @@ struct blocking_slot<Event, false, void>:
     typedef typename parent_type::tuple_type tuple_type;
     typedef typename parent_type::upstream_type upstream_type;
 
-    typedef typename parent_type::protocol_type protocol;
+    typedef typename parent_type::protocol protocol;
 
     blocking_slot(callable_type callable):
         parent_type(callable)
@@ -125,7 +125,7 @@ struct blocking_slot<Event, true, void>:
     typedef typename parent_type::tuple_type tuple_type;
     typedef typename parent_type::upstream_type upstream_type;
 
-    typedef typename parent_type::protocol_type protocol;
+    typedef typename parent_type::protocol protocol;
 
     blocking_slot(callable_type callable):
         parent_type(callable)

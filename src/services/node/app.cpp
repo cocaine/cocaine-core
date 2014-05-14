@@ -73,7 +73,7 @@ class streaming_service_t:
 public:
     typedef io::protocol<
         io::event_traits<io::app::enqueue>::transition_type
-    >::type protocol;
+    >::scope protocol;
 
     struct write_slot_t:
         public basic_slot<protocol::chunk>

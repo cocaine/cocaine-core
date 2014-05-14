@@ -292,7 +292,7 @@ class proxy_dispatch :
     public dispatch<io::streaming_tag<T>>
 {
     typedef boost::variant<std::error_code, T> result_type;
-    typedef io::streaming<T> protocol_type;
+    typedef io::streaming<T> protocol;
 
 public:
     proxy_dispatch(const std::function<void(result_type)>& callback,
@@ -302,9 +302,9 @@ public:
     {
         using namespace std::placeholders;
 
-        this->template on<typename protocol_type::chunk>(std::bind(&proxy_dispatch::on_write, this, _1));
-        this->template on<typename protocol_type::error>(std::bind(&proxy_dispatch::on_error, this, _1, _2));
-        this->template on<typename protocol_type::choke>(std::bind(&proxy_dispatch::on_choke, this));
+        this->template on<typename protocol::chunk>(std::bind(&proxy_dispatch::on_write, this, _1));
+        this->template on<typename protocol::error>(std::bind(&proxy_dispatch::on_error, this, _1, _2));
+        this->template on<typename protocol::choke>(std::bind(&proxy_dispatch::on_choke, this));
     }
 
 private:
@@ -342,7 +342,7 @@ class proxy_dispatch<std::tuple<Args...>> :
 {
     typedef std::tuple<Args...> tuple_type;
     typedef boost::variant<std::error_code, tuple_type> result_type;
-    typedef io::streaming<tuple_type> protocol_type;
+    typedef io::streaming<tuple_type> protocol;
 
     struct write_handler {
         typedef void result_type;
@@ -363,11 +363,11 @@ public:
     {
         using namespace std::placeholders;
 
-        this->template on<typename protocol_type::chunk>(write_handler {this});
-        this->template on<typename protocol_type::error>(
+        this->template on<typename protocol::chunk>(write_handler {this});
+        this->template on<typename protocol::error>(
             std::bind(&proxy_dispatch::on_error, this, _1, _2)
         );
-        this->template on<typename protocol_type::choke>(std::bind(&proxy_dispatch::on_choke, this));
+        this->template on<typename protocol::choke>(std::bind(&proxy_dispatch::on_choke, this));
     }
 
 private:

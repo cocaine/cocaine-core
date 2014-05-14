@@ -100,7 +100,7 @@ struct protocol<rpc_tag> {
         rpc::chunk,
         rpc::error,
         rpc::choke
-    >::type messages;
+    > messages;
 };
 
 }} // namespace cocaine::io

@@ -47,12 +47,12 @@ struct protocol_impl;
 
 template<class T>
 struct protocol_impl<streaming_tag<T>> {
-    typedef typename protocol<streaming_tag<T>>::type type;
+    typedef typename protocol<streaming_tag<T>>::scope scope;
 };
 
 template<>
 struct protocol_impl<void> {
-    typedef protocol<void>::type type;
+    typedef protocol<void>::scope scope;
 };
 
 } // namespace aux
@@ -82,7 +82,7 @@ struct function_slot:
 
     typedef typename aux::protocol_impl<
         typename event_traits<Event>::drain_type
-    >::type protocol_type;
+    >::scope protocol;
 
     R
     call(const tuple_type& args) const {
