@@ -20,19 +20,18 @@
 
 #include "cocaine/rpc/session.hpp"
 
-#include "cocaine/dispatch.hpp"
-
+#include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
 using namespace cocaine;
 using namespace cocaine::io;
 
 class session_t::channel_t {
-    std::shared_ptr<dispatch_t> dispatch;
-    std::shared_ptr<upstream_t> upstream;
+    std::shared_ptr<basic_dispatch_t> dispatch;
+    std::shared_ptr<basic_upstream_t> upstream;
 
 public:
-    channel_t(const std::shared_ptr<dispatch_t>& dispatch_, const std::shared_ptr<upstream_t>& upstream_):
+    channel_t(const std::shared_ptr<basic_dispatch_t>& dispatch_, const std::shared_ptr<basic_upstream_t>& upstream_):
         dispatch(dispatch_),
         upstream(upstream_)
     { }
@@ -52,7 +51,7 @@ public:
     }
 };
 
-session_t::session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<io::dispatch_t>& prototype_):
+session_t::session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<io::basic_dispatch_t>& prototype_):
     ptr(std::move(ptr_)),
     prototype(prototype_),
     max_channel(0)
@@ -84,7 +83,7 @@ session_t::invoke(const message_t& message) {
 
             std::tie(lb, std::ignore) = locked->insert({index, std::make_shared<channel_t>(
                 prototype,
-                std::make_shared<upstream_t>(shared_from_this(), index)
+                std::make_shared<basic_upstream_t>(shared_from_this(), index)
             )});
         }
 
@@ -99,12 +98,12 @@ session_t::invoke(const message_t& message) {
     channel->invoke(message);
 }
 
-std::shared_ptr<upstream_t>
-session_t::invoke(const std::shared_ptr<io::dispatch_t>& dispatch) {
+std::shared_ptr<basic_upstream_t>
+session_t::invoke(const std::shared_ptr<io::basic_dispatch_t>& dispatch) {
     auto locked = channels.synchronize();
 
     auto index = ++max_channel;
-    auto upstream = std::make_shared<upstream_t>(shared_from_this(), index);
+    auto upstream = std::make_shared<basic_upstream_t>(shared_from_this(), index);
 
     // TODO: Think about skipping dispatch registration in case of fire-and-forget service events.
     locked->insert({index, std::make_shared<channel_t>(dispatch, upstream)});

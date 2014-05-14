@@ -23,15 +23,15 @@
 
 #include "cocaine/api/service.hpp"
 
-#include "cocaine/dispatch.hpp"
-
 #include "cocaine/idl/logging.hpp"
+
+#include "cocaine/rpc/dispatch.hpp"
 
 namespace cocaine { namespace service {
 
 class logging_t:
     public api::service_t,
-    public implements<io::log_tag>
+    public dispatch<io::log_tag>
 {
     std::unique_ptr<logging::log_context_t> m_logger;
 
@@ -40,7 +40,7 @@ public:
 
     virtual
     auto
-    prototype() -> dispatch_t&;
+    prototype() -> io::basic_dispatch_t&;
 };
 
 }} // namespace cocaine::service

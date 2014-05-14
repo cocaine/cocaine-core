@@ -29,9 +29,13 @@
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
 #include "cocaine/detail/locator.hpp"
-#include "cocaine/detail/raft/repository.hpp"
-#include "cocaine/detail/raft/node_service.hpp"
-#include "cocaine/detail/raft/control_service.hpp"
+
+#ifdef COCAINE_ALLOW_RAFT
+    #include "cocaine/detail/raft/repository.hpp"
+    #include "cocaine/detail/raft/node_service.hpp"
+    #include "cocaine/detail/raft/control_service.hpp"
+#endif
+
 #include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/logging.hpp"
@@ -253,6 +257,7 @@ struct dynamic_converter<cocaine::config_t::component_t, void> {
 } // namespace cocaine
 
 // Helper dynamic_t -> blackhole config conversion specializations.
+
 namespace blackhole {
 
 namespace repository {
@@ -454,6 +459,7 @@ struct dynamic_converter<cocaine::config_t::logging_t, void> {
 namespace {
 
 // Severity attribute converter from enumeration underlying type into string.
+
 void
 map_severity(blackhole::aux::attachable_ostringstream& stream,
              const logging::priorities& lvl)
@@ -480,8 +486,8 @@ map_severity(blackhole::aux::attachable_ostringstream& stream,
 
 } // namespace
 
-// Mapping trait that is called by Blackhole each time when syslog mapping
-// is required.
+// Mapping trait that is called by Blackhole each time when syslog mapping is required.
+
 namespace blackhole {
 
 namespace sink {
@@ -545,7 +551,10 @@ config_t::config_t(const std::string& config_path) {
     const auto &path_config    = root.as_object().at("paths", dynamic_t::empty_object).as_object();
     const auto &locator_config = root.as_object().at("locator", dynamic_t::empty_object).as_object();
     const auto &network_config = root.as_object().at("network", dynamic_t::empty_object).as_object();
+
+#ifdef COCAINE_ALLOW_RAFT
     const auto &raft_config    = root.as_object().at("raft", dynamic_t::empty_object).as_object();
+#endif
 
     // Validation
 
@@ -619,8 +628,8 @@ config_t::config_t(const std::string& config_path) {
         }
     }
 
+#ifdef COCAINE_ALLOW_RAFT
     // Raft configuration.
-
     raft.node_service_name = "raft_node";
     raft.control_service_name = "raft_control";
     raft.config_machine_name = "configuration";
@@ -631,6 +640,7 @@ config_t::config_t(const std::string& config_path) {
     raft.message_size = raft_config.at("message_size", 1000).to<unsigned int>();
     raft.create_configuration_cluster = false;
     raft.enable = root.as_object().count("raft") > 0;
+#endif
 
     // Component configuration
     logging  = root.as_object().at("logging" , dynamic_t::empty_object).to<config_t::logging_t>();
@@ -646,8 +656,10 @@ config_t::version() {
 // Context
 
 context_t::context_t(config_t config, const std::string& logger_name):
-    config(config),
-    raft(std::make_unique<raft::repository_t>(*this))
+    config(config)
+#ifdef COCAINE_ALLOW_RAFT
+  , raft(std::make_unique<raft::repository_t>(*this))
+#endif
 {
     m_repository.reset(new api::repository_t());
 
@@ -701,8 +713,10 @@ context_t::context_t(config_t config, const std::string& logger_name):
 }
 
 context_t::context_t(config_t config, std::unique_ptr<logger_t>&& logger):
-    config(config),
-    raft(std::make_unique<raft::repository_t>(*this))
+    config(config)
+#ifdef COCAINE_ALLOW_RAFT
+  , raft(std::make_unique<raft::repository_t>(*this))
+#endif
 {
     m_repository.reset(new api::repository_t());
 
@@ -853,7 +867,7 @@ context_t::locate(const std::string& name) const -> boost::optional<actor_t&> {
 }
 
 void
-context_t::attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<io::dispatch_t>& dispatch) {
+context_t::attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<io::basic_dispatch_t>& dispatch) {
     m_pool[ptr->fd() % m_pool.size()]->attach(ptr, dispatch);
 }
 
@@ -882,6 +896,7 @@ context_t::bootstrap() {
 
     m_synchronization = std::make_shared<synchronization_t>(*this);
 
+#ifdef COCAINE_ALLOW_RAFT
     // Initialize Raft service.
     try {
         if(config.raft.enable) {
@@ -919,6 +934,7 @@ context_t::bootstrap() {
         COCAINE_LOG_ERROR(blog, "unable to initialize RAFT service - unknown exception");
         throw;
     }
+#endif
 
     // Initialize other services.
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
@@ -967,7 +983,7 @@ context_t::bootstrap() {
         service = std::make_unique<actor_t>(
             *this,
             reactor,
-            std::unique_ptr<dispatch_t>(std::move(locator))
+            std::unique_ptr<basic_dispatch_t>(std::move(locator))
         );
 
         // NOTE: Start the locator thread last, so that we won't needlessly send node updates to the

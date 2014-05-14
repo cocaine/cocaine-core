@@ -47,7 +47,7 @@ class actor_t {
     // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
     // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
     // after the authentication process completes successfully.
-    std::shared_ptr<io::dispatch_t> m_prototype;
+    std::shared_ptr<io::basic_dispatch_t> m_prototype;
 
     typedef io::connector<io::acceptor<io::tcp>> endpoint_type;
 
@@ -57,7 +57,7 @@ class actor_t {
     std::unique_ptr<boost::thread> m_thread;
 
 public:
-    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::dispatch_t>&& prototype);
+    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t>&& prototype);
     actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t>&& service);
 
    ~actor_t();

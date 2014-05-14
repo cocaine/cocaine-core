@@ -20,7 +20,11 @@
 
 #include "cocaine/detail/isolates/process.hpp"
 #include "cocaine/detail/gateways/adhoc.hpp"
-#include "cocaine/detail/services/counter.hpp"
+
+#ifdef COCAINE_ALLOW_RAFT
+    #include "cocaine/detail/services/counter.hpp"
+#endif
+
 #include "cocaine/detail/services/logging.hpp"
 #include "cocaine/detail/services/node.hpp"
 #include "cocaine/detail/services/storage.hpp"
@@ -32,7 +36,11 @@ void
 cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<isolate::process_t>("process");
     repository.insert<gateway::adhoc_t>("adhoc");
+
+#ifdef COCAINE_ALLOW_RAFT
     repository.insert<service::counter_t>("counter");
+#endif
+
     repository.insert<service::logging_t>("logging");
     repository.insert<service::node_t>("node");
     repository.insert<service::storage_t>("storage");

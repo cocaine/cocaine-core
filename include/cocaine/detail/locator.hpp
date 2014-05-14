@@ -23,10 +23,10 @@
 #define COCAINE_SERVICE_LOCATOR_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/dispatch.hpp"
 
 #include "cocaine/idl/locator.hpp"
 
+#include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/result_of.hpp"
 
 namespace ev {
@@ -39,7 +39,7 @@ namespace cocaine {
 class session_t;
 
 class locator_t:
-    public implements<io::locator_tag>
+    public dispatch<io::locator_tag>
 {
     context_t& m_context;
 

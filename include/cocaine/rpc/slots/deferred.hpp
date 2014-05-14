@@ -39,18 +39,20 @@ struct deferred_slot:
     typedef function_slot<Event, T<R>> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
+
     typedef typename parent_type::dispatch_type dispatch_type;
+    typedef typename parent_type::tuple_type tuple_type;
+    typedef typename parent_type::upstream_type upstream_type;
+
     typedef typename parent_type::protocol_type protocol;
 
     deferred_slot(callable_type callable):
         parent_type(callable)
     { }
 
-    typedef typename parent_type::tuple_type tuple_type;
-
     virtual
     std::shared_ptr<dispatch_type>
-    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
+    operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
             const T<R> result = this->call(args);
 
@@ -58,9 +60,9 @@ struct deferred_slot:
             // be already in use in some other processing thread of the service.
             (*result.queue_impl)->attach(upstream);
         } catch(const std::system_error& e) {
-            upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
+            upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
-            upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
+            upstream.template send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
 
         // Return an empty protocol dispatch.

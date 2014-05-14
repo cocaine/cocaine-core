@@ -72,18 +72,18 @@ make_frozen(Args&&... args) {
 struct frozen_visitor_t:
     public boost::static_visitor<void>
 {
-    frozen_visitor_t(const std::shared_ptr<upstream_t>& upstream_):
-        upstream(upstream_)
+    frozen_visitor_t(const std::shared_ptr<basic_upstream_t>& u):
+        upstream_(u)
     { }
 
     template<class Event>
     void
     operator()(const frozen<Event>& frozen) const {
-        upstream->send<Event>(frozen.tuple);
+        upstream_->send<Event>(frozen.tuple);
     }
 
 private:
-    const std::shared_ptr<upstream_t>& upstream;
+    const std::shared_ptr<basic_upstream_t>& upstream_;
 };
 
 } // namespace aux
@@ -102,7 +102,7 @@ class message_queue {
 
     // The upstream might be attached during state method invocation, so it has to be synchronized
     // for thread safety - the atomicicity guarantee of the shared_ptr<T> is not enough.
-    std::shared_ptr<upstream_t> upstream;
+    std::shared_ptr<basic_upstream_t> upstream_;
 
 public:
     template<class Event, typename... Args>
@@ -113,22 +113,22 @@ public:
             "message protocol is not compatible with this message queue"
         );
 
-        if(!upstream) {
+        if(!upstream_) {
             return operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
         }
 
-        upstream->send<Event>(std::forward<Args>(args)...);
+        upstream_->send<Event>(std::forward<Args>(args)...);
     }
 
     void
-    attach(const std::shared_ptr<upstream_t>& upstream_) {
-        upstream = upstream_;
+    attach(upstream<Tag>&& u) {
+        upstream_ = std::move(u.ptr);
 
         if(operations.empty()) {
             return;
         }
 
-        aux::frozen_visitor_t visitor(upstream);
+        aux::frozen_visitor_t visitor(upstream_);
 
         for(auto it = operations.begin(); it != operations.end(); ++it) {
             boost::apply_visitor(visitor, *it);

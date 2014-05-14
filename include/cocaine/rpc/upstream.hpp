@@ -29,7 +29,11 @@
 
 namespace cocaine {
 
-class upstream_t {
+template<class Tag> class upstream;
+
+namespace io {
+
+class basic_upstream_t {
     const std::shared_ptr<session_t> session;
     const uint64_t index;
 
@@ -42,7 +46,7 @@ class upstream_t {
     states::values state;
 
 public:
-    upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_):
+    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_):
         session(session_),
         index(index_),
         state(states::active)
@@ -58,7 +62,7 @@ public:
 
 template<class Event, typename... Args>
 void
-upstream_t::send(Args&&... args) {
+basic_upstream_t::send(Args&&... args) {
     if(state != states::active) {
         return;
     }
@@ -76,9 +80,34 @@ upstream_t::send(Args&&... args) {
 
 inline
 void
-upstream_t::revoke() {
+basic_upstream_t::revoke() {
     session->revoke(index);
 }
+
+} // namespace io
+
+template<class T>
+class upstream {
+    const std::shared_ptr<io::basic_upstream_t> ptr;
+
+public:
+    friend class io::message_queue<T>;
+
+    upstream(const std::shared_ptr<io::basic_upstream_t>& upstream_):
+        ptr(upstream_)
+    { }
+
+    // Protocol constraint for this upstream.
+    typedef typename io::protocol<T>::type protocol;
+
+    template<class Event, typename... Args>
+    typename std::enable_if<
+        std::is_same<typename Event::tag, T>::value
+    >::type
+    send(Args&&... args) {
+        ptr->send<Event>(std::forward<Args>(args)...);
+    }
+};
 
 } // namespace cocaine
 

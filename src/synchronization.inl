@@ -30,10 +30,13 @@ struct context_t::synchronization_t:
 
     typedef basic_slot<io::locator::synchronize>::dispatch_type dispatch_type;
     typedef basic_slot<io::locator::synchronize>::tuple_type tuple_type;
+    typedef basic_slot<io::locator::synchronize>::upstream_type upstream_type;
+
+    typedef upstream_type::protocol protocol;
 
     virtual
     std::shared_ptr<dispatch_type>
-    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream);
+    operator()(tuple_type&& args, upstream_type&& upstream);
 
     void
     announce();
@@ -49,7 +52,7 @@ private:
     context_t& self;
 
     // Remote clients for future updates.
-    std::vector<std::shared_ptr<upstream_t>> upstreams;
+    std::vector<upstream_type> upstreams;
 };
 
 context_t::synchronization_t::synchronization_t(context_t& self_):
@@ -57,13 +60,13 @@ context_t::synchronization_t::synchronization_t(context_t& self_):
 { }
 
 auto
-context_t::synchronization_t::operator()(const tuple_type& /* args */, const std::shared_ptr<upstream_t>& upstream)
+context_t::synchronization_t::operator()(tuple_type&& /* args */, upstream_type&& upstream)
     -> std::shared_ptr<dispatch_type>
 {
-    upstream->send<io::streaming<result_type>::chunk>(dump());
+    upstream.template send<protocol::chunk>(dump());
 
     // Save this upstream for the future notifications.
-    upstreams.push_back(upstream);
+    upstreams.push_back(std::move(upstream));
 
     // Return an empty protocol dispatch.
     return std::shared_ptr<dispatch_type>();
@@ -74,14 +77,14 @@ context_t::synchronization_t::announce() {
     result_type result = dump();
 
     for(auto it = upstreams.begin(); it != upstreams.end(); ++it) {
-        (*it)->send<io::streaming<result_type>::chunk>(result);
+        it->send<protocol::chunk>(result);
     }
 }
 
 void
 context_t::synchronization_t::shutdown() {
     for(auto it = upstreams.begin(); it != upstreams.end(); ++it) {
-        (*it)->send<io::streaming<result_type>::choke>();
+        it->send<protocol::choke>();
     }
 
     upstreams.clear();

@@ -174,13 +174,15 @@ main(int argc, char* argv[]) {
 
     general_options.add_options()
         ("help,h", "show this message")
+#ifdef COCAINE_ALLOW_RAFT
+        ("bootstrap-raft", "create new raft cluster")
+#endif
         ("configuration,c", po::value<std::string>(), "location of the configuration file")
 #if !defined(__APPLE__)
         ("daemonize,d", "daemonize on start")
         ("pidfile,p", po::value<std::string>(), "location of a pid file")
 #endif
-        ("version,v", "show version and build information")
-        ("bootstrap-raft", "create new raft cluster");
+        ("version,v", "show version and build information");
 
     try {
         po::store(po::command_line_parser(argc, argv).options(general_options).run(), vm);
@@ -234,9 +236,11 @@ main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+#ifdef COCAINE_ALLOW_RAFT
     if(vm.count("bootstrap-raft")) {
         config->raft.create_configuration_cluster = true;
     }
+#endif
 
 #if !defined(__APPLE__)
     std::unique_ptr<pid_file_t> pidfile;

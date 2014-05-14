@@ -41,6 +41,9 @@ struct protocol;
 template<>
 struct protocol<void> {
     typedef mpl::list<> messages;
+
+    // Clean message namespace for the void protocol.
+    typedef struct   {} type;
 };
 
 template<class Tag>

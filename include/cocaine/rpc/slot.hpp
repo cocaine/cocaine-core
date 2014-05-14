@@ -36,10 +36,11 @@ namespace mpl = boost::mpl;
 template<class Event>
 class basic_slot {
     typedef Event event_type;
+    typedef event_traits<event_type> traits_type;
 
 public:
     typedef typename mpl::transform<
-        typename io::event_traits<event_type>::tuple_type,
+        typename traits_type::tuple_type,
         typename mpl::lambda<io::detail::unwrap_type<mpl::_1>>
     >::type sequence_type;
 
@@ -48,15 +49,16 @@ public:
        // Empty.
     }
 
-    // Expected transition dispatch type.
-    typedef implements<typename event_traits<event_type>::transition_type> dispatch_type;
+    // Expected transition and upstream dispatch types.
+    typedef dispatch<typename traits_type::transition_type> dispatch_type;
+    typedef upstream<typename traits_type::drain_type> upstream_type;
 
     // Expected parameter types, stripped of any tags.
     typedef typename tuple::fold<sequence_type>::type tuple_type;
 
     virtual
     std::shared_ptr<dispatch_type>
-    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) = 0;
+    operator()(tuple_type&& args, upstream_type&& upstream) = 0;
 
 public:
     std::string

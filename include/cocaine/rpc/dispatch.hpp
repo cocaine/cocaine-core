@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_DISPATCH_HPP
-#define COCAINE_DISPATCH_HPP
+#ifndef COCAINE_IO_DISPATCH_HPP
+#define COCAINE_IO_DISPATCH_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
@@ -44,25 +44,21 @@
 
 namespace cocaine {
 
-template<class Tag> class implements;
-
-// Forwards
-
-class upstream_t;
+template<class Tag> class dispatch;
 
 namespace io {
 
-class dispatch_t {
-    COCAINE_DECLARE_NONCOPYABLE(dispatch_t)
+class basic_dispatch_t {
+    COCAINE_DECLARE_NONCOPYABLE(basic_dispatch_t)
 
     // For actor's named threads feature.
     const std::string m_name;
 
 public:
-    dispatch_t(const std::string& name);
+    basic_dispatch_t(const std::string& name);
 
     virtual
-   ~dispatch_t();
+   ~basic_dispatch_t();
 
 public:
     auto
@@ -70,8 +66,8 @@ public:
 
 public:
     virtual
-    std::shared_ptr<dispatch_t>
-    invoke(const message_t& message, const std::shared_ptr<upstream_t>& upstream) const = 0;
+    std::shared_ptr<basic_dispatch_t>
+    invoke(const message_t& message, const std::shared_ptr<basic_upstream_t>& upstream) const = 0;
 
     virtual
     auto
@@ -87,8 +83,8 @@ public:
 namespace mpl = boost::mpl;
 
 template<class Tag>
-class implements:
-    public io::dispatch_t
+class dispatch:
+    public io::basic_dispatch_t
 {
     const io::dispatch_graph_t graph;
 
@@ -124,8 +120,8 @@ class implements:
     { };
 
 public:
-    implements(const std::string& name):
-        dispatch_t(name),
+    dispatch(const std::string& name):
+        basic_dispatch_t(name),
         graph(io::traverse<Tag>().get())
     { }
 
@@ -147,8 +143,8 @@ public:
 
 public:
     virtual
-    std::shared_ptr<io::dispatch_t>
-    invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const;
+    std::shared_ptr<io::basic_dispatch_t>
+    invoke(const io::message_t& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const;
 
     virtual
     auto
@@ -185,15 +181,15 @@ struct select<streamed<R>, Event> {
 // Slot invocation with arguments provided as a MessagePack object
 
 struct invocation_visitor_t:
-    public boost::static_visitor<std::shared_ptr<io::dispatch_t>>
+    public boost::static_visitor<std::shared_ptr<io::basic_dispatch_t>>
 {
-    invocation_visitor_t(const msgpack::object& unpacked_, const std::shared_ptr<upstream_t>& upstream_):
+    invocation_visitor_t(const msgpack::object& unpacked_, const std::shared_ptr<io::basic_upstream_t>& upstream_):
         unpacked(unpacked_),
         upstream(upstream_)
     { }
 
     template<class Event>
-    std::shared_ptr<io::dispatch_t>
+    std::shared_ptr<typename io::basic_slot<Event>::dispatch_type>
     operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
         typename io::basic_slot<Event>::tuple_type args;
 
@@ -201,12 +197,13 @@ struct invocation_visitor_t:
         // tuple type traits, in order to support parameter tags, like optional<T>.
         io::type_traits<typename io::event_traits<Event>::tuple_type>::unpack(unpacked, args);
 
-        return (*slot)(args, upstream);
+        // Call the slot with the upstream constrained using the event's drain protocol type tag.
+        return (*slot)(std::move(args), typename io::basic_slot<Event>::upstream_type(upstream));
     }
 
 private:
     const msgpack::object& unpacked;
-    const std::shared_ptr<upstream_t>& upstream;
+    const std::shared_ptr<io::basic_upstream_t>& upstream;
 };
 
 } // namespace aux
@@ -214,7 +211,7 @@ private:
 template<class Tag>
 template<class Event, class F>
 void
-implements<Tag>::on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type*) {
+dispatch<Tag>::on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type*) {
     typedef typename aux::select<
         typename result_of<F>::type,
         Event
@@ -226,7 +223,7 @@ implements<Tag>::on(const F& callable, typename std::enable_if<!is_slot<F, Event
 template<class Tag>
 template<class Event>
 void
-implements<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
+dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
     if(!m_slots->insert(std::make_pair(io::event_traits<Event>::id, ptr)).second) {
         throw cocaine::error_t("duplicate type %d slot: %s", io::event_traits<Event>::id, ptr->name());
     }
@@ -235,7 +232,7 @@ implements<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
 template<class Tag>
 template<class Visitor>
 typename Visitor::result_type
-implements<Tag>::invoke(int id, const Visitor& visitor) const {
+dispatch<Tag>::invoke(int id, const Visitor& visitor) const {
     typename slot_map_t::const_iterator lb, ub;
 
     std::tie(lb, ub) = m_slots->equal_range(id);
@@ -246,7 +243,7 @@ implements<Tag>::invoke(int id, const Visitor& visitor) const {
     }
 
     // NOTE: The slot pointer is copied here so that the handling code could unregister the slot via
-    // dispatch_t::forget() without pulling the object from underneath itself.
+    // dispatch<T>::forget() without pulling the object from underneath itself.
     typename slot_map_t::mapped_type slot = lb->second;
 
     try {
@@ -262,15 +259,15 @@ implements<Tag>::invoke(int id, const Visitor& visitor) const {
 template<class Tag>
 template<class Event>
 void
-implements<Tag>::forget() {
+dispatch<Tag>::forget() {
     if(!m_slots->erase(io::event_traits<Event>::id)) {
         throw cocaine::error_t("type %d slot does not exist", io::event_traits<Event>::id);
     }
 }
 
 template<class Tag>
-std::shared_ptr<io::dispatch_t>
-implements<Tag>::invoke(const io::message_t& message, const std::shared_ptr<upstream_t>& upstream) const {
+std::shared_ptr<io::basic_dispatch_t>
+dispatch<Tag>::invoke(const io::message_t& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const {
     return invoke(message.id(), aux::invocation_visitor_t(message.args(), upstream));
 }
 

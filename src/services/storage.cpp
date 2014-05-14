@@ -29,7 +29,7 @@ using namespace std::placeholders;
 
 storage_t::storage_t(context_t& context, reactor_t& reactor, const std::string& name, const dynamic_t& args):
     api::service_t(context, reactor, name, args),
-    implements<io::storage_tag>(name)
+    dispatch<io::storage_tag>(name)
 {
     auto storage = api::storage(context, args.as_object().at("backend", "core").as_string());
 
@@ -40,6 +40,6 @@ storage_t::storage_t(context_t& context, reactor_t& reactor, const std::string& 
 }
 
 auto
-storage_t::prototype() -> dispatch_t& {
+storage_t::prototype() -> basic_dispatch_t& {
     return *this;
 }

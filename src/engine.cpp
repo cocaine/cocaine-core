@@ -21,10 +21,10 @@
 #include "cocaine/detail/engine.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
+#include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/session.hpp"
 
 #if defined(__linux__)
@@ -76,12 +76,12 @@ execution_unit_t::~execution_unit_t() {
 }
 
 void
-execution_unit_t::attach(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::dispatch_t>& dispatch) {
+execution_unit_t::attach(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::basic_dispatch_t>& dispatch) {
     m_reactor->post(std::bind(&execution_unit_t::on_connect, this, socket, dispatch));
 }
 
 void
-execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::dispatch_t>& dispatch) {
+execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::basic_dispatch_t>& dispatch) {
     auto fd = socket->fd();
 
     BOOST_ASSERT(!m_sessions.count(fd));

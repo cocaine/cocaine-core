@@ -38,7 +38,7 @@ logging_t::logging_t(context_t& context,
                      const std::string& name,
                      const dynamic_t& args):
     api::service_t(context, reactor, name, args),
-    implements<io::log_tag>(name)
+    dispatch<io::log_tag>(name)
 {
     auto backend = args.as_object().at("backend", "core").as_string();
 
@@ -63,6 +63,6 @@ logging_t::logging_t(context_t& context,
 }
 
 auto
-logging_t::prototype() -> dispatch_t& {
+logging_t::prototype() -> basic_dispatch_t& {
     return *this;
 }

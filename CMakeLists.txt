@@ -14,6 +14,8 @@ ELSE()
     OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" OFF)
 ENDIF()
 
+OPTION(COCAINE_ALLOW_RAFT "Build Raft support for Runtime" ON)
+
 INCLUDE(cmake/locate_library.cmake)
 
 LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
@@ -93,9 +95,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/isolates/process/spooler
     src/locator
     src/logging
-    src/raft
     src/repository
-    src/services/counter
     src/services/logging
     src/services/node.cpp
     src/services/node/app
@@ -110,10 +110,23 @@ ADD_LIBRARY(cocaine-core SHARED
     src/storages/files
     src/unique_id)
 
+IF(COCAINE_ALLOW_RAFT)
+    ADD_LIBRARY(cocaine-raft SHARED
+        src/raft
+        src/services/counter)
+
+    SET_TARGET_PROPERTIES(cocaine-raft PROPERTIES
+        COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic"
+        VERSION 2)
+
+    SET(LIBCOCAINE_RAFT cocaine-raft)
+ENDIF()
+
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
     ${Boost_LIBRARIES}
     ${LIBCGROUP_LIBRARY}
+    ${LIBCOCAINE_RAFT}
     ${LIBCRYPTO_LIBRARY}
     ev
     ltdl

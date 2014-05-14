@@ -24,21 +24,21 @@
 #include "cocaine/api/service.hpp"
 #include "cocaine/api/storage.hpp"
 
-#include "cocaine/dispatch.hpp"
-
 #include "cocaine/idl/storage.hpp"
+
+#include "cocaine/rpc/dispatch.hpp"
 
 namespace cocaine { namespace service {
 
 struct storage_t:
     public api::service_t,
-    public implements<io::storage_tag>
+    public dispatch<io::storage_tag>
 {
     storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
 
     virtual
     auto
-    prototype() -> dispatch_t&;
+    prototype() -> io::basic_dispatch_t&;
 };
 
 }} // namespace cocaine::service

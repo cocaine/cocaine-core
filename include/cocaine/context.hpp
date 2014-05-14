@@ -100,6 +100,7 @@ struct config_t {
         boost::optional<component_t> gateway;
     } network;
 
+#ifdef COCAINE_ALLOW_RAFT
     struct {
         std::set<std::pair<std::string, uint16_t>> some_nodes;
         std::string node_service_name;
@@ -112,6 +113,7 @@ struct config_t {
         bool create_configuration_cluster;
         bool enable;
     } raft;
+#endif
 
     typedef std::map<std::string, component_t> component_map_t;
 
@@ -179,7 +181,9 @@ class context_t {
 public:
     const config_t config;
 
+#ifdef COCAINE_ALLOW_RAFT
     std::unique_ptr<raft::repository_t> raft;
+#endif
 
 public:
     context_t(config_t config, const std::string& logger);
@@ -213,7 +217,7 @@ public:
     // I/O
 
     void
-    attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<io::dispatch_t>& dispatch);
+    attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<io::basic_dispatch_t>& dispatch);
 
 private:
     void

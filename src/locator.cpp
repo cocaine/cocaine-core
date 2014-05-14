@@ -56,7 +56,7 @@ using namespace std::placeholders;
 #include "routing.inl"
 
 locator_t::locator_t(context_t& context, reactor_t& reactor):
-    implements<io::locator_tag>("service/locator"),
+    dispatch<io::locator_tag>("service/locator"),
     m_context(context),
     m_log(new logging::log_t(context, "service/locator")),
     m_reactor(reactor),
@@ -217,7 +217,7 @@ struct deferred_erase_action {
 } // namespace
 
 class locator_t::remote_client_t:
-    public implements<io::event_traits<io::locator::synchronize>::drain_type>
+    public dispatch<io::event_traits<io::locator::synchronize>::drain_type>
 {
     locator_t& impl;
 
@@ -226,10 +226,10 @@ class locator_t::remote_client_t:
     const std::string uuid;
 
 public:
-    typedef io::event_traits<io::locator::synchronize>::drain_type tag;
-    typedef io::protocol<tag>::type protocol;
+    typedef io::protocol<
+        io::event_traits<io::locator::synchronize>::drain_type
+    >::type protocol;
 
-public:
     struct announce_slot_t:
         public basic_slot<protocol::chunk>
     {
@@ -239,9 +239,10 @@ public:
 
         typedef basic_slot<protocol::chunk>::dispatch_type dispatch_type;
         typedef basic_slot<protocol::chunk>::tuple_type tuple_type;
+        typedef basic_slot<protocol::chunk>::upstream_type upstream_type;
 
         std::shared_ptr<dispatch_type>
-        operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& /* upstream */) {
+        operator()(tuple_type&& args, upstream_type&& /* upstream */) {
             auto service = impl.lock();
 
             tuple::invoke(
@@ -265,9 +266,10 @@ public:
 
         typedef basic_slot<protocol::choke>::dispatch_type dispatch_type;
         typedef basic_slot<protocol::choke>::tuple_type tuple_type;
+        typedef basic_slot<protocol::choke>::upstream_type upstream_type;
 
         std::shared_ptr<dispatch_type>
-        operator()(const tuple_type& /* args */, const std::shared_ptr<upstream_t>& /* upstream */) {
+        operator()(tuple_type&& /* args */, upstream_type&& /* upstream */) {
             impl.lock()->shutdown();
 
             // Return an empty protocol dispatch.
@@ -279,7 +281,7 @@ public:
     };
 
     remote_client_t(locator_t& impl_, const remote_id_t& node_):
-        implements<tag>(impl_.name()),
+        dispatch<io::event_traits<io::locator::synchronize>::drain_type>(impl_.name()),
         impl(impl_),
         node(node_),
         uuid(std::get<0>(node))

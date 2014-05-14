@@ -46,25 +46,27 @@ struct blocking_slot:
     typedef function_slot<Event, R> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
+
     typedef typename parent_type::dispatch_type dispatch_type;
+    typedef typename parent_type::tuple_type tuple_type;
+    typedef typename parent_type::upstream_type upstream_type;
+
     typedef typename parent_type::protocol_type protocol;
 
     blocking_slot(callable_type callable):
         parent_type(callable)
     { }
 
-    typedef typename parent_type::tuple_type tuple_type;
-
     virtual
     std::shared_ptr<dispatch_type>
-    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
+    operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
-            upstream->send<typename protocol::chunk>(this->call(args));
-            upstream->send<typename protocol::choke>();
+            upstream.template send<typename protocol::chunk>(this->call(args));
+            upstream.template send<typename protocol::choke>();
         } catch(const std::system_error& e) {
-            upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
+            upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
-            upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
+            upstream.template send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
 
         // Return an empty protocol dispatch.
@@ -81,27 +83,29 @@ struct blocking_slot<Event, false, void>:
     typedef function_slot<Event, void> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
+
     typedef typename parent_type::dispatch_type dispatch_type;
+    typedef typename parent_type::tuple_type tuple_type;
+    typedef typename parent_type::upstream_type upstream_type;
+
     typedef typename parent_type::protocol_type protocol;
 
     blocking_slot(callable_type callable):
         parent_type(callable)
     { }
 
-    typedef typename parent_type::tuple_type tuple_type;
-
     virtual
     std::shared_ptr<dispatch_type>
-    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& upstream) {
+    operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
             this->call(args);
 
             // This is needed anyway so that service clients could detect operation completion.
-            upstream->send<typename protocol::choke>();
+            upstream.template send<typename protocol::choke>();
         } catch(const std::system_error& e) {
-            upstream->send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
+            upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
-            upstream->send<typename protocol::error>(invocation_error, std::string(e.what()));
+            upstream.template send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
 
         // Return an empty protocol dispatch.
@@ -116,18 +120,20 @@ struct blocking_slot<Event, true, void>:
     typedef function_slot<Event, void> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
+
     typedef typename parent_type::dispatch_type dispatch_type;
+    typedef typename parent_type::tuple_type tuple_type;
+    typedef typename parent_type::upstream_type upstream_type;
+
     typedef typename parent_type::protocol_type protocol;
 
     blocking_slot(callable_type callable):
         parent_type(callable)
     { }
 
-    typedef typename parent_type::tuple_type tuple_type;
-
     virtual
     std::shared_ptr<dispatch_type>
-    operator()(const tuple_type& args, const std::shared_ptr<upstream_t>& /* upstream */) {
+    operator()(tuple_type&& args, upstream_type&& /* upstream */) {
         try {
             this->call(args);
         } catch(const std::exception& e) {

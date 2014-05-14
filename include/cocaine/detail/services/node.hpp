@@ -26,16 +26,17 @@
 
 #include "cocaine/detail/services/node/forwards.hpp"
 
-#include "cocaine/dispatch.hpp"
+#include "cocaine/idl/node.hpp"
+
 #include "cocaine/locked_ptr.hpp"
 
-#include "cocaine/idl/node.hpp"
+#include "cocaine/rpc/dispatch.hpp"
 
 namespace cocaine { namespace service {
 
 class node_t:
     public api::service_t,
-    public implements<io::node_tag>
+    public dispatch<io::node_tag>
 {
     context_t& m_context;
 
@@ -57,7 +58,7 @@ public:
 
     virtual
     auto
-    prototype() -> dispatch_t&;
+    prototype() -> io::basic_dispatch_t&;
 
 private:
     dynamic_t

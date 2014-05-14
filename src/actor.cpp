@@ -27,9 +27,10 @@
 #include "cocaine/asio/reactor.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/dispatch.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
+
+#include "cocaine/rpc/dispatch.hpp"
 
 #if defined(__linux__)
     #include <sys/prctl.h>
@@ -37,7 +38,7 @@
 
 using namespace cocaine;
 
-actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::dispatch_t>&& prototype):
+actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t>&& prototype):
     m_context(context),
     m_log(new logging::log_t(context, prototype->name())),
     m_reactor(reactor),
@@ -49,9 +50,9 @@ actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std
     m_log(new logging::log_t(context, service->prototype().name())),
     m_reactor(reactor)
 {
-    io::dispatch_t *const prototype = &service->prototype();
+    io::basic_dispatch_t *const prototype = &service->prototype();
 
-    m_prototype = std::shared_ptr<io::dispatch_t>(
+    m_prototype = std::shared_ptr<io::basic_dispatch_t>(
         std::shared_ptr<api::service_t>(std::move(service)),
         prototype
     );

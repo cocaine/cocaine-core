@@ -28,8 +28,8 @@ namespace cocaine {
 struct config_t;
 class context_t;
 
-template<class Tag>
-class implements;
+template<class> class dispatch;
+template<class> class upstream;
 
 } // namespace cocaine
 
@@ -76,7 +76,10 @@ struct protocol;
 
 struct message_t;
 
-class dispatch_t;
+class basic_dispatch_t;
+class basic_upstream_t;
+
+template<class> class message_queue;
 
 // Messaging
 

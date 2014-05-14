@@ -37,7 +37,7 @@ struct service_t {
 
     virtual
     auto
-    prototype() -> io::dispatch_t& = 0;
+    prototype() -> io::basic_dispatch_t& = 0;
 
 protected:
     service_t(context_t&, io::reactor_t&, const std::string& /* name */, const dynamic_t& /* args */) {
