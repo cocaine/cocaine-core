@@ -110,7 +110,7 @@ public:
     send(Args&&... args) {
         static_assert(
             std::is_same<typename Event::tag, Tag>::value,
-            "message protocol is not compatible with this message queue"
+            "message protocol is not compatible with this upstream"
         );
 
         ptr->send<Event>(std::forward<Args>(args)...);
