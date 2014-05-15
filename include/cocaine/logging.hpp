@@ -48,9 +48,7 @@ DECLARE_KEYWORD(source, std::string)
 #include <blackhole/blackhole.hpp>
 #include <blackhole/synchronized.hpp>
 
-namespace cocaine {
-
-namespace logging {
+namespace cocaine { namespace logging {
 
 struct log_context_t {
     COCAINE_DECLARE_NONCOPYABLE(log_context_t)
@@ -107,6 +105,6 @@ private:
     log_context_t& m_guard;
 };
 
-}}
+}} // namespace cocaine::logging
 
 #endif

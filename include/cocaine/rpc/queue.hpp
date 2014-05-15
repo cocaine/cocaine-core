@@ -121,8 +121,13 @@ public:
     }
 
     template<class OtherTag>
-    typename std::enable_if<detail::is_compatible<Tag, OtherTag>::value>::type
+    void
     attach(upstream<OtherTag>&& u) {
+        static_assert(
+            detail::is_compatible<Tag, OtherTag>::value,
+            "upstream protocol is not compatible with this message queue"
+        );
+
         upstream_ = std::move(u.ptr);
 
         if(operations.empty()) {

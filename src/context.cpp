@@ -256,20 +256,15 @@ struct dynamic_converter<cocaine::config_t::component_t, void> {
 
 } // namespace cocaine
 
-// Helper dynamic_t -> blackhole config conversion specializations.
+// Helpers for dynamic_t to blackhole configuration conversion.
 
-namespace blackhole {
-
-namespace repository {
-
-namespace config {
-
-namespace adapter {
+namespace blackhole { namespace repository { namespace config { namespace adapter {
 
 template<class Builder, class Filler>
 struct builder_visitor_t : public boost::static_visitor<> {
     const std::string& path;
     const std::string& name;
+
     Builder& builder;
 
     builder_visitor_t(const std::string& path, const std::string& name, Builder& builder) :
@@ -396,16 +391,13 @@ struct filler<dynamic_t> {
             adapter::builder_visitor_t<T, filler<dynamic_t>> visitor {
                 path, name, builder
             };
+
             value.apply(visitor);
         }
     }
 };
 
-} // namespace config
-
-} // namespace repository
-
-} // namespace blackhole
+}}} // namespace blackhole::repository::config
 
 namespace cocaine {
 
@@ -418,26 +410,26 @@ struct dynamic_converter<cocaine::config_t::logging_t, void> {
     convert(const dynamic_t& from) {
         result_type component;
         const auto& logging = from.as_object();
-        for (auto it = logging.begin(); it != logging.end(); ++it) {
+
+        for(auto it = logging.begin(); it != logging.end(); ++it) {
+            using namespace blackhole::repository;
+
             auto object = it->second.as_object();
             auto loggers = object.at("loggers", dynamic_t::empty_array);
+
             config_t::logging_t::logger_t log {
-                logmask(object.at("verbosity",
-                                  defaults::logging::verbosity).as_string()),
+                logmask(object.at("verbosity", defaults::logging::verbosity).as_string()),
                 object.at("timestamp", defaults::logging::timestamp).as_string(),
-                blackhole::repository::config::parser_t<
-                    dynamic_t,
-                    blackhole::log_config_t
-                >::parse(it->first, loggers)
+                config::parser_t<dynamic_t, blackhole::log_config_t>::parse(it->first, loggers)
             };
 
             component.loggers[it->first] = log;
         }
+
         return component;
     }
 
-    static
-    inline
+    static inline
     logging::priorities
     logmask(const std::string& verbosity) {
         if(verbosity == "ignore") {
@@ -461,9 +453,7 @@ namespace {
 // Severity attribute converter from enumeration underlying type into string.
 
 void
-map_severity(blackhole::aux::attachable_ostringstream& stream,
-             const logging::priorities& lvl)
-{
+map_severity(blackhole::aux::attachable_ostringstream& stream, const logging::priorities& level) {
     static const char* describe[] = {
         nullptr,
         "ERROR",
@@ -472,11 +462,10 @@ map_severity(blackhole::aux::attachable_ostringstream& stream,
         "DEBUG"
     };
 
-    typedef blackhole::aux::underlying_type<
-        logging::priorities
-    >::type level_type;
+    typedef blackhole::aux::underlying_type<logging::priorities>::type level_type;
 
-    auto value = static_cast<level_type>(lvl);
+    auto value = static_cast<level_type>(level);
+
     if(value < static_cast<level_type>(sizeof(describe) / sizeof(describe[0]))) {
         stream << describe[value];
     } else {
@@ -488,14 +477,12 @@ map_severity(blackhole::aux::attachable_ostringstream& stream,
 
 // Mapping trait that is called by Blackhole each time when syslog mapping is required.
 
-namespace blackhole {
-
-namespace sink {
+namespace blackhole { namespace sink {
 
 template<>
 struct priority_traits<logging::priorities> {
-    static priority_t map(logging::priorities lvl) {
-        switch (lvl) {
+    static priority_t map(logging::priorities level) {
+        switch (level) {
         case logging::debug:
             return priority_t::debug;
         case logging::info:
@@ -514,9 +501,7 @@ struct priority_traits<logging::priorities> {
     }
 };
 
-} // namespace sink
-
-} // namespace blackhole
+}} // namespace blackhole::sink
 
 config_t::config_t(const std::string& config_path) {
     path.config = config_path;

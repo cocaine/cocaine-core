@@ -33,7 +33,7 @@
 
 namespace cocaine {
 
-// Dependent type for SFINAE.
+// Dependent type for SFINAE
 
 template<class T>
 struct depend {

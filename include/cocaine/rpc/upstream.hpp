@@ -106,10 +106,13 @@ public:
     typedef typename io::protocol<Tag>::scope protocol;
 
     template<class Event, typename... Args>
-    typename std::enable_if<
-        std::is_same<typename Event::tag, Tag>::value
-    >::type
+    void
     send(Args&&... args) {
+        static_assert(
+            std::is_same<typename Event::tag, Tag>::value,
+            "message protocol is not compatible with this message queue"
+        );
+
         ptr->send<Event>(std::forward<Args>(args)...);
     }
 };

@@ -33,13 +33,14 @@ struct dispatch_graph_t;
 
 namespace aux {
 
+// Protocol transitions are implemented as an optional<dispatch_graph_t>. Transition could be a new
+// dispatch graph, an empty graph (terminal leaf) or none, which means recurrent transition.
+
+typedef boost::optional<dispatch_graph_t> transition_t;
+
 typedef std::map<
-    /* message id */ int,
-    std::tuple<
-        /* message alias */ std::string,
-        /* transition graph */ boost::optional<dispatch_graph_t>,
-        /* drain graph */ boost::optional<dispatch_graph_t>
-    >
+    int,
+    std::tuple<std::string, transition_t, transition_t>
 > recursion_base_t;
 
 } // namespace aux
