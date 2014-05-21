@@ -39,11 +39,20 @@ struct result_of_impl;
 
 template<class T>
 struct result_of_impl<streaming_tag<T>> {
-    typedef typename std::conditional<
-        mpl::size<T>::value == 1,
-        typename mpl::front<T>::type,
-        typename tuple::fold<T>::type
-    >::type type;
+    template<class U, size_t = mpl::size<U>::value>
+    struct result_type {
+        typedef typename tuple::fold<U>::type type;
+    };
+
+    template<class U>
+    struct result_type<U, 1> {
+        typedef typename mpl::front<U>::type type;
+    };
+
+    // In case there's only one type in the typelist, leave it as it is. Otherwise form a tuple out
+    // of all the types in the typelist.
+
+    typedef typename result_type<T>::type type;
 };
 
 template<>
