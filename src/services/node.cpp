@@ -32,8 +32,6 @@ using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
-using namespace std::placeholders;
-
 namespace {
 
 typedef std::map<std::string, std::string> runlist_t;
@@ -46,6 +44,8 @@ node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, 
     m_context(context),
     m_log(new logging::log_t(context, name))
 {
+    using namespace std::placeholders;
+
     on<io::node::start_app>(std::bind(&node_t::on_start_app, this, _1));
     on<io::node::pause_app>(std::bind(&node_t::on_pause_app, this, _1));
     on<io::node::list>(std::bind(&node_t::on_list, this));

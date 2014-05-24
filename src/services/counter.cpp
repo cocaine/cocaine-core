@@ -162,10 +162,7 @@ private:
     std::atomic<int> m_value;
 };
 
-counter_t::counter_t(context_t& context,
-                     io::reactor_t& reactor,
-                     const std::string& name,
-                     const dynamic_t& args):
+counter_t::counter_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args):
     api::service_t(context, reactor, name, args),
     dispatch<io::counter_tag>(name),
     m_log(new logging::log_t(context, name))
@@ -204,30 +201,36 @@ deferred_producer(std::shared_ptr<counter_t::raft_actor_type> actor,
 deferred<raft::command_result<int>>
 counter_t::on_inc(int value) {
     deferred<raft::command_result<int>> promise;
+
     m_raft->call<counter_machine::inc>(
         std::bind(deferred_producer<int>, m_raft, promise, std::placeholders::_1),
         value
     );
+
     return promise;
 }
 
 deferred<raft::command_result<int>>
 counter_t::on_dec(int value) {
     deferred<raft::command_result<int>> promise;
+
     m_raft->call<counter_machine::dec>(
         std::bind(deferred_producer<int>, m_raft, promise, std::placeholders::_1),
         value
     );
+
     return promise;
 }
 
 deferred<raft::command_result<bool>>
 counter_t::on_cas(int expected, int desired) {
     deferred<raft::command_result<bool>> promise;
+
     m_raft->call<counter_machine::cas>(
         std::bind(deferred_producer<bool>, m_raft, promise, std::placeholders::_1),
         expected,
         desired
     );
+
     return promise;
 }

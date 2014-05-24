@@ -31,12 +31,7 @@ using namespace cocaine::io;
 using namespace cocaine::logging;
 using namespace cocaine::service;
 
-using namespace std::placeholders;
-
-logging_t::logging_t(context_t& context,
-                     reactor_t& reactor,
-                     const std::string& name,
-                     const dynamic_t& args):
+logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& name, const dynamic_t& args):
     api::service_t(context, reactor, name, args),
     dispatch<io::log_tag>(name)
 {
@@ -56,6 +51,8 @@ logging_t::logging_t(context_t& context,
     }
 
     log_context_t* log_ptr = m_logger ? m_logger.get() : &context.logger();
+
+    using namespace std::placeholders;
 
     on<io::log::emit>(std::bind(&log_context_t::emit, log_ptr, _1, _2, _3, _4));
     on<io::log::set_verbosity>(std::bind(&log_context_t::set_verbosity, log_ptr, _1));
