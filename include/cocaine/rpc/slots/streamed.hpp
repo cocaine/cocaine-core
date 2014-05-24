@@ -35,7 +35,7 @@ struct streamed {
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
     streamed():
-        queue_impl(std::make_shared<synchronized<queue_type>>())
+        queue(std::make_shared<synchronized<queue_type>>())
     { }
 
     template<class U>
@@ -43,21 +43,21 @@ struct streamed {
     write(U&& value,
           typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type* = nullptr)
     {
-        (*queue_impl)->template append<typename protocol::chunk>(std::forward<U>(value));
+        (*queue)->template append<typename protocol::chunk>(std::forward<U>(value));
     }
 
     void
     abort(int code, const std::string& reason) {
-        (*queue_impl)->template append<typename protocol::error>(code, reason);
+        (*queue)->template append<typename protocol::error>(code, reason);
     }
 
     void
     close() {
-        (*queue_impl)->template append<typename protocol::choke>();
+        (*queue)->template append<typename protocol::choke>();
     }
 
 private:
-    const std::shared_ptr<synchronized<queue_type>> queue_impl;
+    const std::shared_ptr<synchronized<queue_type>> queue;
 };
 
 } // namespace cocaine

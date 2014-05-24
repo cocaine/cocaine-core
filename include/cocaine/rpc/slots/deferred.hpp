@@ -58,7 +58,7 @@ struct deferred_slot:
 
             // Upstream is attached in a critical section, because the internal message queue might
             // be already in use in some other processing thread of the service.
-            (*result.queue_impl)->attach(std::move(upstream));
+            (*result.queue)->attach(std::move(upstream));
         } catch(const std::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
@@ -108,7 +108,7 @@ struct deferred {
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
     deferred():
-        queue_impl(std::make_shared<synchronized<queue_type>>())
+        queue(std::make_shared<synchronized<queue_type>>())
     { }
 
     template<class U>
@@ -116,7 +116,7 @@ struct deferred {
     write(U&& value,
           typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type* = nullptr)
     {
-        auto locked = (*queue_impl).synchronize();
+        auto locked = (*queue).synchronize();
 
         locked->template append<typename protocol::chunk>(std::forward<U>(value));
         locked->template append<typename protocol::choke>();
@@ -124,11 +124,11 @@ struct deferred {
 
     void
     abort(int code, const std::string& reason) {
-        (*queue_impl)->template append<typename protocol::error>(code, reason);
+        (*queue)->template append<typename protocol::error>(code, reason);
     }
 
 private:
-    const std::shared_ptr<synchronized<queue_type>> queue_impl;
+    const std::shared_ptr<synchronized<queue_type>> queue;
 };
 
 template<>
@@ -141,21 +141,21 @@ struct deferred<void> {
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
     deferred():
-        queue_impl(std::make_shared<synchronized<queue_type>>())
+        queue(std::make_shared<synchronized<queue_type>>())
     { }
 
     void
     abort(int code, const std::string& reason) {
-        (*queue_impl)->append<protocol::error>(code, reason);
+        (*queue)->append<protocol::error>(code, reason);
     }
 
     void
     close() {
-        (*queue_impl)->append<protocol::choke>();
+        (*queue)->append<protocol::choke>();
     }
 
 private:
-    const std::shared_ptr<synchronized<queue_type>> queue_impl;
+    const std::shared_ptr<synchronized<queue_type>> queue;
 };
 
 } // namespace cocaine
