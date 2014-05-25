@@ -1,6 +1,6 @@
 /*
-    Copyright (c) 2013 Andrey Goryachev <andrey.goryachev@gmail.com>
-    Copyright (c) 2011-2013 Other contributors as noted in the AUTHORS file.
+    Copyright (c) 2013-2014 Andrey Goryachev <andrey.goryachev@gmail.com>
+    Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
 
     This file is part of Cocaine.
 
