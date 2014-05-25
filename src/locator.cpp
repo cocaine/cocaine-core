@@ -407,8 +407,6 @@ locator_t::on_announce_event(ev::io&, int) {
 
     // Start the synchronization
 
-    channel->wr->write<io::locator::synchronize>(0UL);
-
     auto service = std::make_shared<remote_client_t>(*this, node);
 
     typedef remote_client_t::protocol protocol;
@@ -418,10 +416,8 @@ locator_t::on_announce_event(ev::io&, int) {
 
     // Spawn the synchronization session
 
-    m_remotes[node] = std::make_shared<session_t>(
-        std::move(channel),
-        std::move(service)
-    );
+    m_remotes[node] = std::make_shared<session_t>(std::move(channel));
+    m_remotes[node]->invoke(service)->send<io::locator::synchronize>();
 }
 
 void
