@@ -25,9 +25,6 @@
 
 #include <system_error>
 
-#define BOOST_BIND_NO_PLACEHOLDERS
-#include <boost/thread/thread.hpp>
-
 namespace cocaine {
 
 class session_t;
@@ -41,8 +38,8 @@ class execution_unit_t {
 
     // I/O Reactor
 
-    std::unique_ptr<io::reactor_t> m_reactor;
-    std::unique_ptr<boost::thread> m_chamber;
+    std::shared_ptr<io::reactor_t> m_reactor;
+    std::unique_ptr<io::chamber_t> m_chamber;
 
 public:
     execution_unit_t(context_t& context, const std::string& name);

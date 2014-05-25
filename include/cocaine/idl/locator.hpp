@@ -85,21 +85,6 @@ struct synchronize {
     >::tag drain_type;
 };
 
-struct reports {
-    typedef locator_tag tag;
-
-    static
-    const char*
-    alias() {
-        return "reports";
-    }
-
-    typedef stream_of<
-     /* Service I/O usage counters: number of concurrent sessions and memory footprints. */
-        std::map<std::string, std::map<std::string, std::tuple<size_t, size_t>>>
-    >::tag drain_type;
-};
-
 struct refresh {
     typedef locator_tag tag;
 
@@ -126,7 +111,6 @@ struct protocol<locator_tag> {
     typedef boost::mpl::list<
         locator::resolve,
         locator::synchronize,
-        locator::reports,
         locator::refresh
     > messages;
 

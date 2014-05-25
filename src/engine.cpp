@@ -24,47 +24,20 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
+#include "cocaine/detail/chamber.hpp"
+
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/session.hpp"
 
-#if defined(__linux__)
-    #include <sys/prctl.h>
-#endif
-
 using namespace cocaine;
-
-namespace {
-
-struct named_runnable {
-    void
-    operator()() const {
-#if defined(__linux__)
-        if(name.size() < 16) {
-            ::prctl(PR_SET_NAME, name.c_str());
-        } else {
-            ::prctl(PR_SET_NAME, name.substr(0, 16).data());
-        }
-#endif
-
-        reactor->run();
-    }
-
-    const std::string name;
-    const std::unique_ptr<io::reactor_t>& reactor;
-};
-
-} // namespace
 
 execution_unit_t::execution_unit_t(context_t& context, const std::string& name):
     m_log(new logging::log_t(context, name)),
-    m_reactor(std::make_unique<io::reactor_t>()),
-    m_chamber(std::make_unique<boost::thread>(named_runnable{name, m_reactor}))
+    m_reactor(std::make_shared<io::reactor_t>()),
+    m_chamber(std::make_unique<io::chamber_t>(name, m_reactor))
 { }
 
 execution_unit_t::~execution_unit_t() {
-    m_reactor->post(std::bind(&io::reactor_t::stop, m_reactor.get()));
-
-    m_chamber->join();
     m_chamber.reset();
 
     for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {

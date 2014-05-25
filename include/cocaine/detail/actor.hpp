@@ -31,9 +31,6 @@
 
 #include <list>
 
-#define BOOST_BIND_NO_PLACEHOLDERS
-#include <boost/thread/thread.hpp>
-
 namespace cocaine {
 
 class actor_t {
@@ -54,7 +51,10 @@ class actor_t {
     // I/O connectors. Actors have a separate thread to accept new connections. After a connection
     // is accepted, it is assigned on a random thread from the main thread pool.
     std::list<endpoint_type> m_connectors;
-    std::unique_ptr<boost::thread> m_thread;
+
+    // I/O Reactor
+
+    std::unique_ptr<io::chamber_t> m_chamber;
 
 public:
     actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t>&& prototype);

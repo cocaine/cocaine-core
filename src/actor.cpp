@@ -30,11 +30,9 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
-#include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/detail/chamber.hpp"
 
-#if defined(__linux__)
-    #include <sys/prctl.h>
-#endif
+#include "cocaine/rpc/dispatch.hpp"
 
 using namespace cocaine;
 
@@ -62,31 +60,9 @@ actor_t::~actor_t() {
     // Empty.
 }
 
-namespace {
-
-struct named_runnable {
-    void
-    operator()() const {
-#if defined(__linux__)
-        if(name.size() < 16) {
-            ::prctl(PR_SET_NAME, name.c_str());
-        } else {
-            ::prctl(PR_SET_NAME, name.substr(0, 16).data());
-        }
-#endif
-
-        reactor.run();
-    }
-
-    const std::string name;
-    io::reactor_t& reactor;
-};
-
-} // namespace
-
 void
 actor_t::run(std::vector<io::tcp::endpoint> endpoints) {
-    BOOST_ASSERT(!m_thread);
+    BOOST_ASSERT(!m_chamber);
 
     for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
         m_connectors.emplace_back(
@@ -97,18 +73,14 @@ actor_t::run(std::vector<io::tcp::endpoint> endpoints) {
         m_connectors.back().bind(std::bind(&actor_t::on_connect, this, std::placeholders::_1));
     }
 
-    m_thread = std::make_unique<boost::thread>(named_runnable{m_prototype->name(), *m_reactor});
+    m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_reactor);
 }
 
 void
 actor_t::terminate() {
-    BOOST_ASSERT(m_thread);
+    BOOST_ASSERT(m_chamber);
 
-    m_reactor->post(std::bind(&io::reactor_t::stop, m_reactor));
-
-    m_thread->join();
-    m_thread.reset();
-
+    m_chamber.reset();
     m_connectors.clear();
 }
 

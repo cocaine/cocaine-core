@@ -875,25 +875,29 @@ context_t::bootstrap() {
 
     COCAINE_LOG_INFO(blog, "growing the execution unit pool to %d units", pool)("units", pool);
 
-    while(pool--) { m_pool.emplace_back(std::make_unique<execution_unit_t>(*this, "cocaine/execute")); }
+    while(pool--) {
+        m_pool.emplace_back(std::make_unique<execution_unit_t>(*this, "cocaine/execute"));
+    }
 
     COCAINE_LOG_INFO(blog, "starting %d %s", config.services.size(), config.services.size() == 1 ? "service" : "services");
 
     m_synchronization = std::make_shared<synchronization_t>(*this);
 
 #ifdef COCAINE_ALLOW_RAFT
-    // Initialize Raft service.
-    try {
-        if(config.raft.enable) {
-            std::unique_ptr<api::service_t> control_service(
-                std::make_unique<raft::control_service_t>(
-                    *this,
-                    *raft->m_reactor,
-                    std::string("service/") + config.raft.control_service_name
-            ));
+    // Initialize the Raft service.
+    if(config.raft.enable) {
+        try {
+            std::unique_ptr<api::service_t> control_service = std::make_unique<raft::control_service_t>(
+                *this,
+                *raft->m_reactor,
+                std::string("service/") + config.raft.control_service_name
+            );
 
-            insert(config.raft.control_service_name,
-                   std::make_unique<actor_t>(*this, raft->m_reactor, std::move(control_service)));
+            insert(config.raft.control_service_name, std::make_unique<actor_t>(
+                *this,
+                raft->m_reactor,
+                std::move(control_service)
+            ));
 
             auto node_reactor = std::make_shared<reactor_t>();
 
@@ -903,21 +907,22 @@ context_t::bootstrap() {
                 std::string("service/") + config.raft.node_service_name
             ));
 
-            insert(config.raft.node_service_name,
-                   std::make_unique<actor_t>(*this, node_reactor, std::move(node_service)));
+            insert(config.raft.node_service_name, std::make_unique<actor_t>(
+                *this,
+                node_reactor,
+                std::move(node_service)
+            ));
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(blog, "unable to initialize the Raft service - %s - [%d] %s", e.what(),
+                e.code().value(), e.code().message());
+            throw;
+        } catch(const std::exception& e) {
+            COCAINE_LOG_ERROR(blog, "unable to initialize the Raft service - %s", e.what());
+            throw;
+        } catch(...) {
+            COCAINE_LOG_ERROR(blog, "unable to initialize the Raft service - unknown exception");
+            throw;
         }
-    } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(blog,
-                          "unable to initialize RAFT service - %s - [%d] %s",
-                          e.what(),
-                          e.code().value(), e.code().message());
-        throw;
-    } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(blog, "unable to initialize RAFT service - %s", e.what());
-        throw;
-    } catch(...) {
-        COCAINE_LOG_ERROR(blog, "unable to initialize RAFT service - unknown exception");
-        throw;
     }
 #endif
 

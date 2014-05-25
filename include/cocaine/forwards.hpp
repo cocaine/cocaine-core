@@ -56,6 +56,7 @@ struct acceptor;
 // I/O privimites
 
 struct reactor_t;
+struct chamber_t;
 
 template<class>
 struct connector;

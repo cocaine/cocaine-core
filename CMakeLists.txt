@@ -93,6 +93,7 @@ ENDIF()
 ADD_LIBRARY(cocaine-core SHARED
     src/actor
     src/api
+    src/chamber
     src/context
     ${LIBCRYPTO_SOURCES}
     src/dispatch

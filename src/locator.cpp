@@ -62,8 +62,8 @@ locator_t::locator_t(context_t& context, reactor_t& reactor):
     m_reactor(reactor),
     m_router(new router_t(*m_log.get()))
 {
-    // NOTE: Slots for io::locator::synchronize and io::locator::reports actions are bound in
-    // context_t::bootstrap(), as it's easier to implement them using context_t internals.
+    // NOTE: Slot for the io::locator::synchronize action is bound in context_t::bootstrap(), as
+    // it's easier to implement it using context_t internals.
     on<io::locator::resolve>(std::bind(&locator_t::resolve, this, _1));
     on<io::locator::refresh>(std::bind(&locator_t::refresh, this, _1));
 
