@@ -656,6 +656,7 @@ context_t::context_t(config_t config, const std::string& logger_name):
 
     // Register logging frontends.
     auto& repository = blackhole::repository_t::instance();
+
     repository.configure<
         blackhole::sink::syslog_t<logging::priorities>,
         blackhole::formatter::string_t
@@ -672,23 +673,27 @@ context_t::context_t(config_t config, const std::string& logger_name):
 
         // Configure some mappings for timestamps and severity attributes.
         blackhole::mapping::value_t mapper;
+
         mapper.add<severity_t<logging::priorities>>(&map_severity);
         mapper.add<timestamp_t>(logger.timestamp);
 
-        // Attach them into logging config.
+        // Attach them to the logging config.
         auto& frontends = logger.config.frontends;
-        for (auto it = frontends.begin(); it != frontends.end(); ++it) {
+
+        for(auto it = frontends.begin(); it != frontends.end(); ++it) {
             it->formatter.mapper = mapper;
         }
 
-        // Register logger configuration into Blackhole's repository.
+        // Register logger configuration with the Blackhole's repository.
         repository.add_config(logger.config);
 
-        // And create just registered logger.
+        // And create just the registered logger.
         auto log = repository.create<logging::priorities>(logger_name);
+
         m_logger = std::make_unique<logging::log_context_t>(
             std::move(blackhole::synchronized<logger_t>(std::move(log)))
         );
+
         m_logger->set_verbosity(logger.verbosity);
     } catch (const std::out_of_range&) {
         throw cocaine::error_t("the '%s' logger is not configured", logger_name);
@@ -716,6 +721,8 @@ context_t::context_t(config_t config, std::unique_ptr<logger_t>&& logger):
     m_logger = std::make_unique<logging::log_context_t>(
         std::move(blackhole::synchronized<logger_t>(std::move(*logger)))
     );
+
+    // TODO @esafronov: WTF?
     logger.reset();
 
     bootstrap();
