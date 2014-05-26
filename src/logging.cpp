@@ -55,6 +55,8 @@ log_context_t::set_verbosity(priorities value) {
     m_logger.set_filter(blackhole::keyword::severity<priorities>() <= value);
 }
 
+namespace bhl = blackhole::log;
+
 void
 log_context_t::emit(priorities level, const std::string& source, const std::string& message, const bhl::attributes_t& attributes) {
     auto record = m_logger.open_record(level);
