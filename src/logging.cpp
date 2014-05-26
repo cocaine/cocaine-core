@@ -26,9 +26,7 @@ using namespace cocaine::logging;
 log_t::log_t(context_t& context, const std::string& source):
     m_source(source),
     m_guard(context.logger())
-{
-}
-
+{ }
 
 log_context_t::log_context_t() :
     m_verbosity(priorities::ignore)
@@ -58,16 +56,14 @@ log_context_t::set_verbosity(priorities value) {
 }
 
 void
-log_context_t::emit(priorities level,
-     const std::string& source,
-     const std::string& message,
-     const blackhole::log::attributes_t& attributes)
-{
+log_context_t::emit(priorities level, const std::string& source, const std::string& message, const bhl::attributes_t& attributes) {
     auto record = m_logger.open_record(level);
+
     if(record.valid()) {
         record.attributes.insert(attributes.begin(), attributes.end());
         record.attributes.insert(blackhole::keyword::message() = message);
         record.attributes.insert(blackhole::keyword::source() = source);
+
         m_logger.push(std::move(record));
     }
 }
