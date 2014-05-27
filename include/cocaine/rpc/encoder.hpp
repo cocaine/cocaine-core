@@ -28,19 +28,27 @@
 namespace cocaine { namespace io {
 
 template<class Stream>
-struct encoder {
+class encoder {
     COCAINE_DECLARE_NONCOPYABLE(encoder)
 
     typedef Stream stream_type;
 
+    msgpack::sbuffer m_buffer;
+    msgpack::packer<msgpack::sbuffer> m_packer;
+
+    // Message buffer interlocking.
+    std::mutex m_mutex;
+
+    // Attachable stream.
+    std::shared_ptr<stream_type> m_stream;
+
+public:
     encoder():
         m_packer(m_buffer)
     { }
 
    ~encoder() {
-       if(m_stream) {
-           unbind();
-       }
+        if(m_stream) unbind();
     }
 
     void
@@ -78,10 +86,7 @@ struct encoder {
         m_packer.pack_uint64(stream);
         m_packer.pack_uint32(traits::id);
 
-        type_traits<typename traits::tuple_type>::pack(
-            m_packer,
-            std::forward<Args>(args)...
-        );
+        type_traits<typename traits::tuple_type>::pack(m_packer, std::forward<Args>(args)...);
 
         if(m_stream) {
             m_stream->write(m_buffer.data(), m_buffer.size());
@@ -90,20 +95,10 @@ struct encoder {
     }
 
 public:
-    std::shared_ptr<stream_type>
-    stream() {
+    auto
+    stream() -> std::shared_ptr<stream_type> {
         return m_stream;
     }
-
-private:
-    msgpack::sbuffer m_buffer;
-    msgpack::packer<msgpack::sbuffer> m_packer;
-
-    // Message buffer interlocking.
-    std::mutex m_mutex;
-
-    // Attachable stream.
-    std::shared_ptr<stream_type> m_stream;
 };
 
 }}

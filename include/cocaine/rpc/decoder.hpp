@@ -28,57 +28,20 @@
 namespace cocaine { namespace io {
 
 template<class Stream>
-struct decoder {
+class decoder {
     COCAINE_DECLARE_NONCOPYABLE(decoder)
 
     typedef Stream stream_type;
 
-    decoder() = default;
+    std::function<void(const message_t&)> m_handle_message;
 
-   ~decoder() {
-       if(m_stream) {
-           unbind();
-       }
-    }
-
-    void
-    attach(const std::shared_ptr<stream_type>& stream) {
-        m_stream = stream;
-    }
-
-    template<class MessageHandler, class ErrorHandler>
-    void
-    bind(MessageHandler message_handler,
-         ErrorHandler error_handler)
-    {
-        m_handle_message = message_handler;
-
-        using namespace std::placeholders;
-
-        m_stream->bind(
-            std::bind(&decoder::on_event, this, _1, _2),
-            error_handler
-        );
-    }
-
-    void
-    unbind() {
-        m_stream->unbind();
-        m_handle_message = nullptr;
-    }
-
-public:
-    std::shared_ptr<stream_type>
-    stream() {
-        return m_stream;
-    }
+    // Attachable stream.
+    std::shared_ptr<stream_type> m_stream;
 
 private:
     size_t
     on_event(const char* data, size_t size) {
-        size_t offset = 0,
-               checkpoint = 0,
-               bulk = 0;
+        size_t offset = 0, checkpoint = 0, bulk = 0;
 
         msgpack::unpack_return rv;
         msgpack::zone zone;
@@ -90,19 +53,16 @@ private:
 
             switch(rv) {
             case msgpack::UNPACK_EXTRA_BYTES:
-            case msgpack::UNPACK_SUCCESS: {
+            case msgpack::UNPACK_SUCCESS:
                 checkpoint = offset;
 
                 m_handle_message(message_t(object));
 
-                if(rv == msgpack::UNPACK_SUCCESS || !m_handle_message) {
-                    return size;
-                }
-
-                if(++bulk == 256) {
+                if(rv == msgpack::UNPACK_SUCCESS || ++bulk == 256 || !m_handle_message) {
                     return checkpoint;
                 }
-            } break;
+
+                break;
 
             case msgpack::UNPACK_CONTINUE:
                 return checkpoint;
@@ -113,13 +73,41 @@ private:
         } while(true);
     }
 
-private:
-    std::function<
-        void(const message_t&)
-    > m_handle_message;
+public:
+    decoder() {
+        // Empty.
+    }
 
-    // Attachable stream.
-    std::shared_ptr<stream_type> m_stream;
+   ~decoder() {
+        if(m_stream) unbind();
+    }
+
+    void
+    attach(const std::shared_ptr<stream_type>& stream) {
+        m_stream = stream;
+    }
+
+    template<class MessageHandler, class ErrorHandler>
+    void
+    bind(MessageHandler message_handler, ErrorHandler error_handler) {
+        m_handle_message = message_handler;
+
+        using namespace std::placeholders;
+
+        m_stream->bind(std::bind(&decoder::on_event, this, _1, _2), error_handler);
+    }
+
+    void
+    unbind() {
+        m_stream->unbind();
+        m_handle_message = nullptr;
+    }
+
+public:
+    auto
+    stream() -> std::shared_ptr<stream_type> {
+        return m_stream;
+    }
 };
 
 }}

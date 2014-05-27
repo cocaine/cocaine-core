@@ -31,14 +31,16 @@ namespace cocaine { namespace io {
 
 template<class Socket>
 struct channel {
+    typedef Socket socket_type;
+
     channel():
-        rd(new decoder<readable_stream<Socket>>()),
-        wr(new encoder<writable_stream<Socket>>())
+        rd(new decoder<readable_stream<socket_type>>()),
+        wr(new encoder<writable_stream<socket_type>>())
     { }
 
-    channel(reactor_t& reactor, const std::shared_ptr<Socket>& socket):
-        rd(new decoder<readable_stream<Socket>>()),
-        wr(new encoder<writable_stream<Socket>>())
+    channel(reactor_t& reactor, const std::shared_ptr<socket_type>& socket):
+        rd(new decoder<readable_stream<socket_type>>()),
+        wr(new encoder<writable_stream<socket_type>>())
     {
         attach(reactor, socket);
     }
@@ -57,9 +59,9 @@ struct channel {
     }
 
     void
-    attach(reactor_t& reactor, const std::shared_ptr<Socket>& socket) {
-        rd->attach(std::make_shared<readable_stream<Socket>>(reactor, socket));
-        wr->attach(std::make_shared<writable_stream<Socket>>(reactor, socket));
+    attach(reactor_t& reactor, const std::shared_ptr<socket_type>& socket) {
+        rd->attach(std::make_shared<readable_stream<socket_type>>(reactor, socket));
+        wr->attach(std::make_shared<writable_stream<socket_type>>(reactor, socket));
 
         // TODO: Weak pointer, maybe?
         m_socket = socket;
@@ -67,24 +69,15 @@ struct channel {
 
 public:
     auto
-    remote_endpoint() const -> typename Socket::endpoint_type {
+    remote_endpoint() const -> typename socket_type::endpoint_type {
         return m_socket->remote_endpoint();
     }
 
-    size_t
-    footprint() const {
-        if (rd->stream() && wr->stream()) {
-            return rd->stream()->footprint() + wr->stream()->footprint();
-        } else {
-            return 0;
-        }
-    }
-
-    std::unique_ptr<decoder<readable_stream<Socket>>> rd;
-    std::unique_ptr<encoder<writable_stream<Socket>>> wr;
+    std::unique_ptr<decoder<readable_stream<socket_type>>> rd;
+    std::unique_ptr<encoder<writable_stream<socket_type>>> wr;
 
 private:
-    std::shared_ptr<Socket> m_socket;
+    std::shared_ptr<socket_type> m_socket;
 };
 
 }}

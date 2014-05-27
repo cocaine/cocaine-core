@@ -82,10 +82,10 @@ class basic_upstream_t;
 // Messaging
 
 template<class>
-struct encoder;
+class encoder;
 
 template<class>
-struct decoder;
+class decoder;
 
 template<class>
 struct channel;

@@ -40,7 +40,8 @@ struct depend {
     typedef void type;
 };
 
-// Variadic pack conversion
+// Variadic pack conversion. Could be done with typdef mpl::list<Args...>, but GCC 4.4-4.6 cannot
+// compile this with a "sorry, not implemented" error message.
 
 namespace aux {
 

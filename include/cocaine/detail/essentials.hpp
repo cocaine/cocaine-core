@@ -26,4 +26,4 @@ namespace cocaine { namespace essentials {
 void
 initialize(api::repository_t& repository);
 
-}}
+}} // namespace cocaine::essentials
