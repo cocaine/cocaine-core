@@ -24,7 +24,6 @@
 #include "cocaine/rpc/slots/function.hpp"
 
 #include "cocaine/rpc/queue.hpp"
-#include "cocaine/rpc/result_of.hpp"
 
 namespace cocaine { namespace io {
 

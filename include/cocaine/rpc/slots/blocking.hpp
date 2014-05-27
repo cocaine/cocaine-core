@@ -25,20 +25,9 @@
 
 namespace cocaine { namespace io {
 
-template<class Event, bool Void>
-struct result_type_impl {
-     typedef typename result_of<Event>::type type;
-};
-
-template<class Event>
-struct result_type_impl<Event, true> {
-    typedef void type;
-};
-
 template<
     class Event,
-    bool Void = std::is_same<typename io::event_traits<Event>::drain_type, void>::value,
-    class R = typename result_type_impl<Event, Void>::type
+    class R = typename result_of<Event>::type
 >
 struct blocking_slot:
     public function_slot<Event, R>
@@ -77,7 +66,7 @@ struct blocking_slot:
 // Blocking slot specialization for void functions
 
 template<class Event>
-struct blocking_slot<Event, false, void>:
+struct blocking_slot<Event, void>:
     public function_slot<Event, void>
 {
     typedef function_slot<Event, void> parent_type;
@@ -114,7 +103,7 @@ struct blocking_slot<Event, false, void>:
 };
 
 template<class Event>
-struct blocking_slot<Event, true, void>:
+struct blocking_slot<Event, terminal_slot_tag>:
     public function_slot<Event, void>
 {
     typedef function_slot<Event, void> parent_type;

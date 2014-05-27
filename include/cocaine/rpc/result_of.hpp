@@ -32,6 +32,8 @@ namespace cocaine { namespace io {
 
 namespace mpl = boost::mpl;
 
+struct terminal_slot_tag;
+
 namespace aux {
 
 template<class T>
@@ -58,6 +60,11 @@ struct result_of_impl<streaming_tag<T>> {
 template<>
 struct result_of_impl<streaming_tag<void>> {
     typedef void type;
+};
+
+template<>
+struct result_of_impl<void> {
+    typedef terminal_slot_tag type;
 };
 
 }} // namespace io::aux
