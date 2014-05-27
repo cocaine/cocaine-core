@@ -44,7 +44,7 @@ struct type_traits<std::vector<T>> {
     void
     unpack(const msgpack::object& source, std::vector<T>& target) {
         if(source.type != msgpack::type::ARRAY) {
-            throw std::bad_cast();
+            throw msgpack::type_error();
         }
 
         target.assign(source.via.array.size, T());

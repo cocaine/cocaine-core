@@ -47,7 +47,7 @@ struct type_traits<std::map<K, V, Compare, Allocator>> {
     void
     unpack(const msgpack::object& source, value_type& target) {
         if(source.type != msgpack::type::MAP) {
-            throw std::bad_cast();
+            throw msgpack::type_error();
         }
 
         target.clear();

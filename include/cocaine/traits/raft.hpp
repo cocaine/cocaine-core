@@ -54,7 +54,7 @@ struct type_traits<raft::log_entry<StateMachine>> {
            source.via.array.size != 2 ||
            source.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER)
         {
-            throw std::bad_cast();
+            throw msgpack::type_error();
         }
 
         target = raft::log_entry<StateMachine>(

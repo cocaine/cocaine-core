@@ -66,8 +66,9 @@ struct unpack_variant {
             return;
         }
 
-        typedef typename boost::mpl::at<typename Variant::types, boost::mpl::int_<N>>::type
-                result_type;
+        typedef typename boost::mpl::at<
+            typename Variant::types, boost::mpl::int_<N>
+        >::type result_type;
 
         result_type result;
 
@@ -85,7 +86,7 @@ struct unpack_variant<
     static inline
     void
     unpack(int, const msgpack::object&, Variant&) {
-        throw std::bad_cast();
+        throw msgpack::type_error();
     }
 };
 
@@ -112,7 +113,7 @@ struct type_traits<boost::variant<BOOST_VARIANT_ENUM_PARAMS(T)>> {
            source.via.array.size != 2 ||
            source.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER)
         {
-            throw std::bad_cast();
+            throw msgpack::type_error();
         }
 
         aux::unpack_variant<variant_type, 0>::unpack(
