@@ -189,6 +189,15 @@ class remote_node {
         uint64_t m_last_index;
     };
 
+    // This class handles response from remote node on heartbeat.
+    // It's needed because I have to pass some handler to client_t::call.
+    struct heartbeat_handler_t {
+        void
+        operator()(boost::variant<std::error_code, std::tuple<uint64_t, bool>> result) {
+            // Ignore.
+        }
+    };
+
 public:
     remote_node(cluster_type& cluster, node_id_t id):
         m_cluster(cluster),
@@ -466,7 +475,7 @@ private:
             }
 
             m_client->call<typename protocol::append>(
-                std::shared_ptr<io::basic_dispatch_t>(),
+                make_proxy<std::tuple<uint64_t, bool>>(heartbeat_handler_t()),
                 m_actor.name(),
                 m_actor.config().current_term(),
                 m_actor.context().raft().id(),
