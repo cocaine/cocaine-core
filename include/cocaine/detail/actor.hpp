@@ -57,8 +57,8 @@ class actor_t {
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:
-    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t>&& prototype);
-    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t>&& service);
+    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t> prototype);
+    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t> service);
 
    ~actor_t();
 
