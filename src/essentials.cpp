@@ -22,6 +22,7 @@
 #include "cocaine/detail/gateways/adhoc.hpp"
 
 #ifdef COCAINE_ALLOW_RAFT
+    #include "cocaine/detail/raft/control_service.hpp"
     #include "cocaine/detail/services/counter.hpp"
 #endif
 
@@ -38,6 +39,7 @@ cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<gateway::adhoc_t>("adhoc");
 
 #ifdef COCAINE_ALLOW_RAFT
+    repository.insert<raft::control_service_t>("raft");
     repository.insert<service::counter_t>("counter");
 #endif
 

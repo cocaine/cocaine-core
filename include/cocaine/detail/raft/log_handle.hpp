@@ -158,10 +158,10 @@ public:
             // Here we can receive spurious commit,
             // if previous commit was truncated from log due to leader change.
 
-            bool was_in_cluster = m_actor.cluster().has(m_actor.config().id());
+            bool was_in_cluster = m_actor.cluster().has(m_actor.context().raft().id());
             m_actor.cluster().commit();
 
-            if(was_in_cluster && !m_actor.cluster().has(m_actor.config().id())) {
+            if(was_in_cluster && !m_actor.cluster().has(m_actor.context().raft().id())) {
                 back().set_disable_node(true);
             }
         }

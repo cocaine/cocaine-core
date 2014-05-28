@@ -221,7 +221,7 @@ public:
     request_vote() {
         if (m_won_term >= m_actor.config().current_term()) {
             return;
-        } else if (m_id == m_actor.config().id()) {
+        } else if (m_id == m_actor.context().raft().id()) {
             m_won_term = m_actor.config().current_term();
             m_cluster.register_vote();
         } else if (!m_vote_state) {
@@ -237,7 +237,7 @@ public:
         // TODO: Now leader sends one append request at the same time.
         // Probably it's possible to send requests in pipeline manner.
         // I should investigate this question.
-        if(m_id == m_actor.config().id()) {
+        if(m_id == m_actor.context().raft().id()) {
             m_match_index = m_actor.log().last_index();
             m_cluster.update_commit_index();
         } else if(!m_append_state &&
@@ -265,7 +265,7 @@ public:
     // Begin leadership. Actually it starts to send heartbeats.
     void
     begin_leadership() {
-        if(m_id == m_actor.config().id()) {
+        if(m_id == m_actor.context().raft().id()) {
             m_match_index = m_actor.log().last_index();
             m_next_index = m_match_index + 1;
         } else {
@@ -287,7 +287,7 @@ public:
 
     bool
     disconnected() {
-        return m_id != m_actor.config().id() && m_disconnected;
+        return m_id != m_actor.context().raft().id() && m_disconnected;
     }
 
     // Reset current state of remote node.
@@ -338,7 +338,7 @@ private:
                 make_proxy<std::tuple<uint64_t, bool>>(handler, m_id.first),
                 m_actor.name(),
                 m_actor.config().current_term(),
-                m_actor.config().id(),
+                m_actor.context().raft().id(),
                 std::make_tuple(m_actor.log().last_index(), m_actor.log().last_term())
             );
         } else {
@@ -381,7 +381,7 @@ private:
             dispatch,
             m_actor.name(),
             m_actor.config().current_term(),
-            m_actor.config().id(),
+            m_actor.context().raft().id(),
             snapshot_entry,
             m_actor.log().snapshot(),
             m_actor.config().commit_index()
@@ -434,7 +434,7 @@ private:
             dispatch,
             m_actor.name(),
             m_actor.config().current_term(),
-            m_actor.config().id(),
+            m_actor.context().raft().id(),
             std::make_tuple(m_next_index - 1, prev_term),
             entries,
             m_actor.config().commit_index()
@@ -469,7 +469,7 @@ private:
                 std::shared_ptr<io::basic_dispatch_t>(),
                 m_actor.name(),
                 m_actor.config().current_term(),
-                m_actor.config().id(),
+                m_actor.context().raft().id(),
                 prev_entry,
                 std::vector<entry_type>(),
                 m_actor.config().commit_index()
@@ -504,7 +504,7 @@ private:
             m_resolver = std::make_shared<service_resolver_t>(
                 m_actor.reactor(),
                 io::resolver<io::tcp>::query(m_id.first, m_id.second),
-                m_actor.context().config.raft.node_service_name
+                m_actor.options().node_service_name
             );
 
             using namespace std::placeholders;

@@ -44,11 +44,6 @@ public:
         m_config(config)
     { }
 
-    const node_id_t&
-    id() const {
-        return m_config.id();
-    }
-
     cluster_type&
     cluster() {
         return m_config.cluster();

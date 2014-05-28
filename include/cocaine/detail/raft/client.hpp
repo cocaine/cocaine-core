@@ -79,7 +79,7 @@ public:
             // Currently this client is used to configuration changes.
             // One configuration change requires 5-7 roundtrips,
             // so 6 election timeouts is a reasonable value for configuration change timeout.
-            m_request_timeout = float(6 * context.config.raft.election_timeout) / 1000.0;
+            m_request_timeout = float(6 * context.raft().options().election_timeout) / 1000.0;
         }
 
         m_timeout_timer.set<disposable_client_t, &disposable_client_t::on_timeout>(this);

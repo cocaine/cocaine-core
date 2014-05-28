@@ -127,13 +127,11 @@ public:
           io::reactor_t& reactor,
           const std::string& name, // name of the state machine
           machine_type&& state_machine,
-          config_type&& config,
-          const options_t& options):
+          config_type&& config):
         m_context(context),
         m_reactor(reactor),
         m_logger(new logging::log_t(context, "raft/" + name)),
         m_name(name),
-        m_options(options),
         m_configuration(std::move(config)),
         m_config_handle(*this, m_configuration),
         m_log(*this, m_configuration.log(), std::move(state_machine)),
@@ -150,8 +148,8 @@ public:
 #else
         // Initialize the generator with value, which is unique for current node id and time.
         unsigned long random_init = static_cast<unsigned long>(::time(nullptr))
-                                  + std::hash<std::string>()(this->config().id().first)
-                                  + this->config().id().second;
+                                  + std::hash<std::string>()(this->context().raft().id().first)
+                                  + this->context().raft().id().second;
         m_random_generator.seed(random_init);
 #endif
 
@@ -170,13 +168,14 @@ public:
         m_joiner.reset();
     }
 
+    virtual
     void
     join_cluster() {
         COCAINE_LOG_INFO(m_logger, "joining the cluster");
 
         std::vector<node_id_t> remotes;
 
-        auto config_actor = m_context.raft().get(m_context.config.raft.config_machine_name);
+        auto config_actor = m_context.raft().get(options().configuration_machine_name);
 
         if(config_actor) {
             auto leader = config_actor->leader_id();
@@ -188,7 +187,7 @@ public:
         {
             auto configs = m_context.raft().configuration();
 
-            auto config_machine_iter = configs->find(m_context.config.raft.config_machine_name);
+            auto config_machine_iter = configs->find(options().configuration_machine_name);
 
             if(config_machine_iter != configs->end()) {
                 auto &current_config = config_machine_iter->second.cluster.current;
@@ -208,7 +207,7 @@ public:
         m_joiner = std::make_shared<disposable_client_t>(
             m_context,
             m_reactor,
-            m_context.config.raft.control_service_name,
+            options().control_service_name,
             remotes
         );
 
@@ -217,14 +216,14 @@ public:
 
         typedef io::raft_control<msgpack::object, msgpack::object> protocol;
 
-        m_joiner->call<protocol::insert>(success_handler, error_handler, name(), config().id());
+        m_joiner->call<protocol::insert>(success_handler, error_handler, name(), context().raft().id());
     }
 
     void
     create_cluster() {
         COCAINE_LOG_INFO(m_logger, "creating new cluster and running the raft actor");
 
-        cluster().insert(config().id());
+        cluster().insert(context().raft().id());
         cluster().commit();
 
         step_down(std::max<uint64_t>(1, config().current_term()));
@@ -267,7 +266,7 @@ public:
 
     const options_t&
     options() const {
-        return m_options;
+        return m_context.raft().options();
     }
 
     machine_type&
@@ -847,7 +846,7 @@ private:
         step_down(config().current_term() + 1);
 
         // Vote for self.
-        m_voted_for = config().id();
+        m_voted_for = context().raft().id();
 
         m_state = actor_state::candidate;
 
@@ -863,7 +862,7 @@ private:
 
         m_state = actor_state::leader;
 
-        *m_leader.synchronize() = config().id();
+        *m_leader.synchronize() = context().raft().id();
 
         detail::begin_leadership_caller<machine_type>::call(log().machine());
 

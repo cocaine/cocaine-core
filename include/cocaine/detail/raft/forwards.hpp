@@ -201,6 +201,10 @@ enum class actor_state {
 class actor_concept_t {
 public:
     virtual
+    void
+    join_cluster() = 0;
+
+    virtual
     deferred<std::tuple<uint64_t, bool>>
     append(uint64_t term,
            node_id_t leader,
