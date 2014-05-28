@@ -570,7 +570,7 @@ private:
             {"leader_term", term},
             {"previous_entry_index", prev_index},
             {"previous_entry_term", prev_term},
-            {"entries_number", entries.size()},
+            {"entries_number", static_cast<uint64_t>(entries.size())},
             {"leader_commit_index", commit_index}
         }));
 
