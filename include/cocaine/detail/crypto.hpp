@@ -23,49 +23,32 @@
 
 #include "cocaine/common.hpp"
 
-#include <openssl/evp.h>
+#define PROTOTYPES
+
+#include <mutils/mincludes.h>
+#include <mutils/mhash.h>
 
 namespace cocaine {
 
-struct authorization_error_t:
-    public error_t
-{
-    template<typename... Args>
-    authorization_error_t(const std::string& format, const Args&... args):
-        error_t(format, args...)
-    { }
-};
+template<hashid HashID>
+class crypto {
+    COCAINE_DECLARE_NONCOPYABLE(crypto)
 
-namespace crypto {
-
-class auth_t {
-    COCAINE_DECLARE_NONCOPYABLE(auth_t)
+    context_t& m_context;
 
     const std::unique_ptr<logging::log_t> m_log;
-
-    EVP_MD_CTX* m_evp_md_context;
-
-    typedef std::map<
-        const std::string,
-        EVP_PKEY*
-    > key_map_t;
-
-    key_map_t m_keys;
+    const std::string m_service;
 
 public:
-    auth_t(context_t& context);
-   ~auth_t();
+    crypto(context_t& context, const std::string& service);
+   ~crypto();
 
-    void
-    verify(const std::string& message,
-           const std::string& signature,
-           const std::string& username) const;
-
-    // std::string
-    // sign(const std::string& message,
-    //      const std::string& username) const;
+    std::string
+    sign(const std::string& message, const std::string& token_id) const;
 };
 
-}} // namespace cocaine::crypto
+template class crypto<MHASH_MD5>;
+
+} // namespace cocaine
 
 #endif

@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: Andrey Sibiryov <kobolog@yandex-team.ru>
 Build-Depends: cmake, cdbs, debhelper (>= 7.0.13), libltdl-dev, libev-dev, libmsgpack-dev,
  libboost-dev, libboost-thread-dev, libboost-filesystem-dev, libboost-program-options-dev,
- libssl-dev, uuid-dev, libarchive-dev, binutils-dev, libcgroup-dev
+ libssl-dev, uuid-dev, libarchive-dev, binutils-dev, libcgroup-dev, libmhash-dev
 Standards-Version: 3.9.1
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
 Vcs-Browser: https://github.com/cocaine/cocaine-core

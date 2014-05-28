@@ -37,15 +37,10 @@ IF(COCAINE_ALLOW_CGROUPS)
     SET(LIBCGROUP_LIBRARY "cgroup")
 ENDIF()
 
-IF(NOT APPLE)
-    FIND_PACKAGE(OpenSSL REQUIRED)
-    SET(LIBCRYPTO_SOURCES "src/auth")
-    SET(LIBCRYPTO_LIBRARY "crypto")
-ENDIF()
-
 LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
+LOCATE_LIBRARY(LIBMHASH "mhash.h" "mhash")
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBUUID "uuid/uuid.h" "uuid")
@@ -61,6 +56,7 @@ INCLUDE_DIRECTORIES(
     ${LIBCGROUP_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
     ${LIBEV_INCLUDE_DIRS}
+    ${LIBMHASH_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
     ${LIBARCHIVE_INCLUDE_DIRS}
     ${LIBLTDL_INCLUDE_DIRS})
@@ -75,6 +71,7 @@ LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
     ${LIBCGROUP_LIBRARY_DIRS}
     ${LIBEV_LIBRARY_DIRS}
+    ${LIBMHASH_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
     ${LIBARCHIVE_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
@@ -95,7 +92,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/api
     src/chamber
     src/context
-    ${LIBCRYPTO_SOURCES}
+    src/crypto
     src/dispatch
     src/dynamic
     src/engine
@@ -127,9 +124,9 @@ TARGET_LINK_LIBRARIES(cocaine-core
     ${Boost_LIBRARIES}
     ${LIBCGROUP_LIBRARY}
     ${LIBCOCAINE_RAFT}
-    ${LIBCRYPTO_LIBRARY}
     ev
     ltdl
+    mhash
     msgpack
     ${LIBUUID_LIBRARY})
 
