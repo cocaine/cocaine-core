@@ -101,18 +101,7 @@ struct config_t {
     } network;
 
 #ifdef COCAINE_ALLOW_RAFT
-    struct {
-        std::set<std::pair<std::string, uint16_t>> some_nodes;
-        std::string node_service_name;
-        std::string control_service_name;
-        std::string config_machine_name;
-        unsigned int election_timeout;
-        unsigned int heartbeat_timeout;
-        unsigned int snapshot_threshold;
-        unsigned int message_size;
-        bool create_configuration_cluster;
-        bool enable;
-    } raft;
+    bool create_raft_cluster;
 #endif
 
     typedef std::map<std::string, component_t> component_map_t;
@@ -178,12 +167,12 @@ class context_t {
     // configuration updates when necessary.
     std::shared_ptr<synchronization_t> m_synchronization;
 
+#ifdef COCAINE_ALLOW_RAFT
+    std::unique_ptr<raft::repository_t> m_raft;
+#endif
+
 public:
     const config_t config;
-
-#ifdef COCAINE_ALLOW_RAFT
-    std::unique_ptr<raft::repository_t> raft;
-#endif
 
 public:
     context_t(config_t config, const std::string& logger);
@@ -202,6 +191,13 @@ public:
     logger() -> logging::log_context_t& {
         return *m_logger;
     }
+
+#ifdef COCAINE_ALLOW_RAFT
+    auto
+    raft() -> raft::repository_t& {
+        return *m_raft;
+    }
+#endif
 
     // Services
 

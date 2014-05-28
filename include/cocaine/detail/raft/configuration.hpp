@@ -41,13 +41,11 @@ public:
     typedef cluster_config_t cluster_type;
     typedef cocaine::raft::log<StateMachine, cluster_type> log_type;
 
-    configuration(const node_id_t& id,
-                  const cluster_type& cluster,
+    configuration(const cluster_type& cluster,
                   log_type&& log = log_type(),
                   uint64_t term = 0,
                   uint64_t commit_index = 0,
                   uint64_t last_applied = 0):
-        m_id(id),
         m_cluster(cluster),
         m_log(std::move(log)),
         m_current_term(term),
@@ -56,7 +54,6 @@ public:
     { };
 
     configuration(configuration&& other):
-        m_id(std::move(other.m_id)),
         m_cluster(std::move(other.m_cluster)),
         m_log(std::move(other.m_log)),
         m_current_term(other.m_current_term),
@@ -66,18 +63,12 @@ public:
 
     configuration&
     operator=(configuration&& other) {
-        m_id = std::move(other.m_id);
         m_cluster = std::move(other.m_cluster);
         m_log = std::move(other.m_log);
         m_current_term = other.m_current_term;
         m_commit_index = other.m_commit_index;
         m_last_applied = other.m_last_applied;
         return *this;
-    }
-
-    const node_id_t&
-    id() const {
-        return m_id;
     }
 
     cluster_type&
@@ -131,9 +122,6 @@ public:
     }
 
 private:
-    // Local node identifier. In fact this is endpoint of the locator.
-    node_id_t m_id;
-
     // Set of nodes in the RAFT cluster.
     cluster_type m_cluster;
 

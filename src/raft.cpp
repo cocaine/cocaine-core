@@ -24,6 +24,8 @@
 #include "cocaine/detail/raft/entry.hpp"
 #include "cocaine/detail/raft/repository.hpp"
 
+#include "cocaine/detail/actor.hpp"
+
 #include "cocaine/logging.hpp"
 
 #include "cocaine/traits/vector.hpp"
@@ -44,8 +46,22 @@ cocaine::make_error_condition(raft_errc e) {
 raft::repository_t::repository_t(context_t& context):
     m_context(context),
     m_reactor(std::make_shared<io::reactor_t>()),
-    m_id(m_context.config.network.hostname, m_context.config.network.locator)
+    m_id(m_context.config.network.hostname, m_context.config.network.locator),
+    m_active(false)
 { }
+
+void
+raft::repository_t::activate() {
+    auto actors = m_actors.synchronize();
+
+    if(!m_active) {
+        m_active = true;
+
+        for(auto it = actors->begin(); it != actors->end(); ++it) {
+            m_reactor->post(std::bind(&actor_concept_t::join_cluster, it->second));
+        }
+    }
+}
 
 std::shared_ptr<raft::actor_concept_t>
 raft::repository_t::get(const std::string& name) const {
@@ -79,12 +95,12 @@ node_service_t::node_service_t(context_t& context, io::reactor_t& reactor, const
 
 std::shared_ptr<raft::actor_concept_t>
 node_service_t::find_machine(const std::string& name) const {
-    auto machine = m_context.raft->get(name);
+    auto machine = m_context.raft().get(name);
 
     if(machine) {
         return machine;
     } else {
-        throw error_t("There is no such state machine.");
+        throw error_t("There is no such state machine");
     }
 }
 
@@ -131,8 +147,9 @@ node_service_t::erase(const std::string& machine, const raft::node_id_t& node) {
 
 control_service_t::control_service_t(context_t& context,
                                      io::reactor_t& reactor,
-                                     const std::string& name):
-    api::service_t(context, reactor, name, dynamic_t::empty_object),
+                                     const std::string& name,
+                                     const dynamic_t& args):
+    api::service_t(context, reactor, name, args),
     dispatch<io::raft_control_tag<msgpack::object, msgpack::object>>(name),
     m_context(context),
     m_reactor(reactor),
@@ -150,16 +167,30 @@ control_service_t::control_service_t(context_t& context,
     on<protocol::status>(std::bind(&control_service_t::status, this, _1));
     on<protocol::leader>(std::bind(&control_service_t::leader, this, _1));
 
-    if(m_context.config.raft.create_configuration_cluster) {
+    options_t options;
+
+    // The format of the name is "service/<name of service from the config>".
+    // So here we drop "service/" part to determine the raft control service name.
+    // TODO: Make the context to pass the names to services without "service/" part.
+    options.control_service_name = name.substr(8, std::string::npos);
+    options.node_service_name = "raft_node";
+    options.configuration_machine_name = "configuration";
+    options.some_nodes = args.as_object().at("some_nodes", dynamic_t::empty_array).to<std::set<node_id_t>>();
+    options.election_timeout = args.as_object().at("election_timeout", 500).to<unsigned int>();
+    options.heartbeat_timeout = args.as_object().at("heartbeat_timeout", options.election_timeout / 2).to<unsigned int>();
+    options.snapshot_threshold = args.as_object().at("snapshot_threshold", 100000).to<unsigned int>();
+    options.message_size = args.as_object().at("message_size", 1000).to<unsigned int>();
+
+    m_context.raft().set_options(options);
+    m_context.raft().activate();
+
+    if(m_context.config.create_raft_cluster) {
         typedef log_entry<configuration_machine_t> entry_type;
         typedef configuration<configuration_machine_t> config_type;
         typedef log_traits<configuration_machine_t, config_type::cluster_type>::snapshot_type
                 snapshot_type;
 
-        config_type config(
-            m_context.raft->id(),
-            cluster_config_t {std::set<node_id_t>(), boost::none}
-        );
+        config_type config = cluster_config_t {std::set<node_id_t>(), boost::none};
 
         configuration_machine_t config_machine(m_context, m_reactor, *this);
 
@@ -168,10 +199,10 @@ control_service_t::control_service_t(context_t& context,
 
         std::map<std::string, lockable_config_t> config_snapshot;
 
-        config_snapshot[m_context.config.raft.config_machine_name] = lockable_config_t {
+        config_snapshot[m_context.raft().options().configuration_machine_name] = lockable_config_t {
             false,
             cluster_config_t {
-                std::set<node_id_t>({m_context.raft->id()}),
+                std::set<node_id_t>({m_context.raft().id()}),
                 boost::none
             }
         };
@@ -183,17 +214,33 @@ control_service_t::control_service_t(context_t& context,
         config.set_commit_index(1);
         config.set_last_applied(1);
 
-        m_config_actor = m_context.raft->insert(
-            m_context.config.raft.config_machine_name,
+        m_config_actor = m_context.raft().create_cluster(
+            m_context.raft().options().configuration_machine_name,
             std::move(config_machine),
             std::move(config)
         );
     } else {
-        m_config_actor = m_context.raft->insert(
-            m_context.config.raft.config_machine_name,
+        m_config_actor = m_context.raft().insert(
+            m_context.raft().options().configuration_machine_name,
             configuration_machine_t(m_context, m_reactor, *this)
         );
     }
+
+    // Run Raft node service.
+    auto node_service_reactor = std::make_shared<io::reactor_t>();
+
+    std::unique_ptr<api::service_t> node_service(std::make_unique<node_service_t>(
+        m_context,
+        *m_context.raft().m_reactor,
+        std::string("service/") + m_context.raft().options().node_service_name
+    ));
+
+    std::unique_ptr<actor_t> node_service_actor(
+        new actor_t(m_context, m_context.raft().m_reactor, std::move(node_service))
+    );
+
+    m_context.insert(m_context.raft().options().node_service_name,
+                     std::move(node_service_actor));
 }
 
 const std::shared_ptr<control_service_t::config_actor_type>&
@@ -203,12 +250,12 @@ control_service_t::configuration_actor() const {
 
 std::shared_ptr<raft::actor_concept_t>
 control_service_t::find_machine(const std::string& name) const {
-    auto machine = m_context.raft->get(name);
+    auto machine = m_context.raft().get(name);
 
     if(machine) {
         return machine;
     } else {
-        throw error_t("There is no such state machine.");
+        throw error_t("There is no such state machine");
     }
 }
 
@@ -289,7 +336,7 @@ control_service_t::reset(const std::string& machine, const cluster_config_t& new
 
 std::map<std::string, cocaine::raft::lockable_config_t>
 control_service_t::dump() {
-    return *m_context.raft->configuration();
+    return *m_context.raft().configuration();
 }
 
 actor_state

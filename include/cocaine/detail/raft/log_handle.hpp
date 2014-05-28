@@ -134,25 +134,36 @@ public:
         m_log.push(std::forward<Args>(args)...);
 
         COCAINE_LOG_DEBUG(m_logger,
-                          "New entry has been pushed to the log with index %d and term %d.",
+                          "new entry has been pushed to the log with index %d and term %d",
                           last_index(),
-                          last_term());
+                          last_term())
+        (blackhole::attribute::list({
+            {"entry_index", last_index()},
+            {"entry_term", last_term()}
+        }));
 
         // Apply new configuration immediately as we see it.
-        if (boost::get<io::aux::frozen<node_commands::insert>>(&back().value())) {
+        if(boost::get<io::aux::frozen<node_commands::insert>>(&back().value())) {
             // We need to go deeper.
             m_actor.cluster().insert(std::get<0>(
                 boost::get<io::aux::frozen<node_commands::insert>>(back().value()).tuple
             ));
-        } else if (boost::get<io::aux::frozen<node_commands::erase>>(&back().value())) {
+        } else if(boost::get<io::aux::frozen<node_commands::erase>>(&back().value())) {
             m_actor.cluster().erase(std::get<0>(
                 boost::get<io::aux::frozen<node_commands::erase>>(back().value()).tuple
             ));
-        } else if (boost::get<io::aux::frozen<node_commands::commit>>(&back().value()) &&
-                   m_actor.cluster().transitional())
+        } else if(boost::get<io::aux::frozen<node_commands::commit>>(&back().value()) &&
+                  m_actor.cluster().transitional())
         {
-            // Here we can receive spurious commit, if previous commit was truncated from log due to leader change.
+            // Here we can receive spurious commit,
+            // if previous commit was truncated from log due to leader change.
+
+            bool was_in_cluster = m_actor.cluster().has(m_actor.context().raft().id());
             m_actor.cluster().commit();
+
+            if(was_in_cluster && !m_actor.cluster().has(m_actor.context().raft().id())) {
+                back().set_disable_node(true);
+            }
         }
 
         update_snapshot();
@@ -179,9 +190,9 @@ public:
         for(auto i = last_index(); i >= index; --i) {
             auto &entry = m_log[index];
 
-            if (m_actor.cluster().transitional() &&
-                (boost::get<io::aux::frozen<node_commands::insert>>(&entry.value()) ||
-                 boost::get<io::aux::frozen<node_commands::erase>>(&entry.value())))
+            if(m_actor.cluster().transitional() &&
+               (boost::get<io::aux::frozen<node_commands::insert>>(&entry.value()) ||
+                boost::get<io::aux::frozen<node_commands::erase>>(&entry.value())))
             {
                 m_actor.cluster().rollback();
                 if(m_config_handler) {
@@ -194,7 +205,10 @@ public:
         }
         m_log.truncate(index);
 
-        COCAINE_LOG_DEBUG(m_logger, "The log has been truncated to index %d.", index);
+        COCAINE_LOG_DEBUG(m_logger, "the log has been truncated to index %d", index)
+        (blackhole::attribute::list({
+            {"truncate_index", index}
+        }));
     }
 
     void
@@ -209,9 +223,13 @@ public:
         m_actor.cluster().consume(std::get<1>(m_log.snapshot()));
 
         COCAINE_LOG_DEBUG(m_logger,
-                          "New snapshot has been pushed to the log with index %d and term %d.",
+                          "new snapshot has been pushed to the log with index %d and term %d",
                           index,
-                          term);
+                          term)
+        (blackhole::attribute::list({
+            {"snapshot_index", index},
+            {"snapshot_term", term}
+        }));
     }
 
     uint64_t
@@ -257,9 +275,11 @@ private:
         {
             COCAINE_LOG_DEBUG(
                 m_logger,
-                "Truncate the log up to %d index and save snapshot of the state machine.",
+                "truncate the log up to %d index and save snapshot of the state machine",
                 m_next_snapshot_index
-            );
+            )(blackhole::attribute::list({
+                {"snapshot_index", m_next_snapshot_index}
+            }));
 
             if(m_next_snapshot_index > snapshot_index()) {
                 m_log.set_snapshot(m_next_snapshot_index,
@@ -316,15 +336,19 @@ private:
 
         // Stop the watcher when all committed entries are applied.
         if(to_apply <= m_actor.config().last_applied()) {
-            COCAINE_LOG_DEBUG(m_logger, "Stop applier.");
+            COCAINE_LOG_DEBUG(m_logger, "stop applier");
             m_background_worker.stop();
             return;
         }
 
         COCAINE_LOG_DEBUG(m_logger,
-                          "Applying entries from %d to %d.",
+                          "applying entries from %d to %d",
                           m_actor.config().last_applied() + 1,
-                          to_apply);
+                          to_apply)
+        (blackhole::attribute::list({
+            {"first_entry", m_actor.config().last_applied() + 1},
+            {"last_entry", to_apply}
+        }));
 
         // Apply snapshot if it's not applied yet.
         // Entries will be applied on the next iterations, because we don't want occupy event loop for a long time.
@@ -342,6 +366,10 @@ private:
         for(size_t index = m_actor.config().last_applied() + 1; index <= to_apply; ++index) {
             auto& entry = m_log[index];
             try {
+                if(entry.disable_node()) {
+                    m_actor.disable();
+                }
+
                 entry.visit(entry_visitor_t {m_machine, m_actor, m_config_handler});
             } catch(const std::exception&) {
                 // Unable to apply the entry right now. Try later.

@@ -44,11 +44,6 @@ public:
         m_config(config)
     { }
 
-    const node_id_t&
-    id() const {
-        return m_config.id();
-    }
-
     cluster_type&
     cluster() {
         return m_config.cluster();
@@ -80,7 +75,10 @@ public:
         auto new_index = std::min(value, m_actor.log().last_index());
         m_config.set_commit_index(value);
 
-        COCAINE_LOG_DEBUG(m_logger, "Commit index has been updated to %d.", new_index);
+        COCAINE_LOG_DEBUG(m_logger, "commit index has been updated to %d", new_index)
+        (blackhole::attribute::list({
+            {"commit_index", new_index}
+        }));
 
         m_actor.log().apply();
     }

@@ -201,7 +201,8 @@ public:
         m_heartbeat_timer(m_actor.reactor().native()),
         m_next_index(std::max<uint64_t>(1, m_actor.log().last_index())),
         m_match_index(0),
-        m_won_term(0)
+        m_won_term(0),
+        m_disconnected(false)
     {
         m_heartbeat_timer.set<remote_node, &remote_node::heartbeat>(this);
     }
@@ -220,7 +221,7 @@ public:
     request_vote() {
         if (m_won_term >= m_actor.config().current_term()) {
             return;
-        } else if (m_id == m_actor.config().id()) {
+        } else if (m_id == m_actor.context().raft().id()) {
             m_won_term = m_actor.config().current_term();
             m_cluster.register_vote();
         } else if (!m_vote_state) {
@@ -236,7 +237,7 @@ public:
         // TODO: Now leader sends one append request at the same time.
         // Probably it's possible to send requests in pipeline manner.
         // I should investigate this question.
-        if(m_id == m_actor.config().id()) {
+        if(m_id == m_actor.context().raft().id()) {
             m_match_index = m_actor.log().last_index();
             m_cluster.update_commit_index();
         } else if(!m_append_state &&
@@ -264,7 +265,7 @@ public:
     // Begin leadership. Actually it starts to send heartbeats.
     void
     begin_leadership() {
-        if(m_id == m_actor.config().id()) {
+        if(m_id == m_actor.context().raft().id()) {
             m_match_index = m_actor.log().last_index();
             m_next_index = m_match_index + 1;
         } else {
@@ -282,6 +283,11 @@ public:
             m_heartbeat_timer.stop();
         }
         reset();
+    }
+
+    bool
+    disconnected() {
+        return m_id != m_actor.context().raft().id() && m_disconnected;
     }
 
     // Reset current state of remote node.
@@ -324,7 +330,7 @@ private:
     void
     request_vote_impl() {
         if(m_client) {
-            COCAINE_LOG_DEBUG(m_logger, "Sending vote request.");
+            COCAINE_LOG_DEBUG(m_logger, "sending vote request");
 
             auto handler = std::bind(&vote_handler_t::handle, m_vote_state, std::placeholders::_1);
 
@@ -332,11 +338,11 @@ private:
                 make_proxy<std::tuple<uint64_t, bool>>(handler, m_id.first),
                 m_actor.name(),
                 m_actor.config().current_term(),
-                m_actor.config().id(),
+                m_actor.context().raft().id(),
                 std::make_tuple(m_actor.log().last_index(), m_actor.log().last_term())
             );
         } else {
-            COCAINE_LOG_DEBUG(m_logger, "Client isn't connected. Unable to send vote request.");
+            COCAINE_LOG_DEBUG(m_logger, "client isn't connected, unable to send vote request");
             m_vote_state->handle(std::error_code());
         }
     }
@@ -347,8 +353,8 @@ private:
     replicate_impl() {
         if(!m_client || !m_actor.is_leader()) {
             COCAINE_LOG_DEBUG(m_logger,
-                              "Client isn't connected or the local node is not the leader. "
-                              "Unable to send append request.");
+                              "client isn't connected or the local node is not the leader, "
+                              "unable to send append request");
             m_append_state->handle(std::error_code());
         } else if(m_next_index <= m_actor.log().snapshot_index()) {
             // If leader is far behind the leader, send snapshot.
@@ -375,17 +381,18 @@ private:
             dispatch,
             m_actor.name(),
             m_actor.config().current_term(),
-            m_actor.config().id(),
+            m_actor.context().raft().id(),
             snapshot_entry,
             m_actor.log().snapshot(),
             m_actor.config().commit_index()
         );
 
-        COCAINE_LOG_DEBUG(m_logger,
-                          "Sending apply request; term %d; next %d; index %d.",
-                          m_actor.config().current_term(),
-                          m_next_index,
-                          m_actor.log().snapshot_index());
+        COCAINE_LOG_DEBUG(m_logger, "sending apply request")
+        (blackhole::attribute::list({
+            {"current_term", m_actor.config().current_term()},
+            {"next_index", m_next_index},
+            {"snapshot_index", m_actor.log().snapshot_index()}
+        }));
     }
 
     void
@@ -427,23 +434,24 @@ private:
             dispatch,
             m_actor.name(),
             m_actor.config().current_term(),
-            m_actor.config().id(),
+            m_actor.context().raft().id(),
             std::make_tuple(m_next_index - 1, prev_term),
             entries,
             m_actor.config().commit_index()
         );
 
-        COCAINE_LOG_DEBUG(m_logger,
-                          "Sending append request; term %d; next %d; last %d.",
-                          m_actor.config().current_term(),
-                          m_next_index,
-                          m_actor.log().last_index());
+        COCAINE_LOG_DEBUG(m_logger, "sending append request")
+        (blackhole::attribute::list({
+            {"current_term", m_actor.config().current_term()},
+            {"next_index", m_next_index},
+            {"last_index", m_actor.log().last_index()}
+        }));
     }
 
     void
     send_heartbeat() {
         if(m_client) {
-            COCAINE_LOG_DEBUG(m_logger, "Sending heartbeat.");
+            COCAINE_LOG_DEBUG(m_logger, "sending heartbeat");
 
             std::tuple<uint64_t, uint64_t> prev_entry(0, 0);
 
@@ -461,7 +469,7 @@ private:
                 std::shared_ptr<io::basic_dispatch_t>(),
                 m_actor.name(),
                 m_actor.config().current_term(),
-                m_actor.config().id(),
+                m_actor.context().raft().id(),
                 prev_entry,
                 std::vector<entry_type>(),
                 m_actor.config().commit_index()
@@ -491,12 +499,12 @@ private:
             // Connection already exists.
             handler();
         } else {
-            COCAINE_LOG_DEBUG(m_logger, "Client is not connected. Connecting...");
+            COCAINE_LOG_DEBUG(m_logger, "client is not connected, connecting...");
 
             m_resolver = std::make_shared<service_resolver_t>(
                 m_actor.reactor(),
                 io::resolver<io::tcp>::query(m_id.first, m_id.second),
-                m_actor.context().config.raft.node_service_name
+                m_actor.options().node_service_name
             );
 
             using namespace std::placeholders;
@@ -515,6 +523,8 @@ private:
         m_client = client;
         m_client->bind(std::bind(&remote_node::on_error, this, std::placeholders::_1));
 
+        m_disconnected = false;
+
         handler();
     }
 
@@ -523,17 +533,29 @@ private:
                         const std::error_code& ec)
     {
         COCAINE_LOG_DEBUG(m_logger,
-                          "Unable to connect to Raft service: [%d] %s.",
+                          "unable to connect to raft service: [%d] %s",
                           ec.value(),
-                          ec.message());
+                          ec.message())
+        (blackhole::attribute::list({
+            {"error_code", ec.value()},
+            {"error_message", ec.message()}
+        }));
+
         handler();
         reset();
     }
 
     void
     on_error(const std::error_code& ec) {
-        COCAINE_LOG_DEBUG(m_logger, "Connection error: [%d] %s.", ec.value(), ec.message());
+        COCAINE_LOG_DEBUG(m_logger, "connection error: [%d] %s", ec.value(), ec.message())
+        (blackhole::attribute::list({
+            {"error_code", ec.value()},
+            {"error_message", ec.message()}
+        }));
+
         reset();
+        m_disconnected = true;
+        m_cluster.check_connections();
     }
 
 private:
@@ -566,6 +588,9 @@ private:
 
     // The last term, in which the node received vote from the remote.
     uint64_t m_won_term;
+
+    // Indicates if the connection is lost (the connection can not be lost if it was not established).
+    bool m_disconnected;
 };
 
 }} // namespace cocaine::raft

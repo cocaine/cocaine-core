@@ -114,23 +114,23 @@ struct counter_t::counter_machine_t {
 
     void
     consume(const snapshot_type& snapshot) {
-        COCAINE_LOG_INFO(m_log, "Consume snapshot %d.", snapshot);
+        COCAINE_LOG_INFO(m_log, "consume snapshot %d", snapshot);
         m_value = snapshot;
     }
 
     void
     begin_leadership() {
-        COCAINE_LOG_INFO(m_log, "Begin leadership.");
+        COCAINE_LOG_INFO(m_log, "begin leadership");
     }
 
     void
     finish_leadership() {
-        COCAINE_LOG_INFO(m_log, "Finish leadership.");
+        COCAINE_LOG_INFO(m_log, "finish leadership");
     }
 
     void
     complete_log() {
-        COCAINE_LOG_INFO(m_log, "Complete log.");
+        COCAINE_LOG_INFO(m_log, "complete log");
     }
 
     int
@@ -173,7 +173,7 @@ counter_t::counter_t(context_t& context, io::reactor_t& reactor, const std::stri
     on<io::counter::dec>(std::bind(&counter_t::on_dec, this, _1));
     on<io::counter::cas>(std::bind(&counter_t::on_cas, this, _1, _2));
 
-    m_raft = context.raft->insert(name, counter_machine_t(context));
+    m_raft = context.raft().insert(name, counter_machine_t(context));
 }
 
 namespace {
