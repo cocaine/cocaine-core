@@ -238,7 +238,7 @@ main(int argc, char* argv[]) {
 
 #ifdef COCAINE_ALLOW_RAFT
     if(vm.count("bootstrap-raft")) {
-        config->raft.create_configuration_cluster = true;
+        config->create_raft_cluster = true;
     }
 #endif
 

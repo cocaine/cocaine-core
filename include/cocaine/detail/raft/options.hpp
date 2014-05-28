@@ -27,6 +27,15 @@ namespace cocaine { namespace raft {
 
 // Some arguments of Raft actor.
 struct options_t {
+    std::string control_service_name;
+
+    std::string node_service_name;
+
+    std::string configuration_machine_name;
+
+    // List of 2-3 nodes, which will be used to join cluster at start.
+    std::set<node_id_t> some_nodes;
+
     unsigned int election_timeout;
 
     // This timeout shouldn't be more than election_timeout. Optimal value is (election_timeout / 2).
@@ -38,9 +47,6 @@ struct options_t {
     // Leader will send at most message_size entries in one append message.
     // Also actor will apply at most message_size entries at once.
     unsigned int message_size;
-
-    // List of 2-3 nodes, which will be used to join cluster at start.
-    std::set<node_id_t> some_nodes;
 };
 
 }} // namespace cocaine::raft

@@ -24,8 +24,9 @@
 #include "cocaine/detail/raft/configuration.hpp"
 #include "cocaine/detail/raft/log.hpp"
 
-#include "cocaine/context.hpp"
 #include "cocaine/locked_ptr.hpp"
+
+#include "cocaine/detail/atomic.hpp"
 
 namespace cocaine { namespace raft {
 
@@ -33,8 +34,8 @@ namespace cocaine { namespace raft {
 // Raft service uses this class to deliver messages from other nodes to actors.
 // Core uses it to setup new state machines.
 class repository_t {
-    friend class cocaine::context_t;
     friend class configuration_machine_t;
+    friend class control_service_t;
 
 public:
     typedef std::map<std::string, lockable_config_t> configs_type;
@@ -44,6 +45,11 @@ public:
     const node_id_t&
     id() const {
         return m_id;
+    }
+
+    const options_t&
+    options() const {
+        return m_options;
     }
 
     locked_ptr<const configs_type>
@@ -68,6 +74,22 @@ public:
     >>
     insert(const std::string& name, Machine&& machine);
 
+    void
+    activate();
+
+private:
+    void
+    set_options(const options_t& value) {
+        m_options = value;
+    }
+
+    template<class Machine, class Config>
+    std::shared_ptr<actor<
+        typename std::decay<Machine>::type,
+        typename std::decay<Config>::type
+    >>
+    create_cluster(const std::string& name, Machine&& machine, Config&& config);
+
 private:
     context_t& m_context;
 
@@ -75,9 +97,13 @@ private:
 
     node_id_t m_id;
 
+    options_t m_options;
+
     synchronized<std::map<std::string, std::shared_ptr<actor_concept_t>>> m_actors;
 
     synchronized<configs_type> m_configs;
+
+    std::atomic<bool> m_active;
 };
 
 }} // namespace cocaine::raft
@@ -98,28 +124,15 @@ repository_t::insert(const std::string& name, Machine&& machine, Config&& config
     typedef typename std::decay<Config>::type config_type;
     typedef actor<machine_type, config_type> actor_type;
 
-    options_t opt = { m_context.config.raft.election_timeout,
-                      m_context.config.raft.heartbeat_timeout,
-                      m_context.config.raft.snapshot_threshold,
-                      m_context.config.raft.message_size,
-                      m_context.config.raft.some_nodes };
-
     auto actor = std::make_shared<actor_type>(m_context,
                                               *m_reactor,
                                               name,
                                               std::forward<Machine>(machine),
-                                              std::forward<Config>(config),
-                                              opt);
+                                              std::forward<Config>(config));
 
     if(actors->insert(std::make_pair(name, actor)).second) {
-        if(m_context.config.raft.enable) {
-            if(name == m_context.config.raft.config_machine_name &&
-               m_context.config.raft.create_configuration_cluster)
-            {
-                m_reactor->post(std::bind(&actor_type::create_cluster, actor));
-            } else {
-                m_reactor->post(std::bind(&actor_type::join_cluster, actor));
-            }
+        if(m_active) {
+            m_reactor->post(std::bind(&actor_type::join_cluster, actor));
         }
         return actor;
     } else {
@@ -133,39 +146,34 @@ std::shared_ptr<actor<
     cocaine::raft::configuration<typename std::decay<Machine>::type>
 >>
 repository_t::insert(const std::string& name, Machine&& machine) {
+    typedef cocaine::raft::configuration<typename std::decay<Machine>::type> config_type;
+
+    return insert(name,
+                  std::forward<Machine>(machine),
+                  config_type(cluster_config_t {std::set<node_id_t>(), boost::none}));
+}
+
+template<class Machine, class Config>
+std::shared_ptr<actor<
+    typename std::decay<Machine>::type,
+    typename std::decay<Config>::type
+>>
+repository_t::create_cluster(const std::string& name, Machine&& machine, Config&& config) {
     auto actors = m_actors.synchronize();
 
     typedef typename std::decay<Machine>::type machine_type;
-    typedef cocaine::raft::configuration<typename std::decay<Machine>::type> config_type;
+    typedef typename std::decay<Config>::type config_type;
     typedef actor<machine_type, config_type> actor_type;
-
-    config_type config(
-        id(),
-        cluster_config_t {std::set<node_id_t>(), boost::none}
-    );
-
-    options_t opt = { m_context.config.raft.election_timeout,
-                      m_context.config.raft.heartbeat_timeout,
-                      m_context.config.raft.snapshot_threshold,
-                      m_context.config.raft.message_size,
-                      m_context.config.raft.some_nodes };
 
     auto actor = std::make_shared<actor_type>(m_context,
                                               *m_reactor,
                                               name,
                                               std::forward<Machine>(machine),
-                                              std::move(config),
-                                              opt);
+                                              std::forward<Config>(config));
 
     if(actors->insert(std::make_pair(name, actor)).second) {
-        if(m_context.config.raft.enable) {
-            if(name == m_context.config.raft.config_machine_name &&
-               m_context.config.raft.create_configuration_cluster)
-            {
-                m_reactor->post(std::bind(&actor_type::create_cluster, actor));
-            } else {
-                m_reactor->post(std::bind(&actor_type::join_cluster, actor));
-            }
+        if(m_active) {
+            m_reactor->post(std::bind(&actor_type::create_cluster, actor));
         }
         return actor;
     } else {

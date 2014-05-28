@@ -62,16 +62,18 @@ public:
 
     bool
     in_cluster() const {
-        if(transitional()) {
-            return actor().config().cluster().next->count(actor().config().id()) > 0;
-        } else {
-            return actor().config().cluster().current.count(actor().config().id()) > 0;
-        }
+        return actor().config().cluster().next->count(actor().context().raft().id()) > 0 ||
+               actor().config().cluster().current.count(actor().context().raft().id()) > 0;
     }
 
     void
     insert(const node_id_t& node) {
-        COCAINE_LOG_DEBUG(m_logger, "Insert node: %s:%d", node.first, node.second);
+        COCAINE_LOG_DEBUG(m_logger, "insert node: %s:%d", node.first, node.second)
+        (blackhole::attribute::list({
+            {"node_host", node.first},
+            {"node_port", node.second}
+        }));
+
         actor().config().cluster().insert(node);
         m_next = m_current;
         m_next.emplace_back(std::make_shared<remote_type>(*this, node));
@@ -85,7 +87,12 @@ public:
 
     void
     erase(const node_id_t& node) {
-        COCAINE_LOG_DEBUG(m_logger, "Erase node: %s:%d", node.first, node.second);
+        COCAINE_LOG_DEBUG(m_logger, "erase node: %s:%d", node.first, node.second)
+        (blackhole::attribute::list({
+            {"node_host", node.first},
+            {"node_port", node.second}
+        }));
+
         actor().config().cluster().erase(node);
         for(auto it = m_current.begin(); it != m_current.end(); ++it) {
             if((*it)->id() != node) {
@@ -102,20 +109,15 @@ public:
 
     void
     commit() {
-        COCAINE_LOG_DEBUG(m_logger, "Commit configuration.");
+        COCAINE_LOG_DEBUG(m_logger, "commit configuration");
         actor().config().cluster().commit();
         m_current = std::move(m_next);
         m_next = std::vector<std::shared_ptr<remote_type>>();
-
-        // Stepdown to disable self if we are not in cluster.
-        if(!in_cluster()) {
-            m_actor.step_down(m_actor.config().current_term());
-        }
     }
 
     void
     rollback() {
-        COCAINE_LOG_DEBUG(m_logger, "Rollback configuration.");
+        COCAINE_LOG_DEBUG(m_logger, "rollback configuration");
         actor().config().cluster().rollback();
         m_next = std::vector<std::shared_ptr<remote_type>>();
     }
@@ -212,6 +214,17 @@ public:
         }
     }
 
+    // Step down if the node is not connected to a quorum.
+    void
+    check_connections() {
+        bool connected_to_quorums = connected_to_quorum(m_current) &&
+                                    (m_next.size() == 0 || connected_to_quorum(m_next));
+
+        if(m_actor.is_leader() && !connected_to_quorums) {
+            m_actor.step_down(m_actor.config().current_term(), true);
+        }
+    }
+
 private:
     void
     create_clients() {
@@ -245,19 +258,31 @@ private:
 
         for(auto it = intersec.begin(); it != intersec.end(); ++it) {
             common_remotes.emplace_back(std::make_shared<remote_type>(*this, *it));
-            COCAINE_LOG_DEBUG(m_logger, "Add common remote: %s:%d", it->first, it->second);
+            COCAINE_LOG_DEBUG(m_logger, "add common remote: %s:%d", it->first, it->second)
+            (blackhole::attribute::list({
+                {"remote_host", it->first},
+                {"remote_port", it->second}
+            }));
         }
 
         m_current = common_remotes;
         for(auto it = diff1.begin(); it != diff1.end(); ++it) {
             m_current.emplace_back(std::make_shared<remote_type>(*this, *it));
-            COCAINE_LOG_DEBUG(m_logger, "Add current remote: %s:%d", it->first, it->second);
+            COCAINE_LOG_DEBUG(m_logger, "add current remote: %s:%d", it->first, it->second)
+            (blackhole::attribute::list({
+                {"remote_host", it->first},
+                {"remote_port", it->second}
+            }));
         }
 
         m_next = std::move(common_remotes);
         for(auto it = diff2.begin(); it != diff2.end(); ++it) {
             m_next.emplace_back(std::make_shared<remote_type>(*this, *it));
-            COCAINE_LOG_DEBUG(m_logger, "Add next remote: %s:%d", it->first, it->second);
+            COCAINE_LOG_DEBUG(m_logger, "add next remote: %s:%d", it->first, it->second)
+            (blackhole::attribute::list({
+                {"remote_host", it->first},
+                {"remote_port", it->second}
+            }));
         }
     }
 
@@ -302,6 +327,19 @@ private:
         }
 
         return votes > nodes.size() / 2;
+    }
+
+    bool
+    connected_to_quorum(const std::vector<std::shared_ptr<remote_type>> &nodes) {
+        size_t disconnected_number = 0;
+
+        for(auto it = nodes.begin(); it != nodes.end(); ++it) {
+            if((*it)->disconnected()) {
+                ++disconnected_number;
+            }
+        }
+
+        return disconnected_number < nodes.size() / 2;
     }
 
     // 'replicate' method starts this background task.

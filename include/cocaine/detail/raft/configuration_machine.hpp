@@ -162,12 +162,12 @@ public:
 
     snapshot_type
     snapshot() const {
-        return *m_context->raft->m_configs.synchronize();
+        return *m_context->raft().m_configs.synchronize();
     }
 
     void
     consume(const snapshot_type& snapshot) {
-        *m_context->raft->m_configs.synchronize() = snapshot;
+        *m_context->raft().m_configs.synchronize() = snapshot;
         update_appliers();
     }
 
@@ -202,12 +202,17 @@ public:
         auto callback = pop_operation(machine_name, op_id);
 
         COCAINE_LOG_DEBUG(m_log,
-                          "Insert new node to %s's configuration: %s:%d.",
+                          "insert new node to %s's configuration: %s:%d",
                           machine_name,
                           node.first,
-                          node.second);
+                          node.second)
+        (blackhole::attribute::list({
+            {"machine_name", machine_name},
+            {"node_host", node.first},
+            {"node_port", node.second}
+        }));
 
-        auto configs = m_context->raft->m_configs.synchronize();
+        auto configs = m_context->raft().m_configs.synchronize();
 
         auto &config = configs->insert(
             std::make_pair(machine_name, lockable_config_t {false, cluster_config_t()})
@@ -260,12 +265,17 @@ public:
         auto callback = pop_operation(machine_name, op_id);
 
         COCAINE_LOG_DEBUG(m_log,
-                          "Erase node from %s's configuration: %s:%d.",
+                          "erase node from %s's configuration: %s:%d",
                           machine_name,
                           node.first,
-                          node.second);
+                          node.second)
+        (blackhole::attribute::list({
+            {"machine_name", machine_name},
+            {"node_host", node.first},
+            {"node_port", node.second}
+        }));
 
-        auto configs = m_context->raft->m_configs.synchronize();
+        auto configs = m_context->raft().m_configs.synchronize();
 
         auto map_pair = configs->find(machine_name);
 
@@ -280,8 +290,7 @@ public:
 
         if(!config.locked) {
             bool already_removed = (config.cluster.current.count(node) == 0) &&
-                                   (!config.cluster.transitional() ||
-                                    (config.cluster.next->count(node) == 0));
+                                   (config.cluster.next->count(node) == 0);
 
             if(already_removed) {
                 if(callback) {
@@ -291,21 +300,12 @@ public:
             } else if(!config.cluster.transitional()) {
                 config.cluster.erase(node);
 
-                if(config.cluster.next->empty()) {
-                    config.cluster.commit();
+                m_modified.insert(machine_name);
 
-                    configs->erase(map_pair);
-                    m_modified.erase(machine_name);
-                    m_appliers.erase(machine_name);
-                    if(callback) {
-                        callback(cluster_change_result::done);
-                    }
-                } else {
-                    m_modified.insert(machine_name);
-                    if(callback) {
-                        m_active_operations[machine_name] = callback;
-                    }
+                if(callback) {
+                    m_active_operations[machine_name] = callback;
                 }
+
                 return;
             }
         }
@@ -320,17 +320,20 @@ public:
         std::string machine_name;
         std::tie(machine_name) = req.tuple;
 
-        COCAINE_LOG_DEBUG(m_log, "Commit %s's changes.", machine_name);
+        COCAINE_LOG_DEBUG(m_log, "commit %s's changes", machine_name);
 
         {
-            auto configs = m_context->raft->m_configs.synchronize();
+            auto configs = m_context->raft().m_configs.synchronize();
 
             auto map_pair = configs->find(machine_name);
 
             if(map_pair == configs->end()) {
                 COCAINE_LOG_WARNING(m_log,
-                                    "Commit message for unknown state machine received: %s.",
-                                    machine_name);
+                                    "commit message for unknown state machine received: %s",
+                                    machine_name)
+                (blackhole::attribute::list({
+                    {"machine_name", machine_name}
+                }));
                 return;
             }
 
@@ -338,6 +341,10 @@ public:
 
             if(config.cluster.transitional()) {
                 config.cluster.commit();
+            }
+
+            if(config.cluster.current.empty()) {
+                configs->erase(map_pair);
             }
         }
 
@@ -356,7 +363,7 @@ public:
         std::string machine_name;
         std::tie(machine_name) = req.tuple;
 
-        auto configs = m_context->raft->m_configs.synchronize();
+        auto configs = m_context->raft().m_configs.synchronize();
 
         auto map_pair = configs->find(machine_name);
 
@@ -371,14 +378,17 @@ public:
         cluster_config_t new_value;
         std::tie(machine_name, new_value) = req.tuple;
 
-        COCAINE_LOG_DEBUG(m_log, "Reset %s's configuration.", machine_name);
+        COCAINE_LOG_DEBUG(m_log, "reset %s's configuration", machine_name)
+        (blackhole::attribute::list({
+            {"machine_name", machine_name}
+        }));
 
         if((new_value.transitional() && new_value.next->empty()) || new_value.current.empty()) {
-            m_context->raft->m_configs.synchronize()->erase(machine_name);
+            m_context->raft().m_configs.synchronize()->erase(machine_name);
             m_modified.erase(machine_name);
             m_appliers.erase(machine_name);
         } else {
-            (*m_context->raft->m_configs.synchronize())[machine_name] = lockable_config_t {
+            (*m_context->raft().m_configs.synchronize())[machine_name] = lockable_config_t {
                 false,
                 new_value
             };
@@ -436,7 +446,7 @@ private:
         m_modified.clear();
         m_appliers.clear();
 
-        auto configs = m_context->raft->m_configs.synchronize();
+        auto configs = m_context->raft().m_configs.synchronize();
 
         for(auto it = configs->begin(); it != configs->end(); ++it) {
             const auto &name = it->first;
@@ -457,7 +467,7 @@ private:
         std::vector<node_id_t> removed;
 
         {
-            auto configs = m_context->raft->m_configs.synchronize();
+            auto configs = m_context->raft().m_configs.synchronize();
             auto map_pair = configs->find(name);
 
             if(map_pair != configs->end()) {
@@ -505,7 +515,7 @@ private:
             }
         }
 
-        auto local_actor = m_context->raft->get(name);
+        auto local_actor = m_context->raft().get(name);
 
         if(local_actor) {
             auto leader = local_actor->leader_id();
@@ -517,7 +527,7 @@ private:
         *applier = std::make_shared<disposable_client_t>(
             *m_context,
             *m_reactor,
-            m_context->config.raft.node_service_name,
+            m_context->raft().options().node_service_name,
             intersection
         );
 
