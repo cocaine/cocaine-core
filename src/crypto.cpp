@@ -20,8 +20,6 @@
 
 #include "cocaine/detail/crypto.hpp"
 
-#include "cocaine/api/storage.hpp"
-
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
@@ -29,10 +27,11 @@ using namespace cocaine;
 
 template<hashid HashID>
 crypto<HashID>::crypto(context_t& context, const std::string& service):
-    m_context(context),
     m_log(new logging::log_t(context, "crypto")),
     m_service(service)
-{ }
+{
+    m_store = api::storage(context, "secure");
+}
 
 template<hashid HashID>
 crypto<HashID>::~crypto() {
@@ -42,8 +41,14 @@ crypto<HashID>::~crypto() {
 template<hashid HashID>
 std::string
 crypto<HashID>::sign(const std::string& message, const std::string& token_id) const {
-    auto store = api::storage(m_context, "secure");
-    auto token = store->template get<std::string>(m_service, token_id);
+    std::string token;
+
+    try {
+        token = m_store->template get<std::string>(m_service, token_id);
+    } catch(const storage_error_t& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to locate the security token for '%s' in '%s'", token_id, m_service);
+        throw cocaine::error_t("the specified token has not been found");
+    }
 
     COCAINE_LOG_DEBUG(m_log, "signing a message for service '%s' with token '%s'", m_service, token_id);
 
@@ -55,3 +60,5 @@ crypto<HashID>::sign(const std::string& message, const std::string& token_id) co
 
     return { digest, mhash_get_block_size(HashID) };
 }
+
+template class cocaine::crypto<MHASH_MD5>;

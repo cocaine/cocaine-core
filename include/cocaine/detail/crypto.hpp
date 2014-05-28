@@ -23,6 +23,8 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/api/storage.hpp"
+
 #define PROTOTYPES
 
 #include <mutils/mincludes.h>
@@ -34,10 +36,10 @@ template<hashid HashID>
 class crypto {
     COCAINE_DECLARE_NONCOPYABLE(crypto)
 
-    context_t& m_context;
-
     const std::unique_ptr<logging::log_t> m_log;
     const std::string m_service;
+
+    typename api::category_traits<api::storage_t>::ptr_type m_store;
 
 public:
     crypto(context_t& context, const std::string& service);
@@ -47,7 +49,7 @@ public:
     sign(const std::string& message, const std::string& token_id) const;
 };
 
-template class crypto<MHASH_MD5>;
+typedef crypto<MHASH_MD5> crypto_t;
 
 } // namespace cocaine
 
