@@ -36,6 +36,8 @@ namespace cocaine {
 class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
 
+    typedef io::connector<io::acceptor<io::tcp>> endpoint_type;
+
     context_t& m_context;
 
     const std::unique_ptr<logging::log_t> m_log;
@@ -46,14 +48,11 @@ class actor_t {
     // after the authentication process completes successfully.
     std::shared_ptr<io::basic_dispatch_t> m_prototype;
 
-    typedef io::connector<io::acceptor<io::tcp>> endpoint_type;
-
     // I/O connectors. Actors have a separate thread to accept new connections. After a connection
     // is accepted, it is assigned on a random thread from the main thread pool.
     std::list<endpoint_type> m_connectors;
 
-    // I/O Reactor
-
+    // I/O authentication & processing.
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:

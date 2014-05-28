@@ -193,7 +193,7 @@ class remote_node {
     // It's needed because I have to pass some handler to client_t::call.
     struct heartbeat_handler_t {
         void
-        operator()(boost::variant<std::error_code, std::tuple<uint64_t, bool>> result) {
+        operator()(boost::variant<std::error_code, std::tuple<uint64_t, bool>> /* result */) {
             // Ignore.
         }
     };
