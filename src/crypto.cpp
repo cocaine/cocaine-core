@@ -58,7 +58,7 @@ crypto<HashID>::sign(const std::string& message, const std::string& token_id) co
     mhash(thread, message.data(), message.size());
     mhash_hmac_deinit(thread, digest);
 
-    return { digest, mhash_get_block_size(HashID) };
+    return std::string(digest, mhash_get_block_size(HashID));
 }
 
 template class cocaine::crypto<MHASH_MD5>;
