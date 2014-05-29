@@ -190,7 +190,9 @@ control_service_t::control_service_t(context_t& context,
         typedef log_traits<configuration_machine_t, config_type::cluster_type>::snapshot_type
                 snapshot_type;
 
-        config_type config = cluster_config_t {std::set<node_id_t>(), boost::none};
+        config_type config(m_context,
+                           m_context.raft().options().configuration_machine_name,
+                           cluster_config_t {std::set<node_id_t>(), boost::none});
 
         configuration_machine_t config_machine(m_context, m_reactor, *this);
 
@@ -210,7 +212,7 @@ control_service_t::control_service_t(context_t& context,
         config_machine.consume(config_snapshot);
         config.log().set_snapshot(1, 1, snapshot_type(std::move(config_snapshot), config.cluster()));
 
-        config.set_current_term(1);
+        config.set_current_term(std::max<uint64_t>(1, config.current_term()));
         config.set_commit_index(1);
         config.set_last_applied(1);
 

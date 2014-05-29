@@ -62,8 +62,12 @@ public:
 
     bool
     in_cluster() const {
-        return actor().config().cluster().next->count(actor().context().raft().id()) > 0 ||
-               actor().config().cluster().current.count(actor().context().raft().id()) > 0;
+        if(actor().config().cluster().transitional()) {
+            return actor().config().cluster().next->count(actor().context().raft().id()) > 0 ||
+                   actor().config().cluster().current.count(actor().context().raft().id()) > 0;
+        } else {
+            return actor().config().cluster().current.count(actor().context().raft().id()) > 0;
+        }
     }
 
     void

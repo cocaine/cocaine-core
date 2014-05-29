@@ -148,9 +148,11 @@ std::shared_ptr<actor<
 repository_t::insert(const std::string& name, Machine&& machine) {
     typedef cocaine::raft::configuration<typename std::decay<Machine>::type> config_type;
 
-    return insert(name,
-                  std::forward<Machine>(machine),
-                  config_type(cluster_config_t {std::set<node_id_t>(), boost::none}));
+    return insert(name, std::forward<Machine>(machine), config_type(
+        m_context,
+        name,
+        cluster_config_t {std::set<node_id_t>(), boost::none}
+    ));
 }
 
 template<class Machine, class Config>
