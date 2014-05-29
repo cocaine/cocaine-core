@@ -63,11 +63,6 @@ struct process_handle_t:
     { }
 
     virtual
-   ~process_handle_t() {
-        terminate();
-    }
-
-    virtual
     void
     terminate() {
         int status = 0;
