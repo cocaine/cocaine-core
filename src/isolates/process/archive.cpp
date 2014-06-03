@@ -24,6 +24,7 @@
 #include "cocaine/logging.hpp"
 
 #include <boost/filesystem/path.hpp>
+#include <boost/filesystem/operations.hpp>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -74,6 +75,10 @@ archive_t::~archive_t() {
 void
 archive_t::deploy(const std::string& prefix_) {
     const fs::path prefix = prefix_;
+
+    for(fs::directory_iterator end_dir_it, it(prefix); it != end_dir_it; ++it) {
+        fs::remove_all(it->path());
+    }
 
     archive* target = archive_write_disk_new();
     archive_entry* entry = nullptr;
