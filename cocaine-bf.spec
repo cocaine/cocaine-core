@@ -121,7 +121,6 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_includedir}/*
 %{_libdir}/libcocaine-core.so
-%{_libdir}/libjson.so
 
 %files -n %{cocaine_runtime_name}
 %defattr(-,root,root,-)
