@@ -48,9 +48,6 @@ Cocaine runtime components package.
 
 %prep
 %setup -q
-%if 0%{?fedora} >= 19
-patch -p1 < fedora/libcocaine-boost-mt.patch
-%endif
 
 %build
 %if %{defined rhel}
