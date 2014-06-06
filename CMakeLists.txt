@@ -78,6 +78,7 @@ LINK_DIRECTORIES(
     ${LIBLTDL_LIBRARY_DIRS})
 
 ADD_LIBRARY(json
+    STATIC
     foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_value
     foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_reader
     foreign/jsoncpp-0.6.0-rc2/src/lib_json/json_writer)
