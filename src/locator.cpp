@@ -69,8 +69,11 @@ locator_t::locator_t(context_t& context, reactor_t& reactor):
 
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
+    // It's here to keep the reference alive.
+    const auto storage = api::storage(m_context, "core");
+
     try {
-        auto groups = api::storage(context, "core")->find("groups", std::vector<std::string>({
+        auto groups = storage->find("groups", std::vector<std::string>({
             "group",
             "active"
         }));
@@ -178,8 +181,11 @@ auto
 locator_t::refresh(const std::string& name) -> refresh_result_type {
     std::vector<std::string> groups;
 
+    // It's here to keep the reference alive.
+    const auto storage = api::storage(m_context, "core");
+
     try {
-        groups = api::storage(m_context, "core")->find("groups", std::vector<std::string>({
+        groups = storage->find("groups", std::vector<std::string>({
             "group",
             "active"
         }));
