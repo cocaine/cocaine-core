@@ -1,3 +1,9 @@
+cocaine-core (0.11.2.4) unstable; urgency=low
+
+  * Keep the storage alive in Router group management.
+
+ -- Denis Zaitsev <dzaitsev@yandex-team.ru>  Fri, 27 Jun 2014 15:41:30 +0400
+
 cocaine-core (0.11.2.3) unstable; urgency=low
 
   * Fixed build on Fedora and RHEL.
