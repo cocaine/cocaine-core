@@ -22,6 +22,7 @@
 #include "cocaine/detail/locator.hpp"
 
 #include "cocaine/api/gateway.hpp"
+#include "cocaine/api/storage.hpp"
 
 #include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/resolver.hpp"
@@ -32,7 +33,6 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/detail/actor.hpp"
-#include "cocaine/detail/group.hpp"
 
 #include "cocaine/idl/streaming.hpp"
 
@@ -79,7 +79,7 @@ locator_t::locator_t(context_t& context, reactor_t& reactor):
         }));
 
         for(auto it = groups.begin(); it != groups.end(); ++it) {
-            m_router->add_group(*it, group_t(context, *it).content);
+            m_router->add_group(*it, storage->get<routing_group_type>("groups", *it));
         }
     } catch(const storage_error_t& e) {
         throw cocaine::error_t("unable to initialize the routing groups - %s", e.what());
@@ -195,7 +195,7 @@ locator_t::refresh(const std::string& name) -> refresh_result_type {
 
     if(std::find(groups.begin(), groups.end(), name) != groups.end()) {
         try {
-            m_router->add_group(name, group_t(m_context, name).content);
+            m_router->add_group(name, storage->get<routing_group_type>("groups", name));
         } catch(const storage_error_t& e) {
             throw cocaine::error_t("unable to read routing group '%s' - %s", name, e.what());
         }
