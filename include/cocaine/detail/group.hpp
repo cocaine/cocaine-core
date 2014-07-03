@@ -21,18 +21,21 @@
 #ifndef COCAINE_LOCATOR_GROUP_HPP
 #define COCAINE_LOCATOR_GROUP_HPP
 
-#include "cocaine/common.hpp"
-#include "cocaine/detail/cached.hpp"
+#include "cocaine/api/storage.hpp"
 
 namespace cocaine {
 
-struct group_t:
-    cached<std::map<std::string, unsigned int>>
+struct group_t
 {
+    typedef std::map<std::string, unsigned int> group_content_type;
+
     group_t(context_t& context, const std::string& name);
 
     // Name of the routing group.
     const std::string name;
+
+    // content of routing group
+    const group_content_type content;
 };
 
 } // namespace cocaine

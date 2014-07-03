@@ -23,6 +23,6 @@
 using namespace cocaine;
 
 group_t::group_t(context_t& context, const std::string& name_):
-    cached<std::map<std::string, unsigned int>>(context, "groups", name_),
-    name(name_)
+    name(name_),
+    content(api::storage(context, "core")->get<group_content_type>("groups", name_))
 { }
