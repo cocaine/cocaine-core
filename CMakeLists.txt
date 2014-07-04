@@ -98,7 +98,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/drivers/time
     src/engine
     src/essentials
-    src/group
     src/gateways/adhoc
     src/isolates/process
     src/isolates/spooler
