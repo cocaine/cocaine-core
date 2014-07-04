@@ -97,7 +97,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/dynamic
     src/engine
     src/essentials
-    src/group
     src/gateways/adhoc
     src/isolates/process.cpp
     src/isolates/process/archive
