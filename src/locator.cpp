@@ -78,8 +78,10 @@ locator_t::locator_t(context_t& context, reactor_t& reactor):
             "active"
         }));
 
+        typedef std::map<std::string, unsigned int> group_t;
+
         for(auto it = groups.begin(); it != groups.end(); ++it) {
-            m_router->add_group(*it, storage->get<routing_group_type>("groups", *it));
+            m_router->add_group(*it, storage->get<group_t>("groups", *it));
         }
     } catch(const storage_error_t& e) {
         throw cocaine::error_t("unable to initialize the routing groups - %s", e.what());
@@ -194,8 +196,10 @@ locator_t::refresh(const std::string& name) -> refresh_result_type {
     }
 
     if(std::find(groups.begin(), groups.end(), name) != groups.end()) {
+        typedef std::map<std::string, unsigned int> group_t;
+
         try {
-            m_router->add_group(name, storage->get<routing_group_type>("groups", name));
+            m_router->add_group(name, storage->get<group_t>("groups", name));
         } catch(const storage_error_t& e) {
             throw cocaine::error_t("unable to read routing group '%s' - %s", name, e.what());
         }

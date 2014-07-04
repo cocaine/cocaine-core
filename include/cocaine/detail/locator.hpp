@@ -54,8 +54,6 @@ class locator_t:
 
     typedef std::tuple<std::string, std::string, uint16_t> remote_id_t;
 
-    typedef std::map<std::string, unsigned int>  routing_group_type;
-
     class remote_client_t;
 
     // These are remote sessions indexed by endpoint and uuid. The uuid is required to easily
