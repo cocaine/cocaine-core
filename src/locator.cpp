@@ -22,6 +22,7 @@
 #include "cocaine/detail/locator.hpp"
 
 #include "cocaine/api/gateway.hpp"
+#include "cocaine/api/storage.hpp"
 
 #include "cocaine/asio/reactor.hpp"
 #include "cocaine/asio/resolver.hpp"
@@ -33,7 +34,6 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/detail/actor.hpp"
-#include "cocaine/detail/group.hpp"
 
 #include "cocaine/logging.hpp"
 
@@ -65,8 +65,10 @@ locator_t::locator_t(context_t& context, io::reactor_t& reactor):
             "active"
         }));
 
+        typedef std::map<std::string, unsigned int> group_t;
+
         for(auto it = groups.begin(); it != groups.end(); ++it) {
-            m_router->add_group(*it, group_t(context, *it).to_map());
+            m_router->add_group(*it, storage->get<group_t>("groups", *it));
         }
     } catch(const storage_error_t& e) {
         throw cocaine::error_t("unable to initialize the routing groups - %s", e.what());
@@ -260,7 +262,7 @@ locator_t::attach(const std::string& name, std::unique_ptr<actor_t>&& service) {
 auto
 locator_t::detach(const std::string& name) -> std::unique_ptr<actor_t> {
     std::unique_ptr<actor_t> service;
-    
+
     {
         std::lock_guard<std::mutex> guard(m_services_mutex);
 
@@ -380,8 +382,10 @@ locator_t::refresh(const std::string& name) {
     }
 
     if(std::find(groups.begin(), groups.end(), name) != groups.end()) {
+        typedef std::map<std::string, unsigned int> group_t;
+
         try {
-            m_router->add_group(name, group_t(m_context, name).to_map());
+            m_router->add_group(name, storage->get<group_t>("groups", name));
         } catch(const storage_error_t& e) {
             throw cocaine::error_t("unable to read routing group '%s' - %s", name, e.what());
         }
