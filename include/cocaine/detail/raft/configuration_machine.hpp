@@ -143,7 +143,14 @@ public:
         m_context(&context),
         m_reactor(&reactor),
         m_service(&service),
-        m_log(new logging::log_t(context, "configuration_machine"))
+        m_log(
+            new logging::log_t(
+                context.logger(),
+                blackhole::log::attributes_t({
+                    blackhole::keyword::source() = "configuration_machine"
+                })
+            )
+        )
     { }
 
     configuration_machine_t(configuration_machine_t&& other) {

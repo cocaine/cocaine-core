@@ -58,14 +58,21 @@ using namespace std::placeholders;
 locator_t::locator_t(context_t& context, reactor_t& reactor):
     dispatch<io::locator_tag>("service/locator"),
     m_context(context),
-    m_log(new logging::log_t(context, "service/locator")),
+    m_log(
+        new logging::log_t(
+            context.logger(),
+            blackhole::log::attributes_t({
+                blackhole::keyword::source() = "service/locator"
+            })
+        )
+    ),
     m_reactor(reactor),
     m_router(new router_t(*m_log.get()))
 {
     // NOTE: Slot for the io::locator::synchronize action is bound in context_t::bootstrap(), as
     // it's easier to implement it using context_t internals.
-    on<io::locator::resolve>(std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::refresh>(std::bind(&locator_t::refresh, this, _1));
+    on<io::locator::resolve>(std::bind(&locator_t::resolve, this, std::placeholders::_1));
+    on<io::locator::refresh>(std::bind(&locator_t::refresh, this, std::placeholders::_1));
 
     COCAINE_LOG_INFO(m_log, "this node's id is '%s'", m_context.config.network.uuid);
 
@@ -407,12 +414,12 @@ locator_t::on_announce_event(ev::io&, int) {
     }
 
     channel->rd->bind(
-        std::bind(&locator_t::on_message, this, node, _1),
-        std::bind(&locator_t::on_failure, this, node, _1)
+        std::bind(&locator_t::on_message, this, node, std::placeholders::_1),
+        std::bind(&locator_t::on_failure, this, node, std::placeholders::_1)
     );
 
     channel->wr->bind(
-        std::bind(&locator_t::on_failure, this, node, _1)
+        std::bind(&locator_t::on_failure, this, node, std::placeholders::_1)
     );
 
     // Start the synchronization

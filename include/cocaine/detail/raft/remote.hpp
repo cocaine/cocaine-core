@@ -202,10 +202,14 @@ public:
     remote_node(cluster_type& cluster, node_id_t id):
         m_cluster(cluster),
         m_actor(cluster.actor()),
-        m_logger(new logging::log_t(
-            m_actor.context(),
-            "raft/" + m_actor.name() + "/remote/" + cocaine::format("%s:%d", id.first, id.second)
-        )),
+        m_logger(
+            new logging::log_t(
+                m_actor.context().logger(),
+                blackhole::log::attributes_t({
+                    blackhole::keyword::source() = "raft/" + m_actor.name() + "/remote/" + cocaine::format("%s:%d", id.first, id.second)
+                })
+            )
+        ),
         m_id(id),
         m_heartbeat_timer(m_actor.reactor().native()),
         m_next_index(std::max<uint64_t>(1, m_actor.log().last_index())),

@@ -38,14 +38,28 @@ using namespace cocaine;
 
 actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t> prototype):
     m_context(context),
-    m_log(new logging::log_t(context, prototype->name())),
+    m_log(
+        new logging::log_t(
+            context.logger(),
+            blackhole::log::attributes_t({
+                blackhole::keyword::source() = prototype->name()
+            })
+        )
+    ),
     m_reactor(reactor),
     m_prototype(std::move(prototype))
 { }
 
 actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t> service):
     m_context(context),
-    m_log(new logging::log_t(context, service->prototype().name())),
+    m_log(
+        new logging::log_t(
+            context.logger(),
+            blackhole::log::attributes_t({
+                blackhole::keyword::source() = service->prototype().name()
+            })
+        )
+    ),
     m_reactor(reactor)
 {
     io::basic_dispatch_t *const prototype = &service->prototype();

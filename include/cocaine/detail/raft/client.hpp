@@ -63,7 +63,14 @@ public:
         boost::optional<float> request_timeout = boost::none
     ):
         m_reactor(reactor),
-        m_logger(new logging::log_t(context, "raft_client/" + name)),
+        m_logger(
+            new logging::log_t(
+                context.logger(),
+                blackhole::log::attributes_t({
+                    blackhole::keyword::source() = "raft_client/" + name
+                })
+            )
+        ),
         m_timeout_timer(reactor.native()),
         m_retry_timer(reactor.native()),
         m_name(name),

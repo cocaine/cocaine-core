@@ -130,7 +130,14 @@ public:
           config_type&& config):
         m_context(context),
         m_reactor(reactor),
-        m_logger(new logging::log_t(context, "raft/" + name)),
+        m_logger(
+            new logging::log_t(
+                context.logger(),
+                blackhole::log::attributes_t({
+                    blackhole::keyword::source() = "raft/" + name
+                })
+            )
+        ),
         m_name(name),
         m_configuration(std::move(config)),
         m_config_handle(*this, m_configuration),

@@ -144,7 +144,7 @@ class context_t {
 
     // NOTE: As the loggers themselves are components, the repository has to be initialized
     // first without a logger, unfortunately.
-    std::unique_ptr<logging::log_context_t> m_logger;
+    std::unique_ptr<blackhole::synchronized<logger_t>> m_logger;
 
     // Ports available for allocation.
     reverse_priority_queue<uint16_t>::type m_ports;
@@ -188,7 +188,7 @@ public:
     // Logging
 
     auto
-    logger() -> logging::log_context_t& {
+    logger() -> blackhole::synchronized<logger_t>& {
         return *m_logger;
     }
 

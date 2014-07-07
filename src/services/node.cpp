@@ -42,7 +42,14 @@ node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, 
     api::service_t(context, reactor, name, args),
     dispatch<io::node_tag>(name),
     m_context(context),
-    m_log(new logging::log_t(context, name))
+    m_log(
+        new logging::log_t(
+            context.logger(),
+            blackhole::log::attributes_t({
+                blackhole::keyword::source() = name
+            })
+        )
+    )
 {
     using namespace std::placeholders;
 
