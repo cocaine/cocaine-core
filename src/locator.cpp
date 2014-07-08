@@ -345,7 +345,10 @@ locator_t::on_announce_event(ev::io&, int) {
 
     if(size <= 0) {
         if(ec) {
-            COCAINE_LOG_ERROR(m_log, "unable to receive an announce - [%d] %s", ec.value(), ec.message());
+            COCAINE_LOG_ERROR(m_log, "unable to receive an announce")(
+                "errno", ec.value(),
+                "reason", ec.message()
+            );
         }
 
         return;
@@ -386,8 +389,11 @@ locator_t::on_announce_event(ev::io&, int) {
     try {
         endpoints = io::resolver<io::tcp>::query(hostname, port);
     } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to resolve node '%s' endpoints - [%d] %s", uuid, e.code().value(),
-            e.code().message());
+        COCAINE_LOG_ERROR(m_log, "unable to resolve node endpoints")(
+            "uuid", uuid,
+            "errno", e.code().value(),
+            "reason", e.code().message()
+        );
         return;
     }
 
@@ -400,8 +406,12 @@ locator_t::on_announce_event(ev::io&, int) {
                 std::make_shared<io::socket<io::tcp>>(*it)
             );
         } catch(const std::system_error& e) {
-            COCAINE_LOG_WARNING(m_log, "unable to connect to node '%s' via endpoint '%s' - [%d] %s", uuid, *it,
-                e.code().value(), e.code().message());
+            COCAINE_LOG_WARNING(m_log, "unable to connect to node")(
+                "uuid", uuid,
+                "endpoint", *it,
+                "errno", e.code().value(),
+                "reason", e.code().message()
+            );
             continue;
         }
 
@@ -452,7 +462,10 @@ locator_t::on_announce_timer(ev::timer&, int) {
 
     if(m_announce->write(buffer.data(), buffer.size(), ec) != static_cast<ssize_t>(buffer.size())) {
         if(ec) {
-            COCAINE_LOG_ERROR(m_log, "unable to announce the node - [%d] %s", ec.value(), ec.message());
+            COCAINE_LOG_ERROR(m_log, "unable to announce the node")(
+                "errno", ec.value(),
+                "reason", ec.message()
+            );
         } else {
             COCAINE_LOG_ERROR(m_log, "unable to announce the node");
         }
@@ -479,9 +492,15 @@ locator_t::on_failure(const remote_id_t& node, const std::error_code& ec) {
     if(m_remotes.find(node) == m_remotes.end()) {
         return;
     } else if(ec) {
-        COCAINE_LOG_WARNING(m_log, "node '%s' has unexpectedly disconnected - [%d] %s", uuid, ec.value(), ec.message());
+        COCAINE_LOG_WARNING(m_log, "node has unexpectedly disconnected")(
+            "uuid", uuid,
+            "errno", ec.value(),
+            "reason", ec.message()
+        );
     } else {
-        COCAINE_LOG_WARNING(m_log, "node '%s' has unexpectedly disconnected", uuid);
+        COCAINE_LOG_WARNING(m_log, "node has unexpectedly disconnected")(
+            "uuid", uuid
+        );
     }
 
     auto removed = m_router->remove_remote(uuid);

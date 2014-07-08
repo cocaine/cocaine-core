@@ -85,7 +85,7 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
 
 void
 adhoc_t::consume(const std::string& uuid, const std::string& name, const metadata_t& meta) {
-    COCAINE_LOG_DEBUG(m_log, "consumed node '%s' service '%s'", uuid, name);
+    COCAINE_LOG_DEBUG(m_log, "consumed node")("service", name, "uuid", uuid);
 
     m_remote_services.insert({
         name,
@@ -95,7 +95,7 @@ adhoc_t::consume(const std::string& uuid, const std::string& name, const metadat
 
 void
 adhoc_t::cleanup(const std::string& uuid, const std::string& name) {
-    COCAINE_LOG_DEBUG(m_log, "removing node '%s' service '%s'", uuid, name);
+    COCAINE_LOG_DEBUG(m_log, "removing node")("service", name, "uuid", uuid);
 
     remote_service_map_t::iterator it, end;
 

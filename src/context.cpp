@@ -797,7 +797,10 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
         service->run(endpoints);
 
-        COCAINE_LOG_INFO(&log, "service '%s' published on %d", name, service->location().front());
+        COCAINE_LOG_INFO(&log, "service has been published")(
+            "service", name,
+            "location", service->location().front()
+        );
 
         locked->emplace_back(name, std::move(service));
     }
@@ -887,7 +890,7 @@ context_t::bootstrap() {
         }
     }
 
-    COCAINE_LOG_INFO(&log, "growing the execution unit pool to %d units", pool)("units", pool);
+    COCAINE_LOG_INFO(&log, "growing the execution unit pool")("units", pool);
 
     while(pool--) {
         m_pool.emplace_back(std::make_unique<execution_unit_t>(*this, "cocaine/execute"));
@@ -912,14 +915,24 @@ context_t::bootstrap() {
                 it->second.args
             )));
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(&log, "unable to initialize service '%s' - %s - [%d] %s", it->first, e.what(),
-                e.code().value(), e.code().message());
+            COCAINE_LOG_ERROR(&log, "unable to initialize service")(
+                "service", it->first,
+                "reason", e.what(),
+                "errno", e.code().value(),
+                "message", e.code().message()
+            );
             throw;
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(&log, "unable to initialize service '%s' - %s", it->first, e.what());
+            COCAINE_LOG_ERROR(&log, "unable to initialize service")(
+                "service", it->first,
+                "reason", e.what()
+            );
             throw;
         } catch(...) {
-            COCAINE_LOG_ERROR(&log, "unable to initialize service '%s' - unknown exception", it->first);
+            COCAINE_LOG_ERROR(&log, "unable to initialize service")(
+                "service", it->first,
+                "reason", "unknown exception"
+            );
             throw;
         }
     }
@@ -951,14 +964,21 @@ context_t::bootstrap() {
         // peers which managed to connect during the bootstrap.
         service->run(endpoints);
     } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(&log, "unable to initialize the locator - %s - [%d] %s", e.what(),
-            e.code().value(), e.code().message());
+        COCAINE_LOG_ERROR(&log, "unable to initialize the locator")(
+            "message", e.what(),
+            "errno", e.code().value(),
+            "reason", e.code().message()
+        );
         throw;
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(&log, "unable to initialize the locator - %s", e.what());
+        COCAINE_LOG_ERROR(&log, "unable to initialize the locator")(
+            "reason", e.what()
+        );
         throw;
     } catch(...) {
-        COCAINE_LOG_ERROR(&log, "unable to initialize the locator - unknown exception");
+        COCAINE_LOG_ERROR(&log, "unable to initialize the locator")(
+            "reason", "unknown exception"
+        );
         throw;
     }
 

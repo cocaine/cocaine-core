@@ -91,7 +91,10 @@ execution_unit_t::on_message(int fd, const io::message_t& message) {
     try {
         it->second->invoke(message);
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(m_log, "client on fd %d has been forced to disconnect - %s", fd, e.what());
+        COCAINE_LOG_ERROR(m_log, "client has been forced to disconnect")(
+            "fd", fd,
+            "reason", e.what()
+        );
 
         // NOTE: This destroys the connection but not necessarily the session itself, as it might be
         // still in use by shared upstreams even in other threads. In other words, this doesn't guarantee
@@ -109,9 +112,13 @@ execution_unit_t::on_failure(int fd, const std::error_code& error) {
         // the reactor and it was already dropped.
         return;
     } else if(error) {
-        COCAINE_LOG_ERROR(m_log, "client on fd %d has disconnected - [%d] %s", fd, error.value(), error.message());
+        COCAINE_LOG_ERROR(m_log, "client has disconnected")(
+            "fd", fd,
+            "errno", error.value(),
+            "reason", error.message()
+        );
     } else {
-        COCAINE_LOG_DEBUG(m_log, "client on fd %d has disconnected", fd);
+        COCAINE_LOG_DEBUG(m_log, "client has disconnected")("fd", fd);
     }
 
     m_sessions[fd]->detach();

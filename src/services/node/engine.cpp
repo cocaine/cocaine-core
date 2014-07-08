@@ -206,7 +206,7 @@ engine_t::erase(const std::string& id, int code, const std::string& reason) {
     m_pool.erase(id);
 
     if(code == rpc::terminate::abnormal) {
-        COCAINE_LOG_ERROR(m_log, "the app seems to be broken - %s", reason);
+        COCAINE_LOG_ERROR(m_log, "the app seems to be broken")("reason", reason);
         migrate(states::broken);
     }
 
@@ -227,7 +227,7 @@ void
 engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
     const int fd = socket_->fd();
 
-    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake on fd %d", fd);
+    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake", fd)("fd", fd);
 
     auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
 
@@ -254,7 +254,7 @@ engine_t::on_handshake(int fd, const message_t& message) {
     try {
         message.as<rpc::handshake>(id);
     } catch(const std::system_error& e) {
-        COCAINE_LOG_WARNING(m_log, "disconnecting an incompatible slave on fd %d", fd);
+        COCAINE_LOG_WARNING(m_log, "disconnecting an incompatible slave")("fd", fd);
         return;
     }
 
@@ -266,24 +266,25 @@ engine_t::on_handshake(int fd, const message_t& message) {
         it = m_pool.find(id);
 
         if(it == m_pool.end()) {
-            COCAINE_LOG_WARNING(m_log, "disconnecting an unknown slave %s on fd %d", id, fd);
+            COCAINE_LOG_WARNING(m_log, "disconnecting an unknown slave")(
+                "id", id,
+                "fd", fd
+            );
             return;
         }
     }
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s connected on fd %d", id, fd);
+    COCAINE_LOG_DEBUG(m_log, "slave connected")("id", id, "fd", fd);
 
     it->second->bind(channel_);
 }
 
 void
 engine_t::on_disconnect(int fd, const std::error_code& ec) {
-    COCAINE_LOG_INFO(
-        m_log,
-        "slave has disconnected during the handshake on fd %d - [%d] %s",
-        fd,
-        ec.value(),
-        ec.message()
+    COCAINE_LOG_INFO(m_log, "slave has disconnected during the handshake")(
+        "fd", fd,
+        "errc", ec.value(),
+        "reason", ec.message()
     );
 
     m_backlog.erase(fd);
@@ -505,11 +506,9 @@ engine_t::balance() {
         return;
     }
 
-    COCAINE_LOG_INFO(
-        m_log,
-        "enlarging the pool from %d to %d slaves",
-        m_pool.size(),
-        target
+    COCAINE_LOG_INFO(m_log, "enlarging the slaves pool")(
+        "from", m_pool.size(),
+        "to", target
     );
 
     while(m_pool.size() != target) {
@@ -521,13 +520,20 @@ engine_t::balance() {
                 std::make_shared<slave_t>(m_context, *m_reactor, m_manifest, m_profile, id, *this)
             ));
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - [%d] %s", e.code().value(), e.code().message());
+            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves")(
+                "errno", e.code().value(),
+                "reason", e.code().message()
+            );
             break;
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - %s", e.what());
+            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves")(
+                "reason", e.what()
+            );
             break;
         } catch(...) {
-            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves - unknown exception");
+            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves")(
+                "reason", "unknown exception"
+            );
             break;
         }
     }
@@ -575,13 +581,10 @@ engine_t::migrate(states target) {
     if(!pending) {
         stop();
     } else {
-        COCAINE_LOG_INFO(
-            m_log,
-            "waiting for %d active %s to terminate, timeout: %.02f seconds",
+        COCAINE_LOG_INFO(m_log, "waiting for %d active %s to terminate",
             pending,
-            pending == 1 ? "slave" : "slaves",
-            m_profile.termination_timeout
-        );
+            pending == 1 ? "slave" : "slaves")
+        ("timeout", m_profile.termination_timeout);
 
         m_termination_timer->set<engine_t, &engine_t::on_termination>(this);
         m_termination_timer->start(m_profile.termination_timeout);
