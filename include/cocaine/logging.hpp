@@ -48,10 +48,4 @@ DECLARE_KEYWORD(source, std::string)
 #include <blackhole/synchronized.hpp>
 #include <blackhole/logger/wrapper.hpp>
 
-namespace cocaine { namespace logging {
-
-typedef blackhole::wrapper_t<blackhole::synchronized<logger_t>> log_t;
-
-}} // namespace cocaine::logging
-
 #endif
