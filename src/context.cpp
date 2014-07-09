@@ -466,7 +466,7 @@ map_severity(blackhole::aux::attachable_ostringstream& stream, const logging::pr
 
     auto value = static_cast<level_type>(level);
 
-    if(value < static_cast<level_type>(sizeof(describe) / sizeof(describe[0]))) {
+    if(value < static_cast<level_type>(sizeof(describe) / sizeof(describe[0])) && value > 0) {
         stream << describe[value];
     } else {
         stream << value;
