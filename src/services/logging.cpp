@@ -50,30 +50,16 @@ logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& 
         }
     }
 
-    auto* log = m_logger ? m_logger.get() : &context.logger();
+    auto& log = m_logger ? *m_logger : context.logger();
 
     using namespace std::placeholders;
 
-    on<io::log::emit>(std::bind(&logging_t::emit, this, log, _1, _2, _3, _4));
+    auto getter = static_cast<priorities(logger_type::*)()const>(&logger_type::verbosity<priorities>);
+    auto setter = static_cast<void(logger_type::*)(priorities)>(&logger_type::verbosity);
 
-    on<io::log::verbosity>(
-        std::bind(
-            static_cast<
-                priorities(logger_type::*)()const
-            >(&logger_type::verbosity<priorities>),
-            log
-        )
-    );
-
-    on<io::log::set_verbosity>(
-        std::bind(
-            static_cast<
-                void(logger_type::*)(priorities)
-            >(&logger_type::verbosity),
-            log,
-            _1
-        )
-    );
+    on<io::log::emit>(std::bind(&logging_t::emit, this, std::ref(log), _1, _2, _3, _4));
+    on<io::log::verbosity>(std::bind(getter, std::ref(log)));
+    on<io::log::set_verbosity>(std::bind(setter, std::ref(log), _1));
 }
 
 auto
@@ -82,19 +68,19 @@ logging_t::prototype() -> basic_dispatch_t& {
 }
 
 void
-logging_t::emit(blackhole::synchronized<logger_t>* log,
+logging_t::emit(blackhole::synchronized<logger_t>& log,
                 logging::priorities level,
                 const std::string& source,
                 const std::string& message,
                 const blackhole::log::attributes_t& attributes)
 {
-    auto record = log->open_record(level);
+    auto record = log.open_record(level);
 
     if(record.valid()) {
         record.attributes.insert(attributes.begin(), attributes.end());
         record.attributes.insert(blackhole::keyword::message() = message);
         record.attributes.insert(blackhole::keyword::source() = source);
 
-        log->push(std::move(record));
+        log.push(std::move(record));
     }
 }

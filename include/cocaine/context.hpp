@@ -138,13 +138,12 @@ struct reverse_priority_queue {
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
 
-    // NOTE: This is the first object in the component tree, all the other components, including
-    // loggers, storages or isolates have to be declared after this one.
-    std::unique_ptr<api::repository_t> m_repository;
-
-    // NOTE: As the loggers themselves are components, the repository has to be initialized
-    // first without a logger, unfortunately.
     std::unique_ptr<blackhole::synchronized<logger_t>> m_logger;
+
+    // NOTE: This is the first object in the component tree, all the other components, including
+    // storages or isolates have to be declared after this one.
+    //!@todo: Log repo.
+    std::unique_ptr<api::repository_t> m_repository;
 
     // Ports available for allocation.
     reverse_priority_queue<uint16_t>::type m_ports;

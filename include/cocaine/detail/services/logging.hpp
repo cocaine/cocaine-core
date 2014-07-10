@@ -44,7 +44,7 @@ public:
 
 private:
     void
-    emit(blackhole::synchronized<logger_t>* log,
+    emit(blackhole::synchronized<logger_t>& log,
          logging::priorities level,
          const std::string& source,
          const std::string& message,

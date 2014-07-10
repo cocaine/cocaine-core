@@ -227,7 +227,7 @@ void
 engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
     const int fd = socket_->fd();
 
-    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake", fd)("fd", fd);
+    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake")("fd", fd);
 
     auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
 

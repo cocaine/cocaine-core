@@ -91,7 +91,7 @@ struct counter_t::counter_machine_t {
     typedef counter_machine_tag tag;
     typedef int snapshot_type;
 
-    counter_machine_t(context_t& context) :
+    counter_machine_t(context_t& context):
         m_log(
             new logging::log_t(
                 context.logger(),

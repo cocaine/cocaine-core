@@ -709,24 +709,22 @@ context_t::context_t(config_t config, std::unique_ptr<logger_t>&& logger):
 context_t::~context_t() {
     auto& unlocked = m_services.value();
 
-    auto& log = this->logger();
+    auto log = &this->logger();
     blackhole::scoped_attributes_t guard(
-        log,
-        blackhole::log::attributes_t({
-            blackhole::keyword::source() = "bootstrap"
-        })
+        *log,
+        blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
     );
-    COCAINE_LOG_INFO(&log, "stopping the synchronization");
+    COCAINE_LOG_INFO(log, "stopping the synchronization");
 
     m_synchronization->shutdown();
     m_synchronization.reset();
 
-    COCAINE_LOG_INFO(&log, "stopping the service locator");
+    COCAINE_LOG_INFO(log, "stopping the service locator");
 
     unlocked.front().second->terminate();
     unlocked.pop_front();
 
-    COCAINE_LOG_INFO(&log, "stopping the services");
+    COCAINE_LOG_INFO(log, "stopping the services");
 
     for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
         remove(it->first);
@@ -740,7 +738,7 @@ context_t::~context_t() {
         unlocked.pop_back();
     }
 
-    COCAINE_LOG_INFO(&log, "stopping the execution units");
+    COCAINE_LOG_INFO(log, "stopping the execution units");
 
     m_pool.clear();
 }
@@ -761,12 +759,10 @@ struct match {
 
 void
 context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
-    auto& log = this->logger();
+    auto log = &this->logger();
     blackhole::scoped_attributes_t guard(
-        log,
-        blackhole::log::attributes_t({
-            blackhole::keyword::source() = "bootstrap"
-        })
+        *log,
+        blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
     );
 
     uint16_t port = 0;
@@ -797,7 +793,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
         service->run(endpoints);
 
-        COCAINE_LOG_INFO(&log, "service has been published")(
+        COCAINE_LOG_INFO(log, "service has been published")(
             "service", name,
             "location", service->location().front()
         );
@@ -812,12 +808,10 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
 auto
 context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
-    auto& log = this->logger();
+    auto log = &this->logger();
     blackhole::scoped_attributes_t guard(
-        log,
-        blackhole::log::attributes_t({
-            blackhole::keyword::source() = "bootstrap"
-        })
+        *log,
+        blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
     );
 
     std::unique_ptr<actor_t> service;
@@ -837,7 +831,7 @@ context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
 
         service->terminate();
 
-        COCAINE_LOG_INFO(&log, "service '%s' withdrawn from %d", name, endpoints.front());
+        COCAINE_LOG_INFO(log, "service '%s' withdrawn from %d", name, endpoints.front());
 
         if(config.network.ports) {
             m_ports.push(endpoints.front().port());
@@ -868,12 +862,10 @@ context_t::attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::sh
 
 void
 context_t::bootstrap() {
-    auto& log = this->logger();
+    auto log = &this->logger();
     blackhole::scoped_attributes_t guard(
-        log,
-        blackhole::log::attributes_t({
-            blackhole::keyword::source() = "bootstrap"
-        })
+        *log,
+        blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
     );
 
     auto pool = boost::thread::hardware_concurrency() * 2;
@@ -883,20 +875,20 @@ context_t::bootstrap() {
 
         std::tie(min, max) = config.network.ports.get();
 
-        COCAINE_LOG_INFO(&log, "%u ports available, %u through %u", max - min, min, max);
+        COCAINE_LOG_INFO(log, "%u ports available, %u through %u", max - min, min, max);
 
         while(min != max) {
             m_ports.push(--max);
         }
     }
 
-    COCAINE_LOG_INFO(&log, "growing the execution unit pool")("units", pool);
+    COCAINE_LOG_INFO(log, "growing the execution unit pool")("units", pool);
 
     while(pool--) {
         m_pool.emplace_back(std::make_unique<execution_unit_t>(*this, "cocaine/execute"));
     }
 
-    COCAINE_LOG_INFO(&log, "starting %d %s", config.services.size(), config.services.size() == 1 ? "service" : "services");
+    COCAINE_LOG_INFO(log, "starting %d %s", config.services.size(), config.services.size() == 1 ? "service" : "services");
 
     m_synchronization = std::make_shared<synchronization_t>(*this);
 
@@ -904,7 +896,7 @@ context_t::bootstrap() {
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto reactor = std::make_shared<reactor_t>();
 
-        COCAINE_LOG_INFO(&log, "starting service '%s'", it->first);
+        COCAINE_LOG_INFO(log, "starting service '%s'", it->first);
 
         try {
             insert(it->first, std::make_unique<actor_t>(*this, reactor, get<api::service_t>(
@@ -915,7 +907,7 @@ context_t::bootstrap() {
                 it->second.args
             )));
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(&log, "unable to initialize service")(
+            COCAINE_LOG_ERROR(log, "unable to initialize service")(
                 "service", it->first,
                 "reason", e.what(),
                 "errno", e.code().value(),
@@ -923,13 +915,13 @@ context_t::bootstrap() {
             );
             throw;
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(&log, "unable to initialize service")(
+            COCAINE_LOG_ERROR(log, "unable to initialize service")(
                 "service", it->first,
                 "reason", e.what()
             );
             throw;
         } catch(...) {
-            COCAINE_LOG_ERROR(&log, "unable to initialize service")(
+            COCAINE_LOG_ERROR(log, "unable to initialize service")(
                 "service", it->first,
                 "reason", "unknown exception"
             );
@@ -942,7 +934,7 @@ context_t::bootstrap() {
         config.network.locator
     }};
 
-    COCAINE_LOG_INFO(&log, "starting the service locator on %s", endpoints.front());
+    COCAINE_LOG_INFO(log, "starting the service locator on %s", endpoints.front());
 
     std::unique_ptr<actor_t> service;
 
@@ -964,19 +956,19 @@ context_t::bootstrap() {
         // peers which managed to connect during the bootstrap.
         service->run(endpoints);
     } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(&log, "unable to initialize the locator")(
+        COCAINE_LOG_ERROR(log, "unable to initialize the locator")(
             "message", e.what(),
             "errno", e.code().value(),
             "reason", e.code().message()
         );
         throw;
     } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(&log, "unable to initialize the locator")(
+        COCAINE_LOG_ERROR(log, "unable to initialize the locator")(
             "reason", e.what()
         );
         throw;
     } catch(...) {
-        COCAINE_LOG_ERROR(&log, "unable to initialize the locator")(
+        COCAINE_LOG_ERROR(log, "unable to initialize the locator")(
             "reason", "unknown exception"
         );
         throw;
