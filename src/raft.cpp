@@ -194,7 +194,7 @@ control_service_t::control_service_t(context_t& context,
                            m_context.raft().options().configuration_machine_name,
                            cluster_config_t {std::set<node_id_t>(), boost::none});
 
-        configuration_machine_t config_machine(m_context, m_reactor, *this);
+        configuration_machine_t config_machine(m_context, *m_context.raft().m_reactor, *this);
 
         config.log().push(entry_type());
         config.log().push(entry_type());
@@ -224,7 +224,7 @@ control_service_t::control_service_t(context_t& context,
     } else {
         m_config_actor = m_context.raft().insert(
             m_context.raft().options().configuration_machine_name,
-            configuration_machine_t(m_context, m_reactor, *this)
+            configuration_machine_t(m_context, *m_context.raft().m_reactor, *this)
         );
     }
 

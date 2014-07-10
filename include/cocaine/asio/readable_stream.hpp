@@ -130,6 +130,7 @@ private:
 
         if(ec) {
             m_reactor.post(std::bind(make_task(m_handle_error), ec));
+            unbind();
             return;
         }
 
@@ -139,6 +140,7 @@ private:
 
                 // NOTE: This means that the remote peer has closed the connection.
                 m_reactor.post(std::bind(make_task(m_handle_error), ec));
+                unbind();
             }
 
             return;
@@ -150,6 +152,7 @@ private:
             m_rx_offset += m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
         } catch(const std::system_error& e) {
             m_reactor.post(std::bind(make_task(m_handle_error), e.code()));
+            unbind();
             return;
         }
 
@@ -166,6 +169,7 @@ private:
             parsed = m_handle_read(m_ring.data() + m_rx_offset, m_rd_offset - m_rx_offset);
         } catch(const std::system_error& e) {
             m_reactor.post(std::bind(make_task(m_handle_error), e.code()));
+            unbind();
             return;
         }
 

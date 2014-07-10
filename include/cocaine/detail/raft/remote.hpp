@@ -59,10 +59,6 @@ class remote_node {
                 return;
             }
 
-            // Keep our client alive while the handler works.
-            auto client = m_remote.m_client;
-            (void)client;
-
             // Parent node stores pointer to handler of current uncompleted request.
             // We should reset this pointer, when the request becomes completed.
             m_remote.reset_vote_state();
@@ -115,10 +111,6 @@ class remote_node {
             if(!m_active) {
                 return;
             }
-
-            // Keep our client alive while the handler works.
-            auto client = m_remote.m_client;
-            (void)client;
 
             // Parent node stores pointer to handler of current uncompleted append request.
             // We should reset this pointer, when the request becomes completed.
@@ -232,6 +224,7 @@ public:
             m_cluster.register_vote();
         } else if (!m_vote_state) {
             m_vote_state = std::make_shared<vote_handler_t>(*this);
+            m_client.reset();
             ensure_connection(std::bind(&remote_node::request_vote_impl, this));
         }
     }
@@ -301,7 +294,6 @@ public:
     reset() {
         // Close connection.
         m_resolver.reset();
-        m_client.reset();
 
         // Drop current requests.
         reset_vote_state();
@@ -560,6 +552,7 @@ private:
         }));
 
         reset();
+        m_client.reset();
         m_disconnected = true;
         m_cluster.check_connections();
     }
