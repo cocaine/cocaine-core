@@ -52,11 +52,15 @@
 #include "rapidjson/reader.h"
 
 #include <blackhole/detail/datetime.hpp>
+
+#include <blackhole/formatter/json.hpp>
+#include <blackhole/frontend/files.hpp>
 #include <blackhole/frontend/syslog.hpp>
 #include <blackhole/repository/config/base.hpp>
 #include <blackhole/repository/config/log.hpp>
 #include <blackhole/repository/config/parser.hpp>
 #include <blackhole/scoped_attributes.hpp>
+#include <blackhole/sink/socket.hpp>
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -625,13 +629,26 @@ config_t::version() {
 context_t::context_t(config_t config, const std::string& logger_name):
     config(config)
 {
-    // Register logging frontends.
-    auto& repository = blackhole::repository_t::instance();
+    namespace formatter = blackhole::formatter;
+    namespace sink = blackhole::sink;
 
-    repository.configure<
-        blackhole::sink::syslog_t<logging::priorities>,
-        blackhole::formatter::string_t
-    >();
+    // Available logging sinks
+    typedef boost::mpl::vector<
+        sink::files_t<>,
+        sink::syslog_t<logging::priorities>,
+        sink::socket_t<boost::asio::ip::tcp>,
+        sink::socket_t<boost::asio::ip::udp>
+    > sinks_t;
+
+    // Available logging formatters.
+    typedef boost::mpl::vector<
+        formatter::string_t,
+        formatter::json_t
+    > formatters_t;
+
+    // Register frontends with all combinations of formatters and sink with the logging repository.
+    auto& repository = blackhole::repository_t::instance();
+    repository.configure<sinks_t, formatters_t>();
 
     // Try to initialize the logger. If this fails, there's no way to report
     // the failure, unfortunately, except printing it to the standart output.
