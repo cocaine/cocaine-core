@@ -137,14 +137,7 @@ private:
 process_t::process_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
     m_context(context),
-    m_log(
-        new logging::log_t(
-            context.logger(),
-            blackhole::log::attributes_t({
-                blackhole::keyword::source() = name
-            })
-        )
-    ),
+    m_log(logging::make_source_wrapper(context.logger(), name)),
     m_name(name),
     m_working_directory(fs::path(args.as_object().at("spool", "/var/spool/cocaine").as_string()) / name)
 {

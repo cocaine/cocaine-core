@@ -35,14 +35,7 @@ namespace fs = boost::filesystem;
 
 files_t::files_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
-    m_log(
-        new logging::log_t(
-            context.logger(),
-            blackhole::log::attributes_t({
-                blackhole::keyword::source() = name
-            })
-        )
-    ),
+    m_log(logging::make_source_wrapper(context.logger(), name)),
     m_storage_path(args.as_object()["path"].as_string())
 { }
 

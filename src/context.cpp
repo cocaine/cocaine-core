@@ -625,18 +625,6 @@ config_t::version() {
 context_t::context_t(config_t config, const std::string& logger_name):
     config(config)
 {
-#ifdef COCAINE_ALLOW_RAFT
-    m_raft = std::make_unique<raft::repository_t>(*this);
-#endif
-
-    m_repository.reset(new api::repository_t());
-
-    // Load the builtins.
-    essentials::initialize(*m_repository);
-
-    // Load the plugins.
-    m_repository->load(config.path.plugins);
-
     // Register logging frontends.
     auto& repository = blackhole::repository_t::instance();
 
@@ -680,17 +668,11 @@ context_t::context_t(config_t config, const std::string& logger_name):
         throw cocaine::error_t("the '%s' logger is not configured", logger_name);
     }
 
-    bootstrap();
-}
-
-context_t::context_t(config_t config, std::unique_ptr<logger_t>&& logger):
-    config(config)
-{
 #ifdef COCAINE_ALLOW_RAFT
     m_raft = std::make_unique<raft::repository_t>(*this);
 #endif
 
-    m_repository.reset(new api::repository_t());
+    m_repository.reset(new api::repository_t(*m_logger));
 
     // Load the builtins.
     essentials::initialize(*m_repository);
@@ -698,10 +680,28 @@ context_t::context_t(config_t config, std::unique_ptr<logger_t>&& logger):
     // Load the plugins.
     m_repository->load(config.path.plugins);
 
+    bootstrap();
+}
+
+context_t::context_t(config_t config, std::unique_ptr<logger_t>&& logger):
+    config(config)
+{
     // NOTE: The context takes the ownership of the passed logger, so it will
     // become invalid at the calling site after this call.
     m_logger = std::make_unique<blackhole::synchronized<logger_t>>(std::move(*logger));
     logger.reset();
+
+#ifdef COCAINE_ALLOW_RAFT
+    m_raft = std::make_unique<raft::repository_t>(*this);
+#endif
+
+    m_repository.reset(new api::repository_t(*m_logger));
+
+    // Load the builtins.
+    essentials::initialize(*m_repository);
+
+    // Load the plugins.
+    m_repository->load(config.path.plugins);
 
     bootstrap();
 }

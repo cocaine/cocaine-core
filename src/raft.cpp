@@ -80,14 +80,7 @@ node_service_t::node_service_t(context_t& context, io::reactor_t& reactor, const
     api::service_t(context, reactor, name, dynamic_t::empty_object),
     dispatch<io::raft_node_tag<msgpack::object, msgpack::object>>(name),
     m_context(context),
-    m_log(
-        new logging::log_t(
-            context.logger(),
-            blackhole::log::attributes_t({
-                blackhole::keyword::source() = name
-            })
-        )
-    )
+    m_log(logging::make_source_wrapper(context.logger(), name))
 {
     using namespace std::placeholders;
 
@@ -160,14 +153,7 @@ control_service_t::control_service_t(context_t& context,
     dispatch<io::raft_control_tag<msgpack::object, msgpack::object>>(name),
     m_context(context),
     m_reactor(reactor),
-    m_log(
-        new logging::log_t(
-            context.logger(),
-            blackhole::log::attributes_t({
-                blackhole::keyword::source() = name
-            })
-        )
-    )
+    m_log(logging::make_source_wrapper(context.logger(), name))
 {
     using namespace std::placeholders;
 

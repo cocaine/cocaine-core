@@ -38,14 +38,7 @@ archive_error_t::archive_error_t(archive* source):
 { }
 
 archive_t::archive_t(context_t& context, const std::string& archive):
-    m_log(
-        new logging::log_t(
-            context.logger(),
-            blackhole::log::attributes_t({
-                blackhole::keyword::source() = "packaging"
-            })
-        )
-    ),
+    m_log(logging::make_source_wrapper(context.logger(), "packaging")),
     m_archive(archive_read_new())
 {
 #if ARCHIVE_VERSION_NUMBER < 3000000

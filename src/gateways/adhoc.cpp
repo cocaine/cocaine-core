@@ -29,14 +29,7 @@ using namespace cocaine::gateway;
 
 adhoc_t::adhoc_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
-    m_log(
-        new logging::log_t(
-            context.logger(),
-            blackhole::log::attributes_t({
-                blackhole::keyword::source() = name
-            })
-        )
-    )
+    m_log(logging::make_source_wrapper(context.logger(), name))
 {
 #if defined(__clang__) || defined(HAVE_GCC46)
     std::random_device device;

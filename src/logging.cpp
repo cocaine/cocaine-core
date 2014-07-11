@@ -19,6 +19,16 @@
 */
 
 #include "cocaine/logging.hpp"
-#include "cocaine/context.hpp"
 
-using namespace cocaine::logging;
+namespace cocaine { namespace logging {
+
+std::unique_ptr<log_t>
+make_source_wrapper(blackhole::synchronized<logger_t>& log, std::string source) {
+    return std::make_unique<log_t>(
+        log,
+        blackhole::log::attributes_t({
+            blackhole::keyword::source() = std::move(source)
+        }));
+}
+
+} } // namespace cocaine::logging

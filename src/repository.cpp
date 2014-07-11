@@ -20,6 +20,8 @@
 
 #include "cocaine/repository.hpp"
 
+#include "cocaine/logging.hpp"
+
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/convenience.hpp>
 
@@ -29,7 +31,9 @@ using namespace cocaine::api;
 
 namespace fs = boost::filesystem;
 
-repository_t::repository_t() {
+repository_t::repository_t(blackhole::synchronized<logger_t>& log) :
+    m_log(logging::make_source_wrapper(log, "bootstrap/repository"))
+{
     if(lt_dlinit() != 0) {
         throw repository_error_t("unable to initialize the dynamic loader");
     }
@@ -79,6 +83,9 @@ repository_t::load(const std::string& path_) {
     const auto status = fs::status(path);
 
     if(!fs::exists(status)) {
+        COCAINE_LOG_INFO(m_log, "cannot load the plugin - path not exists")(
+            "path", path_
+        );
         return;
     }
 
@@ -110,6 +117,7 @@ typedef void (*initialize_fn_t)(repository_t&);
 
 void
 repository_t::open(const std::string& target) {
+    COCAINE_LOG_INFO(m_log, "loading plugin ...")("plugin", target);
     lt_dladvise advice;
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
@@ -145,6 +153,7 @@ repository_t::open(const std::string& target) {
 
     if(initialize.ptr) {
         try {
+            COCAINE_LOG_INFO(m_log, "initializing plugin ...")("plugin", target);
             initialize.call(*this);
         } catch(const std::exception& e) {
             throw repository_error_t("unable to initialize '%s' - %s", target, e.what());

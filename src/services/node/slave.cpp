@@ -83,14 +83,7 @@ private:
 
 slave_t::slave_t(context_t& context, reactor_t& reactor, const manifest_t& manifest, const profile_t& profile, const std::string& id, engine_t& engine):
     m_context(context),
-    m_log(
-        new logging::log_t(
-            context.logger(),
-            blackhole::log::attributes_t({
-                blackhole::keyword::source() = cocaine::format("app/%s", manifest.name)
-            })
-        )
-    ),
+    m_log(logging::make_source_wrapper(context.logger(), cocaine::format("app/%1%", manifest.name))),
     m_reactor(reactor),
     m_manifest(manifest),
     m_profile(profile),
