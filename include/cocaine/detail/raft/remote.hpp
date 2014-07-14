@@ -341,7 +341,8 @@ private:
             );
         } else {
             COCAINE_LOG_DEBUG(m_logger, "client isn't connected, unable to send vote request");
-            m_vote_state->handle(std::error_code());
+            auto vote_state = m_vote_state;
+            vote_state->handle(std::error_code());
         }
     }
 
@@ -353,7 +354,8 @@ private:
             COCAINE_LOG_DEBUG(m_logger,
                               "client isn't connected or the local node is not the leader, "
                               "unable to send append request");
-            m_append_state->handle(std::error_code());
+            auto append_state = m_append_state;
+            append_state->handle(std::error_code());
         } else if(m_next_index <= m_actor.log().snapshot_index()) {
             // If leader is far behind the leader, send snapshot.
             send_apply();
@@ -496,7 +498,7 @@ private:
         if(m_client) {
             // Connection already exists.
             handler();
-        } else {
+        } else if (!m_resolver) {
             COCAINE_LOG_DEBUG(m_logger, "client is not connected, connecting...");
 
             m_resolver = std::make_shared<service_resolver_t>(
