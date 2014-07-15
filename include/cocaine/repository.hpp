@@ -23,6 +23,8 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/logging.hpp"
+
 #include <typeinfo>
 #include <type_traits>
 
@@ -77,6 +79,8 @@ struct repository_error_t:
 class repository_t {
     COCAINE_DECLARE_NONCOPYABLE(repository_t)
 
+    std::unique_ptr<logging::log_t> m_log;
+
     // NOTE: Used to unload all the plugins on shutdown.
     // Cannot use a forward declaration here due to the implementation details.
     std::vector<lt_dlhandle> m_plugins;
@@ -87,7 +91,7 @@ class repository_t {
     category_map_t m_categories;
 
 public:
-    repository_t();
+    repository_t(blackhole::synchronized<logger_t>& log);
    ~repository_t();
 
     void
@@ -150,6 +154,9 @@ repository_t::insert(const std::string& type) {
     }
 
     factories[type] = std::make_shared<factory_type>();
+    COCAINE_LOG_DEBUG(m_log, "component has been registered")(
+        "component", type
+    );
 }
 
 struct preconditions_t {

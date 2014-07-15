@@ -202,8 +202,8 @@ public:
     remote_node(cluster_type& cluster, node_id_t id):
         m_cluster(cluster),
         m_actor(cluster.actor()),
-        m_logger(new logging::log_t(
-            m_actor.context(),
+        m_logger(logging::make_source_wrapper(
+            m_actor.context().logger(),
             "raft/" + m_actor.name() + "/remote/" + cocaine::format("%s:%d", id.first, id.second)
         )),
         m_id(id),

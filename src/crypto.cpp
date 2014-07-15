@@ -27,7 +27,7 @@ using namespace cocaine;
 
 template<hashid HashID>
 crypto<HashID>::crypto(context_t& context, const std::string& service):
-    m_log(new logging::log_t(context, "crypto")),
+    m_log(logging::make_source_wrapper(context.logger(), "crypto")),
     m_service(service)
 {
     m_store = api::storage(context, "secure");

@@ -38,14 +38,14 @@ using namespace cocaine;
 
 actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t> prototype):
     m_context(context),
-    m_log(new logging::log_t(context, prototype->name())),
+    m_log(logging::make_source_wrapper(context.logger(), prototype->name())),
     m_reactor(reactor),
     m_prototype(std::move(prototype))
 { }
 
 actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t> service):
     m_context(context),
-    m_log(new logging::log_t(context, service->prototype().name())),
+    m_log(logging::make_source_wrapper(context.logger(), service->prototype().name())),
     m_reactor(reactor)
 {
     io::basic_dispatch_t *const prototype = &service->prototype();
@@ -105,7 +105,10 @@ actor_t::metadata() const -> metadata_t {
 
 void
 actor_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket) {
-    COCAINE_LOG_DEBUG(m_log, "accepted a new client from '%s' on fd %d", socket->remote_endpoint(), socket->fd());
+    COCAINE_LOG_DEBUG(m_log, "accepted a new client")(
+        "endpoint", socket->remote_endpoint(),
+        "fd", socket->fd()
+    );
 
     // This won't attach the socket immediately, instead it will post a new action to the designated
     // unit's event loop queue. It could probably be done with some locking, but whatever.

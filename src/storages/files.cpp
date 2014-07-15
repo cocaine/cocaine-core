@@ -35,7 +35,7 @@ namespace fs = boost::filesystem;
 
 files_t::files_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
-    m_log(new logging::log_t(context, name)),
+    m_log(logging::make_source_wrapper(context.logger(), name)),
     m_storage_path(args.as_object()["path"].as_string())
 { }
 
@@ -53,12 +53,10 @@ files_t::read(const std::string& collection, const std::string& key) {
         throw storage_error_t("object '%s' has not been found in '%s'", key, collection);
     }
 
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "reading object '%s', collection: %s, path: %s",
-        key,
-        collection,
-        file_path
+    COCAINE_LOG_DEBUG(m_log, "reading object")(
+        "key", key,
+        "collection", collection,
+        "path", file_path
     );
 
     fs::ifstream stream(file_path, fs::ifstream::in | fs::ifstream::binary);
@@ -81,7 +79,10 @@ files_t::write(const std::string& collection, const std::string& key, const std:
     const auto store_status = fs::status(store_path);
 
     if(!fs::exists(store_status)) {
-        COCAINE_LOG_INFO(m_log, "creating collection: %s, path: %s", collection, store_path);
+        COCAINE_LOG_INFO(m_log, "creating collection")(
+            "collection", collection,
+            "path", store_path
+        );
 
         try {
             fs::create_directories(store_path);
@@ -94,12 +95,10 @@ files_t::write(const std::string& collection, const std::string& key, const std:
 
     const fs::path file_path(store_path / key);
 
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "writing object '%s', collection: %s, path: %s",
-        key,
-        collection,
-        file_path
+    COCAINE_LOG_DEBUG(m_log, "writing object")(
+        "key", key,
+        "collection", collection,
+        "path", file_path
     );
 
     fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc | fs::ofstream::binary);
@@ -145,12 +144,10 @@ files_t::remove(const std::string& collection, const std::string& key) {
     const auto file_path(store_path / key);
 
     if(fs::exists(file_path)) {
-        COCAINE_LOG_DEBUG(
-            m_log,
-            "removing object '%s', collection: %s, path: %s",
-            key,
-            collection,
-            file_path
+        COCAINE_LOG_DEBUG(m_log, "removing object")(
+            "key", key,
+            "collection", collection,
+            "path", file_path
         );
 
         try {

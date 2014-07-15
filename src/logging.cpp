@@ -19,53 +19,16 @@
 */
 
 #include "cocaine/logging.hpp"
-#include "cocaine/context.hpp"
 
-using namespace cocaine::logging;
+namespace cocaine { namespace logging {
 
-log_t::log_t(context_t& context, const std::string& source):
-    m_source(source),
-    m_guard(context.logger())
-{ }
-
-log_context_t::log_context_t() :
-    m_verbosity(priorities::ignore)
-{ }
-
-log_context_t::log_context_t(blackhole::synchronized<cocaine::logger_t>&& logger) :
-    m_verbosity(priorities::ignore),
-    m_logger(std::move(logger))
-{ }
-
-log_context_t::log_context_t(log_context_t&& other) :
-    m_verbosity(other.m_verbosity),
-    m_logger(std::move(other.m_logger))
-{ }
-
-log_context_t&
-log_context_t::operator=(log_context_t&& other) {
-    m_verbosity = other.m_verbosity;
-    m_logger = std::move(other.m_logger);
-    return *this;
+std::unique_ptr<log_t>
+make_source_wrapper(blackhole::synchronized<logger_t>& log, std::string source) {
+    return std::make_unique<log_t>(
+        log,
+        blackhole::log::attributes_t({
+            blackhole::keyword::source() = std::move(source)
+        }));
 }
 
-void
-log_context_t::set_verbosity(priorities value) {
-    m_verbosity = value;
-    m_logger.set_filter(blackhole::keyword::severity<priorities>() <= value);
-}
-
-namespace bhl = blackhole::log;
-
-void
-log_context_t::emit(priorities level, const std::string& source, const std::string& message, const bhl::attributes_t& attributes) {
-    auto record = m_logger.open_record(level);
-
-    if(record.valid()) {
-        record.attributes.insert(attributes.begin(), attributes.end());
-        record.attributes.insert(blackhole::keyword::message() = message);
-        record.attributes.insert(blackhole::keyword::source() = source);
-
-        m_logger.push(std::move(record));
-    }
-}
+} } // namespace cocaine::logging

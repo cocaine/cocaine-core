@@ -16,6 +16,8 @@ ENDIF()
 
 OPTION(COCAINE_ALLOW_RAFT "Build Raft support for Runtime" ON)
 
+ADD_DEFINITIONS(-DBLACKHOLE_HEADER_ONLY=1)
+
 INCLUDE(cmake/locate_library.cmake)
 
 LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")

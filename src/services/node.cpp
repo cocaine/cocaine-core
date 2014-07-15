@@ -42,7 +42,7 @@ node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, 
     api::service_t(context, reactor, name, args),
     dispatch<io::node_tag>(name),
     m_context(context),
-    m_log(new logging::log_t(context, name))
+    m_log(logging::make_source_wrapper(context.logger(), name))
 {
     using namespace std::placeholders;
 
@@ -57,12 +57,15 @@ node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, 
 
     runlist_t runlist;
 
-    COCAINE_LOG_INFO(m_log, "reading the '%s' runlist", runlist_id);
+    COCAINE_LOG_INFO(m_log, "reading the runlist")("name", runlist_id);
 
     try {
         runlist = storage->get<runlist_t>("runlists", runlist_id);
     } catch(const storage_error_t& e) {
-        COCAINE_LOG_WARNING(m_log, "unable to read the '%s' runlist - %s", runlist_id, e.what());
+        COCAINE_LOG_WARNING(m_log, "unable to read the runlist")(
+            "name", runlist_id,
+            "reason", e.what()
+        );
     }
 
     if(!runlist.empty()) {
@@ -105,7 +108,7 @@ node_t::on_start_app(const runlist_t& runlist) {
             continue;
         }
 
-        COCAINE_LOG_INFO(m_log, "starting the '%s' app", it->first);
+        COCAINE_LOG_INFO(m_log, "starting the app")("name", it->first);
 
         auto locked = m_apps.synchronize();
         auto app    = locked->end();
@@ -116,7 +119,10 @@ node_t::on_start_app(const runlist_t& runlist) {
                 std::make_shared<app_t>(m_context, it->first, it->second)
             });
         } catch(const cocaine::error_t& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize the '%s' app - %s", it->first, e.what());
+            COCAINE_LOG_ERROR(m_log, "unable to initialize the app")(
+                "app", it->first,
+                "reason", e.what()
+            );
             result[it->first] = std::string(e.what());
             continue;
         }
@@ -124,7 +130,10 @@ node_t::on_start_app(const runlist_t& runlist) {
         try {
             app->second->start();
         } catch(const cocaine::error_t& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to start the '%s' app - %s", it->first, e.what());
+            COCAINE_LOG_ERROR(m_log, "unable to start the app")(
+                "app", it->first,
+                "reason", e.what()
+            );
             locked->erase(app);
             result[it->first] = std::string(e.what());
             continue;
@@ -146,7 +155,7 @@ node_t::on_pause_app(const std::vector<std::string>& applist) {
             continue;
         }
 
-        COCAINE_LOG_INFO(m_log, "stopping the '%s' app", *it);
+        COCAINE_LOG_INFO(m_log, "stopping the app")("name", *it);
 
         auto locked = m_apps.synchronize();
         auto app    = locked->find(*it);

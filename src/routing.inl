@@ -207,7 +207,7 @@ locator_t::router_t::groups_t::groups_t(logging::log_t& log, const router_t& rou
 
 void
 locator_t::router_t::groups_t::add_group(const std::string& name, const std::map<std::string, unsigned int>& group) {
-    COCAINE_LOG_INFO((&m_log), "adding group '%s'", name);
+    COCAINE_LOG_INFO((&m_log), "adding group")("name", name);
 
     m_groups[name] = group_index_t(group);
     auto group_it = m_groups.find(name);
@@ -244,7 +244,7 @@ locator_t::router_t::groups_t::remove_group(const std::string& name) {
 
     m_groups.erase(group_it);
 
-    COCAINE_LOG_INFO((&m_log), "group '%s' has been removed", name);
+    COCAINE_LOG_INFO((&m_log), "group has been removed")("name", name);
 }
 
 void

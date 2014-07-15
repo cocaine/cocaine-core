@@ -35,31 +35,52 @@ logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& 
     api::service_t(context, reactor, name, args),
     dispatch<io::log_tag>(name)
 {
+    typedef blackhole::synchronized<logger_t> logger_type;
+
     auto backend = args.as_object().at("backend", "core").as_string();
 
     if(backend != "core") {
         try {
             auto& repository = blackhole::repository_t::instance();
             auto logger = repository.create<priorities>(backend);
-            auto sync_logger = blackhole::synchronized<logger_t>(std::move(logger));
-            auto log_context = log_context_t(std::move(sync_logger));
-            m_logger = std::make_unique<log_context_t>(std::move(log_context));
-            m_logger->set_verbosity(context.logger().verbosity());
+            m_logger = std::make_unique<logger_type>(std::move(logger));
+            m_logger->verbosity(context.logger().verbosity<priorities>());
         } catch (const std::out_of_range&) {
             throw cocaine::error_t("the '%s' logger is not configured", backend);
         }
     }
 
-    log_context_t* log_ptr = m_logger ? m_logger.get() : &context.logger();
+    auto& log = m_logger ? *m_logger : context.logger();
 
     using namespace std::placeholders;
 
-    on<io::log::emit>(std::bind(&log_context_t::emit, log_ptr, _1, _2, _3, _4));
-    on<io::log::set_verbosity>(std::bind(&log_context_t::set_verbosity, log_ptr, _1));
-    on<io::log::verbosity>(std::bind(&log_context_t::verbosity, log_ptr));
+    auto getter = static_cast<priorities(logger_type::*)()const>(&logger_type::verbosity<priorities>);
+    auto setter = static_cast<void(logger_type::*)(priorities)>(&logger_type::verbosity);
+
+    on<io::log::emit>(std::bind(&logging_t::emit, this, std::ref(log), _1, _2, _3, _4));
+    on<io::log::verbosity>(std::bind(getter, std::ref(log)));
+    on<io::log::set_verbosity>(std::bind(setter, std::ref(log), _1));
 }
 
 auto
 logging_t::prototype() -> basic_dispatch_t& {
     return *this;
+}
+
+void
+logging_t::emit(blackhole::synchronized<logger_t>& log,
+                logging::priorities level,
+                const std::string& source,
+                const std::string& message,
+                const blackhole::log::attributes_t& attributes)
+{
+    auto record = log.open_record(level);
+
+    if(record.valid()) {
+        record.attributes.insert(attributes.begin(), attributes.end());
+        record.attributes.insert(blackhole::keyword::message() = message);
+        record.attributes.insert(blackhole::keyword::source() = source);
+
+        log.push(std::move(record));
+    }
 }

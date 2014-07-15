@@ -130,7 +130,7 @@ public:
           config_type&& config):
         m_context(context),
         m_reactor(reactor),
-        m_logger(new logging::log_t(context, "raft/" + name)),
+        m_logger(logging::make_source_wrapper(context.logger(), "raft/" + name)),
         m_name(name),
         m_configuration(std::move(config)),
         m_config_handle(*this, m_configuration),
