@@ -31,7 +31,7 @@ using namespace cocaine::api;
 
 namespace fs = boost::filesystem;
 
-repository_t::repository_t(blackhole::synchronized<logger_t>& log) :
+repository_t::repository_t(blackhole::synchronized<logging::logger_t>& log) :
     m_log(logging::make_source_wrapper(log, "repository"))
 {
     if(lt_dlinit() != 0) {

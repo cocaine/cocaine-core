@@ -81,6 +81,6 @@ struct type_traits<blackhole::log::attributes_t> {
     }
  };
 
- } } // namespace cocaine::io
+ }} // namespace cocaine::io
 
 #endif

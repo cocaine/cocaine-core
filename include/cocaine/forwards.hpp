@@ -101,7 +101,8 @@ enum priorities: int {
     error
 };
 
-struct logger_concept_t;
+typedef blackhole::verbose_logger_t<logging::priorities> logger_t;
+typedef blackhole::wrapper_t<blackhole::synchronized<logger_t, std::mutex>> log_t;
 
 }} // namespace cocaine::logging
 
@@ -110,24 +111,5 @@ namespace cocaine { namespace raft {
 class repository_t;
 
 }} // namesapce cocaine::raft
-
-namespace cocaine {
-
-typedef blackhole::verbose_logger_t<
-    logging::priorities
-> logger_t;
-
-namespace logging {
-
-typedef blackhole::wrapper_t<
-    blackhole::synchronized<
-        logger_t,
-        std::mutex
-    >
-> log_t;
-
-} // namespace logging
-
-} // namespace cocaine
 
 #endif

@@ -138,11 +138,12 @@ struct reverse_priority_queue {
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
 
-    std::unique_ptr<blackhole::synchronized<logger_t>> m_logger;
+    // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else
+    // for the Blackhole, when all the common stuff is extracted to a separate library.
+    std::unique_ptr<blackhole::synchronized<logging::logger_t>> m_logger;
 
     // NOTE: This is the first object in the component tree, all the other components, including
     // storages or isolates have to be declared after this one.
-    //!@todo: Log repo.
     std::unique_ptr<api::repository_t> m_repository;
 
     // Ports available for allocation.
@@ -175,7 +176,7 @@ public:
 
 public:
     context_t(config_t config, const std::string& logger);
-    context_t(config_t config, std::unique_ptr<logger_t>&& logger);
+    context_t(config_t config, std::unique_ptr<logging::logger_t>&& logger);
    ~context_t();
 
     // Component API
@@ -187,7 +188,7 @@ public:
     // Logging
 
     auto
-    logger() -> blackhole::synchronized<logger_t>& {
+    logger() -> blackhole::synchronized<logging::logger_t>& {
         return *m_logger;
     }
 

@@ -22,7 +22,6 @@
 #define COCAINE_REPOSITORY_HPP
 
 #include "cocaine/common.hpp"
-
 #include "cocaine/logging.hpp"
 
 #include <typeinfo>
@@ -91,7 +90,7 @@ class repository_t {
     category_map_t m_categories;
 
 public:
-    repository_t(blackhole::synchronized<logger_t>& log);
+    repository_t(blackhole::synchronized<logging::logger_t>& log);
    ~repository_t();
 
     void
@@ -154,6 +153,7 @@ repository_t::insert(const std::string& type) {
     }
 
     factories[type] = std::make_shared<factory_type>();
+
     COCAINE_LOG_DEBUG(m_log, "component has been registered")(
         "component", type
     );

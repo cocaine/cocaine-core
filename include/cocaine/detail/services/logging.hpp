@@ -33,7 +33,7 @@ class logging_t:
     public api::service_t,
     public dispatch<io::log_tag>
 {
-    std::unique_ptr<blackhole::synchronized<logger_t>> m_logger;
+    std::unique_ptr<blackhole::synchronized<logging::logger_t>> m_logger;
 
 public:
     logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
@@ -44,11 +44,8 @@ public:
 
 private:
     void
-    emit(blackhole::synchronized<logger_t>& log,
-         logging::priorities level,
-         const std::string& source,
-         const std::string& message,
-         const blackhole::log::attributes_t& attributes);
+    emit(blackhole::synchronized<logging::logger_t>& log, logging::priorities level, const std::string& source,
+         const std::string& message, const blackhole::log::attributes_t& attributes);
 };
 
 }} // namespace cocaine::service

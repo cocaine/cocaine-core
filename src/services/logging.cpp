@@ -68,11 +68,8 @@ logging_t::prototype() -> basic_dispatch_t& {
 }
 
 void
-logging_t::emit(blackhole::synchronized<logger_t>& log,
-                logging::priorities level,
-                const std::string& source,
-                const std::string& message,
-                const blackhole::log::attributes_t& attributes)
+logging_t::emit(blackhole::synchronized<logger_t>& log, logging::priorities level, const std::string& source,
+                const std::string& message, const blackhole::log::attributes_t& attributes)
 {
     auto record = log.open_record(level);
 

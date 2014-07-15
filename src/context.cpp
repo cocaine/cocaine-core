@@ -632,7 +632,7 @@ context_t::context_t(config_t config, const std::string& logger_name):
     namespace formatter = blackhole::formatter;
     namespace sink = blackhole::sink;
 
-    // Available logging sinks
+    // Available logging sinks.
     typedef boost::mpl::vector<
         sink::files_t<>,
         sink::syslog_t<logging::priorities>,
@@ -675,11 +675,9 @@ context_t::context_t(config_t config, const std::string& logger_name):
         // Register logger configuration with the Blackhole's repository.
         repository.add_config(logger.config);
 
-        // And create just the registered logger.
+        // Create the registered logger.
         auto log = repository.create<logging::priorities>(logger_name);
-        m_logger = std::make_unique<
-            blackhole::synchronized<logger_t>
-        >(std::move(log));
+        m_logger = std::make_unique<blackhole::synchronized<logging::logger_t>>(std::move(log));
         m_logger->verbosity(logger.verbosity);
     } catch (const std::out_of_range&) {
         throw cocaine::error_t("the '%s' logger is not configured", logger_name);
@@ -700,12 +698,12 @@ context_t::context_t(config_t config, const std::string& logger_name):
     bootstrap();
 }
 
-context_t::context_t(config_t config, std::unique_ptr<logger_t>&& logger):
+context_t::context_t(config_t config, std::unique_ptr<logging::logger_t>&& logger):
     config(config)
 {
-    // NOTE: The context takes the ownership of the passed logger, so it will
-    // become invalid at the calling site after this call.
-    m_logger = std::make_unique<blackhole::synchronized<logger_t>>(std::move(*logger));
+    // NOTE: The context takes the ownership of the passed logger, so it will become invalid at the
+    // calling site after this call.
+    m_logger = std::make_unique<blackhole::synchronized<logging::logger_t>>(std::move(*logger));
     logger.reset();
 
 #ifdef COCAINE_ALLOW_RAFT
@@ -724,17 +722,19 @@ context_t::context_t(config_t config, std::unique_ptr<logger_t>&& logger):
 }
 
 context_t::~context_t() {
-    auto& unlocked = m_services.value();
-
     auto log = &this->logger();
+
     blackhole::scoped_attributes_t guard(
         *log,
         blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
     );
+
     COCAINE_LOG_INFO(log, "stopping the synchronization");
 
     m_synchronization->shutdown();
     m_synchronization.reset();
+
+    auto& unlocked = m_services.value();
 
     COCAINE_LOG_INFO(log, "stopping the service locator");
 
@@ -777,6 +777,7 @@ struct match {
 void
 context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
     auto log = &this->logger();
+
     blackhole::scoped_attributes_t guard(
         *log,
         blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
@@ -826,6 +827,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
 auto
 context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
     auto log = &this->logger();
+
     blackhole::scoped_attributes_t guard(
         *log,
         blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
@@ -880,6 +882,7 @@ context_t::attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::sh
 void
 context_t::bootstrap() {
     auto log = &this->logger();
+
     blackhole::scoped_attributes_t guard(
         *log,
         blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })

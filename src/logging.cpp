@@ -31,4 +31,4 @@ make_source_wrapper(blackhole::synchronized<logger_t>& log, std::string source) 
         }));
 }
 
-} } // namespace cocaine::logging
+}} // namespace cocaine::logging
