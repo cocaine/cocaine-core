@@ -83,9 +83,10 @@ repository_t::load(const std::string& path_) {
     const auto status = fs::status(path);
 
     if(!fs::exists(status)) {
-        COCAINE_LOG_INFO(m_log, "cannot load the plugin - path not exists")(
+        COCAINE_LOG_INFO(m_log, "unable to load the plugin - path does not exist")(
             "path", path_
         );
+
         return;
     }
 
@@ -117,7 +118,10 @@ typedef void (*initialize_fn_t)(repository_t&);
 
 void
 repository_t::open(const std::string& target) {
-    COCAINE_LOG_INFO(m_log, "loading plugin ...")("plugin", target);
+    COCAINE_LOG_INFO(m_log, "loading the plugin")(
+        "plugin", target
+    );
+
     lt_dladvise advice;
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
@@ -153,7 +157,10 @@ repository_t::open(const std::string& target) {
 
     if(initialize.ptr) {
         try {
-            COCAINE_LOG_INFO(m_log, "initializing plugin ...")("plugin", target);
+            COCAINE_LOG_INFO(m_log, "initializing the plugin")(
+                "plugin", target
+            );
+
             initialize.call(*this);
         } catch(const std::exception& e) {
             throw repository_error_t("unable to initialize '%s' - %s", target, e.what());
