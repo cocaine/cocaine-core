@@ -95,6 +95,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/chamber
     src/context
     src/crypto
+    src/defaults
     src/dispatch
     src/dynamic
     src/engine

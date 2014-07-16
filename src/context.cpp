@@ -19,6 +19,7 @@
 */
 
 #include "cocaine/context.hpp"
+#include "cocaine/defaults.hpp"
 
 #include "cocaine/api/service.hpp"
 
@@ -217,30 +218,6 @@ private:
 
 } // namespace
 
-const bool defaults::log_output                = false;
-const float defaults::heartbeat_timeout        = 30.0f;
-const float defaults::idle_timeout             = 600.0f;
-const float defaults::startup_timeout          = 10.0f;
-const float defaults::termination_timeout      = 5.0f;
-const unsigned long defaults::concurrency      = 10L;
-const unsigned long defaults::crashlog_limit   = 50L;
-const unsigned long defaults::pool_limit       = 10L;
-const unsigned long defaults::queue_limit      = 100L;
-
-const float defaults::control_timeout          = 5.0f;
-const unsigned defaults::decoder_granularity   = 256;
-
-const char defaults::plugins_path[]            = "/usr/lib/cocaine";
-const char defaults::runtime_path[]            = "/var/run/cocaine";
-
-const char defaults::endpoint[]                = "::";
-const uint16_t defaults::locator_port          = 10053;
-const uint16_t defaults::min_port              = 32768;
-const uint16_t defaults::max_port              = 61000;
-
-const std::string defaults::logging::timestamp = "%Y-%m-%d %H:%M:%S.%f";
-const std::string defaults::logging::verbosity = "info";
-
 // Config
 
 namespace cocaine {
@@ -423,8 +400,8 @@ struct dynamic_converter<cocaine::config_t::logging_t, void> {
             auto loggers = object.at("loggers", dynamic_t::empty_array);
 
             config_t::logging_t::logger_t log {
-                logmask(object.at("verbosity", defaults::logging::verbosity).as_string()),
-                object.at("timestamp", defaults::logging::timestamp).as_string(),
+                logmask(object.at("verbosity", defaults::log_verbosity).as_string()),
+                object.at("timestamp", defaults::log_timestamp).as_string(),
                 config::parser_t<dynamic_t, blackhole::log_config_t>::parse(it->first, loggers)
             };
 

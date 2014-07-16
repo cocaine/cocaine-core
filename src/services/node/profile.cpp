@@ -20,6 +20,8 @@
 
 #include "cocaine/detail/services/node/profile.hpp"
 
+#include "cocaine/defaults.hpp"
+
 #include "cocaine/traits/dynamic.hpp"
 
 using namespace cocaine::engine;

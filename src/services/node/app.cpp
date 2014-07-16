@@ -28,6 +28,7 @@
 #include "cocaine/asio/socket.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/defaults.hpp"
 
 #include "cocaine/detail/actor.hpp"
 
