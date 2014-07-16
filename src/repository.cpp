@@ -85,8 +85,8 @@ repository_t::load(const std::string& path_) {
     if(!fs::exists(status)) {
         COCAINE_LOG_INFO(m_log, "unable to load plugin")(
             "path", path_,
-            "reason": "path does not exist",
-            "errno": ENOENT
+            "reason", "path does not exist",
+            "errno", ENOENT
         );
 
         return;
