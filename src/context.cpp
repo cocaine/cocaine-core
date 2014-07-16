@@ -603,24 +603,21 @@ config_t::version() {
 
 // Context
 
-context_t::context_t(config_t config, const std::string& logger_name):
+context_t::context_t(config_t config, const std::string& logger_backend):
     config(config)
 {
-    namespace formatter = blackhole::formatter;
-    namespace sink = blackhole::sink;
-
     // Available logging sinks.
     typedef boost::mpl::vector<
-        sink::files_t<>,
-        sink::syslog_t<logging::priorities>,
-        sink::socket_t<boost::asio::ip::tcp>,
-        sink::socket_t<boost::asio::ip::udp>
+        blackhole::sink::files_t<>,
+        blackhole::sink::syslog_t<logging::priorities>,
+        blackhole::sink::socket_t<boost::asio::ip::tcp>,
+        blackhole::sink::socket_t<boost::asio::ip::udp>
     > sinks_t;
 
     // Available logging formatters.
     typedef boost::mpl::vector<
-        formatter::string_t,
-        formatter::json_t
+        blackhole::formatter::string_t,
+        blackhole::formatter::json_t
     > formatters_t;
 
     // Register frontends with all combinations of formatters and sink with the logging repository.
@@ -634,7 +631,7 @@ context_t::context_t(config_t config, const std::string& logger_name):
         using blackhole::keyword::tag::severity_t;
 
         // Fetch configuration object.
-        auto logger = config.logging.loggers.at(logger_name);
+        auto logger = config.logging.loggers.at(logger_backend);
 
         // Configure some mappings for timestamps and severity attributes.
         blackhole::mapping::value_t mapper;
@@ -652,12 +649,13 @@ context_t::context_t(config_t config, const std::string& logger_name):
         // Register logger configuration with the Blackhole's repository.
         repository.add_config(logger.config);
 
+        typedef blackhole::synchronized<logging::logger_t> logger_type;
+
         // Create the registered logger.
-        auto log = repository.create<logging::priorities>(logger_name);
-        m_logger = std::make_unique<blackhole::synchronized<logging::logger_t>>(std::move(log));
+        m_logger = std::make_unique<logger_type>(repository.create<logging::priorities>(logger_backend));
         m_logger->verbosity(logger.verbosity);
-    } catch (const std::out_of_range&) {
-        throw cocaine::error_t("the '%s' logger is not configured", logger_name);
+    } catch(const std::out_of_range&) {
+        throw cocaine::error_t("the '%s' logger is not configured", logger_backend);
     }
 
 #ifdef COCAINE_ALLOW_RAFT
@@ -711,7 +709,7 @@ context_t::~context_t() {
 
     auto& unlocked = m_services.value();
 
-    COCAINE_LOG_INFO(m_logger, "stopping the service locator");
+    COCAINE_LOG_INFO(m_logger, "stopping the locator");
 
     unlocked.front().second->terminate();
     unlocked.pop_front();
@@ -793,7 +791,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
         COCAINE_LOG_INFO(m_logger, "service has been published")(
             "service", name,
-            "location", service->location().front()
+            "endpoint", service->location().front()
         );
 
         locked->emplace_back(name, std::move(service));
@@ -828,7 +826,10 @@ context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
 
         service->terminate();
 
-        COCAINE_LOG_INFO(m_logger, "service '%s' withdrawn from %d", name, endpoints.front());
+        COCAINE_LOG_INFO(m_logger, "service has been withdrawn")(
+            "service", name,
+            "endpoint", endpoints.front()
+        );
 
         if(config.network.ports) {
             m_ports.push(endpoints.front().port());
@@ -892,7 +893,9 @@ context_t::bootstrap() {
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto reactor = std::make_shared<reactor_t>();
 
-        COCAINE_LOG_INFO(m_logger, "starting service '%s'", it->first);
+        COCAINE_LOG_INFO(m_logger, "starting service")(
+            "service", it->first
+        );
 
         try {
             insert(it->first, std::make_unique<actor_t>(*this, reactor, get<api::service_t>(
@@ -908,20 +911,17 @@ context_t::bootstrap() {
                 "reason", e.what(),
                 "errno", e.code().value(),
                 "message", e.code().message()
-            );
-            throw;
+            ); throw;
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(m_logger, "unable to initialize service")(
                 "service", it->first,
                 "reason", e.what()
-            );
-            throw;
+            ); throw;
         } catch(...) {
             COCAINE_LOG_ERROR(m_logger, "unable to initialize service")(
                 "service", it->first,
                 "reason", "unknown exception"
-            );
-            throw;
+            ); throw;
         }
     }
 
@@ -930,7 +930,7 @@ context_t::bootstrap() {
         config.network.locator
     }};
 
-    COCAINE_LOG_INFO(m_logger, "starting the service locator on %s", endpoints.front());
+    COCAINE_LOG_INFO(m_logger, "starting the locator on %s", endpoints.front());
 
     std::unique_ptr<actor_t> service;
 
@@ -956,18 +956,15 @@ context_t::bootstrap() {
             "message", e.what(),
             "errno", e.code().value(),
             "reason", e.code().message()
-        );
-        throw;
+        ); throw;
     } catch(const std::exception& e) {
         COCAINE_LOG_ERROR(m_logger, "unable to initialize the locator")(
             "reason", e.what()
-        );
-        throw;
+        ); throw;
     } catch(...) {
         COCAINE_LOG_ERROR(m_logger, "unable to initialize the locator")(
             "reason", "unknown exception"
-        );
-        throw;
+        ); throw;
     }
 
     m_services->emplace_front("locator", std::move(service));
