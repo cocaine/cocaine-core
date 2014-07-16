@@ -735,7 +735,7 @@ context_t::~context_t() {
 std::unique_ptr<logging::log_t>
 context_t::log(const std::string& source) {
     return std::make_unique<logging::log_t>(*m_logger, blackhole::log::attributes_t({
-        blackhole::keyword::source() = std::move(source)
+        blackhole::keyword::source() = source
     }));
 }
 
