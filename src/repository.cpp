@@ -43,9 +43,7 @@ repository_t::repository_t(blackhole::synchronized<logging::logger_t>& logger):
 
 namespace {
 
-typedef std::remove_pointer<
-    lt_dlhandle
->::type handle_type;
+typedef std::remove_pointer<lt_dlhandle>::type handle_type;
 
 struct lt_dlclose_action {
     void
@@ -85,18 +83,17 @@ repository_t::load(const std::string& path_) {
     const auto status = fs::status(path);
 
     if(!fs::exists(status)) {
-        COCAINE_LOG_INFO(m_log, "unable to load the plugin - path does not exist")(
-            "path", path_
+        COCAINE_LOG_INFO(m_log, "unable to load plugin")(
+            "path", path_,
+            "reason": "path does not exist",
+            "errno": ENOENT
         );
 
         return;
     }
 
     if(fs::is_directory(status)) {
-        typedef boost::filter_iterator<
-            validate_t,
-            fs::directory_iterator
-        > plugin_iterator_t;
+        typedef boost::filter_iterator<validate_t, fs::directory_iterator> plugin_iterator_t;
 
         plugin_iterator_t it = plugin_iterator_t(validate_t(), fs::directory_iterator(path)),
                           end;
@@ -120,13 +117,13 @@ typedef void (*initialize_fn_t)(repository_t&);
 
 void
 repository_t::open(const std::string& target) {
-    COCAINE_LOG_INFO(m_log, "loading the plugin")(
-        "plugin", target
-    );
-
     lt_dladvise advice;
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
+
+    COCAINE_LOG_INFO(m_log, "loading plugin")(
+        "plugin", target
+    );
 
     std::unique_ptr<handle_type, lt_dlclose_action> plugin(
         lt_dlopenadvise(target.c_str(), advice),
@@ -159,7 +156,7 @@ repository_t::open(const std::string& target) {
 
     if(initialize.ptr) {
         try {
-            COCAINE_LOG_INFO(m_log, "initializing the plugin")(
+            COCAINE_LOG_INFO(m_log, "initializing plugin")(
                 "plugin", target
             );
 

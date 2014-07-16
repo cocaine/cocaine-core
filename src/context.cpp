@@ -53,7 +53,6 @@
 #include "rapidjson/reader.h"
 
 #include <blackhole/detail/datetime.hpp>
-
 #include <blackhole/formatter/json.hpp>
 #include <blackhole/frontend/files.hpp>
 #include <blackhole/frontend/syslog.hpp>
