@@ -31,8 +31,10 @@ using namespace cocaine::api;
 
 namespace fs = boost::filesystem;
 
-repository_t::repository_t(blackhole::synchronized<logging::logger_t>& log) :
-    m_log(logging::make_source_wrapper(log, "repository"))
+repository_t::repository_t(blackhole::synchronized<logging::logger_t>& logger):
+    m_log(new logging::log_t(logger, blackhole::log::attributes_t({
+        blackhole::keyword::source() = "repository"
+    })))
 {
     if(lt_dlinit() != 0) {
         throw repository_error_t("unable to initialize the dynamic loader");

@@ -92,7 +92,7 @@ struct counter_t::counter_machine_t {
     typedef int snapshot_type;
 
     counter_machine_t(context_t& context):
-        m_log(logging::make_source_wrapper(context.logger(), "counter_machine")),
+        m_log(context.log("counter_machine")),
         m_value(0)
     { }
 
@@ -165,7 +165,7 @@ private:
 counter_t::counter_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args):
     api::service_t(context, reactor, name, args),
     dispatch<io::counter_tag>(name),
-    m_log(logging::make_source_wrapper(context.logger(), name))
+    m_log(context.log(name))
 {
     using namespace std::placeholders;
 

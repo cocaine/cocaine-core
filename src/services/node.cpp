@@ -42,7 +42,7 @@ node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, 
     api::service_t(context, reactor, name, args),
     dispatch<io::node_tag>(name),
     m_context(context),
-    m_log(logging::make_source_wrapper(context.logger(), name))
+    m_log(context.log(name))
 {
     using namespace std::placeholders;
 

@@ -58,7 +58,7 @@ using namespace std::placeholders;
 locator_t::locator_t(context_t& context, reactor_t& reactor):
     dispatch<io::locator_tag>("service/locator"),
     m_context(context),
-    m_log(logging::make_source_wrapper(context.logger(), "service/locator")),
+    m_log(context.log("service/locator")),
     m_reactor(reactor),
     m_router(new router_t(*m_log.get()))
 {

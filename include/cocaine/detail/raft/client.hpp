@@ -63,7 +63,7 @@ public:
         boost::optional<float> request_timeout = boost::none
     ):
         m_reactor(reactor),
-        m_logger(logging::make_source_wrapper(context.logger(), "raft_client/" + name)),
+        m_logger(context.log("raft_client/" + name)),
         m_timeout_timer(reactor.native()),
         m_retry_timer(reactor.native()),
         m_name(name),

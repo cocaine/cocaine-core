@@ -40,7 +40,7 @@ class config_handle {
 public:
     config_handle(actor_type &actor, config_type &config):
         m_actor(actor),
-        m_logger(logging::make_source_wrapper(actor.context().logger(), "raft/" + actor.name())),
+        m_logger(actor.context().log("raft/" + actor.name())),
         m_config(config)
     { }
 

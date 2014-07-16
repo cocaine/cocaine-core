@@ -48,11 +48,4 @@ DECLARE_KEYWORD(source, std::string)
 #define COCAINE_LOG_ERROR(_log_, ...) \
     COCAINE_LOG(_log_, ::cocaine::logging::error, __VA_ARGS__)
 
-namespace cocaine { namespace logging {
-
-std::unique_ptr<log_t>
-make_source_wrapper(blackhole::synchronized<logger_t>& log, std::string source);
-
-}} // namespace cocaine::logging
-
 #endif

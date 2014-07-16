@@ -70,7 +70,7 @@ class log_handle {
 public:
     log_handle(actor_type &actor, log_type &log, machine_type&& machine):
         m_actor(actor),
-        m_logger(logging::make_source_wrapper(actor.context().logger(), "raft/" + actor.name())),
+        m_logger(actor.context().log("raft/" + actor.name())),
         m_log(log),
         m_machine(std::move(machine)),
         m_next_snapshot_index(0),

@@ -32,7 +32,7 @@
 using namespace cocaine;
 
 execution_unit_t::execution_unit_t(context_t& context, const std::string& name):
-    m_log(logging::make_source_wrapper(context.logger(), name)),
+    m_log(context.log(name)),
     m_reactor(std::make_shared<io::reactor_t>()),
     m_chamber(std::make_unique<io::chamber_t>(name, m_reactor))
 { }

@@ -38,14 +38,14 @@ using namespace cocaine;
 
 actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t> prototype):
     m_context(context),
-    m_log(logging::make_source_wrapper(context.logger(), prototype->name())),
+    m_log(context.log(prototype->name())),
     m_reactor(reactor),
     m_prototype(std::move(prototype))
 { }
 
 actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t> service):
     m_context(context),
-    m_log(logging::make_source_wrapper(context.logger(), service->prototype().name())),
+    m_log(context.log(service->prototype().name())),
     m_reactor(reactor)
 {
     io::basic_dispatch_t *const prototype = &service->prototype();

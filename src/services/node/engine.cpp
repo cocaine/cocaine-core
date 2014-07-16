@@ -75,7 +75,7 @@ engine_t::engine_t(context_t& context,
                    const profile_t& profile,
                    const std::shared_ptr<io::socket<local>>& control):
     m_context(context),
-    m_log(logging::make_source_wrapper(context.logger(), cocaine::format("app/%1%", manifest.name))),
+    m_log(context.log(cocaine::format("app/%1%", manifest.name))),
     m_manifest(manifest),
     m_profile(profile),
     m_state(states::stopped),

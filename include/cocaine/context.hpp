@@ -35,39 +35,6 @@
 
 namespace cocaine {
 
-struct defaults {
-    // Default profile.
-    static const bool log_output;
-    static const float heartbeat_timeout;
-    static const float idle_timeout;
-    static const float startup_timeout;
-    static const float termination_timeout;
-    static const unsigned long pool_limit;
-    static const unsigned long queue_limit;
-    static const unsigned long concurrency;
-    static const unsigned long crashlog_limit;
-
-    // Default I/O policy.
-    static const float control_timeout;
-    static const unsigned decoder_granularity;
-
-    // Default paths.
-    static const char plugins_path[];
-    static const char runtime_path[];
-
-    // Defaults for service locator.
-    static const char endpoint[];
-    static const uint16_t locator_port;
-    static const uint16_t min_port;
-    static const uint16_t max_port;
-
-    // Defaults for logging service.
-    struct logging {
-        static const std::string verbosity;
-        static const std::string timestamp;
-    };
-};
-
 // Configuration
 
 struct config_t {
@@ -187,10 +154,8 @@ public:
 
     // Logging
 
-    auto
-    logger() -> blackhole::synchronized<logging::logger_t>& {
-        return *m_logger;
-    }
+    std::unique_ptr<logging::log_t>
+    log(const std::string& source);
 
 #ifdef COCAINE_ALLOW_RAFT
     auto

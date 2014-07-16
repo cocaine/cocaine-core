@@ -143,7 +143,7 @@ public:
         m_context(&context),
         m_reactor(&reactor),
         m_service(&service),
-        m_log(logging::make_source_wrapper(context.logger(), "configuration_machine"))
+        m_log(context.log("configuration_machine"))
     { }
 
     configuration_machine_t(configuration_machine_t&& other) {

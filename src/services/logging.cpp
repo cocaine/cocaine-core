@@ -39,27 +39,21 @@ logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& 
 
     auto backend = args.as_object().at("backend", "core").as_string();
 
-    if(backend != "core") {
-        try {
-            auto& repository = blackhole::repository_t::instance();
-            auto logger = repository.create<priorities>(backend);
-            m_logger = std::make_unique<logger_type>(std::move(logger));
-            m_logger->verbosity(context.logger().verbosity<priorities>());
-        } catch (const std::out_of_range&) {
-            throw cocaine::error_t("the '%s' logger is not configured", backend);
-        }
+    try {
+        m_logger = std::make_unique<logger_type>(blackhole::repository_t::instance().create<priorities>(backend));
+        m_logger->verbosity<priorities>(context.log(name)->log().verbosity<priorities>());
+    } catch(const std::out_of_range&) {
+        throw cocaine::error_t("the '%s' logger is not configured", backend);
     }
-
-    auto& log = m_logger ? *m_logger : context.logger();
 
     using namespace std::placeholders;
 
     auto getter = static_cast<priorities(logger_type::*)()const>(&logger_type::verbosity<priorities>);
     auto setter = static_cast<void(logger_type::*)(priorities)>(&logger_type::verbosity);
 
-    on<io::log::emit>(std::bind(&logging_t::emit, this, std::ref(log), _1, _2, _3, _4));
-    on<io::log::verbosity>(std::bind(getter, std::ref(log)));
-    on<io::log::set_verbosity>(std::bind(setter, std::ref(log), _1));
+    on<io::log::emit>(std::bind(&logging_t::emit, this, _1, _2, _3, _4));
+    on<io::log::verbosity>(std::bind(getter, std::ref(*m_logger)));
+    on<io::log::set_verbosity>(std::bind(setter, std::ref(*m_logger), _1));
 }
 
 auto
@@ -68,16 +62,16 @@ logging_t::prototype() -> basic_dispatch_t& {
 }
 
 void
-logging_t::emit(blackhole::synchronized<logger_t>& log, logging::priorities level, const std::string& source,
-                const std::string& message, const blackhole::log::attributes_t& attributes)
+logging_t::emit(logging::priorities level, const std::string& source, const std::string& message,
+                const blackhole::log::attributes_t& attributes)
 {
-    auto record = log.open_record(level);
+    auto record = m_logger->open_record(level);
 
     if(record.valid()) {
         record.attributes.insert(attributes.begin(), attributes.end());
         record.attributes.insert(blackhole::keyword::message() = message);
         record.attributes.insert(blackhole::keyword::source() = source);
 
-        log.push(std::move(record));
+        m_logger->push(std::move(record));
     }
 }

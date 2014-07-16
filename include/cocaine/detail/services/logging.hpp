@@ -44,8 +44,8 @@ public:
 
 private:
     void
-    emit(blackhole::synchronized<logging::logger_t>& log, logging::priorities level, const std::string& source,
-         const std::string& message, const blackhole::log::attributes_t& attributes);
+    emit(logging::priorities level, const std::string& source, const std::string& message,
+         const blackhole::log::attributes_t& attributes);
 };
 
 }} // namespace cocaine::service

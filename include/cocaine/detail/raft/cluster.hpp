@@ -38,7 +38,7 @@ public:
 
     cluster(actor_type &actor):
         m_actor(actor),
-        m_logger(logging::make_source_wrapper(actor.context().logger(), "raft/" + actor.name())),
+        m_logger(actor.context().log("raft/" + actor.name())),
         m_replicator(actor.reactor().native())
     {
         create_clients();
