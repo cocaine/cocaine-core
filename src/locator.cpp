@@ -165,7 +165,7 @@ locator_t::resolve(const std::string& name) const -> resolve_result_type {
     auto provided = m_context.locate(basename);
 
     if(provided) {
-        COCAINE_LOG_DEBUG(m_log, "providing '%s' using local node", name);
+        COCAINE_LOG_DEBUG(m_log, "providing service '%s' using local node", name);
 
         // TODO: Might be a good idea to return an endpoint suitable for the interface which the
         // client used to connect to the Locator.
@@ -175,7 +175,7 @@ locator_t::resolve(const std::string& name) const -> resolve_result_type {
     if(m_gateway) {
         return m_gateway->resolve(basename);
     } else {
-        throw cocaine::error_t("the specified service '%s' is not available", name);
+        throw cocaine::error_t("service '%s' is not available", name);
     }
 }
 
