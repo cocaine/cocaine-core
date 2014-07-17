@@ -175,7 +175,7 @@ locator_t::resolve(const std::string& name) const -> resolve_result_type {
     if(m_gateway) {
         return m_gateway->resolve(basename);
     } else {
-        throw cocaine::error_t("the specified service is not available");
+        throw cocaine::error_t("the specified service '%s' is not available", name);
     }
 }
 
