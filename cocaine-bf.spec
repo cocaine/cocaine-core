@@ -35,6 +35,7 @@ Cocaine is an open application cloud platform.
 Summary: Development files for %{name}
 Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
+Requires: libtool-ltdl-devel, libev-devel, msgpack-devel
 
 %description devel
 Cocaine development headers package.
