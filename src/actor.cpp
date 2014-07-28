@@ -246,7 +246,12 @@ actor_t::on_connection(const std::shared_ptr<io::socket<tcp>>& socket_) {
 
     BOOST_ASSERT(m_channels.find(fd) == m_channels.end());
 
-    COCAINE_LOG_DEBUG(m_log, "accepted a new client from '%s' on fd %d", socket_->remote_endpoint(), fd);
+    try {
+        COCAINE_LOG_DEBUG(m_log, "accepted a new client from '%s' on fd %d", socket_->remote_endpoint(), fd);
+    } catch(const std::system_error&) {
+        COCAINE_LOG_DEBUG(m_log, "client on fd %d has disappeared", fd);
+        return;
+    }
 
     auto ptr = std::make_unique<channel<io::socket<tcp>>>(*m_reactor, socket_);
 
