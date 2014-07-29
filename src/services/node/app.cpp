@@ -67,13 +67,13 @@ namespace fs = boost::filesystem;
 namespace {
 
 class streaming_service_t:
-    public dispatch<io::event_traits<io::app::enqueue>::transition_type>
+    public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
 {
     const api::stream_ptr_t downstream;
 
 public:
     typedef io::protocol<
-        io::event_traits<io::app::enqueue>::transition_type
+        io::event_traits<io::app::enqueue>::dispatch_type
     >::scope protocol;
 
     struct write_slot_t:
@@ -158,7 +158,7 @@ public:
     };
 
     streaming_service_t(const std::string& name, const api::stream_ptr_t& downstream_):
-        dispatch<io::event_traits<io::app::enqueue>::transition_type>(name),
+        dispatch<io::event_traits<io::app::enqueue>::dispatch_type>(name),
         downstream(downstream_)
     { }
 

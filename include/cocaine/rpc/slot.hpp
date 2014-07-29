@@ -50,8 +50,8 @@ public:
     }
 
     // Expected transition and upstream dispatch types.
-    typedef dispatch<typename traits_type::transition_type> dispatch_type;
-    typedef upstream<typename traits_type::drain_type> upstream_type;
+    typedef dispatch<typename traits_type::dispatch_type> dispatch_type;
+    typedef upstream<typename traits_type::upstream_type> upstream_type;
 
     // Expected parameter types, stripped of any tags.
     typedef typename tuple::fold<sequence_type>::type tuple_type;

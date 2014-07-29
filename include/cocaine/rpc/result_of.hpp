@@ -72,7 +72,7 @@ struct result_of_impl<void> {
 template<class Event>
 struct result_of<Event, typename depend<typename Event::tag>::type> {
     typedef typename io::aux::result_of_impl<
-        typename io::event_traits<Event>::drain_type
+        typename io::event_traits<Event>::upstream_type
     >::type type;
 };
 

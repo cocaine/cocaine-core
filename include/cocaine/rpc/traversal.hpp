@@ -49,10 +49,10 @@ struct traverse_impl {
     apply(dispatch_graph_t& object) {
         object[traits_type::id] = std::make_tuple(message_type::alias(),
          /* Detect recurrent message transitions. */
-            std::is_same<typename traits_type::transition_type, typename message_type::tag>::value
+            std::is_same<typename traits_type::dispatch_type, typename message_type::tag>::value
               ? boost::none
-              : traverse<typename traits_type::transition_type>(),
-            traverse<typename traits_type::drain_type>()
+              : traverse<typename traits_type::dispatch_type>(),
+            traverse<typename traits_type::upstream_type>()
         );
 
         traverse_impl<typename mpl::next<It>::type, End>::apply(object);

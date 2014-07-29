@@ -227,7 +227,7 @@ struct deferred_erase_action {
 } // namespace
 
 class locator_t::remote_client_t:
-    public dispatch<io::event_traits<io::locator::synchronize>::drain_type>
+    public dispatch<io::event_traits<io::locator::synchronize>::upstream_type>
 {
     locator_t& impl;
 
@@ -237,7 +237,7 @@ class locator_t::remote_client_t:
 
 public:
     typedef io::protocol<
-        io::event_traits<io::locator::synchronize>::drain_type
+        io::event_traits<io::locator::synchronize>::upstream_type
     >::scope protocol;
 
     struct announce_slot_t:
@@ -291,7 +291,7 @@ public:
     };
 
     remote_client_t(locator_t& impl_, const remote_id_t& node_):
-        dispatch<io::event_traits<io::locator::synchronize>::drain_type>(impl_.name()),
+        dispatch<io::event_traits<io::locator::synchronize>::upstream_type>(impl_.name()),
         impl(impl_),
         node(node_),
         uuid(std::get<0>(node))

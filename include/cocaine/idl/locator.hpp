@@ -66,7 +66,7 @@ struct resolve {
         dispatch_graph_t
     > value_type;
 
-    typedef streaming_tag<value_type> drain_type;
+    typedef streaming_tag<value_type> upstream_type;
 };
 
 struct synchronize {
@@ -82,7 +82,7 @@ struct synchronize {
      /* A full dump of all available services on this node. Used by metalocator to aggregate
         node information from the cluster. */
         std::map<std::string, tuple::fold<resolve::value_type>::type>
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct refresh {

@@ -63,7 +63,7 @@ struct append {
         uint64_t,
      /* Success. */
         bool
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 // Store snapshot of state machine on the follower.
@@ -97,7 +97,7 @@ struct apply {
         uint64_t,
      /* Success. */
         bool
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct request_vote {
@@ -125,7 +125,7 @@ struct request_vote {
         uint64_t,
      /* Vote granted. */
         bool
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct insert {
@@ -146,7 +146,7 @@ struct insert {
 
     typedef stream_of<
         cocaine::raft::command_result<void>
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct erase {
@@ -167,7 +167,7 @@ struct erase {
 
     typedef stream_of<
         cocaine::raft::command_result<void>
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 }; // struct raft_node
@@ -214,7 +214,7 @@ struct insert {
 
     typedef stream_of<
         cocaine::raft::command_result<cocaine::raft::cluster_change_result>
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct erase {
@@ -235,7 +235,7 @@ struct erase {
 
     typedef stream_of<
         cocaine::raft::command_result<cocaine::raft::cluster_change_result>
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct lock {
@@ -254,7 +254,7 @@ struct lock {
 
     typedef stream_of<
         cocaine::raft::command_result<void>
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct reset {
@@ -275,7 +275,7 @@ struct reset {
 
     typedef stream_of<
         cocaine::raft::command_result<void>
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct dump {
@@ -289,7 +289,7 @@ struct dump {
 
     typedef stream_of<
         std::map<std::string, cocaine::raft::lockable_config_t>
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct status {
@@ -308,7 +308,7 @@ struct status {
 
     typedef stream_of<
         cocaine::raft::actor_state
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct leader {
@@ -327,7 +327,7 @@ struct leader {
 
     typedef stream_of<
         cocaine::raft::node_id_t
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 }; // struct raft_control

@@ -82,7 +82,7 @@ struct function_slot:
     typedef typename basic_slot<Event>::upstream_type upstream_type;
 
     typedef typename aux::protocol_impl<
-        typename event_traits<Event>::drain_type
+        typename event_traits<Event>::upstream_type
     >::scope protocol;
 
     R

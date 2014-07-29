@@ -35,7 +35,7 @@ struct enqueue {
     typedef app_tag tag;
 
     // Allow clients to stream data into the apps.
-    typedef stream_of<std::string>::tag transition_type;
+    typedef stream_of<std::string>::tag dispatch_type;
 
     static
     const char*
@@ -54,7 +54,7 @@ struct enqueue {
     typedef stream_of<
      /* Some other arbitrary sequence of bytes, streamed back to the client in chunks. */
         std::string
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct info {
@@ -69,7 +69,7 @@ struct info {
     typedef stream_of<
      /* Various runtime information about the running app. */
         dynamic_t
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 }; // struct app
@@ -112,7 +112,7 @@ struct start_app {
     typedef stream_of<
      /* Operation outcome. */
         dynamic_t
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct pause_app {
@@ -132,7 +132,7 @@ struct pause_app {
     typedef stream_of<
      /* Operation outcome. */
         dynamic_t
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct list {
@@ -147,7 +147,7 @@ struct list {
     typedef stream_of<
      /* A list of running app names. */
         dynamic_t
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 }; // struct node

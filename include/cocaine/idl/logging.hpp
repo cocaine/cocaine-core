@@ -69,7 +69,7 @@ struct verbosity {
     typedef stream_of<
      /* The current verbosity level of the core logging sink. */
         logging::priorities
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct set_verbosity {
