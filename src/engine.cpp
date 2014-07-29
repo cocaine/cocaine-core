@@ -57,6 +57,7 @@ void
 execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::basic_dispatch_t>& dispatch) {
     auto fd = socket->fd();
 
+    // Make sure that the fd wasn't reused before it was actually processed for disconnection.
     BOOST_ASSERT(!m_sessions.count(fd));
 
     auto ptr = std::make_unique<io::channel<io::socket<io::tcp>>>(*m_reactor, socket);

@@ -48,8 +48,9 @@ actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std
     m_log(context.log(service->prototype().name())),
     m_reactor(reactor)
 {
-    io::basic_dispatch_t *const prototype = &service->prototype();
+    io::basic_dispatch_t* prototype = &service->prototype();
 
+    // Aliasing the pointer to the service to point to the dispatch (sub-)object.
     m_prototype = std::shared_ptr<io::basic_dispatch_t>(
         std::shared_ptr<api::service_t>(std::move(service)),
         prototype
