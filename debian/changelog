@@ -1,3 +1,10 @@
+cocaine-core (0.11.2.6) unstable; urgency=low
+
+  * Bugfix: Handle ENOTCONN after getpeername
+  * Add service name in locator logs
+
+ -- Anton Tyurin <noxiouz@yandex-team.ru>  Thu, 31 Jul 2014 17:46:29 +0400
+
 cocaine-core (0.11.2.5) unstable; urgency=low
 
   * Disable routing group cache 
