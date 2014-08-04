@@ -6,8 +6,11 @@ case $1 in
     configure)
         # Create a new system user to run the cocaine
         # and to own the cocaine runtime resources
-        adduser --quiet --system --ingroup adm cocaine
-        
+        id cocaine > /dev/null 2>&1 || adduser --quiet --system --ingroup adm cocaine
+
+        # Make sure we have cocaine in adm
+        adduser --quiet cocaine adm
+
         # Set the correct permissions on the cocaine
         # runtime resources directory
         chown -R cocaine /var/{lib,cache,spool}/cocaine
@@ -22,5 +25,5 @@ case $1 in
 esac
 
 #DEBHELPER#
-        
+
 exit 0
