@@ -89,18 +89,19 @@ struct type_traits<raft::cluster_config_t> {
 template<class T>
 struct type_traits<raft::command_result<T>> {
     typedef raft::command_result<T> value_type;
+    typedef boost::mpl::list<typename value_type::value_type, raft::node_id_t> sequence_type;
 
     template<class Stream>
     static inline
     void
     pack(msgpack::packer<Stream>& target, const value_type& source) {
-        type_traits<typename value_type::value_type>::pack(target, source.m_value);
+        type_traits<sequence_type>::pack(target, source.m_value, source.m_leader);
     }
 
     static inline
     void
     unpack(const msgpack::object& source, value_type& target) {
-        type_traits<typename value_type::value_type>::unpack(source, target.m_value);
+        type_traits<sequence_type>::unpack(source, target.m_value, target.m_leader);
     }
 };
 

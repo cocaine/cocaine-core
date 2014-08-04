@@ -22,6 +22,7 @@
 #define COCAINE_RAFT_LOG_HPP
 
 #include "cocaine/detail/raft/forwards.hpp"
+#include "cocaine/api/storage.hpp"
 #include "cocaine/common.hpp"
 
 #include <boost/assert.hpp>

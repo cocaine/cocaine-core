@@ -64,6 +64,16 @@ public:
         m_config.set_current_term(value);
     }
 
+    bool
+    has_vote() const {
+        return m_config.has_vote();
+    }
+
+    void
+    take_vote() {
+        m_config.take_vote();
+    }
+
     uint64_t
     commit_index() const {
         return m_config.commit_index();

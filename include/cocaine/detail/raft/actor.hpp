@@ -740,8 +740,8 @@ private:
         {
             step_down(term);
 
-            if(term == config().current_term() && !m_voted_for) {
-                m_voted_for = candidate;
+            if(term == config().current_term() && config().has_vote()) {
+                config().take_vote();
 
                 COCAINE_LOG_DEBUG(m_logger,
                                   "in term %d vote granted to %s:%d",
@@ -774,9 +774,6 @@ private:
             }));
 
             config().set_current_term(term);
-
-            // The actor has not voted in the new term.
-            m_voted_for.reset();
         }
 
         // Disable all non-follower activity.
@@ -846,7 +843,7 @@ private:
         step_down(config().current_term() + 1);
 
         // Vote for self.
-        m_voted_for = context().raft().id();
+        config().take_vote();
 
         m_state = actor_state::candidate;
 
@@ -893,9 +890,6 @@ private:
     cluster_type m_cluster;
 
     actor_state m_state;
-
-    // The node for which the actor voted in current term. The node can vote only once in one term.
-    boost::optional<node_id_t> m_voted_for;
 
     // The leader from the last append message.
     // It may be incorrect and actually it's just a tip, where to find current leader.

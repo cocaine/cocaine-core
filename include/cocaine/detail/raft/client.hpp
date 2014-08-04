@@ -273,11 +273,11 @@ private:
                 {"port", endpoint.second}
             }));
 
-            m_resolver = std::make_shared<service_resolver_t>(
+            m_resolver.reset(new service_resolver_t(
                 m_reactor,
                 io::resolver<io::tcp>::query(endpoint.first, endpoint.second),
                 m_name
-            );
+            ));
 
             using namespace std::placeholders;
 
@@ -369,7 +369,7 @@ private:
 
     std::shared_ptr<cocaine::client_t> m_client;
 
-    std::shared_ptr<service_resolver_t> m_resolver;
+    std::unique_ptr<service_resolver_t> m_resolver;
 
     std::shared_ptr<io::basic_upstream_t> m_current_request;
 };

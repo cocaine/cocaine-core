@@ -147,6 +147,7 @@ private:
         );
 
         if(ec) {
+            m_socket_watcher.stop();
             m_reactor.post(std::bind(make_task(m_handle_error), ec));
             return;
         }

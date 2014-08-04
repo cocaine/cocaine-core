@@ -23,6 +23,7 @@
 
 #include "cocaine/detail/raft/forwards.hpp"
 #include "cocaine/detail/raft/log.hpp"
+#include "cocaine/api/storage.hpp"
 
 #include <boost/optional.hpp>
 
@@ -41,31 +42,46 @@ public:
     typedef cluster_config_t cluster_type;
     typedef cocaine::raft::log<StateMachine, cluster_type> log_type;
 
-    configuration(const cluster_type& cluster,
-                  log_type&& log = log_type(),
+    configuration(context_t &context,
+                  const std::string& name,
+                  const cluster_type& cluster,
                   uint64_t term = 0,
                   uint64_t commit_index = 0,
                   uint64_t last_applied = 0):
+        m_storage(api::storage(context, "raft")),
+        m_name(name),
         m_cluster(cluster),
-        m_log(std::move(log)),
         m_current_term(term),
+        m_last_vote_term(0),
         m_commit_index(commit_index),
         m_last_applied(last_applied)
-    { };
+    {
+        try {
+            load();
+        } catch(const storage_error_t&) {
+            stabilize();
+        }
+    }
 
     configuration(configuration&& other):
+        m_storage(std::move(other.m_storage)),
+        m_name(std::move(other.m_name)),
         m_cluster(std::move(other.m_cluster)),
         m_log(std::move(other.m_log)),
         m_current_term(other.m_current_term),
+        m_last_vote_term(other.m_last_vote_term),
         m_commit_index(other.m_commit_index),
         m_last_applied(other.m_last_applied)
-    { };
+    { }
 
     configuration&
     operator=(configuration&& other) {
+        m_storage = std::move(other.std::move(other.m_name));
+        m_name = std::move(other.m_name);
         m_cluster = std::move(other.m_cluster);
         m_log = std::move(other.m_log);
         m_current_term = other.m_current_term;
+        m_last_vote_term = other.m_last_vote_term;
         m_commit_index = other.m_commit_index;
         m_last_applied = other.m_last_applied;
         return *this;
@@ -99,6 +115,18 @@ public:
     void
     set_current_term(uint64_t value) {
         m_current_term = value;
+        stabilize();
+    }
+
+    bool
+    has_vote() const {
+        return m_last_vote_term < m_current_term;
+    }
+
+    void
+    take_vote() {
+        m_last_vote_term = m_current_term;
+        stabilize();
     }
 
     uint64_t
@@ -122,6 +150,30 @@ public:
     }
 
 private:
+    void
+    load() {
+        std::tie(m_current_term, m_last_vote_term) = m_storage->get<std::tuple<uint64_t, uint64_t>>(
+            m_name,
+            "election_state"
+        );
+    }
+
+    void
+    stabilize() {
+        m_storage->put<std::tuple<uint64_t, uint64_t>>(
+            m_name,
+            "election_state",
+            std::make_tuple(m_current_term, m_last_vote_term),
+            std::vector<std::string>()
+        );
+    }
+
+private:
+    std::shared_ptr<api::storage_t> m_storage;
+
+    // Name of the state machine. It's used as a namespace in the storage.
+    std::string m_name;
+
     // Set of nodes in the RAFT cluster.
     cluster_type m_cluster;
 
@@ -130,6 +182,9 @@ private:
 
     // Current term.
     uint64_t m_current_term;
+
+    // The last term the node voted in. The node may vote only once per term.
+    uint64_t m_last_vote_term;
 
     // The highest index known to be committed.
     uint64_t m_commit_index;

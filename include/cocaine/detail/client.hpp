@@ -31,7 +31,6 @@
 #include "cocaine/asio/connector.hpp"
 #include "cocaine/asio/resolver.hpp"
 
-#include "cocaine/detail/atomic.hpp"
 #include "cocaine/memory.hpp"
 
 #include <boost/variant.hpp>
