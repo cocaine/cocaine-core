@@ -157,7 +157,14 @@ class remote_node {
                 } else {
                     // The remote node discarded our oldest entries.
                     // There is no sense to retry immediately.
-                    // Probably there is no sense to retry at all, but what should the node do then?
+                    // Probably there is no sense to retry at all,
+                    // but what should the node do then but write something to log?
+                    COCAINE_LOG_WARNING(
+                        m_remote.m_logger,
+                        "follower %s:%d discarded our oldest entries, so it's impossible to replicate entries to this follower; "
+                        "it's a wrong follower or there is an error in the RAFT implementation",
+                        m_remote.id().first, m_remote.id().second
+                    );
                     return;
                 }
 
@@ -224,6 +231,9 @@ public:
             m_cluster.register_vote();
         } else if (!m_vote_state) {
             m_vote_state = std::make_shared<vote_handler_t>(*this);
+            // The default TCP keep-alive timeout is large and
+            // may not provide an error for actually dead connection for a long time,
+            // so let's start new term with new connection.
             m_client.reset();
             ensure_connection(std::bind(&remote_node::request_vote_impl, this));
         }
@@ -341,8 +351,7 @@ private:
             );
         } else {
             COCAINE_LOG_DEBUG(m_logger, "client isn't connected, unable to send vote request");
-            auto vote_state = m_vote_state;
-            vote_state->handle(std::error_code());
+            reset_vote_state();
         }
     }
 
@@ -354,8 +363,7 @@ private:
             COCAINE_LOG_DEBUG(m_logger,
                               "client isn't connected or the local node is not the leader, "
                               "unable to send append request");
-            auto append_state = m_append_state;
-            append_state->handle(std::error_code());
+            reset_append_state();
         } else if(m_next_index <= m_actor.log().snapshot_index()) {
             // If leader is far behind the leader, send snapshot.
             send_apply();
@@ -498,6 +506,8 @@ private:
         if(m_client) {
             // Connection already exists.
             handler();
+            // If m_resolver is not null then we're already connecting to the remote node,
+            // and there is a pending operation. So just do nothing.
         } else if (!m_resolver) {
             COCAINE_LOG_DEBUG(m_logger, "client is not connected, connecting...");
 
