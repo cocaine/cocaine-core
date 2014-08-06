@@ -602,7 +602,7 @@ context_t::context_t(config_t config, std::unique_ptr<logging::logger_t>&& logge
 context_t::~context_t() {
     blackhole::scoped_attributes_t guard(
         *m_logger,
-        blackhole::log::attributes_t({ cocaine::keyword::source() = "bootstrap" })
+        blackhole::log::attributes_t({ logging::keyword::source() = "bootstrap" })
     );
 
     COCAINE_LOG_INFO(m_logger, "stopping the synchronization");
@@ -639,7 +639,7 @@ context_t::~context_t() {
 std::unique_ptr<logging::log_t>
 context_t::log(const std::string& source) {
     return std::make_unique<logging::log_t>(*m_logger, blackhole::log::attributes_t({
-        cocaine::keyword::source() = source
+        logging::keyword::source() = source
     }));
 }
 
@@ -661,7 +661,7 @@ void
 context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
     blackhole::scoped_attributes_t guard(
         *m_logger,
-        blackhole::log::attributes_t({ cocaine::keyword::source() = "bootstrap" })
+        blackhole::log::attributes_t({ logging::keyword::source() = "bootstrap" })
     );
 
     uint16_t port = 0;
@@ -709,7 +709,7 @@ auto
 context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
     blackhole::scoped_attributes_t guard(
         *m_logger,
-        blackhole::log::attributes_t({ cocaine::keyword::source() = "bootstrap" })
+        blackhole::log::attributes_t({ logging::keyword::source() = "bootstrap" })
     );
 
     std::unique_ptr<actor_t> service;
@@ -765,7 +765,7 @@ void
 context_t::bootstrap() {
     blackhole::scoped_attributes_t guard(
         *m_logger,
-        blackhole::log::attributes_t({ cocaine::keyword::source() = "bootstrap" })
+        blackhole::log::attributes_t({ logging::keyword::source() = "bootstrap" })
     );
 
     auto pool = boost::thread::hardware_concurrency() * 2;

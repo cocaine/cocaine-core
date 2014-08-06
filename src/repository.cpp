@@ -33,7 +33,7 @@ namespace fs = boost::filesystem;
 
 repository_t::repository_t(logging::logger_t& logger):
     m_log(new logging::log_t(logger, blackhole::log::attributes_t({
-        keyword::source() = "repository"
+        logging::keyword::source() = "repository"
     })))
 {
     if(lt_dlinit() != 0) {

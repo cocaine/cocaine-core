@@ -29,11 +29,11 @@
 #include <blackhole/keyword.hpp>
 #include <blackhole/logger/wrapper.hpp>
 
-namespace cocaine {
+namespace cocaine { namespace logging {
 
 DECLARE_KEYWORD(source, std::string)
 
-} // namespace cocaine
+}} // namespace cocaine::logging
 
 #define COCAINE_LOG(_log_, _level_, ...) \
     if(auto record = (_log_)->open_record(_level_)) \
