@@ -76,7 +76,7 @@ public:
 
     configuration&
     operator=(configuration&& other) {
-        m_storage = std::move(other.std::move(other.m_name));
+        m_storage = std::move(other.m_storage);
         m_name = std::move(other.m_name);
         m_cluster = std::move(other.m_cluster);
         m_log = std::move(other.m_log);
