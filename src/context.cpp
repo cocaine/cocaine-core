@@ -239,142 +239,45 @@ struct dynamic_converter<cocaine::config_t::component_t, void> {
 
 // Helpers for dynamic_t to blackhole configuration conversion.
 
-namespace blackhole { namespace repository { namespace config { namespace adapter {
+namespace blackhole { namespace repository { namespace config {
 
-template<class Builder, class Filler>
-struct builder_visitor_t : public boost::static_visitor<> {
-    const std::string& path;
-    const std::string& name;
-
-    Builder& builder;
-
-    builder_visitor_t(const std::string& path, const std::string& name, Builder& builder) :
-        path(path),
-        name(name),
-        builder(builder)
-    { }
-
-    void
-    operator()(const dynamic_t::null_t&) {
-        throw blackhole::error_t("both null and array parsing is not supported");
-    }
-
-    template<typename T>
-    void
-    operator()(const T& value) {
-        builder[name] = value;
-    }
-
-    void
-    operator()(const dynamic_t::array_t&) {
-        throw blackhole::error_t("both null and array parsing is not supported");
-    }
-
-    void
-    operator()(const dynamic_t::object_t& value) {
-        auto nested_builder = builder[name];
-        Filler::fill(nested_builder, value, path + "/" + name);
-    }
-};
-
+// Converter adapter specializations for dynamic value.
 template<>
-struct array_traits<dynamic_t> {
-    typedef dynamic_t value_type;
-    typedef value_type::array_t::const_iterator const_iterator;
+struct transformer_t<cocaine::dynamic_t> {
+    typedef cocaine::dynamic_t value_type;
 
-    static
-    const_iterator
-    begin(const value_type& value) {
-        BOOST_ASSERT(value.is_array());
-        return value.as_array().begin();
-    }
-
-    static
-    const_iterator
-    end(const value_type& value) {
-        BOOST_ASSERT(value.is_array());
-        return value.as_array().end();
-    }
-};
-
-template<>
-struct object_traits<dynamic_t> {
-    typedef dynamic_t value_type;
-    typedef value_type::object_t::const_iterator const_iterator;
-
-    static
-    const_iterator
-    begin(const value_type& value) {
-        BOOST_ASSERT(value.is_object());
-        return value.as_object().begin();
-    }
-
-    static
-    const_iterator
-    end(const value_type& value) {
-        BOOST_ASSERT(value.is_object());
-        return value.as_object().end();
-    }
-
-    static
-    std::string
-    name(const const_iterator& it) {
-        return std::string(it->first);
-    }
-
-    static
-    bool
-    has(const value_type& value, const std::string& name) {
-        BOOST_ASSERT(value.is_object());
-        auto object = value.as_object();
-        return object.find(name) != object.end();
-    }
-
-    static
-    const value_type&
-    at(const value_type& value, const std::string& name) {
-        BOOST_ASSERT(has(value, name));
-        return value.as_object()[name];
-    }
-
-    static
-    const value_type&
-    value(const const_iterator& it) {
-        return it->second;
-    }
-
-    static
-    std::string
-    as_string(const value_type& value) {
-        BOOST_ASSERT(value.is_string());
-        return value.as_string();
-    }
-};
-
-} // namespace adapter
-
-template<>
-struct filler<dynamic_t> {
-    typedef adapter::object_traits<dynamic_t> object;
-
-    template<typename T>
-    static
-    void
-    fill(T& builder, const dynamic_t& node, const std::string& path) {
-        for(auto it = object::begin(node); it != object::end(node); ++it) {
-            const auto& name = object::name(it);
-            const auto& value = object::value(it);
-
-            if(name == "type") {
-                continue;
+    static dynamic_t transform(const value_type& value) {
+        if(value.is_null()) {
+            throw blackhole::error_t("null values are not supported");
+        } else if(value.is_bool()) {
+            return value.as_bool();
+        } else if(value.is_int()) {
+            return value.as_int();
+        } else if(value.is_uint()) {
+            return value.as_uint();
+        } else if(value.is_double()) {
+            return value.as_double();
+        } else if(value.is_string()) {
+            return value.as_string();
+        } else if(value.is_array()) {
+            dynamic_t::array_t array;
+            for (auto it = value.as_array().begin(); it != value.as_array().end(); ++it) {
+                array.push_back(transformer_t<value_type>::transform(*it));
+                return array;
             }
-
-            adapter::builder_visitor_t<T, filler<dynamic_t>> visitor {
-                path, name, builder
-            };
-
-            value.apply(visitor);
+        } else if(value.is_object()) {
+            dynamic_t::object_t object;
+            for (auto it = value.as_object().begin(); it != value.as_object().end(); ++it) {
+                std::string name = it->first;
+                dynamic_t value = transformer_t<value_type>::transform(it->second);
+                object[name] = value;
+            }
+            return object;
+        } else {
+            BOOST_ASSERT(false);
         }
+
+        return dynamic_t();
     }
 };
 
@@ -401,7 +304,7 @@ struct dynamic_converter<cocaine::config_t::logging_t, void> {
             config_t::logging_t::logger_t log {
                 logmask(object.at("verbosity", defaults::log_verbosity).as_string()),
                 object.at("timestamp", defaults::log_timestamp).as_string(),
-                config::parser_t<dynamic_t, blackhole::log_config_t>::parse(it->first, loggers)
+                config::parser::adapter_t<dynamic_t, blackhole::log_config_t>::parse(it->first, loggers)
             };
 
             component.loggers[it->first] = log;
@@ -444,7 +347,7 @@ map_severity(blackhole::aux::attachable_ostringstream& stream, const logging::pr
 
     auto value = static_cast<level_type>(level);
 
-    if(value < static_cast<level_type>(sizeof(describe) / sizeof(describe[0])) && value > 0) {
+    if(value < static_cast<level_type>(sizeof(describe) / sizeof(describe[0])) && value >= 0) {
         stream << describe[value];
     } else {
         stream << value;
@@ -607,6 +510,7 @@ context_t::context_t(config_t config, const std::string& logger_backend):
 {
     // Available logging sinks.
     typedef boost::mpl::vector<
+        blackhole::sink::stream_t,
         blackhole::sink::files_t<>,
         blackhole::sink::syslog_t<logging::priorities>,
         blackhole::sink::socket_t<boost::asio::ip::tcp>,
@@ -648,7 +552,7 @@ context_t::context_t(config_t config, const std::string& logger_backend):
         // Register logger configuration with the Blackhole's repository.
         repository.add_config(logger.config);
 
-        typedef blackhole::synchronized<logging::logger_t> logger_type;
+        typedef logging::logger_t logger_type;
 
         // Create the registered logger.
         m_logger = std::make_unique<logger_type>(repository.create<logging::priorities>(logger_backend));
@@ -677,7 +581,7 @@ context_t::context_t(config_t config, std::unique_ptr<logging::logger_t>&& logge
 {
     // NOTE: The context takes the ownership of the passed logger, so it will become invalid at the
     // calling site after this call.
-    m_logger = std::make_unique<blackhole::synchronized<logging::logger_t>>(std::move(*logger));
+    m_logger = std::make_unique<logging::logger_t>(std::move(*logger));
     logger.reset();
 
 #ifdef COCAINE_ALLOW_RAFT
@@ -698,7 +602,7 @@ context_t::context_t(config_t config, std::unique_ptr<logging::logger_t>&& logge
 context_t::~context_t() {
     blackhole::scoped_attributes_t guard(
         *m_logger,
-        blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
+        blackhole::log::attributes_t({ cocaine::keyword::source() = "bootstrap" })
     );
 
     COCAINE_LOG_INFO(m_logger, "stopping the synchronization");
@@ -735,7 +639,7 @@ context_t::~context_t() {
 std::unique_ptr<logging::log_t>
 context_t::log(const std::string& source) {
     return std::make_unique<logging::log_t>(*m_logger, blackhole::log::attributes_t({
-        blackhole::keyword::source() = source
+        cocaine::keyword::source() = source
     }));
 }
 
@@ -757,7 +661,7 @@ void
 context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
     blackhole::scoped_attributes_t guard(
         *m_logger,
-        blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
+        blackhole::log::attributes_t({ cocaine::keyword::source() = "bootstrap" })
     );
 
     uint16_t port = 0;
@@ -805,7 +709,7 @@ auto
 context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
     blackhole::scoped_attributes_t guard(
         *m_logger,
-        blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
+        blackhole::log::attributes_t({ cocaine::keyword::source() = "bootstrap" })
     );
 
     std::unique_ptr<actor_t> service;
@@ -861,7 +765,7 @@ void
 context_t::bootstrap() {
     blackhole::scoped_attributes_t guard(
         *m_logger,
-        blackhole::log::attributes_t({ blackhole::keyword::source() = "bootstrap" })
+        blackhole::log::attributes_t({ cocaine::keyword::source() = "bootstrap" })
     );
 
     auto pool = boost::thread::hardware_concurrency() * 2;

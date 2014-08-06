@@ -90,7 +90,7 @@ class repository_t {
     category_map_t m_categories;
 
 public:
-    repository_t(blackhole::synchronized<logging::logger_t>& log);
+    repository_t(logging::logger_t& log);
    ~repository_t();
 
     void

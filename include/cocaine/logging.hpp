@@ -28,13 +28,16 @@
 #include <blackhole/blackhole.hpp>
 #include <blackhole/keyword.hpp>
 #include <blackhole/logger/wrapper.hpp>
-#include <blackhole/synchronized.hpp>
+
+namespace cocaine {
 
 DECLARE_KEYWORD(source, std::string)
 
+} // namespace cocaine
+
 #define COCAINE_LOG(_log_, _level_, ...) \
-    if(::blackhole::log::record_t record = (_log_)->open_record(_level_)) \
-        ::blackhole::aux::make_scoped_pump(*(_log_), record, __VA_ARGS__)
+    if(auto record = (_log_)->open_record(_level_)) \
+        ::blackhole::aux::logger::make_pusher(*(_log_), record, __VA_ARGS__)
 
 #define COCAINE_LOG_DEBUG(_log_, ...) \
     COCAINE_LOG(_log_, ::cocaine::logging::debug, __VA_ARGS__)
