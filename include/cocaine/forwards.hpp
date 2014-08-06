@@ -102,7 +102,7 @@ enum priorities: int {
 };
 
 typedef blackhole::verbose_logger_t<logging::priorities> logger_t;
-typedef blackhole::wrapper_t<blackhole::synchronized<logger_t, std::mutex>> log_t;
+typedef blackhole::wrapper_t<logger_t> log_t;
 
 }} // namespace cocaine::logging
 

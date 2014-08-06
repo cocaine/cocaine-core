@@ -35,20 +35,20 @@ logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& 
     api::service_t(context, reactor, name, args),
     dispatch<io::log_tag>(name)
 {
-    typedef blackhole::synchronized<logger_t> logger_type;
+    typedef logger_t logger_type;
 
     auto backend = args.as_object().at("backend", "core").as_string();
 
     try {
         m_logger = std::make_unique<logger_type>(blackhole::repository_t::instance().create<priorities>(backend));
-        m_logger->verbosity<priorities>(context.log(name)->log().verbosity<priorities>());
+        m_logger->verbosity(context.log(name)->log().verbosity());
     } catch(const std::out_of_range&) {
         throw cocaine::error_t("the '%s' logger is not configured", backend);
     }
 
     using namespace std::placeholders;
 
-    auto getter = static_cast<priorities(logger_type::*)()const>(&logger_type::verbosity<priorities>);
+    auto getter = static_cast<priorities(logger_type::*)()const>(&logger_type::verbosity);
     auto setter = static_cast<void(logger_type::*)(priorities)>(&logger_type::verbosity);
 
     on<io::log::emit>(std::bind(&logging_t::emit, this, _1, _2, _3, _4));
@@ -70,7 +70,7 @@ logging_t::emit(logging::priorities level, const std::string& source, const std:
     if(record.valid()) {
         record.attributes.insert(attributes.begin(), attributes.end());
         record.attributes.insert(blackhole::keyword::message() = message);
-        record.attributes.insert(blackhole::keyword::source() = source);
+        record.attributes.insert(cocaine::logging::keyword::source() = source);
 
         m_logger->push(std::move(record));
     }

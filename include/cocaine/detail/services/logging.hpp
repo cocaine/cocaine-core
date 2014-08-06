@@ -33,7 +33,7 @@ class logging_t:
     public api::service_t,
     public dispatch<io::log_tag>
 {
-    std::unique_ptr<blackhole::synchronized<logging::logger_t>> m_logger;
+    std::unique_ptr<logging::logger_t> m_logger;
 
 public:
     logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
