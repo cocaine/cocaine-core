@@ -27,14 +27,21 @@ namespace cocaine {
 
 template<class T, class Lockable = std::mutex>
 struct locked_ptr {
-    typedef T        value_type;
+    typedef T value_type;
     typedef Lockable mutex_type;
 
     locked_ptr(value_type& value_, mutex_type& mutex_): value(value_), guard(mutex_) { }
     locked_ptr(locked_ptr&& o): value(o.value), guard(std::move(o.guard)) { }
 
-    T* operator->() { return &value; }
-    T& operator* () { return  value; }
+    T*
+    operator->() {
+        return &value;
+    }
+
+    T&
+    operator*() {
+        return value;
+    }
 
 private:
     value_type& value;
@@ -43,14 +50,21 @@ private:
 
 template<class T, class Lockable>
 struct locked_ptr<const T, Lockable> {
-    typedef T        value_type;
+    typedef T value_type;
     typedef Lockable mutex_type;
 
     locked_ptr(const value_type& value_, mutex_type& mutex_): value(value_), guard(mutex_) { }
     locked_ptr(locked_ptr&& o): value(o.value), guard(std::move(o.guard)) { }
 
-    const T* operator->() const { return &value; }
-    const T& operator* () const { return  value; }
+    const T*
+    operator->() const {
+        return &value;
+    }
+
+    const T&
+    operator*() const {
+        return value;
+    }
 
 private:
     const value_type& value;
@@ -59,7 +73,7 @@ private:
 
 template<class T, class Lockable = std::mutex>
 struct synchronized {
-    typedef T        value_type;
+    typedef T value_type;
     typedef Lockable mutex_type;
 
     synchronized(): m_value() { }

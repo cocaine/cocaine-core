@@ -22,7 +22,6 @@
 #define COCAINE_STORAGE_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/dynamic.hpp"
 #include "cocaine/repository.hpp"
 #include "cocaine/traits.hpp"
 
@@ -142,12 +141,7 @@ struct category_traits<storage_t> {
             }
 
             if(!instance) {
-                instance = std::make_shared<T>(
-                    std::ref(context),
-                    name,
-                    args
-                );
-
+                instance = std::make_shared<T>(std::ref(context), name, args);
                 m_instances[name] = instance;
             }
 

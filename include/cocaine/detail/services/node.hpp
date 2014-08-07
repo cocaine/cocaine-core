@@ -22,15 +22,13 @@
 #define COCAINE_NODE_SERVICE_HPP
 
 #include "cocaine/api/service.hpp"
-#include "cocaine/api/storage.hpp"
 
 #include "cocaine/detail/services/node/forwards.hpp"
 
 #include "cocaine/idl/node.hpp"
+#include "cocaine/rpc/dispatch.hpp"
 
 #include "cocaine/locked_ptr.hpp"
-
-#include "cocaine/rpc/dispatch.hpp"
 
 namespace cocaine { namespace service {
 

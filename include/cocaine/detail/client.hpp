@@ -182,7 +182,7 @@ private:
 
     private:
         void
-        on_write(const io::locator::resolve::endpoint_tuple_type& endpoint,
+        on_write(const io::locator::endpoint_tuple_type& endpoint,
                  unsigned int,
                  const io::dispatch_graph_t&)
         {

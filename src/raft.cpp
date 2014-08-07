@@ -46,7 +46,7 @@ cocaine::make_error_condition(raft_errc e) {
 raft::repository_t::repository_t(context_t& context):
     m_context(context),
     m_reactor(std::make_shared<io::reactor_t>()),
-    m_id(m_context.config.network.hostname, m_context.config.network.locator),
+    m_id(m_context.config.network.hostname, 10053 /* WTF? */),
     m_active(false)
 { }
 

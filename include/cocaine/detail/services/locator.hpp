@@ -24,91 +24,91 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/idl/locator.hpp"
+#include "cocaine/api/cluster.hpp"
+#include "cocaine/api/service.hpp"
 
+#include "cocaine/idl/locator.hpp"
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/result_of.hpp"
-
-namespace ev {
-    struct io;
-    struct timer;
-}
 
 namespace cocaine {
 
 class session_t;
 
+}
+
+namespace cocaine { namespace service {
+
 class locator_t:
+    public api::service_t,
+    public api::cluster_t::interface,
     public dispatch<io::locator_tag>
 {
+    class remote_client_t;
+    class router_t;
+
     context_t& m_context;
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    // For cluster interconnections.
+    // Cluster interconnections.
     io::reactor_t& m_reactor;
 
-    // Announce receiver.
-    std::unique_ptr<io::socket<io::udp>> m_sink;
-    std::unique_ptr<ev::io> m_sink_watcher;
+    typedef result_of<io::locator::resolve>::type resolve_result_t;
+    typedef result_of<io::locator::connect>::type connect_result_t;
+    typedef result_of<io::locator::refresh>::type refresh_result_t;
 
-    typedef std::tuple<std::string, std::string, uint16_t> remote_id_t;
+    // These are remote sessions indexed by uuid. The uuid is required to easily disambiguate between
+    // different runtime instances on the same host.
+    std::map<std::string, std::shared_ptr<session_t>> m_remotes;
+    std::map<std::string, streamed<connect_result_t>> m_streams;
 
-    class remote_client_t;
-
-    // These are remote sessions indexed by endpoint and uuid. The uuid is required to easily
-    // disambiguate between different runtime instances on the same host.
-    std::map<remote_id_t, std::shared_ptr<session_t>> m_remotes;
-
-    // Remote gateway.
+    // Remoting.
     std::unique_ptr<api::gateway_t> m_gateway;
-
-    // Announce emitter.
-    std::unique_ptr<io::socket<io::udp>> m_announce;
-    std::unique_ptr<ev::timer> m_announce_timer;
-
-    class router_t;
+    std::unique_ptr<api::cluster_t> m_cluster;
 
     // Used to resolve service names against service groups based on weights and other metrics.
     std::unique_ptr<router_t> m_router;
 
 public:
-    typedef result_of<io::locator::resolve>::type resolve_result_type;
-    typedef result_of<io::locator::refresh>::type refresh_result_type;
-
-public:
-    locator_t(context_t& context, io::reactor_t& reactor);
+    locator_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
 
     virtual
    ~locator_t();
 
+    virtual
+    auto
+    prototype() -> io::basic_dispatch_t&;
+
+    // Cartel API
+
+    virtual
+    void
+    link_node(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints);
+
+    virtual
+    void
+    drop_node(const std::string& uuid);
+
 private:
-    void
-    connect();
+    auto
+    resolve(const std::string& name) const -> resolve_result_t;
 
     auto
-    resolve(const std::string& name) const -> resolve_result_type;
+    connect(const std::string& node) -> streamed<connect_result_t>;
 
     auto
-    refresh(const std::string& name) -> refresh_result_type;
-
-    // Cluster I/O
-
-    void
-    on_announce_event(ev::io&, int);
-
-    void
-    on_announce_timer(ev::timer&, int);
+    refresh(const std::string& name) -> refresh_result_t;
 
     // Synchronization
 
     void
-    on_message(const remote_id_t& node, const io::message_t& message);
+    on_message(const std::string& node, const io::message_t& message);
 
     void
-    on_failure(const remote_id_t& node, const std::error_code& ec);
+    on_failure(const std::string& node, const std::error_code& ec);
 };
 
-} // namespace cocaine
+}} // namespace cocaine::service
 
 #endif

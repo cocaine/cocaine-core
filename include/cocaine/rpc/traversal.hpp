@@ -41,15 +41,15 @@ namespace aux {
 
 template<class It, class End>
 struct traverse_impl {
-    typedef typename mpl::deref<It>::type message_type;
-    typedef event_traits<message_type> traits_type;
+    typedef typename mpl::deref<It>::type event_type;
+    typedef event_traits<event_type> traits_type;
 
     static inline
     void
     apply(dispatch_graph_t& object) {
-        object[traits_type::id] = std::make_tuple(message_type::alias(),
+        object[traits_type::id] = std::make_tuple(event_type::alias(),
          /* Detect recurrent message transitions. */
-            std::is_same<typename traits_type::dispatch_type, typename message_type::tag>::value
+            std::is_same<typename traits_type::dispatch_type, typename event_type::tag>::value
               ? boost::none
               : traverse<typename traits_type::dispatch_type>(),
             traverse<typename traits_type::upstream_type>()

@@ -30,10 +30,13 @@ class context_t;
 template<class> class dispatch;
 template<class> class upstream;
 
+struct dynamic_t;
+
 } // namespace cocaine
 
 namespace cocaine { namespace api {
 
+struct cluster_t;
 struct gateway_t;
 struct isolate_t;
 struct service_t;
@@ -56,7 +59,6 @@ struct acceptor;
 // I/O privimites
 
 struct reactor_t;
-struct chamber_t;
 
 template<class>
 struct connector;
@@ -78,6 +80,8 @@ struct message_t;
 
 class basic_dispatch_t;
 class basic_upstream_t;
+
+class chamber_t;
 
 // Messaging
 

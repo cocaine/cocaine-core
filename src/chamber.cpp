@@ -50,7 +50,7 @@ chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<io::reactor
     name(name_),
     reactor(reactor_)
 {
-    thread = std::make_unique<boost::thread>(named_runnable{ name, reactor });
+    thread = std::make_unique<boost::thread>(named_runnable{name, reactor});
 }
 
 chamber_t::~chamber_t() {

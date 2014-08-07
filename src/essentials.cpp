@@ -18,33 +18,35 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "cocaine/detail/essentials.hpp"
+
+#include "cocaine/detail/clusters/multicast.hpp"
 #include "cocaine/detail/isolates/process.hpp"
 #include "cocaine/detail/gateways/adhoc.hpp"
+#include "cocaine/detail/services/locator.hpp"
+#include "cocaine/detail/services/logging.hpp"
+#include "cocaine/detail/services/node.hpp"
+#include "cocaine/detail/services/storage.hpp"
+#include "cocaine/detail/storages/files.hpp"
 
 #ifdef COCAINE_ALLOW_RAFT
     #include "cocaine/detail/raft/control_service.hpp"
     #include "cocaine/detail/services/counter.hpp"
 #endif
 
-#include "cocaine/detail/services/logging.hpp"
-#include "cocaine/detail/services/node.hpp"
-#include "cocaine/detail/services/storage.hpp"
-#include "cocaine/detail/storages/files.hpp"
-
-#include "cocaine/detail/essentials.hpp"
-
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
+    repository.insert<cluster::multicast_t>("multicast");
     repository.insert<isolate::process_t>("process");
     repository.insert<gateway::adhoc_t>("adhoc");
+    repository.insert<service::locator_t>("locator");
+    repository.insert<service::logging_t>("logging");
+    repository.insert<service::node_t>("node");
+    repository.insert<service::storage_t>("storage");
+    repository.insert<storage::files_t>("files");
 
 #ifdef COCAINE_ALLOW_RAFT
     repository.insert<raft::control_service_t>("raft");
     repository.insert<service::counter_t>("counter");
 #endif
-
-    repository.insert<service::logging_t>("logging");
-    repository.insert<service::node_t>("node");
-    repository.insert<service::storage_t>("storage");
-    repository.insert<storage::files_t>("files");
 }

@@ -53,8 +53,7 @@ files_t::read(const std::string& collection, const std::string& key) {
         throw storage_error_t("object '%s' has not been found in '%s'", key, collection);
     }
 
-    COCAINE_LOG_DEBUG(m_log, "reading object")(
-        "key", key,
+    COCAINE_LOG_DEBUG(m_log, "reading object '%s'", key)(
         "collection", collection,
         "path", file_path
     );
@@ -95,8 +94,7 @@ files_t::write(const std::string& collection, const std::string& key, const std:
 
     const fs::path file_path(store_path / key);
 
-    COCAINE_LOG_DEBUG(m_log, "writing object")(
-        "key", key,
+    COCAINE_LOG_DEBUG(m_log, "writing object '%s'", key)(
         "collection", collection,
         "path", file_path
     );
@@ -144,8 +142,7 @@ files_t::remove(const std::string& collection, const std::string& key) {
     const auto file_path(store_path / key);
 
     if(fs::exists(file_path)) {
-        COCAINE_LOG_DEBUG(m_log, "removing object")(
-            "key", key,
+        COCAINE_LOG_DEBUG(m_log, "removing object '%s'", key)(
             "collection", collection,
             "path", file_path
         );

@@ -60,8 +60,9 @@ struct basic_factory:
 
 template<class T>
 struct plugin_traits {
-    typedef typename category_traits<typename T::category_type>::template default_factory<T>
-            factory_type;
+    typedef typename category_traits<
+        typename T::category_type
+    >::template default_factory<T> factory_type;
 };
 
 // Component repository
@@ -131,7 +132,7 @@ repository_t::get(const std::string& type, Args&&... args) {
 
 template<class T>
 void
-repository_t::insert(const std::string& type) {
+repository_t::insert(const std::string& name) {
     typedef typename T::category_type category_type;
     typedef typename plugin_traits<T>::factory_type factory_type;
 
@@ -148,14 +149,14 @@ repository_t::insert(const std::string& type) {
     const std::string id = typeid(category_type).name();
     factory_map_t& factories = m_categories[id];
 
-    if(factories.find(type) != factories.end()) {
-        throw repository_error_t("the '%s' component is a duplicate", type);
+    if(factories.find(name) != factories.end()) {
+        throw repository_error_t("the '%s' component is a duplicate", name);
     }
 
-    factories[type] = std::make_shared<factory_type>();
+    factories[name] = std::make_shared<factory_type>();
 
     COCAINE_LOG_DEBUG(m_log, "component has been registered")(
-        "component", type
+        "component", name
     );
 }
 

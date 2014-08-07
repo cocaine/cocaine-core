@@ -20,6 +20,7 @@
 
 #include "cocaine/detail/services/counter.hpp"
 
+#include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/traits/vector.hpp"

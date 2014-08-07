@@ -22,7 +22,6 @@
 #define COCAINE_GATEWAY_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/dynamic.hpp"
 #include "cocaine/repository.hpp"
 
 // TODO: Drop this.

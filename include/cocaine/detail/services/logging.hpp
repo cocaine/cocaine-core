@@ -24,7 +24,6 @@
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/idl/logging.hpp"
-
 #include "cocaine/rpc/dispatch.hpp"
 
 namespace cocaine { namespace service {

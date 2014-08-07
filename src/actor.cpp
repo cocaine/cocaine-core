@@ -99,7 +99,7 @@ actor_t::location() const -> std::vector<io::tcp::endpoint> {
 auto
 actor_t::metadata() const -> metadata_t {
     const auto port = location().front().port();
-    const auto endpoint = io::locator::resolve::endpoint_tuple_type(m_context.config.network.hostname, port);
+    const auto endpoint = io::locator::endpoint_tuple_type(m_context.config.network.hostname, port);
 
     return metadata_t(endpoint, m_prototype->versions(), m_prototype->protocol());
 }

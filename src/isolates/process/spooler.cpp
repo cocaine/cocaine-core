@@ -34,14 +34,14 @@ void
 process_t::spool() {
     std::string blob;
 
-    COCAINE_LOG_INFO(m_log, "deploying the app")("working_directory", m_working_directory);
+    COCAINE_LOG_INFO(m_log, "deploying the app")("target", m_working_directory);
 
     auto storage = api::storage(m_context, "core");
 
     try {
         blob = storage->get<std::string>("apps", m_name);
     } catch(const storage_error_t& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to fetch the app from the storage")("reason", e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to fetch the app from the storage: %s", e.what());
         throw cocaine::error_t("the '%s' app is not available", m_name);
     }
 
@@ -54,7 +54,7 @@ process_t::spool() {
         archive.deploy(m_working_directory.string());
 #endif
     } catch(const archive_error_t& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to extract the app files")("reason", e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to extract the app files: %s", e.what());
         throw cocaine::error_t("the '%s' app is not available", m_name);
     }
 }

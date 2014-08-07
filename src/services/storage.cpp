@@ -18,6 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "cocaine/api/storage.hpp"
+
 #include "cocaine/detail/services/storage.hpp"
 
 #include "cocaine/context.hpp"

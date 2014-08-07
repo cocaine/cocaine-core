@@ -45,14 +45,13 @@ adhoc_t::~adhoc_t() {
 
 auto
 adhoc_t::resolve(const std::string& name) const -> metadata_t {
-    auto lb = m_remote_services.end(),
-         ub = lb;
+    remote_service_map_t::const_iterator lb, ub;
+
+    if(!m_remote_services.count(name)) {
+        throw cocaine::error_t("the specified service is not available in the cluster");
+    }
 
     std::tie(lb, ub) = m_remote_services.equal_range(name);
-
-    if(lb == ub) {
-        throw cocaine::error_t("the specified service is not available in the group");
-    }
 
 #if defined(__clang__) || defined(HAVE_GCC46)
     std::uniform_int_distribution<int> distribution(0, std::distance(lb, ub) - 1);
@@ -64,13 +63,9 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
 
     const auto endpoint = std::get<0>(lb->second.meta);
 
-    COCAINE_LOG_DEBUG(
-        m_log,
-        "providing '%s' using remote node '%s' on %s:%d",
-        name,
-        lb->second.uuid,
-        std::get<0>(endpoint),
-        std::get<1>(endpoint)
+    COCAINE_LOG_DEBUG(m_log, "providing service using remote node", std::get<0>(endpoint), std::get<1>(endpoint))(
+        "service", name,
+        "uuid", lb->second.uuid
     );
 
     return lb->second.meta;
@@ -78,8 +73,6 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
 
 void
 adhoc_t::consume(const std::string& uuid, const std::string& name, const metadata_t& meta) {
-    COCAINE_LOG_DEBUG(m_log, "consumed node")("service", name, "uuid", uuid);
-
     m_remote_services.insert({
         name,
         remote_service_t { uuid, meta }
@@ -88,8 +81,6 @@ adhoc_t::consume(const std::string& uuid, const std::string& name, const metadat
 
 void
 adhoc_t::cleanup(const std::string& uuid, const std::string& name) {
-    COCAINE_LOG_DEBUG(m_log, "removing node")("service", name, "uuid", uuid);
-
     remote_service_map_t::iterator it, end;
 
     std::tie(it, end) = m_remote_services.equal_range(name);

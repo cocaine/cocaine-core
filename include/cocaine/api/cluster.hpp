@@ -18,48 +18,57 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_SERVICE_API_HPP
-#define COCAINE_SERVICE_API_HPP
+#ifndef COCAINE_CLUSTER_API_HPP
+#define COCAINE_CLUSTER_API_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
+#include <boost/asio/ip/tcp.hpp>
+
 namespace cocaine { namespace api {
 
-struct service_t {
-    typedef service_t category_type;
+struct cluster_t {
+    typedef cluster_t category_type;
+
+    struct interface {
+        virtual
+        void
+        link_node(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints) = 0;
+
+        virtual
+        void
+        drop_node(const std::string& uuid) = 0;
+    };
 
     virtual
-   ~service_t() {
+   ~cluster_t() {
         // Empty.
     }
 
-    virtual
-    auto
-    prototype() -> io::basic_dispatch_t& = 0;
-
 protected:
-    service_t(context_t&, io::reactor_t&, const std::string& /* name */, const dynamic_t& /* args */) {
+    cluster_t(context_t&, interface&, const std::string& /* name */, const dynamic_t& /* args */) {
         // Empty.
     }
 };
 
 template<>
-struct category_traits<service_t> {
-    typedef std::unique_ptr<service_t> ptr_type;
+struct category_traits<cluster_t> {
+    typedef std::unique_ptr<cluster_t> ptr_type;
+    typedef cluster_t::interface interface;
 
-    struct factory_type: public basic_factory<service_t> {
+    struct factory_type: public basic_factory<cluster_t> {
         virtual
         ptr_type
-        get(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args) = 0;
+        get(context_t& context, interface& locator, const std::string& name, const dynamic_t& args) = 0;
     };
 
     template<class T>
     struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args) {
-            return ptr_type(new T(context, reactor, name, args));
+        get(context_t& context, interface& locator, const std::string& name, const dynamic_t& args) {
+            return ptr_type(new T(context, locator, name, args));
         }
     };
 };

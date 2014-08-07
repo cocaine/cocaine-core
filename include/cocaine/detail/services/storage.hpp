@@ -22,10 +22,8 @@
 #define COCAINE_STORAGE_SERVICE_HPP
 
 #include "cocaine/api/service.hpp"
-#include "cocaine/api/storage.hpp"
 
 #include "cocaine/idl/storage.hpp"
-
 #include "cocaine/rpc/dispatch.hpp"
 
 namespace cocaine { namespace service {
