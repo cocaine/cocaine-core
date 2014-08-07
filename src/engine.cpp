@@ -49,12 +49,12 @@ execution_unit_t::~execution_unit_t() {
 }
 
 void
-execution_unit_t::attach(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::basic_dispatch_t>& dispatch) {
+execution_unit_t::attach(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
     m_reactor->post(std::bind(&execution_unit_t::on_connect, this, socket, dispatch));
 }
 
 void
-execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<io::basic_dispatch_t>& dispatch) {
+execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
     auto fd = socket->fd();
 
     // Make sure that the fd wasn't reused before it was actually processed for disconnection.

@@ -96,7 +96,7 @@ node_t::~node_t() {
 }
 
 auto
-node_t::prototype() -> basic_dispatch_t& {
+node_t::prototype() const -> const basic_dispatch_t& {
     return *this;
 }
 

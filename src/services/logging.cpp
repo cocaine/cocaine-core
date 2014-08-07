@@ -57,7 +57,7 @@ logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& 
 }
 
 auto
-logging_t::prototype() -> basic_dispatch_t& {
+logging_t::prototype() const -> const basic_dispatch_t& {
     return *this;
 }
 

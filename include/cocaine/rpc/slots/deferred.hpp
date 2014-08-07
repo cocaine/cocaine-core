@@ -50,7 +50,7 @@ struct deferred_slot:
     { }
 
     virtual
-    std::shared_ptr<dispatch_type>
+    boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
             const T<R> result = this->call(args);
@@ -64,8 +64,8 @@ struct deferred_slot:
             upstream.template send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
 
-        // Return an empty protocol dispatch.
-        return std::shared_ptr<dispatch_type>();
+        // Return a corresponding protocol dispatch.
+        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
     }
 };
 
@@ -111,10 +111,8 @@ struct deferred {
     { }
 
     template<class U>
-    void
-    write(U&& value,
-          typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type* = nullptr)
-    {
+    typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type
+    write(U&& value) {
         auto locked = (*queue).synchronize();
 
         locked->template append<typename protocol::chunk>(std::forward<U>(value));

@@ -109,7 +109,7 @@ locator_t::~locator_t() {
 }
 
 auto
-locator_t::prototype() -> basic_dispatch_t& {
+locator_t::prototype() const -> const basic_dispatch_t& {
     return *this;
 }
 
@@ -188,7 +188,7 @@ private:
 };
 
 void
-locator_t::link_node(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints) {
+locator_t::link_node_impl(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints) {
     std::unique_ptr<io::channel<io::socket<io::tcp>>> channel;
 
     for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
@@ -234,7 +234,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<boost::asio::ip:
 }
 
 void
-locator_t::drop_node(const std::string& uuid) {
+locator_t::drop_node_impl(const std::string& uuid) {
     if(m_remotes.find(uuid) == m_remotes.end()) {
         return;
     }
@@ -251,6 +251,16 @@ locator_t::drop_node(const std::string& uuid) {
 
     m_remotes[uuid]->detach();
     m_remotes.erase(uuid);
+}
+
+void
+locator_t::link_node(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints) {
+    m_reactor.post(std::bind(&locator_t::link_node_impl, this, uuid, endpoints));
+}
+
+void
+locator_t::drop_node(const std::string& uuid) {
+    m_reactor.post(std::bind(&locator_t::drop_node_impl, this, uuid));
 }
 
 auto
@@ -348,5 +358,5 @@ locator_t::on_failure(const std::string& uuid, const std::error_code& ec) {
         );
     }
 
-    drop_node(uuid);
+    drop_node_impl(uuid);
 }

@@ -39,7 +39,7 @@ class session_t:
     std::mutex mutex;
 
     // Initial dispatch.
-    const std::shared_ptr<io::basic_dispatch_t> prototype;
+    const std::shared_ptr<const io::basic_dispatch_t> prototype;
 
     // Virtual channels.
     typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
@@ -56,13 +56,13 @@ public:
     friend class io::basic_upstream_t;
 
     session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr,
-              const std::shared_ptr<io::basic_dispatch_t>& prototype = std::shared_ptr<io::basic_dispatch_t>());
+              const std::shared_ptr<const io::basic_dispatch_t>& prototype = std::shared_ptr<const io::basic_dispatch_t>());
 
     void
     invoke(const io::message_t& message);
 
     std::shared_ptr<io::basic_upstream_t>
-    invoke(const std::shared_ptr<io::basic_dispatch_t>& dispatch);
+    invoke(const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
 
     void
     detach();

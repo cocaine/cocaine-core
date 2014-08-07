@@ -27,11 +27,11 @@ using namespace cocaine;
 using namespace cocaine::io;
 
 class session_t::channel_t {
-    std::shared_ptr<basic_dispatch_t> dispatch;
+    std::shared_ptr<const basic_dispatch_t> dispatch;
     std::shared_ptr<basic_upstream_t> upstream;
 
 public:
-    channel_t(const std::shared_ptr<basic_dispatch_t>& dispatch_, const std::shared_ptr<basic_upstream_t>& upstream_):
+    channel_t(const std::shared_ptr<const basic_dispatch_t>& dispatch_, const std::shared_ptr<basic_upstream_t>& upstream_):
         dispatch(dispatch_),
         upstream(upstream_)
     { }
@@ -40,10 +40,10 @@ public:
     invoke(const message_t& message) {
         if(!dispatch) {
             // TODO: COCAINE-82 adds a 'client' error category.
-            throw cocaine::error_t("dispatch has been deactivated");
+            throw cocaine::error_t("no dispatch has been assigned");
         }
 
-        if((dispatch = dispatch->invoke(message, upstream)) == nullptr) {
+        if((dispatch = dispatch->call(message, upstream).get_value_or(dispatch)) == nullptr) {
             // NOTE: If the client has sent us the last message according to the dispatch graph, then
             // revoke the channel.
             upstream->revoke();
@@ -51,7 +51,7 @@ public:
     }
 };
 
-session_t::session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<io::basic_dispatch_t>& prototype_):
+session_t::session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<const io::basic_dispatch_t>& prototype_):
     ptr(std::move(ptr_)),
     prototype(prototype_),
     max_channel(0)
@@ -99,7 +99,7 @@ session_t::invoke(const message_t& message) {
 }
 
 std::shared_ptr<basic_upstream_t>
-session_t::invoke(const std::shared_ptr<io::basic_dispatch_t>& dispatch) {
+session_t::invoke(const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
     auto locked = channels.synchronize();
 
     auto index = ++max_channel;

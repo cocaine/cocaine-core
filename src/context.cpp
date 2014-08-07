@@ -623,7 +623,7 @@ context_t::locate(const std::string& name) const -> boost::optional<actor_t&> {
 }
 
 void
-context_t::attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<io::basic_dispatch_t>& dispatch) {
+context_t::attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
     m_pool[ptr->fd() % m_pool.size()]->attach(ptr, dispatch);
 }
 

@@ -78,7 +78,7 @@ public:
 
     virtual
     auto
-    prototype() -> io::basic_dispatch_t&;
+    prototype() const -> const io::basic_dispatch_t&;
 
     // Cartel API
 
@@ -91,6 +91,12 @@ public:
     drop_node(const std::string& uuid);
 
 private:
+    void
+    link_node_impl(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints);
+
+    void
+    drop_node_impl(const std::string& uuid);
+
     auto
     resolve(const std::string& name) const -> resolve_result_t;
 

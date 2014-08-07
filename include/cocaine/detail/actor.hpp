@@ -46,7 +46,7 @@ class actor_t {
     // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
     // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
     // after the authentication process completes successfully.
-    std::shared_ptr<io::basic_dispatch_t> m_prototype;
+    std::shared_ptr<const io::basic_dispatch_t> m_prototype;
 
     // I/O connectors. Actors have a separate thread to accept new connections. After a connection
     // is accepted, it is assigned on a random thread from the main thread pool.
@@ -56,8 +56,8 @@ class actor_t {
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:
-    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t> prototype);
-    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t> service);
+    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<const io::basic_dispatch_t> prototype);
+    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<const api::service_t> service);
 
    ~actor_t();
 

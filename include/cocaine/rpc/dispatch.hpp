@@ -65,9 +65,11 @@ public:
     name() const -> std::string;
 
 public:
+    typedef boost::optional<std::shared_ptr<const basic_dispatch_t>> transition_t;
+
     virtual
-    std::shared_ptr<basic_dispatch_t>
-    invoke(const message_t& message, const std::shared_ptr<basic_upstream_t>& upstream) const = 0;
+    transition_t
+    call(const message_t& message, const std::shared_ptr<basic_upstream_t>& upstream) const = 0;
 
     virtual
     auto
@@ -77,6 +79,8 @@ public:
     int
     versions() const = 0;
 };
+
+typedef basic_dispatch_t::transition_t transition_t;
 
 } // namespace io
 
@@ -143,8 +147,8 @@ public:
 
 public:
     virtual
-    std::shared_ptr<io::basic_dispatch_t>
-    invoke(const io::message_t& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const;
+    io::transition_t
+    call(const io::message_t& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const;
 
     virtual
     auto
@@ -180,25 +184,28 @@ struct select<streamed<R>, Event> {
 
 // Slot invocation with arguments provided as a MessagePack object
 
-struct invocation_visitor_t:
-    public boost::static_visitor<std::shared_ptr<io::basic_dispatch_t>>
+struct calling_visitor_t:
+    public boost::static_visitor<io::transition_t>
 {
-    invocation_visitor_t(const msgpack::object& unpacked_, const std::shared_ptr<io::basic_upstream_t>& upstream_):
+    calling_visitor_t(const msgpack::object& unpacked_, const std::shared_ptr<io::basic_upstream_t>& upstream_):
         unpacked(unpacked_),
         upstream(upstream_)
     { }
 
     template<class Event>
-    std::shared_ptr<typename io::basic_slot<Event>::dispatch_type>
+    result_type
     operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
-        typename io::basic_slot<Event>::tuple_type args;
+        typedef io::basic_slot<Event> slot_type;
+
+        // Unpacked arguments storage.
+        typename slot_type::tuple_type args;
 
         // Unpacks the object into a tuple using the message typelist as opposed to using the plain
         // tuple type traits, in order to support parameter tags, like optional<T>.
         io::type_traits<typename io::event_traits<Event>::tuple_type>::unpack(unpacked, args);
 
         // Call the slot with the upstream constrained using the event's drain protocol type tag.
-        return (*slot)(std::move(args), typename io::basic_slot<Event>::upstream_type(upstream));
+        return result_type((*slot)(std::move(args), typename slot_type::upstream_type(upstream)));
     }
 
 private:
@@ -266,9 +273,9 @@ dispatch<Tag>::forget() {
 }
 
 template<class Tag>
-std::shared_ptr<io::basic_dispatch_t>
-dispatch<Tag>::invoke(const io::message_t& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const {
-    return invoke(message.id(), aux::invocation_visitor_t(message.args(), upstream));
+io::transition_t
+dispatch<Tag>::call(const io::message_t& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const {
+    return invoke(message.id(), aux::calling_visitor_t(message.args(), upstream));
 }
 
 } // namespace cocaine

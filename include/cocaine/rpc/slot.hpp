@@ -45,7 +45,7 @@ public:
     >::type sequence_type;
 
     // Detect if the event is recursive or not.
-    typedef std::is_same<typename traits_type::dispatch_type, typename event_type::tag> recursive;
+    typedef boost::is_same<typename traits_type::dispatch_type, typename event_type::tag> recursive;
 
     virtual
    ~basic_slot() {
@@ -60,7 +60,7 @@ public:
     typedef upstream<typename traits_type::upstream_type> upstream_type;
 
     virtual
-    std::shared_ptr<dispatch_type>
+    boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) = 0;
 
 public:

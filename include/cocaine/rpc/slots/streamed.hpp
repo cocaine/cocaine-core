@@ -39,10 +39,8 @@ struct streamed {
     { }
 
     template<class U>
-    void
-    write(U&& value,
-          typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type* = nullptr)
-    {
+    typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type
+    write(U&& value) {
         (*queue)->template append<typename protocol::chunk>(std::forward<U>(value));
     }
 

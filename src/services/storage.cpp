@@ -42,6 +42,6 @@ storage_t::storage_t(context_t& context, reactor_t& reactor, const std::string& 
 }
 
 auto
-storage_t::prototype() -> basic_dispatch_t& {
+storage_t::prototype() const -> const basic_dispatch_t& {
     return *this;
 }

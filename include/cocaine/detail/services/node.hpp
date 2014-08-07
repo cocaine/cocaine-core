@@ -56,7 +56,7 @@ public:
 
     virtual
     auto
-    prototype() -> io::basic_dispatch_t&;
+    prototype() const -> const io::basic_dispatch_t&;
 
 private:
     dynamic_t
