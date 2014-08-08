@@ -36,17 +36,14 @@
 
 using namespace cocaine;
 
-actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<const io::basic_dispatch_t> prototype):
+actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t> prototype):
     m_context(context),
     m_log(context.log(prototype->name())),
-    m_reactor(reactor)
-{
-    m_prototype = std::shared_ptr<const io::basic_dispatch_t>(
-        std::move(prototype)
-    );
-}
+    m_reactor(reactor),
+    m_prototype(std::move(prototype))
+{ }
 
-actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<const api::service_t> service):
+actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t> service):
     m_context(context),
     m_log(context.log(service->prototype().name())),
     m_reactor(reactor)
@@ -55,7 +52,7 @@ actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std
 
     // Aliasing the pointer to the service to point to the dispatch (sub-)object.
     m_prototype = std::shared_ptr<const io::basic_dispatch_t>(
-        std::shared_ptr<const api::service_t>(std::move(service)),
+        std::shared_ptr<api::service_t>(std::move(service)),
         prototype
     );
 }

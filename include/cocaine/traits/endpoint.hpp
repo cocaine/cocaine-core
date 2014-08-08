@@ -49,7 +49,7 @@ struct type_traits<boost::asio::ip::basic_endpoint<InternetProtocol>> {
         std::string address;
         uint16_t port;
 
-        type_traits<tuple_type>::unpack(source, std::tie(address, port));
+        type_traits<tuple_type>::unpack(source, std::move(std::tie(address, port)));
 
         target.address(boost::asio::ip::address::from_string(address));
         target.port(port);

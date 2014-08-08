@@ -245,7 +245,7 @@ app_t::start() {
     m_context.insert(m_manifest->name, std::make_unique<actor_t>(
         m_context,
         std::make_shared<reactor_t>(),
-        std::unique_ptr<const basic_dispatch_t>(new app_service_t(m_manifest->name, *this))
+        std::make_unique<app_service_t>(m_manifest->name, *this)
     ));
 
     COCAINE_LOG_INFO(m_log, "the engine has started");

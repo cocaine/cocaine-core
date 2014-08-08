@@ -132,9 +132,9 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
 
     auto packet = std::make_shared<packet_t>();
 
-    m_socket.async_receive_from(boost::asio::buffer(packet->buffer), packet->origin, std::bind(
-        &multicast_t::receive, this, std::placeholders::_1, std::placeholders::_2, packet
-    ));
+    m_socket.async_receive_from(boost::asio::buffer(packet->buffer.data(), packet->buffer.size()), packet->origin,
+        std::bind(&multicast_t::receive, this, std::placeholders::_1, std::placeholders::_2, packet)
+    );
 
     m_timer.expires_from_now(m_config.interval);
     m_timer.async_wait(std::bind(&multicast_t::publish, this, std::placeholders::_1));
@@ -235,7 +235,7 @@ multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std
 
     auto packet = std::make_shared<packet_t>();
 
-    m_socket.async_receive_from(boost::asio::buffer(packet->buffer), packet->origin,
+    m_socket.async_receive_from(boost::asio::buffer(packet->buffer.data(), packet->buffer.size()), packet->origin,
         std::bind(&multicast_t::receive, this, std::placeholders::_1, std::placeholders::_2, packet)
     );
 }
