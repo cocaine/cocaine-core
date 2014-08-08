@@ -480,13 +480,9 @@ context_t::context_t(config_t config_, const std::string& logger_backend):
 
 context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger):
     m_port_mapping(config_),
+    m_logger(std::move(logger)),
     config(config_)
 {
-    // NOTE: The context takes the ownership of the passed logger, so it will become invalid at the
-    // calling site after this call.
-    m_logger = std::make_unique<logging::logger_t>(std::move(*logger));
-    logger.reset();
-
     bootstrap();
 }
 
