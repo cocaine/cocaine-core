@@ -22,7 +22,6 @@
 #define COCAINE_SERVICE_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/dynamic.hpp"
 #include "cocaine/repository.hpp"
 
 namespace cocaine { namespace api {
@@ -37,7 +36,7 @@ struct service_t {
 
     virtual
     auto
-    prototype() -> io::basic_dispatch_t& = 0;
+    prototype() const -> const io::basic_dispatch_t& = 0;
 
 protected:
     service_t(context_t&, io::reactor_t&, const std::string& /* name */, const dynamic_t& /* args */) {

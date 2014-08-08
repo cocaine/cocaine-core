@@ -18,6 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "cocaine/api/storage.hpp"
+
 #include "cocaine/detail/services/node.hpp"
 #include "cocaine/detail/services/node/app.hpp"
 
@@ -94,7 +96,7 @@ node_t::~node_t() {
 }
 
 auto
-node_t::prototype() -> basic_dispatch_t& {
+node_t::prototype() const -> const basic_dispatch_t& {
     return *this;
 }
 

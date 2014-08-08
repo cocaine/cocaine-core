@@ -48,9 +48,10 @@ actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std
     m_log(context.log(service->prototype().name())),
     m_reactor(reactor)
 {
-    io::basic_dispatch_t *const prototype = &service->prototype();
+    const io::basic_dispatch_t* prototype = &service->prototype();
 
-    m_prototype = std::shared_ptr<io::basic_dispatch_t>(
+    // Aliasing the pointer to the service to point to the dispatch (sub-)object.
+    m_prototype = std::shared_ptr<const io::basic_dispatch_t>(
         std::shared_ptr<api::service_t>(std::move(service)),
         prototype
     );
@@ -98,7 +99,7 @@ actor_t::location() const -> std::vector<io::tcp::endpoint> {
 auto
 actor_t::metadata() const -> metadata_t {
     const auto port = location().front().port();
-    const auto endpoint = io::locator::resolve::endpoint_tuple_type(m_context.config.network.hostname, port);
+    const auto endpoint = io::locator::endpoint_tuple_type(m_context.config.network.hostname, port);
 
     return metadata_t(endpoint, m_prototype->versions(), m_prototype->protocol());
 }

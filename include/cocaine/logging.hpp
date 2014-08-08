@@ -22,7 +22,6 @@
 #define COCAINE_LOGGING_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/memory.hpp"
 
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <blackhole/blackhole.hpp>

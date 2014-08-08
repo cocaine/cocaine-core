@@ -81,7 +81,7 @@ public:
     template<class Event, class... Args>
     std::shared_ptr<io::basic_upstream_t>
     call(const std::shared_ptr<io::basic_dispatch_t>& handler, Args&&... args) {
-        auto dispatch = std::is_same<typename io::event_traits<Event>::drain_type, void>::value ?
+        auto dispatch = std::is_same<typename io::event_traits<Event>::upstream_type, void>::value ?
                         std::shared_ptr<io::basic_dispatch_t>() :
                         handler;
         auto upstream = m_session->invoke(dispatch);
@@ -163,11 +163,11 @@ public:
 
 private:
     class resolve_dispatch_t :
-        public dispatch<io::locator::resolve::drain_type>
+        public dispatch<io::locator::resolve::upstream_type>
     {
     public:
         resolve_dispatch_t(service_resolver_t &resolver):
-            dispatch<io::locator::resolve::drain_type>("resolve"),
+            dispatch<io::locator::resolve::upstream_type>("resolve"),
             m_resolver(resolver)
         {
             using namespace std::placeholders;
@@ -181,7 +181,7 @@ private:
 
     private:
         void
-        on_write(const io::locator::resolve::endpoint_tuple_type& endpoint,
+        on_write(const io::locator::endpoint_tuple_type& endpoint,
                  unsigned int,
                  const io::dispatch_graph_t&)
         {

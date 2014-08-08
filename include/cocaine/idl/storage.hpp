@@ -52,7 +52,7 @@ struct read {
      /* The stored value. Typically it will be serialized with msgpack, but it's not a strict
         requirement. But as there's no way to know the format, try to unpack it anyway. */
         std::string
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct write {
@@ -115,7 +115,7 @@ struct find {
     typedef stream_of<
      /* A list of all the keys in the given key namespace. */
         std::vector<std::string>
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 }; // struct storage

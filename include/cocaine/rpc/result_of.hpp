@@ -42,19 +42,18 @@ struct result_of_impl;
 template<class T>
 struct result_of_impl<streaming_tag<T>> {
     template<class U, size_t = mpl::size<U>::value>
-    struct result_type {
+    struct stream_element_type {
         typedef typename tuple::fold<U>::type type;
     };
 
     template<class U>
-    struct result_type<U, 1> {
+    struct stream_element_type<U, 1> {
         typedef typename mpl::front<U>::type type;
     };
 
     // In case there's only one type in the typelist, leave it as it is. Otherwise form a tuple out
     // of all the types in the typelist.
-
-    typedef typename result_type<T>::type type;
+    typedef typename stream_element_type<T>::type type;
 };
 
 template<>
@@ -64,6 +63,7 @@ struct result_of_impl<streaming_tag<void>> {
 
 template<>
 struct result_of_impl<void> {
+    // No messages will follow an invocation of this slot.
     typedef terminal_slot_tag type;
 };
 
@@ -72,7 +72,7 @@ struct result_of_impl<void> {
 template<class Event>
 struct result_of<Event, typename depend<typename Event::tag>::type> {
     typedef typename io::aux::result_of_impl<
-        typename io::event_traits<Event>::drain_type
+        typename io::event_traits<Event>::upstream_type
     >::type type;
 };
 

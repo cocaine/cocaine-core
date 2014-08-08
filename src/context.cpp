@@ -24,12 +24,11 @@
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/asio/reactor.hpp"
-#include "cocaine/asio/resolver.hpp"
 
 #include "cocaine/detail/actor.hpp"
+#include "cocaine/detail/bootstrap/logging.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
-#include "cocaine/detail/locator.hpp"
 
 #ifdef COCAINE_ALLOW_RAFT
     #include "cocaine/detail/raft/repository.hpp"
@@ -37,39 +36,28 @@
     #include "cocaine/detail/raft/control_service.hpp"
 #endif
 
-#include "cocaine/detail/unique_id.hpp"
-
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
-#include <cstring>
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 
-#include <netdb.h>
-
 #include "rapidjson/reader.h"
 
-#include <blackhole/detail/datetime.hpp>
 #include <blackhole/formatter/json.hpp>
 #include <blackhole/frontend/files.hpp>
 #include <blackhole/frontend/syslog.hpp>
-#include <blackhole/repository/config/base.hpp>
-#include <blackhole/repository/config/log.hpp>
-#include <blackhole/repository/config/parser.hpp>
 #include <blackhole/scoped_attributes.hpp>
 #include <blackhole/sink/socket.hpp>
 
 using namespace cocaine;
 using namespace cocaine::io;
 
-using namespace std::placeholders;
-
 namespace fs = boost::filesystem;
-
-#include "synchronization.inl"
 
 namespace {
 
@@ -217,77 +205,25 @@ private:
 
 } // namespace
 
-// Config
-
 namespace cocaine {
 
 template<>
-struct dynamic_converter<cocaine::config_t::component_t, void> {
-    typedef cocaine::config_t::component_t result_type;
+struct dynamic_converter<config_t::component_t> {
+    typedef config_t::component_t result_type;
 
     static
     result_type
     convert(const dynamic_t& from) {
-        return cocaine::config_t::component_t {
+        return config_t::component_t {
             from.as_object().at("type", "unspecified").as_string(),
-            from.as_object().at("args", dynamic_t::empty_object)
+            from.as_object().at("args", dynamic_t::object_t())
         };
     }
 };
 
-} // namespace cocaine
-
-// Helpers for dynamic_t to blackhole configuration conversion.
-
-namespace blackhole { namespace repository { namespace config {
-
-// Converter adapter specializations for dynamic value.
 template<>
-struct transformer_t<cocaine::dynamic_t> {
-    typedef cocaine::dynamic_t value_type;
-
-    static dynamic_t transform(const value_type& value) {
-        if(value.is_null()) {
-            throw blackhole::error_t("null values are not supported");
-        } else if(value.is_bool()) {
-            return value.as_bool();
-        } else if(value.is_int()) {
-            return value.as_int();
-        } else if(value.is_uint()) {
-            return value.as_uint();
-        } else if(value.is_double()) {
-            return value.as_double();
-        } else if(value.is_string()) {
-            return value.as_string();
-        } else if(value.is_array()) {
-            dynamic_t::array_t array;
-            for (auto it = value.as_array().begin(); it != value.as_array().end(); ++it) {
-                array.push_back(transformer_t<value_type>::transform(*it));
-                return array;
-            }
-        } else if(value.is_object()) {
-            dynamic_t::object_t object;
-            for (auto it = value.as_object().begin(); it != value.as_object().end(); ++it) {
-                std::string name = it->first;
-                dynamic_t value = transformer_t<value_type>::transform(it->second);
-                object[name] = value;
-            }
-            return object;
-        } else {
-            BOOST_ASSERT(false);
-        }
-
-        return dynamic_t();
-    }
-};
-
-}}} // namespace blackhole::repository::config
-
-namespace cocaine {
-
-template<>
-struct dynamic_converter<cocaine::config_t::logging_t, void> {
-    typedef cocaine::config_t::logging_t result_type;
+struct dynamic_converter<config_t::logging_t> {
+    typedef config_t::logging_t result_type;
 
     static
     result_type
@@ -299,7 +235,7 @@ struct dynamic_converter<cocaine::config_t::logging_t, void> {
             using namespace blackhole::repository;
 
             auto object = it->second.as_object();
-            auto loggers = object.at("loggers", dynamic_t::empty_array);
+            auto loggers = object.at("loggers", dynamic_t::array_t());
 
             config_t::logging_t::logger_t log {
                 logmask(object.at("verbosity", defaults::log_verbosity).as_string()),
@@ -330,68 +266,16 @@ struct dynamic_converter<cocaine::config_t::logging_t, void> {
 
 } // namespace cocaine
 
-namespace {
+config_t::config_t(const std::string& path_) {
+    path.configuration = path_;
 
-// Severity attribute converter from enumeration underlying type into string.
+    const auto configuration_file_status = fs::status(path.configuration);
 
-void
-map_severity(blackhole::aux::attachable_ostringstream& stream, const logging::priorities& level) {
-    static const char* describe[] = {
-        "DEBUG",
-        "INFO",
-        "WARNING",
-        "ERROR"
-    };
-
-    typedef blackhole::aux::underlying_type<logging::priorities>::type level_type;
-
-    auto value = static_cast<level_type>(level);
-
-    if(value < static_cast<level_type>(sizeof(describe) / sizeof(describe[0])) && value >= 0) {
-        stream << describe[value];
-    } else {
-        stream << value;
-    }
-}
-
-} // namespace
-
-// Mapping trait that is called by Blackhole each time when syslog mapping is required.
-
-namespace blackhole { namespace sink {
-
-template<>
-struct priority_traits<logging::priorities> {
-    static priority_t map(logging::priorities level) {
-        switch (level) {
-        case logging::debug:
-            return priority_t::debug;
-        case logging::info:
-            return priority_t::info;
-        case logging::warning:
-            return priority_t::warning;
-        case logging::error:
-            return priority_t::err;
-        default:
-            return priority_t::debug;
-        }
-
-        return priority_t::debug;
-    }
-};
-
-}} // namespace blackhole::sink
-
-config_t::config_t(const std::string& config_path) {
-    path.config = config_path;
-
-    const auto config_file_status = fs::status(path.config);
-
-    if(!fs::exists(config_file_status) || !fs::is_regular_file(config_file_status)) {
+    if(!fs::exists(configuration_file_status) || !fs::is_regular_file(configuration_file_status)) {
         throw cocaine::error_t("the configuration file path is invalid");
     }
 
-    fs::ifstream stream(path.config);
+    fs::ifstream stream(path.configuration);
 
     if(!stream) {
         throw cocaine::error_t("unable to read the configuration file");
@@ -399,10 +283,11 @@ config_t::config_t(const std::string& config_path) {
 
     rapidjson::MemoryPoolAllocator<> json_allocator;
     rapidjson::Reader json_reader(&json_allocator);
-    rapidjson_ifstream_t config_stream(&stream);
-    dynamic_reader_t config_constructor;
+    rapidjson_ifstream_t json_stream(&stream);
 
-    if(!json_reader.Parse<rapidjson::kParseDefaultFlags>(config_stream, config_constructor)) {
+    dynamic_reader_t configuration_constructor;
+
+    if(!json_reader.Parse<rapidjson::kParseDefaultFlags>(json_stream, configuration_constructor)) {
         if(json_reader.HasParseError()) {
             throw cocaine::error_t("the configuration file is corrupted - %s", json_reader.GetParseError());
         } else {
@@ -410,19 +295,18 @@ config_t::config_t(const std::string& config_path) {
         }
     }
 
-    const dynamic_t root(config_constructor.Result());
+    const dynamic_t root(configuration_constructor.Result());
 
-    const auto &path_config    = root.as_object().at("paths", dynamic_t::empty_object).as_object();
-    const auto &locator_config = root.as_object().at("locator", dynamic_t::empty_object).as_object();
-    const auto &network_config = root.as_object().at("network", dynamic_t::empty_object).as_object();
+    // Version validation
 
-    // Validation
-
-    if(root.as_object().at("version", 0).to<unsigned int>() != 2) {
+    if(root.as_object().at("version", 0).to<unsigned int>() != 3) {
         throw cocaine::error_t("the configuration file version is invalid");
     }
 
-    // Paths
+    const auto& path_config = root.as_object().at("paths", dynamic_t::object_t()).as_object();
+    const auto& network_config = root.as_object().at("network", dynamic_t::object_t()).as_object();
+
+    // Path configuration
 
     path.plugins = path_config.at("plugins", defaults::plugins_path).as_string();
     path.runtime = path_config.at("runtime", defaults::runtime_path).as_string();
@@ -435,79 +319,111 @@ config_t::config_t(const std::string& config_path) {
         throw cocaine::error_t("the %s path is not a directory", path.runtime);
     }
 
-    // Hostname configuration
+    // Network configuration
+
+    network.pool = network_config.at("pool", boost::thread::hardware_concurrency() * 2).as_uint();
 
     char hostname[256];
 
     if(gethostname(hostname, 256) != 0) {
-        throw std::system_error(errno, std::system_category(), "unable to determine the hostname");
+        throw cocaine::error_t("unable to determine local hostname");
     }
 
-    addrinfo hints,
-             *result = nullptr;
+    boost::asio::io_service service;
+    boost::asio::ip::tcp::resolver resolver(service);
+    boost::asio::ip::tcp::resolver::iterator it, end;
 
-    std::memset(&hints, 0, sizeof(addrinfo));
-
-    hints.ai_flags = AI_CANONNAME;
-
-    const int rv = getaddrinfo(hostname, nullptr, &hints, &result);
-
-    if(rv != 0) {
-        throw std::system_error(rv, gai_category(), "unable to determine the hostname");
+    try {
+        it = resolver.resolve(boost::asio::ip::tcp::resolver::query(
+            hostname,
+            std::string(),
+            boost::asio::ip::tcp::resolver::query::canonical_name
+        ));
+    } catch(const boost::system::system_error& e) {
+        throw cocaine::error_t("unable to determine local hostname: %s", e.code());
     }
 
-    network.hostname = locator_config.at("hostname", std::string(result->ai_canonname)).as_string();
-    network.uuid     = unique_id_t().string();
+    network.hostname = network_config.at("hostname", it->host_name()).as_string();
+    network.endpoint = network_config.at("endpoint", defaults::endpoint).as_string();
 
-    freeaddrinfo(result);
-
-    // Locator configuration
-
-    network.endpoint = locator_config.at("endpoint", defaults::endpoint).as_string();
-    network.locator  = locator_config.at("port", defaults::locator_port).to<uint16_t>();
-
-    // WARNING: Now only arrays of two items are allowed.
-    auto ports = locator_config.find("port-range");
-
-    if(ports != locator_config.end()) {
-        network.ports = ports->second.to<std::tuple<uint16_t, uint16_t>>();
+    if(network_config.count("pinned")) {
+        network.pinned = network_config.at("pinned").to<decltype(network.pinned)>();
     }
 
-    // Cluster configuration
-
-    if(!network_config.empty()) {
-        if(network_config.count("group") == 1) {
-            network.group = network_config["group"].as_string();
-        }
-
-        if(network_config.count("gateway") == 1) {
-            network.gateway = {
-                network_config["gateway"].as_object().at("type", "adhoc").as_string(),
-                network_config["gateway"].as_object().at("args", dynamic_t::empty_object)
-            };
-        }
+    if(network_config.count("shared")) {
+        network.shared = network_config.at("shared").to<decltype(network.shared)>();
     }
+
+    // Blackhole logging configuration
+    logging  = root.as_object().at("logging",  dynamic_t::object_t()).to<config_t::logging_t>();
+
+    // Component configuration
+    services = root.as_object().at("services", dynamic_t::object_t()).to<config_t::component_map_t>();
+    storages = root.as_object().at("storages", dynamic_t::object_t()).to<config_t::component_map_t>();
 
 #ifdef COCAINE_ALLOW_RAFT
     create_raft_cluster = false;
 #endif
-
-    // Component configuration
-    logging  = root.as_object().at("logging" , dynamic_t::empty_object).to<config_t::logging_t>();
-    services = root.as_object().at("services", dynamic_t::empty_object).to<config_t::component_map_t>();
-    storages = root.as_object().at("storages", dynamic_t::empty_object).to<config_t::component_map_t>();
 }
 
 int
-config_t::version() {
+config_t::versions() {
     return COCAINE_VERSION;
+}
+
+// Dynamic port mapper
+
+port_mapping_t::port_mapping_t(const config_t& config):
+    m_pinned(config.network.pinned)
+{
+    uint16_t min, max;
+    std::tie(min, max) = config.network.shared;
+
+    std::vector<port_t> seed;
+
+    if((min == 0 && max == 0) || max <= min) {
+        seed.resize(65535);
+        std::fill(seed.begin(), seed.end(), 0);
+    } else {
+        seed.resize(max - min);
+        std::iota(seed.begin(), seed.end(), min);
+    }
+
+    m_shared = queue_type(seed.begin(), seed.end());
+}
+
+port_mapping_t::port_t
+port_mapping_t::assign(const std::string& name) {
+    if(m_pinned.count(name)) {
+        return m_pinned.at(name);
+    }
+
+    if(m_shared.empty()) {
+        throw cocaine::error_t("no ports left for allocation");
+    }
+
+    const auto port = m_shared.top();
+
+    return m_shared.pop(), port;
+}
+
+void
+port_mapping_t::retain(const std::string& name, port_t port) {
+    if(m_pinned.count(name)) {
+        return;
+    }
+
+    return m_shared.push(port);
 }
 
 // Context
 
-context_t::context_t(config_t config, const std::string& logger_backend):
-    config(config)
+context_t::context_t(config_t config_, const std::string& logger_backend):
+    m_port_mapping(config_),
+    config(config_)
 {
+    auto& repository = blackhole::repository_t::instance();
+
     // Available logging sinks.
     typedef boost::mpl::vector<
         blackhole::sink::stream_t,
@@ -523,12 +439,9 @@ context_t::context_t(config_t config, const std::string& logger_backend):
         blackhole::formatter::json_t
     > formatters_t;
 
-    // Register frontends with all combinations of formatters and sink with the logging repository.
-    auto& repository = blackhole::repository_t::instance();
+    // Register frontends with all combinations of formatters and sinks with the logging repository.
     repository.configure<sinks_t, formatters_t>();
 
-    // Try to initialize the logger. If this fails, there's no way to report
-    // the failure, unfortunately, except printing it to the standart output.
     try {
         using blackhole::keyword::tag::timestamp_t;
         using blackhole::keyword::tag::severity_t;
@@ -539,7 +452,7 @@ context_t::context_t(config_t config, const std::string& logger_backend):
         // Configure some mappings for timestamps and severity attributes.
         blackhole::mapping::value_t mapper;
 
-        mapper.add<severity_t<logging::priorities>>(&map_severity);
+        mapper.add<severity_t<logging::priorities>>(&logging::map_severity);
         mapper.add<timestamp_t>(logger.timestamp);
 
         // Attach them to the logging config.
@@ -554,47 +467,25 @@ context_t::context_t(config_t config, const std::string& logger_backend):
 
         typedef logging::logger_t logger_type;
 
-        // Create the registered logger.
+        // Try to initialize the logger. If it fails, there's no way to report the failure, except
+        // printing it to the standart output.
         m_logger = std::make_unique<logger_type>(repository.create<logging::priorities>(logger_backend));
         m_logger->verbosity(logger.verbosity);
     } catch(const std::out_of_range&) {
         throw cocaine::error_t("the '%s' logger is not configured", logger_backend);
     }
 
-#ifdef COCAINE_ALLOW_RAFT
-    m_raft = std::make_unique<raft::repository_t>(*this);
-#endif
-
-    m_repository.reset(new api::repository_t(*m_logger));
-
-    // Load the builtins.
-    essentials::initialize(*m_repository);
-
-    // Load the plugins.
-    m_repository->load(config.path.plugins);
-
     bootstrap();
 }
 
-context_t::context_t(config_t config, std::unique_ptr<logging::logger_t>&& logger):
-    config(config)
+context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger):
+    m_port_mapping(config_),
+    config(config_)
 {
     // NOTE: The context takes the ownership of the passed logger, so it will become invalid at the
     // calling site after this call.
     m_logger = std::make_unique<logging::logger_t>(std::move(*logger));
     logger.reset();
-
-#ifdef COCAINE_ALLOW_RAFT
-    m_raft = std::make_unique<raft::repository_t>(*this);
-#endif
-
-    m_repository.reset(new api::repository_t(*m_logger));
-
-    // Load the builtins.
-    essentials::initialize(*m_repository);
-
-    // Load the plugins.
-    m_repository->load(config.path.plugins);
 
     bootstrap();
 }
@@ -605,35 +496,32 @@ context_t::~context_t() {
         blackhole::log::attributes_t({ logging::keyword::source() = "bootstrap" })
     );
 
-    COCAINE_LOG_INFO(m_logger, "stopping the synchronization");
+    // COCAINE_LOG_INFO(m_logger, "stopping the synchronization");
 
-    m_synchronization->shutdown();
-    m_synchronization.reset();
-
-    auto& unlocked = m_services.value();
-
-    COCAINE_LOG_INFO(m_logger, "stopping the locator");
-
-    unlocked.front().second->terminate();
-    unlocked.pop_front();
+    // m_synchronization->shutdown();
+    // m_synchronization.reset();
 
     COCAINE_LOG_INFO(m_logger, "stopping the services");
 
+    // Stop the service from accepting new clients or doing any processing. Pop them from the active
+    // service list into this temporary storage, and then destroy them all at once. This is needed
+    // because sessions in the execution units might still have references to the services, and their
+    // lives have to be extended until those sessions are active.
+    std::vector<std::unique_ptr<actor_t>> actors;
+
     for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
-        remove(it->first);
+        actors.push_back(remove(it->first));
     }
 
-    // Any services which haven't been explicitly removed by their owners must be terminated here,
-    // because otherwise their thread's destructors will terminate the whole program (13.3.1.3).
-
-    while(!unlocked.empty()) {
-        unlocked.back().second->terminate();
-        unlocked.pop_back();
-    }
+    // There should be no outstanding services left.
+    BOOST_ASSERT(m_services->empty());
 
     COCAINE_LOG_INFO(m_logger, "stopping the execution units");
 
     m_pool.clear();
+
+    // Kill the services themselves.
+    actors.clear();
 }
 
 std::unique_ptr<logging::log_t>
@@ -658,13 +546,11 @@ struct match {
 } // namespace
 
 void
-context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
+context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
     blackhole::scoped_attributes_t guard(
         *m_logger,
         blackhole::log::attributes_t({ logging::keyword::source() = "bootstrap" })
     );
-
-    uint16_t port = 0;
 
     {
         auto locked = m_services.synchronize();
@@ -673,17 +559,8 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
             throw cocaine::error_t("service '%s' already exists", name);
         }
 
-        if(config.network.ports) {
-            if(m_ports.empty()) {
-                throw cocaine::error_t("no ports left for allocation");
-            }
-
-            port = m_ports.top();
-
-            // NOTE: Remove the taken port from the free pool. If, for any reason, this port is unavailable
-            // for binding, it's okay to keep it removed forever.
-            m_ports.pop();
-        }
+        // Assign a port to this service. The port might be pinned.
+        const auto port = m_port_mapping.assign(name);
 
         const std::vector<io::tcp::endpoint> endpoints = {{
             boost::asio::ip::address::from_string(config.network.endpoint),
@@ -692,17 +569,16 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t>&& service) {
 
         service->run(endpoints);
 
-        COCAINE_LOG_INFO(m_logger, "service has been published")(
-            "service", name,
-            "endpoint", service->location().front()
+        COCAINE_LOG_INFO(m_logger, "service has been published on %s", service->location().front())(
+            "service", name
         );
 
         locked->emplace_back(name, std::move(service));
     }
 
-    if(m_synchronization) {
-        m_synchronization->announce();
-    }
+    // if(m_synchronization) {
+    //     m_synchronization->announce();
+    // }
 }
 
 auto
@@ -729,21 +605,18 @@ context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
 
         service->terminate();
 
-        COCAINE_LOG_INFO(m_logger, "service has been withdrawn")(
-            "service", name,
-            "endpoint", endpoints.front()
+        COCAINE_LOG_INFO(m_logger, "service has been withdrawn from %s", endpoints.front())(
+            "service", name
         );
 
-        if(config.network.ports) {
-            m_ports.push(endpoints.front().port());
-        }
+        m_port_mapping.retain(name, endpoints.front().port());
 
         locked->erase(it);
     }
 
-    if(m_synchronization) {
-        m_synchronization->announce();
-    }
+    // if(m_synchronization) {
+    //     m_synchronization->announce();
+    // }
 
     return service;
 }
@@ -757,7 +630,7 @@ context_t::locate(const std::string& name) const -> boost::optional<actor_t&> {
 }
 
 void
-context_t::attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<io::basic_dispatch_t>& dispatch) {
+context_t::attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
     m_pool[ptr->fd() % m_pool.size()]->attach(ptr, dispatch);
 }
 
@@ -768,31 +641,28 @@ context_t::bootstrap() {
         blackhole::log::attributes_t({ logging::keyword::source() = "bootstrap" })
     );
 
-    auto pool = boost::thread::hardware_concurrency() * 2;
+    COCAINE_LOG_INFO(m_logger, "bootstrapping");
 
-    if(config.network.ports) {
-        uint16_t min, max;
+    m_repository = std::make_unique<api::repository_t>(*m_logger);
 
-        std::tie(min, max) = config.network.ports.get();
+#ifdef COCAINE_ALLOW_RAFT
+    m_raft = std::make_unique<raft::repository_t>(*this);
+#endif
 
-        COCAINE_LOG_INFO(m_logger, "%u ports available, %u through %u", max - min, min, max);
+    // Load the builtin plugins.
+    essentials::initialize(*m_repository);
 
-        while(min != max) {
-            m_ports.push(--max);
-        }
+    // Load the rest of plugins.
+    m_repository->load(config.path.plugins);
+
+    COCAINE_LOG_INFO(m_logger, "growing the execution unit pool to %d units", config.network.pool);
+
+    while(m_pool.size() != config.network.pool) {
+        m_pool.emplace_back(std::make_unique<execution_unit_t>(*this, "cocaine/io-pool"));
     }
 
-    COCAINE_LOG_INFO(m_logger, "growing the execution unit pool")("units", pool);
+    COCAINE_LOG_INFO(m_logger, "starting %d service(s)", config.services.size());
 
-    while(pool--) {
-        m_pool.emplace_back(std::make_unique<execution_unit_t>(*this, "cocaine/execute"));
-    }
-
-    COCAINE_LOG_INFO(m_logger, "starting %d %s", config.services.size(), config.services.size() == 1 ? "service" : "services");
-
-    m_synchronization = std::make_shared<synchronization_t>(*this);
-
-    // Initialize other services.
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         auto reactor = std::make_shared<reactor_t>();
 
@@ -809,66 +679,19 @@ context_t::bootstrap() {
                 it->second.args
             )));
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_logger, "unable to initialize service")(
-                "service", it->first,
-                "reason", e.what(),
-                "errno", e.code().value(),
-                "message", e.code().message()
+            COCAINE_LOG_ERROR(m_logger, "unable to initialize service: %s", e.code())(
+                "service", it->first
             ); throw;
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_logger, "unable to initialize service")(
-                "service", it->first,
-                "reason", e.what()
+            COCAINE_LOG_ERROR(m_logger, "unable to initialize service: %s", e.what())(
+                "service", it->first
             ); throw;
         } catch(...) {
             COCAINE_LOG_ERROR(m_logger, "unable to initialize service")(
-                "service", it->first,
-                "reason", "unknown exception"
+                "service", it->first
             ); throw;
         }
     }
 
-    const std::vector<io::tcp::endpoint> endpoints = {{
-        boost::asio::ip::address::from_string(config.network.endpoint),
-        config.network.locator
-    }};
-
-    COCAINE_LOG_INFO(m_logger, "starting the locator on %s", endpoints.front());
-
-    std::unique_ptr<actor_t> service;
-
-    try {
-        auto reactor = std::make_shared<reactor_t>();
-        auto locator = std::make_unique<locator_t>(*this, *reactor);
-
-        // Some of the locator methods are better implemented in the Context, to avoid unnecessary
-        // copying intermediate structures around, for example service lists synchronization.
-        locator->on<io::locator::synchronize>(m_synchronization);
-
-        service = std::make_unique<actor_t>(
-            *this,
-            reactor,
-            std::unique_ptr<basic_dispatch_t>(std::move(locator))
-        );
-
-        // NOTE: Start the locator thread last, so that we won't needlessly send node updates to the
-        // peers which managed to connect during the bootstrap.
-        service->run(endpoints);
-    } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(m_logger, "unable to initialize the locator")(
-            "message", e.what(),
-            "errno", e.code().value(),
-            "reason", e.code().message()
-        ); throw;
-    } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(m_logger, "unable to initialize the locator")(
-            "reason", e.what()
-        ); throw;
-    } catch(...) {
-        COCAINE_LOG_ERROR(m_logger, "unable to initialize the locator")(
-            "reason", "unknown exception"
-        ); throw;
-    }
-
-    m_services->emplace_front("locator", std::move(service));
+    COCAINE_LOG_INFO(m_logger, "bootstrapping has been finished");
 }

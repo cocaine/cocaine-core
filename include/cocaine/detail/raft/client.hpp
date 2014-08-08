@@ -96,7 +96,7 @@ public:
          const ErrorHandler& error_handler,
          Args&&... args)
     {
-        typedef typename detail::event_result<typename io::event_traits<Event>::drain_type>::type
+        typedef typename detail::event_result<typename io::event_traits<Event>::upstream_type>::type
                 result_type;
 
         m_error_handler = error_handler;

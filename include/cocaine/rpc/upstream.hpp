@@ -67,7 +67,7 @@ basic_upstream_t::send(Args&&... args) {
         return;
     }
 
-    if(std::is_same<typename io::event_traits<Event>::transition_type, void>::value) {
+    if(std::is_same<typename io::event_traits<Event>::dispatch_type, void>::value) {
         state = states::sealed;
     }
 

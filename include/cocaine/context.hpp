@@ -38,43 +38,33 @@ namespace cocaine {
 // Configuration
 
 struct config_t {
-    config_t(const std::string& config_path);
+    config_t(const std::string& path);
 
+    static
+    int
+    versions();
+
+public:
     struct {
-        std::string config;
+        std::string configuration;
         std::string plugins;
         std::string runtime;
     } path;
 
-    struct component_t {
-        std::string type;
-        dynamic_t   args;
-    };
-
     struct {
+        // Local hostname. It might be automatically detected or manually specified.
         std::string hostname;
-        std::string uuid;
 
-        // NOTE: An endpoint where all the services and the service locator will be bound.
+        // An endpoint where all the services and the service locator will be bound.
         std::string endpoint;
 
-        // NOTE: Service locator port is configurable to allow multiple runtimes to run on a single
-        // machine. This port will be forwarded to the slaves via a command-line argument.
-        uint16_t    locator;
+        // I/O thread pool size.
+        size_t pool;
 
-        boost::optional<std::string> group;
-        boost::optional<std::tuple<uint16_t, uint16_t>> ports;
-        boost::optional<component_t> gateway;
+        // Port mapper configuration.
+        std::map<std::string, uint16_t> pinned;
+        std::pair<uint16_t, uint16_t> shared;
     } network;
-
-#ifdef COCAINE_ALLOW_RAFT
-    bool create_raft_cluster;
-#endif
-
-    typedef std::map<std::string, component_t> component_map_t;
-
-    component_map_t services;
-    component_map_t storages;
 
     struct logging_t {
         struct logger_t {
@@ -86,10 +76,41 @@ struct config_t {
         std::map<std::string, logger_t> loggers;
     } logging;
 
+    struct component_t {
+        std::string type;
+        dynamic_t args;
+    };
+
+    typedef std::map<std::string, component_t> component_map_t;
+
+    component_map_t services;
+    component_map_t storages;
+
+#ifdef COCAINE_ALLOW_RAFT
+    bool create_raft_cluster;
+#endif
+};
+
+// Dynamic port mapper
+
+class port_mapping_t {
+    typedef std::uint16_t port_t;
+    typedef std::priority_queue<port_t, std::vector<port_t>, std::greater<port_t>> queue_type;
+
+    // Pinned service ports.
+    std::map<std::string, port_t> m_pinned;
+
+    // Ports available for dynamic allocation.
+    queue_type m_shared;
+
 public:
-    static
-    int
-    version();
+    port_mapping_t(const config_t& config);
+
+    port_t
+    assign(const std::string& name);
+
+    void
+    retain(const std::string& name, port_t port);
 };
 
 // Context
@@ -97,42 +118,30 @@ public:
 class actor_t;
 class execution_unit_t;
 
-template<class T>
-struct reverse_priority_queue {
-    typedef std::priority_queue<T, std::vector<T>, std::greater<T>> type;
-};
-
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
-
-    // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else
-    // for the Blackhole, when all the common stuff is extracted to a separate library.
-    std::unique_ptr<logging::logger_t> m_logger;
-
-    // NOTE: This is the first object in the component tree, all the other components, including
-    // storages or isolates have to be declared after this one.
-    std::unique_ptr<api::repository_t> m_repository;
-
-    // Ports available for allocation.
-    reverse_priority_queue<uint16_t>::type m_ports;
 
     typedef std::deque<
         std::pair<std::string, std::unique_ptr<actor_t>>
     > service_list_t;
 
-    // These are the instances of all the configured services, stored as a vector of pairs to
-    // preserve the initialization order. Synchronized, because services are allowed to start
-    // and stop other services during their lifetime.
-    synchronized<service_list_t> m_services;
+    // Service port mapping and pinning, synchronized using service list lock.
+    port_mapping_t m_port_mapping;
+
+    // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
+    // for the Blackhole, when all the common stuff is extracted to a separate library.
+    std::unique_ptr<logging::logger_t> m_logger;
+
+    // NOTE: This is the first object in the component tree, all the other dynamic components, be it
+    // storages or isolates, have to be declared after this one.
+    std::unique_ptr<api::repository_t> m_repository;
 
     // A pool of execution units - threads responsible for doing all the service invocations.
     std::vector<std::unique_ptr<execution_unit_t>> m_pool;
 
-    struct synchronization_t;
-
-    // Synchronization object is responsible for tracking remote clients and sending them service
-    // configuration updates when necessary.
-    std::shared_ptr<synchronization_t> m_synchronization;
+    // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
+    // because services are allowed to start and stop other services during their lifetime.
+    synchronized<service_list_t> m_services;
 
 #ifdef COCAINE_ALLOW_RAFT
     std::unique_ptr<raft::repository_t> m_raft;
@@ -143,7 +152,7 @@ public:
 
 public:
     context_t(config_t config, const std::string& logger);
-    context_t(config_t config, std::unique_ptr<logging::logger_t>&& logger);
+    context_t(config_t config, std::unique_ptr<logging::logger_t> logger);
    ~context_t();
 
     // Component API
@@ -167,7 +176,7 @@ public:
     // Services
 
     void
-    insert(const std::string& name, std::unique_ptr<actor_t>&& service);
+    insert(const std::string& name, std::unique_ptr<actor_t> service);
 
     auto
     remove(const std::string& name) -> std::unique_ptr<actor_t>;
@@ -178,7 +187,7 @@ public:
     // I/O
 
     void
-    attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<io::basic_dispatch_t>& dispatch);
+    attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
 
 private:
     void

@@ -24,7 +24,6 @@
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/idl/logging.hpp"
-
 #include "cocaine/rpc/dispatch.hpp"
 
 namespace cocaine { namespace service {
@@ -40,7 +39,7 @@ public:
 
     virtual
     auto
-    prototype() -> io::basic_dispatch_t&;
+    prototype() const -> const io::basic_dispatch_t&;
 
 private:
     void

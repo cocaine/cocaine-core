@@ -44,20 +44,23 @@ public:
         typename mpl::lambda<io::detail::unwrap_type<mpl::_1>>
     >::type sequence_type;
 
+    // Detect if the event is recursive or not.
+    typedef boost::is_same<typename traits_type::dispatch_type, typename event_type::tag> recursive;
+
     virtual
    ~basic_slot() {
        // Empty.
     }
 
-    // Expected transition and upstream dispatch types.
-    typedef dispatch<typename traits_type::transition_type> dispatch_type;
-    typedef upstream<typename traits_type::drain_type> upstream_type;
-
     // Expected parameter types, stripped of any tags.
     typedef typename tuple::fold<sequence_type>::type tuple_type;
 
+    // Expected dispatch and upstream types.
+    typedef dispatch<typename traits_type::dispatch_type> dispatch_type;
+    typedef upstream<typename traits_type::upstream_type> upstream_type;
+
     virtual
-    std::shared_ptr<dispatch_type>
+    boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) = 0;
 
 public:

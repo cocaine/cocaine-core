@@ -22,7 +22,6 @@
 #define COCAINE_ISOLATE_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/dynamic.hpp"
 #include "cocaine/repository.hpp"
 
 #include <mutex>
@@ -94,12 +93,7 @@ struct category_traits<isolate_t> {
             }
 
             if(!instance) {
-                instance = std::make_shared<T>(
-                    std::ref(context),
-                    name,
-                    args
-                );
-
+                instance = std::make_shared<T>(std::ref(context), name, args);
                 m_instances[name] = instance;
             }
 

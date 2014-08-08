@@ -91,23 +91,23 @@ struct tuple_type<Event, typename depend<typename Event::tuple_type>::type> {
 };
 
 template<class Event, class = void>
-struct transition_type {
+struct dispatch_type {
     typedef void type;
 };
 
 template<class Event>
-struct transition_type<Event, typename depend<typename Event::transition_type>::type> {
-    typedef typename Event::transition_type type;
+struct dispatch_type<Event, typename depend<typename Event::dispatch_type>::type> {
+    typedef typename Event::dispatch_type type;
 };
 
 template<class Event, class = void>
-struct drain_type {
+struct upstream_type {
     typedef streaming_tag<void> type;
 };
 
 template<class Event>
-struct drain_type<Event, typename depend<typename Event::drain_type>::type> {
-    typedef typename Event::drain_type type;
+struct upstream_type<Event, typename depend<typename Event::upstream_type>::type> {
+    typedef typename Event::upstream_type type;
 };
 
 } // namespace aux
@@ -120,19 +120,19 @@ struct event_traits {
     // By default, all messages have no arguments, the only information they provide is their type.
     typedef typename aux::tuple_type<Event>::type tuple_type;
 
-    // Transition is a protocol tag type of the service channel dispatch after the given message is
+    // Dispatch is a protocol tag type of the service channel dispatch after the given message is
     // successfully processed. The possible transitions types are: void, recursive protocol tag or
     // some arbitrary protocol tag.
     // By default, all messages switch the service protocol to the void protocol, which means that
     // no other messages can be sent in the channel until the invocation is complete.
-    typedef typename aux::transition_type<Event>::type transition_type;
+    typedef typename aux::dispatch_type<Event>::type dispatch_type;
 
-    // Drain is a protocol tag type of all the possible messages that a service might send back in
-    // response to the given message, i.e. it's a protocol tag type of the client dispatch after the
-    // given message is sent.
+    // Upstream is a protocol tag type of all the possible messages that a service might send back
+    // in response to the given message, i.e. it's a protocol tag type of the client dispatch after
+    // the given message is sent.
     // By default, all messages use the void streaming protocol to send back the invocation errors
     // and signal message processing completion.
-    typedef typename aux::drain_type<Event>::type drain_type;
+    typedef typename aux::upstream_type<Event>::type upstream_type;
 };
 
 }} // namespace cocaine::io

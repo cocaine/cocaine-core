@@ -24,6 +24,7 @@
 
 #include "cocaine/context.hpp"
 
+#include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/services/node/engine.hpp"
 #include "cocaine/detail/services/node/event.hpp"
 #include "cocaine/detail/services/node/manifest.hpp"
@@ -130,7 +131,10 @@ slave_t::slave_t(context_t& context, reactor_t& reactor, const manifest_t& manif
 
     args["--app"] = m_manifest.name;
     args["--endpoint"] = m_manifest.endpoint;
-    args["--locator"] = cocaine::format("%s:%d", m_context.config.network.hostname, m_context.config.network.locator);
+
+    auto& locator = m_context.locate("locator").get();
+
+    args["--locator"] = cocaine::format("localhost:%d", locator.location().front().port());
     args["--uuid"] = m_id;
 
     m_handle = isolate->spawn(m_manifest.executable, args, m_manifest.environment);

@@ -46,7 +46,7 @@ public:
 
     virtual
     auto
-    prototype() -> io::basic_dispatch_t& {
+    prototype() const -> const io::basic_dispatch_t& {
         return *this;
     }
 
@@ -94,8 +94,6 @@ private:
 
 private:
     context_t& m_context;
-
-    io::reactor_t& m_reactor;
 
     std::unique_ptr<logging::log_t> m_log;
 

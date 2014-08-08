@@ -46,7 +46,7 @@ cocaine::make_error_condition(raft_errc e) {
 raft::repository_t::repository_t(context_t& context):
     m_context(context),
     m_reactor(std::make_shared<io::reactor_t>()),
-    m_id(m_context.config.network.hostname, m_context.config.network.locator),
+    m_id(m_context.config.network.hostname, 10053 /* WTF? */),
     m_active(false)
 { }
 
@@ -152,7 +152,6 @@ control_service_t::control_service_t(context_t& context,
     api::service_t(context, reactor, name, args),
     dispatch<io::raft_control_tag<msgpack::object, msgpack::object>>(name),
     m_context(context),
-    m_reactor(reactor),
     m_log(context.log(name))
 {
     using namespace std::placeholders;

@@ -21,11 +21,12 @@
 #ifndef COCAINE_SERVICE_COUNTER_HPP
 #define COCAINE_SERVICE_COUNTER_HPP
 
-#include "cocaine/context.hpp"
 #include "cocaine/raft.hpp"
-#include "cocaine/rpc/dispatch.hpp"
+
 #include "cocaine/api/service.hpp"
+
 #include "cocaine/idl/counter.hpp"
+#include "cocaine/rpc/dispatch.hpp"
 
 namespace cocaine { namespace service {
 
@@ -46,7 +47,7 @@ public:
 
     virtual
     auto
-    prototype() -> io::basic_dispatch_t& {
+    prototype() const -> const io::basic_dispatch_t& {
         return *this;
     }
 

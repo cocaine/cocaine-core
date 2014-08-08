@@ -18,62 +18,57 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_GATEWAY_API_HPP
-#define COCAINE_GATEWAY_API_HPP
+#ifndef COCAINE_CLUSTER_API_HPP
+#define COCAINE_CLUSTER_API_HPP
 
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-// TODO: Drop this.
-#include "cocaine/idl/locator.hpp"
-#include "cocaine/rpc/result_of.hpp"
+#include <boost/asio/ip/tcp.hpp>
 
 namespace cocaine { namespace api {
 
-struct gateway_t {
-    typedef gateway_t category_type;
+struct cluster_t {
+    typedef cluster_t category_type;
+
+    struct interface {
+        virtual
+        void
+        link_node(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints) = 0;
+
+        virtual
+        void
+        drop_node(const std::string& uuid) = 0;
+    };
 
     virtual
-   ~gateway_t() {
+   ~cluster_t() {
         // Empty.
     }
 
-    typedef result_of<io::locator::resolve>::type metadata_t;
-
-    virtual
-    metadata_t
-    resolve(const std::string& name) const = 0;
-
-    virtual
-    void
-    consume(const std::string& uuid, const std::string& name, const metadata_t& meta) = 0;
-
-    virtual
-    void
-    cleanup(const std::string& uuid, const std::string& name) = 0;
-
 protected:
-    gateway_t(context_t&, const std::string& /* name */, const dynamic_t& /* args */) {
+    cluster_t(context_t&, interface&, const std::string& /* name */, const dynamic_t& /* args */) {
         // Empty.
     }
 };
 
 template<>
-struct category_traits<gateway_t> {
-    typedef std::unique_ptr<gateway_t> ptr_type;
+struct category_traits<cluster_t> {
+    typedef std::unique_ptr<cluster_t> ptr_type;
+    typedef cluster_t::interface interface;
 
-    struct factory_type: public basic_factory<gateway_t> {
+    struct factory_type: public basic_factory<cluster_t> {
         virtual
         ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) = 0;
+        get(context_t& context, interface& locator, const std::string& name, const dynamic_t& args) = 0;
     };
 
     template<class T>
     struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) {
-            return ptr_type(new T(context, name, args));
+        get(context_t& context, interface& locator, const std::string& name, const dynamic_t& args) {
+            return ptr_type(new T(context, locator, name, args));
         }
     };
 };

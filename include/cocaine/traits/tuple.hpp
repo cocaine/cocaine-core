@@ -284,6 +284,14 @@ struct type_traits<std::tuple<Args...>> {
     unpack(const msgpack::object& source, std::tuple<Args...>& target) {
         traits_type::template unpack<sequence_type>(source, target);
     }
+
+    // Special case for std::tie<Args&...>().
+
+    static inline
+    void
+    unpack(const msgpack::object& source, std::tuple<Args&...>&& target) {
+        traits_type::template unpack<sequence_type>(source, target);
+    }
 };
 
 }} // namespace cocaine::io

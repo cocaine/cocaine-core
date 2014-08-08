@@ -18,7 +18,6 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
 namespace cocaine { namespace essentials {

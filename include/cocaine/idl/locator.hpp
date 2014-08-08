@@ -34,6 +34,20 @@ struct locator_tag;
 
 struct locator {
 
+typedef std::tuple<
+ /* Fully-qualified domain name of the service node. */
+    std::string,
+ /* Service port in host byte order. */
+    uint16_t
+> endpoint_tuple_type;
+
+typedef std::tuple<
+ /* Node's UUID. */
+    std::string,
+ /* Node's Locator endpoint. */
+    endpoint_tuple_type
+> remote_id_type;
+
 struct resolve {
     typedef locator_tag tag;
 
@@ -48,13 +62,6 @@ struct resolve {
         std::string
     > tuple_type;
 
-    typedef std::tuple<
-     /* Fully-qualified domain name of the service node. */
-        std::string,
-     /* Service port in host byte order. */
-        uint16_t
-    > endpoint_tuple_type;
-
     typedef boost::mpl::list<
      /* An endpoint for the client to connect to in order to use the the service. */
         endpoint_tuple_type,
@@ -66,23 +73,28 @@ struct resolve {
         dispatch_graph_t
     > value_type;
 
-    typedef streaming_tag<value_type> drain_type;
+    typedef streaming_tag<value_type> upstream_type;
 };
 
-struct synchronize {
+struct connect {
     typedef locator_tag tag;
 
     static
     const char*
     alias() {
-        return "synchronize";
+        return "connect";
     }
+
+    typedef boost::mpl::list<
+     /* Node ID. */
+        std::string
+    > tuple_type;
 
     typedef stream_of<
      /* A full dump of all available services on this node. Used by metalocator to aggregate
         node information from the cluster. */
         std::map<std::string, tuple::fold<resolve::value_type>::type>
-    >::tag drain_type;
+    >::tag upstream_type;
 };
 
 struct refresh {
@@ -110,7 +122,7 @@ struct protocol<locator_tag> {
 
     typedef boost::mpl::list<
         locator::resolve,
-        locator::synchronize,
+        locator::connect,
         locator::refresh
     > messages;
 

@@ -22,10 +22,8 @@
 #define COCAINE_STORAGE_SERVICE_HPP
 
 #include "cocaine/api/service.hpp"
-#include "cocaine/api/storage.hpp"
 
 #include "cocaine/idl/storage.hpp"
-
 #include "cocaine/rpc/dispatch.hpp"
 
 namespace cocaine { namespace service {
@@ -38,7 +36,7 @@ struct storage_t:
 
     virtual
     auto
-    prototype() -> io::basic_dispatch_t&;
+    prototype() const -> const io::basic_dispatch_t&;
 };
 
 }} // namespace cocaine::service

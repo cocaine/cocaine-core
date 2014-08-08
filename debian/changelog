@@ -12,6 +12,7 @@ cocaine-core (0.12.0.0) unstable; urgency=low
     service management is a responsibility of the Context.
   * Multithreaded Actor I/O. All incoming messages are now dispatched on a
     shared thread pool, which greatly speeds the things up.
+  * Logging in now handled via the Blackhole logging library.
   * Bugfix: the hostname can now be configured manually, in case something is
     broken with the local resolver.
 

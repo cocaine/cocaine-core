@@ -18,6 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "cocaine/api/storage.hpp"
+
 #include "cocaine/detail/services/storage.hpp"
 
 #include "cocaine/context.hpp"
@@ -40,6 +42,6 @@ storage_t::storage_t(context_t& context, reactor_t& reactor, const std::string& 
 }
 
 auto
-storage_t::prototype() -> basic_dispatch_t& {
+storage_t::prototype() const -> const basic_dispatch_t& {
     return *this;
 }

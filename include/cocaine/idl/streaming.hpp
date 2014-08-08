@@ -32,7 +32,7 @@ struct streaming {
 
 struct chunk {
     typedef streaming_tag<T> tag;
-    typedef streaming_tag<T> transition_type;
+    typedef streaming_tag<T> dispatch_type;
 
     static
     const char*
@@ -65,7 +65,7 @@ struct chunk {
     typedef typename tuple_type_impl<T>::type tuple_type;
 
     // Terminal message.
-    typedef void drain_type;
+    typedef void upstream_type;
 };
 
 struct error {
@@ -85,7 +85,7 @@ struct error {
     > tuple_type;
 
     // Terminal message.
-    typedef void drain_type;
+    typedef void upstream_type;
 };
 
 struct choke {
@@ -98,7 +98,7 @@ struct choke {
     }
 
     // Terminal message.
-    typedef void drain_type;
+    typedef void upstream_type;
 };
 
 }; // struct streaming

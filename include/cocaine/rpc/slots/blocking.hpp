@@ -47,7 +47,7 @@ struct blocking_slot:
     { }
 
     virtual
-    std::shared_ptr<dispatch_type>
+    boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
             upstream.template send<typename protocol::chunk>(this->call(args));
@@ -58,8 +58,8 @@ struct blocking_slot:
             upstream.template send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
 
-        // Return an empty protocol dispatch.
-        return std::shared_ptr<dispatch_type>();
+        // Return a corresponding protocol dispatch.
+        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
     }
 };
 
@@ -84,7 +84,7 @@ struct blocking_slot<Event, void>:
     { }
 
     virtual
-    std::shared_ptr<dispatch_type>
+    boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
             this->call(args);
@@ -97,8 +97,8 @@ struct blocking_slot<Event, void>:
             upstream.template send<typename protocol::error>(invocation_error, std::string(e.what()));
         }
 
-        // Return an empty protocol dispatch.
-        return std::shared_ptr<dispatch_type>();
+        // Return a corresponding protocol dispatch.
+        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
     }
 };
 
@@ -121,7 +121,7 @@ struct blocking_slot<Event, terminal_slot_tag>:
     { }
 
     virtual
-    std::shared_ptr<dispatch_type>
+    boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& /* upstream */) {
         try {
             this->call(args);
@@ -129,8 +129,8 @@ struct blocking_slot<Event, terminal_slot_tag>:
             throw cocaine::error_t("error while calling a terminal slot - %s", e.what());
         }
 
-        // Return an empty protocol dispatch.
-        return std::shared_ptr<dispatch_type>();
+        // Return a corresponding protocol dispatch.
+        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
     }
 };
 

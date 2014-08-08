@@ -226,12 +226,7 @@ main(int argc, char* argv[]) {
         std::cerr << cocaine::format("ERROR: unable to initialize the configuration - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     } catch(const std::system_error& e) {
-        std::cerr << cocaine::format(
-            "ERROR: unable to initialize the configuration - %s - [%d] %s.",
-            e.what(),
-            e.code().value(),
-            e.code().message()
-        ) << std::endl;
+        std::cerr << cocaine::format("ERROR: unable to initialize the configuration - %s.", e.code()) << std::endl;
 
         return EXIT_FAILURE;
     }

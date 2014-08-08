@@ -67,100 +67,25 @@ namespace fs = boost::filesystem;
 namespace {
 
 class streaming_service_t:
-    public dispatch<io::event_traits<io::app::enqueue>::transition_type>
+    public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
 {
     const api::stream_ptr_t downstream;
 
 public:
-    typedef io::protocol<
-        io::event_traits<io::app::enqueue>::transition_type
-    >::scope protocol;
-
-    struct write_slot_t:
-        public basic_slot<protocol::chunk>
-    {
-        write_slot_t(const std::shared_ptr<streaming_service_t>& impl_):
-            impl(impl_)
-        { }
-
-        typedef basic_slot<protocol::chunk>::dispatch_type dispatch_type;
-        typedef basic_slot<protocol::chunk>::tuple_type tuple_type;
-        typedef basic_slot<protocol::chunk>::upstream_type upstream_type;
-
-        virtual
-        std::shared_ptr<dispatch_type>
-        operator()(tuple_type&& args, upstream_type&& /* upstream */) {
-            auto service = impl.lock();
-
-            tuple::invoke(
-                boost::bind(&streaming_service_t::write, service.get(), boost::arg<1>()),
-                args
-            );
-
-            return service;
-        }
-
-    private:
-        const std::weak_ptr<streaming_service_t> impl;
-    };
-
-    struct error_slot_t:
-        public basic_slot<protocol::error>
-    {
-        error_slot_t(const std::shared_ptr<streaming_service_t>& impl_):
-            impl(impl_)
-        { }
-
-        typedef basic_slot<protocol::error>::dispatch_type dispatch_type;
-        typedef basic_slot<protocol::error>::tuple_type tuple_type;
-        typedef basic_slot<protocol::error>::upstream_type upstream_type;
-
-        virtual
-        std::shared_ptr<dispatch_type>
-        operator()(tuple_type&& args, upstream_type&& /* upstream */) {
-            auto service = impl.lock();
-
-            tuple::invoke(
-                boost::bind(&streaming_service_t::error, service.get(), boost::arg<1>(), boost::arg<2>()),
-                args
-            );
-
-            // Return an empty protocol dispatch.
-            return std::shared_ptr<dispatch_type>();
-        }
-
-    private:
-        const std::weak_ptr<streaming_service_t> impl;
-    };
-
-    struct close_slot_t:
-        public basic_slot<protocol::choke>
-    {
-        close_slot_t(const std::shared_ptr<streaming_service_t>& impl_):
-            impl(impl_)
-        { }
-
-        typedef basic_slot<protocol::choke>::dispatch_type dispatch_type;
-        typedef basic_slot<protocol::choke>::tuple_type tuple_type;
-        typedef basic_slot<protocol::choke>::upstream_type upstream_type;
-
-        virtual
-        std::shared_ptr<dispatch_type>
-        operator()(tuple_type&& /* args */, upstream_type&& /* upstream */) {
-            impl.lock()->close();
-
-            // Return an empty protocol dispatch.
-            return std::shared_ptr<dispatch_type>();
-        }
-
-    private:
-        const std::weak_ptr<streaming_service_t> impl;
-    };
-
     streaming_service_t(const std::string& name, const api::stream_ptr_t& downstream_):
-        dispatch<io::event_traits<io::app::enqueue>::transition_type>(name),
+        dispatch<io::event_traits<io::app::enqueue>::dispatch_type>(name),
         downstream(downstream_)
-    { }
+    {
+        typedef io::protocol<
+            io::event_traits<io::app::enqueue>::dispatch_type
+        >::scope protocol;
+
+        using namespace std::placeholders;
+
+        on<protocol::chunk>(std::bind(&streaming_service_t::write, this, _1));
+        on<protocol::error>(std::bind(&streaming_service_t::error, this, _1, _2));
+        on<protocol::choke>(std::bind(&streaming_service_t::close, this));
+    }
 
 private:
     void
@@ -198,7 +123,7 @@ private:
         typedef basic_slot<io::app::enqueue>::upstream_type upstream_type;
 
         virtual
-        std::shared_ptr<dispatch_type>
+        boost::optional<std::shared_ptr<const dispatch_type>>
         operator()(tuple_type&& args, upstream_type&& upstream) {
             return tuple::invoke(
                 boost::bind(&app_service_t::enqueue, &self, boost::ref(upstream), boost::arg<1>(), boost::arg<2>()),
@@ -241,7 +166,7 @@ private:
         enqueue_slot_t::upstream_type upstream;
     };
 
-    std::shared_ptr<enqueue_slot_t::dispatch_type>
+    std::shared_ptr<const enqueue_slot_t::dispatch_type>
     enqueue(enqueue_slot_t::upstream_type& upstream, const std::string& event, const std::string& tag) {
         api::stream_ptr_t downstream;
 
@@ -251,20 +176,12 @@ private:
             downstream = app.enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
         }
 
-        auto service = std::make_shared<streaming_service_t>(name(), downstream);
-
-        typedef streaming_service_t::protocol protocol;
-
-        service->on<protocol::chunk>(std::make_shared<streaming_service_t::write_slot_t>(service));
-        service->on<protocol::error>(std::make_shared<streaming_service_t::error_slot_t>(service));
-        service->on<protocol::choke>(std::make_shared<streaming_service_t::close_slot_t>(service));
-
-        return service;
+        return std::make_shared<const streaming_service_t>(name(), downstream);
     }
 
 public:
     app_service_t(const std::string& name_, app_t& app_):
-        dispatch<io::app_tag>(cocaine::format("service/%1%", name_)),
+        dispatch<io::app_tag>(cocaine::format("service/%s", name_)),
         app(app_)
     {
         on<io::app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
@@ -328,7 +245,7 @@ app_t::start() {
     m_context.insert(m_manifest->name, std::make_unique<actor_t>(
         m_context,
         std::make_shared<reactor_t>(),
-        std::unique_ptr<basic_dispatch_t>(new app_service_t(m_manifest->name, *this))
+        std::make_unique<app_service_t>(m_manifest->name, *this)
     ));
 
     COCAINE_LOG_INFO(m_log, "the engine has started");

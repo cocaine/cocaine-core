@@ -20,8 +20,6 @@
 
 #include <random>
 
-typedef result_of<io::locator::synchronize>::type synchronize_result_type;
-
 namespace routing {
 
 #if defined(__clang__) || defined(HAVE_GCC46)
@@ -76,7 +74,7 @@ using namespace routing;
 class locator_t::router_t {
     public:
         typedef std::vector<
-            std::pair<std::string, locator_t::resolve_result_type>
+            std::pair<std::string, locator_t::resolve_result_t>
         > services_vector_t;
 
     public:
@@ -89,9 +87,9 @@ class locator_t::router_t {
         remove_local(const std::string& name);
 
         std::pair<services_vector_t, services_vector_t> // added, removed
-        update_remote(const std::string& uuid, const synchronize_result_type& dump);
+        update_remote(const std::string& uuid, const connect_result_t& dump);
 
-        std::map<std::string, resolve_result_type> // services of the removed node
+        std::map<std::string, resolve_result_t> // services of the removed node
         remove_remote(const std::string& uuid);
 
         bool
@@ -108,7 +106,7 @@ class locator_t::router_t {
 
     private:
         void
-        add(const std::string& uuid, const std::string& name, const resolve_result_type& info);
+        add(const std::string& uuid, const std::string& name, const resolve_result_t& info);
 
         void
         remove(const std::string& uuid, const std::string& name);
@@ -116,7 +114,7 @@ class locator_t::router_t {
     private:
         typedef std::map<
             std::string,
-            std::map<std::string, resolve_result_type>
+            std::map<std::string, resolve_result_t>
         > inverted_index_t;
 
         // Service -> UUIDs of the remote nodes that have this service.
@@ -304,7 +302,7 @@ locator_t::router_t::add_local(const std::string& name) {
     std::lock_guard<std::mutex> guard(m_mutex);
 
     // "local" is a special "uuid" that indicates local services.
-    add("local", name, resolve_result_type());
+    add("local", name, resolve_result_t());
 }
 
 void
@@ -316,7 +314,7 @@ locator_t::router_t::remove_local(const std::string& name) {
 }
 
 auto
-locator_t::router_t::update_remote(const std::string& uuid, const synchronize_result_type& dump)
+locator_t::router_t::update_remote(const std::string& uuid, const connect_result_t& dump)
     -> std::pair<services_vector_t, services_vector_t>
 {
     services_vector_t added, removed;
@@ -363,9 +361,9 @@ locator_t::router_t::update_remote(const std::string& uuid, const synchronize_re
 
 auto
 locator_t::router_t::remove_remote(const std::string& uuid)
-    -> std::map<std::string, resolve_result_type>
+    -> std::map<std::string, resolve_result_t>
 {
-    std::map<std::string, resolve_result_type> removed;
+    std::map<std::string, resolve_result_t> removed;
     std::lock_guard<std::mutex> guard(m_mutex);
 
     auto uuid_it = m_inverted.find(uuid);
@@ -418,7 +416,7 @@ locator_t::router_t::select_service(const std::string& name) const {
 }
 
 void
-locator_t::router_t::add(const std::string& uuid, const std::string& name, const resolve_result_type& info) {
+locator_t::router_t::add(const std::string& uuid, const std::string& name, const resolve_result_t& info) {
     auto insert_result = m_services.insert(std::make_pair(name, std::set<std::string>()));
     insert_result.first->second.insert(uuid);
     m_inverted[uuid][name] = info;

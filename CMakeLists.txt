@@ -78,8 +78,8 @@ LINK_DIRECTORIES(
 
 IF(COCAINE_ALLOW_RAFT)
     ADD_LIBRARY(cocaine-raft STATIC
-        src/raft
-        src/services/counter)
+        src/raft.cpp
+        src/services/counter.cpp)
 
     SET_TARGET_PROPERTIES(cocaine-raft PROPERTIES
         COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic -fPIC")
@@ -88,36 +88,37 @@ IF(COCAINE_ALLOW_RAFT)
 ENDIF()
 
 ADD_LIBRARY(cocaine-core SHARED
-    src/actor
-    src/api
-    src/chamber
-    src/context
-    src/crypto
-    src/defaults
-    src/dispatch
-    src/dynamic
-    src/engine
-    src/essentials
-    src/gateways/adhoc
+    src/actor.cpp
+    src/api.cpp
+    src/chamber.cpp
+    src/clusters/multicast.cpp
+    src/context.cpp
+    src/crypto.cpp
+    src/defaults.cpp
+    src/dispatch.cpp
+    src/dynamic.cpp
+    src/engine.cpp
+    src/essentials.cpp
+    src/gateways/adhoc.cpp
     src/isolates/process.cpp
-    src/isolates/process/archive
-    src/isolates/process/spooler
-    src/locator
-    src/logging
-    src/repository
-    src/services/logging
+    src/isolates/process/archive.cpp
+    src/isolates/process/spooler.cpp
+    src/logging.cpp
+    src/repository.cpp
+    src/services/locator.cpp
+    src/services/logging.cpp
     src/services/node.cpp
-    src/services/node/app
-    src/services/node/engine
-    src/services/node/manifest
-    src/services/node/profile
-    src/services/node/queue
-    src/services/node/session
-    src/services/node/slave
-    src/services/storage
-    src/session
-    src/storages/files
-    src/unique_id)
+    src/services/node/app.cpp
+    src/services/node/engine.cpp
+    src/services/node/manifest.cpp
+    src/services/node/profile.cpp
+    src/services/node/queue.cpp
+    src/services/node/session.cpp
+    src/services/node/slave.cpp
+    src/services/storage.cpp
+    src/session.cpp
+    src/storages/files.cpp
+    src/unique_id.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     archive
@@ -134,8 +135,8 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 2)
 
 ADD_EXECUTABLE(cocaine-runtime
-    src/runtime/pid_file
-    src/runtime/runtime)
+    src/runtime/pid_file.cpp
+    src/runtime/runtime.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
     ${LIBBFD_LIBRARY}
