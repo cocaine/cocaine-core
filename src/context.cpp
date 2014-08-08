@@ -40,6 +40,7 @@
 #include "cocaine/memory.hpp"
 
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
 #include <boost/filesystem/convenience.hpp>
@@ -323,19 +324,13 @@ config_t::config_t(const std::string& path_) {
 
     network.pool = network_config.at("pool", boost::thread::hardware_concurrency() * 2).as_uint();
 
-    char hostname[256];
-
-    if(gethostname(hostname, 256) != 0) {
-        throw cocaine::error_t("unable to determine local hostname");
-    }
-
     boost::asio::io_service service;
     boost::asio::ip::tcp::resolver resolver(service);
     boost::asio::ip::tcp::resolver::iterator it, end;
 
     try {
         it = resolver.resolve(boost::asio::ip::tcp::resolver::query(
-            hostname,
+            boost::asio::ip::host_name(),
             std::string(),
             boost::asio::ip::tcp::resolver::query::canonical_name
         ));
