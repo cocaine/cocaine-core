@@ -84,23 +84,23 @@ locator_t::locator_t(context_t& context, reactor_t& reactor, const std::string& 
     }
 
     if(root.as_object().count("discovery")) {
-        const auto conf = root.as_object().at("discovery").as_object();
-        const auto type = conf.at("type", "unspecified").as_string();
-        const auto args = conf.at("args", dynamic_t::object_t());
+        const auto cluster_conf = root.as_object().at("discovery").as_object();
+        const auto cluster_type = cluster_conf.at("type", "unspecified").as_string();
+        const auto cluster_args = cluster_conf.at("args", dynamic_t::object_t());
 
-        COCAINE_LOG_INFO(m_log, "using '%s' for cluster discovery", type);
+        COCAINE_LOG_INFO(m_log, "using '%s' for cluster discovery", cluster_type);
 
-        m_cluster = m_context.get<api::cluster_t>(type, m_context, *this, name, args);
+        m_cluster = m_context.get<api::cluster_t>(cluster_type, m_context, *this, name, cluster_args);
     }
 
     if(root.as_object().count("gateway")) {
-        const auto conf = root.as_object().at("gateway").as_object();
-        const auto type = conf.at("type", "unspecified").as_string();
-        const auto args = conf.at("args", dynamic_t::object_t());
+        const auto gateway_conf = root.as_object().at("gateway").as_object();
+        const auto gateway_type = gateway_conf.at("type", "unspecified").as_string();
+        const auto gateway_args = gateway_conf.at("args", dynamic_t::object_t());
 
-        COCAINE_LOG_INFO(m_log, "using '%s' as a gateway", type);
+        COCAINE_LOG_INFO(m_log, "using '%s' as a cluster accessor", gateway_type);
 
-        m_gateway = m_context.get<api::gateway_t>(type, m_context, name, args);
+        m_gateway = m_context.get<api::gateway_t>(gateway_type, m_context, name, gateway_args);
     }
 }
 
@@ -191,6 +191,10 @@ void
 locator_t::link_node_impl(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints) {
     std::unique_ptr<io::channel<io::socket<io::tcp>>> channel;
 
+    if(!m_gateway || m_remotes.find(uuid) != m_remotes.end()) {
+        return;
+    }
+
     for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
         try {
             channel = std::make_unique<io::channel<io::socket<io::tcp>>>(
@@ -235,7 +239,7 @@ locator_t::link_node_impl(const std::string& uuid, const std::vector<boost::asio
 
 void
 locator_t::drop_node_impl(const std::string& uuid) {
-    if(m_remotes.find(uuid) == m_remotes.end()) {
+    if(!m_gateway || m_remotes.find(uuid) == m_remotes.end()) {
         return;
     }
 
