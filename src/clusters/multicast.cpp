@@ -39,6 +39,8 @@ using namespace cocaine;
 using namespace cocaine::api;
 using namespace cocaine::cluster;
 
+namespace cocaine {
+
 template<>
 struct dynamic_converter<address> {
     typedef address result_type;
@@ -75,6 +77,8 @@ struct dynamic_converter<multicast_config_t> {
         return result;
     }
 };
+
+} // namespace cocaine
 
 struct multicast_t::packet_t {
     typedef std::tuple<

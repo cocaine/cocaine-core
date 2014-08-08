@@ -207,14 +207,16 @@ private:
 
 } // namespace
 
+namespace cocaine {
+
 template<>
-struct dynamic_converter<cocaine::config_t::component_t> {
-    typedef cocaine::config_t::component_t result_type;
+struct dynamic_converter<config_t::component_t> {
+    typedef config_t::component_t result_type;
 
     static
     result_type
     convert(const dynamic_t& from) {
-        return cocaine::config_t::component_t {
+        return config_t::component_t {
             from.as_object().at("type", "unspecified").as_string(),
             from.as_object().at("args", dynamic_t::object_t())
         };
@@ -222,8 +224,8 @@ struct dynamic_converter<cocaine::config_t::component_t> {
 };
 
 template<>
-struct dynamic_converter<cocaine::config_t::logging_t> {
-    typedef cocaine::config_t::logging_t result_type;
+struct dynamic_converter<config_t::logging_t> {
+    typedef config_t::logging_t result_type;
 
     static
     result_type
@@ -263,6 +265,8 @@ struct dynamic_converter<cocaine::config_t::logging_t> {
         }
     }
 };
+
+} // namespace cocaine
 
 config_t::config_t(const std::string& path_) {
     path.configuration = path_;
@@ -375,7 +379,7 @@ port_mapping_t::port_mapping_t(const config_t& config):
 
     std::vector<port_t> seed;
 
-    if(min == max == 0 || max <= min) {
+    if((min == 0 && max == 0) || max <= min) {
         seed.resize(65535);
         std::fill(seed.begin(), seed.end(), 0);
     } else {
