@@ -213,7 +213,12 @@ locator_t::link_node_impl(const std::string& uuid, const std::vector<boost::asio
     }
 
     if(!channel) {
-        COCAINE_LOG_ERROR(m_log, "remote node is unreachable")(
+        std::ostringstream stream;
+        std::ostream_iterator<boost::asio::ip::tcp::endpoint> builder(stream, ", ");
+
+        std::copy(endpoints.begin(), endpoints.end(), builder);
+
+        COCAINE_LOG_ERROR(m_log, "remote node is unreachable, tried: %s", endpoints.size(), stream.str())(
             "uuid", uuid
         );
 
