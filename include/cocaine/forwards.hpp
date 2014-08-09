@@ -32,6 +32,8 @@ template<class> class upstream;
 
 struct dynamic_t;
 
+typedef unsigned short port_t;
+
 } // namespace cocaine
 
 namespace cocaine { namespace api {
@@ -73,6 +75,8 @@ struct timeout_t;
 
 // RPC primitives
 
+class chamber_t;
+
 template<class>
 struct protocol;
 
@@ -80,8 +84,6 @@ struct message_t;
 
 class basic_dispatch_t;
 class basic_upstream_t;
-
-class chamber_t;
 
 // Messaging
 

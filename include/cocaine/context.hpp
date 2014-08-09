@@ -52,18 +52,19 @@ public:
     } path;
 
     struct {
+        // I/O thread pool size.
+        size_t pool;
+
         // Local hostname. It might be automatically detected or manually specified.
         std::string hostname;
 
         // An endpoint where all the services and the service locator will be bound.
         std::string endpoint;
 
-        // I/O thread pool size.
-        size_t pool;
-
-        // Port mapper configuration.
-        std::map<std::string, uint16_t> pinned;
-        std::pair<uint16_t, uint16_t> shared;
+        struct {
+            std::map<std::string, port_t> pinned;
+            std::tuple<port_t, port_t> shared;
+        } ports;
     } network;
 
     struct logging_t {
@@ -94,7 +95,6 @@ public:
 // Dynamic port mapper
 
 class port_mapping_t {
-    typedef std::uint16_t port_t;
     typedef std::priority_queue<port_t, std::vector<port_t>, std::greater<port_t>> queue_type;
 
     // Pinned service ports.

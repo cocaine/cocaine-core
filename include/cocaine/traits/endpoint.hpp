@@ -31,14 +31,14 @@ namespace cocaine { namespace io {
 template<class InternetProtocol>
 struct type_traits<boost::asio::ip::basic_endpoint<InternetProtocol>> {
     typedef boost::asio::ip::basic_endpoint<InternetProtocol> endpoint_type;
-    typedef std::tuple<std::string, uint16_t> tuple_type;
+    typedef std::tuple<std::string, unsigned short> tuple_type;
 
     template<class Stream>
     static inline
     void
     pack(msgpack::packer<Stream>& target, const endpoint_type& source) {
         const std::string address = source.address().to_string();
-        const uint16_t port = source.port();
+        const unsigned short port = source.port();
 
         type_traits<tuple_type>::pack(target, tuple_type(address, port));
     }
@@ -47,7 +47,7 @@ struct type_traits<boost::asio::ip::basic_endpoint<InternetProtocol>> {
     void
     unpack(const msgpack::object& source, endpoint_type& target) {
         std::string address;
-        uint16_t port;
+        unsigned short port;
 
         type_traits<tuple_type>::unpack(source, std::move(std::tie(address, port)));
 

@@ -39,9 +39,6 @@ const std::string defaults::plugins_path       = "/usr/lib/cocaine";
 const std::string defaults::runtime_path       = "/var/run/cocaine";
 
 const std::string defaults::endpoint           = "::";
-const uint16_t defaults::locator_port          = 10053;
-const uint16_t defaults::min_port              = 32768;
-const uint16_t defaults::max_port              = 61000;
 
 const std::string defaults::log_verbosity      = "info";
 const std::string defaults::log_timestamp      = "%Y-%m-%d %H:%M:%S.%f";

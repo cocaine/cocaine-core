@@ -45,11 +45,8 @@ struct defaults {
     static const std::string plugins_path;
     static const std::string runtime_path;
 
-    // Defaults for service locator.
+    // Defaults for networking.
     static const std::string endpoint;
-    static const uint16_t locator_port;
-    static const uint16_t min_port;
-    static const uint16_t max_port;
 
     // Defaults for logging service.
     static const std::string log_verbosity;

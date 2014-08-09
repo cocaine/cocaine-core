@@ -342,15 +342,15 @@ config_t::config_t(const std::string& path_) {
     network.endpoint = network_config.at("endpoint", defaults::endpoint).as_string();
 
     if(network_config.count("pinned")) {
-        network.pinned = network_config.at("pinned").to<decltype(network.pinned)>();
+        network.ports.pinned = network_config.at("pinned").to<decltype(network.ports.pinned)>();
     }
 
     if(network_config.count("shared")) {
-        network.shared = network_config.at("shared").to<decltype(network.shared)>();
+        network.ports.shared = network_config.at("shared").to<decltype(network.ports.shared)>();
     }
 
     // Blackhole logging configuration
-    logging  = root.as_object().at("logging",  dynamic_t::object_t()).to<config_t::logging_t>();
+    logging = root.as_object().at("logging",  dynamic_t::object_t()).to<config_t::logging_t>();
 
     // Component configuration
     services = root.as_object().at("services", dynamic_t::object_t()).to<config_t::component_map_t>();
@@ -369,10 +369,11 @@ config_t::versions() {
 // Dynamic port mapper
 
 port_mapping_t::port_mapping_t(const config_t& config):
-    m_pinned(config.network.pinned)
+    m_pinned(config.network.ports.pinned)
 {
-    uint16_t min, max;
-    std::tie(min, max) = config.network.shared;
+    port_t min, max;
+
+    std::tie(min, max) = config.network.ports.shared;
 
     std::vector<port_t> seed;
 
@@ -387,7 +388,7 @@ port_mapping_t::port_mapping_t(const config_t& config):
     m_shared = queue_type(seed.begin(), seed.end());
 }
 
-port_mapping_t::port_t
+port_t
 port_mapping_t::assign(const std::string& name) {
     if(m_pinned.count(name)) {
         return m_pinned.at(name);
