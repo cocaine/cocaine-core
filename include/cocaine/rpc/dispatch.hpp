@@ -130,11 +130,11 @@ public:
     { }
 
     template<class Event, class F>
-    void
+    dispatch&
     on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type* = nullptr);
 
     template<class Event>
-    void
+    dispatch&
     on(const std::shared_ptr<io::basic_slot<Event>>& ptr);
 
     template<class Visitor>
@@ -217,23 +217,25 @@ private:
 
 template<class Tag>
 template<class Event, class F>
-void
+dispatch<Tag>&
 dispatch<Tag>::on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type*) {
     typedef typename aux::select<
         typename result_of<F>::type,
         Event
     >::type slot_type;
 
-    on<Event>(std::make_shared<slot_type>(callable));
+    return on<Event>(std::make_shared<slot_type>(callable));
 }
 
 template<class Tag>
 template<class Event>
-void
+dispatch<Tag>&
 dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
     if(!m_slots->insert(std::make_pair(io::event_traits<Event>::id, ptr)).second) {
         throw cocaine::error_t("duplicate type %d slot: %s", io::event_traits<Event>::id, ptr->name());
     }
+
+    return *this;
 }
 
 template<class Tag>
