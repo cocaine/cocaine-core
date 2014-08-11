@@ -226,9 +226,10 @@ multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std
 
         if(!expiration) {
             expiration = std::make_unique<boost::asio::deadline_timer>(m_reactor);
-        }
 
-        m_locator.link_node(uuid, endpoints);
+            // Link a new node only when seen for the first time.
+            m_locator.link_node(uuid, endpoints);
+        }
 
         expiration->expires_from_now(m_config.interval * 3);
         expiration->async_wait(std::bind(&multicast_t::cleanup, this, std::placeholders::_1, uuid));
