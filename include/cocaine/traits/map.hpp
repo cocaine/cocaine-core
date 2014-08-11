@@ -27,14 +27,12 @@
 
 namespace cocaine { namespace io {
 
-template<class K, class V, class Compare, class Allocator>
-struct type_traits<std::map<K, V, Compare, Allocator>> {
-    typedef std::map<K, V, Compare, Allocator> value_type;
-
+template<class K, class V>
+struct type_traits<std::map<K, V>> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& target, const value_type& source) {
+    pack(msgpack::packer<Stream>& target, const std::map<K, V>& source) {
         target.pack_map(source.size());
 
         for(auto it = source.begin(); it != source.end(); ++it) {
@@ -45,7 +43,7 @@ struct type_traits<std::map<K, V, Compare, Allocator>> {
 
     static inline
     void
-    unpack(const msgpack::object& source, value_type& target) {
+    unpack(const msgpack::object& source, std::map<K, V>& target) {
         if(source.type != msgpack::type::MAP) {
             throw msgpack::type_error();
         }

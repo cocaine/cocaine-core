@@ -40,7 +40,7 @@ namespace aux {
 
 template<class Stream>
 struct pack_variant:
-    public boost::static_visitor<>
+    public boost::static_visitor<void>
 {
     pack_variant(msgpack::packer<Stream>& target):
         m_target(target)

@@ -83,6 +83,7 @@ public:
 
         // NOTE: Format is [ChannelID, MessageID, [Args...]].
         m_packer.pack_array(3);
+
         m_packer.pack_uint64(stream);
         m_packer.pack_uint32(traits::id);
 
