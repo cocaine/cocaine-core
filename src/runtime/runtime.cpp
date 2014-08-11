@@ -19,9 +19,6 @@
 */
 
 #include "cocaine/common.hpp"
-
-#include "cocaine/asio/reactor.hpp"
-
 #include "cocaine/context.hpp"
 
 #if !defined(__APPLE__)
@@ -30,6 +27,9 @@
 
 #include <csignal>
 #include <iostream>
+
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/signal_set.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -47,7 +47,7 @@ namespace po = boost::program_options;
 
 namespace {
 
-void stacktrace(int signum, siginfo_t* /* info */, void* context) {
+void stacktrace(int signal, siginfo_t* /* info */, void* context) {
     ucontext_t* uctx = static_cast<ucontext_t*>(context);
     
     using namespace backward;
@@ -73,26 +73,19 @@ void stacktrace(int signum, siginfo_t* /* info */, void* context) {
     printer.print(trace);
 
     // Re-raise so that a core dump is generated.
-    std::raise(signum);
+    std::raise(signal);
 
     // Just in case, if the default handler returns for some weird reason.
     std::_Exit(EXIT_FAILURE);
 }
 
 struct runtime_t {
-    runtime_t()
-#if defined(EVFLAG_SIGNALFD)
-        : m_loop(EVFLAG_SIGNALFD)
-#endif
+    runtime_t():
+        m_signals(m_reactor, SIGINT, SIGTERM, SIGQUIT)
     {
-        m_sigint.set<runtime_t, &runtime_t::terminate>(this);
-        m_sigint.start(SIGINT);
+        using namespace std::placeholders;
 
-        m_sigterm.set<runtime_t, &runtime_t::terminate>(this);
-        m_sigterm.start(SIGTERM);
-
-        m_sigquit.set<runtime_t, &runtime_t::terminate>(this);
-        m_sigquit.start(SIGQUIT);
+        m_signals.async_wait(std::bind(&runtime_t::terminate, this, _1, _2));
 
         // Establish an alternative signal stack
 
@@ -116,7 +109,7 @@ struct runtime_t {
         action.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND | SA_SIGINFO;
 
         ::sigaction(SIGABRT, &action, nullptr);
-        ::sigaction(SIGBUS,  &action, nullptr);
+        ::sigaction(SIGBUS, &action, nullptr);
         ::sigaction(SIGSEGV, &action, nullptr);
 
         // Block the deprecated signals.
@@ -141,25 +134,27 @@ struct runtime_t {
         delete[] ptr;
     }
 
-    void
+    int
     run() {
-        m_loop.loop();
+        m_reactor.run();
+
+        // There's no way it can actually go wrong.
+        return EXIT_SUCCESS;
     }
 
 private:
     void
-    terminate(ev::sig&, int) {
-        m_loop.unloop(ev::ALL);
+    terminate(const boost::system::error_code& ec, int __attribute__((unused)) signal) {
+        if(ec == boost::asio::error::operation_aborted) {
+            return;
+        }
+
+        m_reactor.stop();
     }
 
 private:
-    // Main event loop, able to handle signals.
-    ev::default_loop m_loop;
-
-    // Signal watchers.
-    ev::sig m_sigint;
-    ev::sig m_sigterm;
-    ev::sig m_sigquit;
+    boost::asio::io_service m_reactor;
+    boost::asio::signal_set m_signals;
 
     // An alternative signal stack for SIGSEGV handling.
     stack_t m_alt_stack;
@@ -199,13 +194,8 @@ main(int argc, char* argv[]) {
     }
 
     if(vm.count("version")) {
-        std::cout << cocaine::format(
-            "Cocaine %d.%d.%d",
-            COCAINE_VERSION_MAJOR,
-            COCAINE_VERSION_MINOR,
-            COCAINE_VERSION_RELEASE
-        ) << std::endl;
-
+        std::cout << cocaine::format("Cocaine %d.%d.%d", COCAINE_VERSION_MAJOR, COCAINE_VERSION_MINOR,
+            COCAINE_VERSION_RELEASE) << std::endl;
         return EXIT_SUCCESS;
     }
 
@@ -225,10 +215,6 @@ main(int argc, char* argv[]) {
     } catch(const cocaine::error_t& e) {
         std::cerr << cocaine::format("ERROR: unable to initialize the configuration - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
-    } catch(const std::system_error& e) {
-        std::cerr << cocaine::format("ERROR: unable to initialize the configuration - %s.", e.code()) << std::endl;
-
-        return EXIT_FAILURE;
     }
 
 #ifdef COCAINE_ALLOW_RAFT
@@ -241,17 +227,17 @@ main(int argc, char* argv[]) {
     std::unique_ptr<pid_file_t> pidfile;
 
     if(vm.count("daemonize")) {
+        if(daemon(0, 0) < 0) {
+            std::cerr << "ERROR: daemonization failed." << std::endl;
+            return EXIT_FAILURE;
+        }
+
         fs::path pid_path;
 
         if(!vm["pidfile"].empty()) {
             pid_path = vm["pidfile"].as<std::string>();
         } else {
             pid_path = cocaine::format("%s/cocained.pid", config->path.runtime);
-        }
-
-        if(daemon(0, 0) < 0) {
-            std::cerr << "ERROR: daemonization failed." << std::endl;
-            return EXIT_FAILURE;
         }
 
         try {
@@ -263,9 +249,6 @@ main(int argc, char* argv[]) {
     }
 #endif
 
-    // NOTE: The default event loop have to initialized first, otherwise signals wouldn't be properly handled.
-    runtime_t runtime;
-
     std::unique_ptr<context_t> context;
 
     try {
@@ -275,7 +258,5 @@ main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    runtime.run();
-
-    return EXIT_SUCCESS;
+    return runtime_t().run();
 }
