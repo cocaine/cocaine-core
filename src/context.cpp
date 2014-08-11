@@ -267,16 +267,14 @@ struct dynamic_converter<config_t::logging_t> {
 
 } // namespace cocaine
 
-config_t::config_t(const std::string& path_) {
-    path.configuration = path_;
+config_t::config_t(const std::string& source) {
+    const auto source_file_status = fs::status(source);
 
-    const auto configuration_file_status = fs::status(path.configuration);
-
-    if(!fs::exists(configuration_file_status) || !fs::is_regular_file(configuration_file_status)) {
+    if(!fs::exists(source_file_status) || !fs::is_regular_file(source_file_status)) {
         throw cocaine::error_t("the configuration file path is invalid");
     }
 
-    fs::ifstream stream(path.configuration);
+    fs::ifstream stream(source);
 
     if(!stream) {
         throw cocaine::error_t("unable to read the configuration file");

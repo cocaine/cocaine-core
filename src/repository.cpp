@@ -31,16 +31,6 @@ using namespace cocaine::api;
 
 namespace fs = boost::filesystem;
 
-repository_t::repository_t(logging::logger_t& logger):
-    m_log(new logging::log_t(logger, blackhole::log::attributes_t({
-        logging::keyword::source() = "repository"
-    })))
-{
-    if(lt_dlinit() != 0) {
-        throw repository_error_t("unable to initialize the dynamic loader");
-    }
-}
-
 namespace {
 
 typedef std::remove_pointer<lt_dlhandle>::type handle_type;
@@ -52,7 +42,25 @@ struct lt_dlclose_action {
     }
 };
 
+struct validate_t {
+    template<typename T>
+    bool
+    operator()(const T& entry) const {
+        return fs::is_regular_file(entry) && entry.path().extension() == ".cocaine-plugin";
+    }
+};
+
 } // namespace
+
+repository_t::repository_t(logging::logger_t& logger):
+    m_log(new logging::log_t(logger, blackhole::log::attributes_t({
+        logging::keyword::source() = "repository"
+    })))
+{
+    if(lt_dlinit() != 0) {
+        throw repository_error_t("unable to initialize the dynamic loader");
+    }
+}
 
 repository_t::~repository_t() {
     // Destroy all the factories.
@@ -65,45 +73,20 @@ repository_t::~repository_t() {
     lt_dlexit();
 }
 
-namespace {
-
-struct validate_t {
-    template<typename T>
-    bool
-    operator()(const T& entry) const {
-        return fs::is_regular_file(entry) && entry.path().extension() == ".cocaine-plugin";
-    }
-};
-
-} // namespace
-
 void
-repository_t::load(const std::string& path_) {
-    const auto path = fs::path(path_);
+repository_t::load(const std::string& path) {
     const auto status = fs::status(path);
 
-    if(!fs::exists(status)) {
-        COCAINE_LOG_INFO(m_log, "unable to load plugin: path does not exist")(
-            "plugin", path_
-        );
-
+    if(!fs::exists(status) || !fs::is_directory(status)) {
+        COCAINE_LOG_INFO(m_log, "unable to load plugins: path '%s' is not valid", path);
         return;
     }
 
-    if(fs::is_directory(status)) {
-        typedef boost::filter_iterator<validate_t, fs::directory_iterator> plugin_iterator_t;
+    typedef boost::filter_iterator<validate_t, fs::directory_iterator> filter_t;
 
-        plugin_iterator_t it = plugin_iterator_t(validate_t(), fs::directory_iterator(path)),
-                          end;
-
-        while(it != end) {
-            // Try to load the plugin.
-            open(it->path().string());
-            ++it;
-        }
-    } else {
-        // Just try to open the file.
-        open(path.string());
+    for(filter_t it = filter_t(validate_t(), fs::directory_iterator(path)), end; it != end; ++it) {
+        // Try to load the plugin.
+        open(it->path().string());
     }
 }
 

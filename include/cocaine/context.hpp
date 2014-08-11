@@ -38,7 +38,7 @@ namespace cocaine {
 // Configuration
 
 struct config_t {
-    config_t(const std::string& path);
+    config_t(const std::string& source);
 
     static
     int
@@ -46,7 +46,6 @@ struct config_t {
 
 public:
     struct {
-        std::string configuration;
         std::string plugins;
         std::string runtime;
     } path;
@@ -55,14 +54,19 @@ public:
         // I/O thread pool size.
         size_t pool;
 
-        // Local hostname. It might be automatically detected or manually specified.
+        // Local hostname, in case it can't be automatically detected by resolving a CNAME for the
+        // contents of /etc/hostname via the default system resolver.
         std::string hostname;
 
-        // An endpoint where all the services and the service locator will be bound.
+        // An endpoint where all the services will be bound. Note that binding on [::] will bind on
+        // 0.0.0.0 too as long as the "net.ipv6.bindv6only" sysctl is set to 0 (default).
         std::string endpoint;
 
         struct {
+            // Pinned ports for static service port allocation.
             std::map<std::string, port_t> pinned;
+
+            // Port range to populate the dynamic port pool for service port allocation.
             std::tuple<port_t, port_t> shared;
         } ports;
     } network;
@@ -79,7 +83,7 @@ public:
 
     struct component_t {
         std::string type;
-        dynamic_t args;
+        dynamic_t   args;
     };
 
     typedef std::map<std::string, component_t> component_map_t;

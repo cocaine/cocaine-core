@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/memory.hpp"
 
 #include <typeinfo>
 #include <type_traits>
@@ -79,13 +80,13 @@ struct repository_error_t:
 class repository_t {
     COCAINE_DECLARE_NONCOPYABLE(repository_t)
 
-    std::unique_ptr<logging::log_t> m_log;
+    const std::unique_ptr<logging::log_t> m_log;
 
     // NOTE: Used to unload all the plugins on shutdown.
     // Cannot use a forward declaration here due to the implementation details.
     std::vector<lt_dlhandle> m_plugins;
 
-    typedef std::map<std::string, std::shared_ptr<factory_concept_t>> factory_map_t;
+    typedef std::map<std::string, std::unique_ptr<factory_concept_t>> factory_map_t;
     typedef std::map<std::string, factory_map_t> category_map_t;
 
     category_map_t m_categories;
@@ -99,11 +100,11 @@ public:
 
     template<class Category, typename... Args>
     typename category_traits<Category>::ptr_type
-    get(const std::string& type, Args&&... args);
+    get(const std::string& name, Args&&... args) const;
 
     template<class T>
     void
-    insert(const std::string& type);
+    insert(const std::string& name);
 
 private:
     void
@@ -112,15 +113,14 @@ private:
 
 template<class Category, typename... Args>
 typename category_traits<Category>::ptr_type
-repository_t::get(const std::string& type, Args&&... args) {
+repository_t::get(const std::string& name, Args&&... args) const {
     const std::string id = typeid(Category).name();
-    const factory_map_t& factories = m_categories[id];
 
-    factory_map_t::const_iterator it = factories.find(type);
-
-    if(it == factories.end()) {
-        throw repository_error_t("the '%s' component is not available", type);
+    if(!m_categories.count(id) || !m_categories.at(id).count(name)) {
+        throw repository_error_t("the '%s' component is not available", name);
     }
+
+    factory_map_t::const_iterator it = m_categories.at(id).find(name);
 
     // TEST: Ensure that the plugin is of the actually specified category.
     BOOST_ASSERT(it->second->id() == typeid(Category));
@@ -147,13 +147,12 @@ repository_t::insert(const std::string& name) {
     );
 
     const std::string id = typeid(category_type).name();
-    factory_map_t& factories = m_categories[id];
 
-    if(factories.find(name) != factories.end()) {
+    if(m_categories.count(id) && m_categories.at(id).count(name)) {
         throw repository_error_t("the '%s' component is a duplicate", name);
     }
 
-    factories[name] = std::make_shared<factory_type>();
+    m_categories[id].emplace(name, std::make_unique<factory_type>());
 
     COCAINE_LOG_DEBUG(m_log, "component has been registered")(
         "component", name
