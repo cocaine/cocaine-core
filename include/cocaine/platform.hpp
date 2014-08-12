@@ -21,6 +21,10 @@
 #ifndef COCAINE_PLATFORM_HPP
 #define COCAINE_PLATFORM_HPP
 
+#if defined(__APPLE__)
+    #include <TargetConditionals.h>
+#endif
+
 #if defined(__GNUC__)
     #if __GNUC__ == 4 && __GNUC_MINOR__ >= 4
         #define HAVE_GCC44
@@ -32,6 +36,10 @@
 
     #if __GNUC__ == 4 && __GNUC_MINOR__ >= 7
         #define HAVE_GCC47
+    #endif
+
+    #if defined(__clang__)
+        #define HAVE_CLANG
     #endif
 #endif
 

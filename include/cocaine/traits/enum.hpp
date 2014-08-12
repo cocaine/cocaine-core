@@ -21,6 +21,7 @@
 #ifndef COCAINE_ENUM_TYPE_TRAITS_HPP
 #define COCAINE_ENUM_TYPE_TRAITS_HPP
 
+#include "cocaine/common.hpp"
 #include "cocaine/traits.hpp"
 
 #include <type_traits>
@@ -36,7 +37,7 @@ struct type_traits<
     typename std::enable_if<std::is_enum<T>::value>::type
 >
 {
-#if defined(__clang__) || defined(GCC47)
+#if defined(COCAINE_HAVE_FEATURE_UNDERLYING_TYPE)
     typedef typename std::underlying_type<T>::type base_type;
 #else
     typedef int base_type;

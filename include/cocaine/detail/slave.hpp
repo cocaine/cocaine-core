@@ -157,7 +157,7 @@ class slave_t {
 
         states m_state;
 
-#if defined(__clang__) || defined(HAVE_GCC47)
+#if defined(COCAINE_HAVE_FEATURE_STEADY_CLOCK)
         const std::chrono::steady_clock::time_point m_birthstamp;
 #else
         const std::chrono::monotonic_clock::time_point m_birthstamp;
