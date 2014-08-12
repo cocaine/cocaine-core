@@ -23,7 +23,7 @@
 
 #include "cocaine/platform.hpp"
 
-#if !defined(__clang__) && !defined(HAVE_GCC46)
+#if !defined(HAVE_CLANG) && !defined(HAVE_GCC46)
     #define nullptr __null
 #endif
 
@@ -48,6 +48,11 @@
                                                 \
     _name_&                                     \
     operator=(const _name_& other) = delete;
+
+#if HAVE_GCC47 || TARGET_OS_MAC
+    #define COCAINE_HAVE_FEATURE_STEADY_CLOCK
+    #define COCAINE_HAVE_FEATURE_UNDERLYING_TYPE
+#endif
 
 #include "cocaine/config.hpp"
 #include "cocaine/exceptions.hpp"

@@ -102,7 +102,7 @@ slave_t::slave_t(context_t& context, reactor_t& reactor, const manifest_t& manif
     m_id(id),
     m_engine(engine),
     m_state(states::unknown),
-#if defined(__clang__) || defined(HAVE_GCC47)
+#if defined(COCAINE_HAVE_FEATURE_STEADY_CLOCK)
     m_birthstamp(std::chrono::steady_clock::now()),
 #else
     m_birthstamp(std::chrono::monotonic_clock::now()),
@@ -327,7 +327,7 @@ slave_t::on_ping() {
         using namespace std::chrono;
 
         const auto uptime = duration_cast<duration<float>>(
-#if defined(__clang__) || defined(HAVE_GCC47)
+#if defined(COCAINE_HAVE_FEATURE_STEADY_CLOCK)
             steady_clock::now() - m_birthstamp
 #else
             monotonic_clock::now() - m_birthstamp
