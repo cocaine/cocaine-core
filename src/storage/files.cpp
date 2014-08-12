@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/storages/files.hpp"
+#include "cocaine/detail/storage/files.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

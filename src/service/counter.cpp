@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/counter.hpp"
+#include "cocaine/detail/service/counter.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

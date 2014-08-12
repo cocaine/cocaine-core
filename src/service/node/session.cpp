@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/node/session.hpp"
-#include "cocaine/detail/services/node/messages.hpp"
+#include "cocaine/detail/service/node/session.hpp"
+#include "cocaine/detail/service/node/messages.hpp"
 
 #include "cocaine/traits/literal.hpp"
 

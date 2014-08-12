@@ -28,8 +28,8 @@
 #include "cocaine/dynamic.hpp"
 
 #include "cocaine/detail/atomic.hpp"
-#include "cocaine/detail/services/node/forwards.hpp"
-#include "cocaine/detail/services/node/queue.hpp"
+#include "cocaine/detail/service/node/forwards.hpp"
+#include "cocaine/detail/service/node/queue.hpp"
 
 #include <mutex>
 

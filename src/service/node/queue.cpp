@@ -18,29 +18,16 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/node/manifest.hpp"
-
-#include "cocaine/traits/dynamic.hpp"
-
-#include <unistd.h>
+#include "cocaine/detail/service/node/queue.hpp"
+#include "cocaine/detail/service/node/session.hpp"
 
 using namespace cocaine::engine;
 
-manifest_t::manifest_t(context_t& context, const std::string& name_):
-    cached<dynamic_t>(context, "manifests", name_),
-    name(name_)
-{
-    endpoint = cocaine::format("%s/%s.%d", context.config.path.runtime, name, ::getpid());
-
-    environment = as_object().at("environment", dynamic_t::object_t()).to<std::map<std::string, std::string>>();
-
-    if(as_object().find("slave") != as_object().end()) {
-        executable = as_object().at("slave").as_string();
+void
+session_queue_t::push(const_reference session) {
+    if(session->event.policy.urgent) {
+        emplace_front(session);
     } else {
-        throw cocaine::error_t("app runnable object has not been specified");
+        emplace_back(session);
     }
-
-    // TODO: Ability to choose app bindpoint.
-    local = as_object().at("local", false).as_bool();
 }
-

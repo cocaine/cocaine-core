@@ -27,9 +27,9 @@
 #include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/message.hpp"
 
-#include "cocaine/rpc/slots/blocking.hpp"
-#include "cocaine/rpc/slots/deferred.hpp"
-#include "cocaine/rpc/slots/streamed.hpp"
+#include "cocaine/rpc/slot/blocking.hpp"
+#include "cocaine/rpc/slot/deferred.hpp"
+#include "cocaine/rpc/slot/streamed.hpp"
 
 #include "cocaine/rpc/traversal.hpp"
 

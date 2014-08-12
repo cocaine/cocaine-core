@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/node/app.hpp"
+#include "cocaine/detail/service/node/app.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
@@ -32,12 +32,12 @@
 
 #include "cocaine/detail/actor.hpp"
 
-#include "cocaine/detail/services/node/engine.hpp"
-#include "cocaine/detail/services/node/event.hpp"
-#include "cocaine/detail/services/node/manifest.hpp"
-#include "cocaine/detail/services/node/messages.hpp"
-#include "cocaine/detail/services/node/profile.hpp"
-#include "cocaine/detail/services/node/stream.hpp"
+#include "cocaine/detail/service/node/engine.hpp"
+#include "cocaine/detail/service/node/event.hpp"
+#include "cocaine/detail/service/node/manifest.hpp"
+#include "cocaine/detail/service/node/messages.hpp"
+#include "cocaine/detail/service/node/profile.hpp"
+#include "cocaine/detail/service/node/stream.hpp"
 
 #include "cocaine/idl/node.hpp"
 

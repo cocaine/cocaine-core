@@ -23,8 +23,8 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/detail/services/node/event.hpp"
-#include "cocaine/detail/services/node/stream.hpp"
+#include "cocaine/detail/service/node/event.hpp"
+#include "cocaine/detail/service/node/stream.hpp"
 
 #include "cocaine/asio/local.hpp"
 #include "cocaine/asio/socket.hpp"

@@ -20,7 +20,7 @@
 
 #include "cocaine/api/storage.hpp"
 
-#include "cocaine/detail/services/storage.hpp"
+#include "cocaine/detail/service/storage.hpp"
 
 #include "cocaine/context.hpp"
 

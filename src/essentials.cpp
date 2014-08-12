@@ -20,18 +20,18 @@
 
 #include "cocaine/detail/essentials.hpp"
 
-#include "cocaine/detail/clusters/multicast.hpp"
-#include "cocaine/detail/isolates/process.hpp"
-#include "cocaine/detail/gateways/adhoc.hpp"
-#include "cocaine/detail/services/locator.hpp"
-#include "cocaine/detail/services/logging.hpp"
-#include "cocaine/detail/services/node.hpp"
-#include "cocaine/detail/services/storage.hpp"
-#include "cocaine/detail/storages/files.hpp"
+#include "cocaine/detail/cluster/multicast.hpp"
+#include "cocaine/detail/isolate/process.hpp"
+#include "cocaine/detail/gateway/adhoc.hpp"
+#include "cocaine/detail/service/locator.hpp"
+#include "cocaine/detail/service/logging.hpp"
+#include "cocaine/detail/service/node.hpp"
+#include "cocaine/detail/service/storage.hpp"
+#include "cocaine/detail/storage/files.hpp"
 
 #ifdef COCAINE_ALLOW_RAFT
     #include "cocaine/detail/raft/control_service.hpp"
-    #include "cocaine/detail/services/counter.hpp"
+    #include "cocaine/detail/service/counter.hpp"
 #endif
 
 void

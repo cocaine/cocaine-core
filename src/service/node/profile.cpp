@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/node/profile.hpp"
+#include "cocaine/detail/service/node/profile.hpp"
 
 #include "cocaine/defaults.hpp"
 

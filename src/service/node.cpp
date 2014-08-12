@@ -20,8 +20,8 @@
 
 #include "cocaine/api/storage.hpp"
 
-#include "cocaine/detail/services/node.hpp"
-#include "cocaine/detail/services/node/app.hpp"
+#include "cocaine/detail/service/node.hpp"
+#include "cocaine/detail/service/node/app.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

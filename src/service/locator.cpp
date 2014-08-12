@@ -19,7 +19,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/services/locator.hpp"
+#include "cocaine/detail/service/locator.hpp"
 
 #include "cocaine/api/gateway.hpp"
 #include "cocaine/api/storage.hpp"

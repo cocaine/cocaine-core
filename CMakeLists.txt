@@ -91,7 +91,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/actor.cpp
     src/api.cpp
     src/chamber.cpp
-    src/clusters/multicast.cpp
+    src/cluster/multicast.cpp
     src/context.cpp
     src/crypto.cpp
     src/defaults.cpp
@@ -99,25 +99,25 @@ ADD_LIBRARY(cocaine-core SHARED
     src/dynamic.cpp
     src/engine.cpp
     src/essentials.cpp
-    src/gateways/adhoc.cpp
-    src/isolates/process.cpp
-    src/isolates/process/archive.cpp
-    src/isolates/process/spooler.cpp
+    src/gateway/adhoc.cpp
+    src/isolate/process.cpp
+    src/isolate/process/archive.cpp
+    src/isolate/process/spooler.cpp
     src/logging.cpp
     src/repository.cpp
-    src/services/locator.cpp
-    src/services/logging.cpp
-    src/services/node.cpp
-    src/services/node/app.cpp
-    src/services/node/engine.cpp
-    src/services/node/manifest.cpp
-    src/services/node/profile.cpp
-    src/services/node/queue.cpp
-    src/services/node/session.cpp
-    src/services/node/slave.cpp
-    src/services/storage.cpp
+    src/service/locator.cpp
+    src/service/logging.cpp
+    src/service/node.cpp
+    src/service/node/app.cpp
+    src/service/node/engine.cpp
+    src/service/node/manifest.cpp
+    src/service/node/profile.cpp
+    src/service/node/queue.cpp
+    src/service/node/session.cpp
+    src/service/node/slave.cpp
+    src/service/storage.cpp
     src/session.cpp
-    src/storages/files.cpp
+    src/storage/files.cpp
     src/unique_id.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-core

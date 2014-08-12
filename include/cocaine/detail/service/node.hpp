@@ -23,7 +23,7 @@
 
 #include "cocaine/api/service.hpp"
 
-#include "cocaine/detail/services/node/forwards.hpp"
+#include "cocaine/detail/service/node/forwards.hpp"
 
 #include "cocaine/idl/node.hpp"
 #include "cocaine/rpc/dispatch.hpp"

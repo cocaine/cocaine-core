@@ -23,7 +23,7 @@
 
 #include "cocaine/detail/raft/error.hpp"
 
-#include "cocaine/rpc/slots/deferred.hpp"
+#include "cocaine/rpc/slot/deferred.hpp"
 
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>

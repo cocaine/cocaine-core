@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_STREAMED_SLOT_HPP
 #define COCAINE_IO_STREAMED_SLOT_HPP
 
-#include "cocaine/rpc/slots/deferred.hpp"
+#include "cocaine/rpc/slot/deferred.hpp"
 
 namespace cocaine {
 

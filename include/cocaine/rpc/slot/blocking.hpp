@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_BLOCKING_SLOT_HPP
 #define COCAINE_IO_BLOCKING_SLOT_HPP
 
-#include "cocaine/rpc/slots/function.hpp"
+#include "cocaine/rpc/slot/function.hpp"
 
 namespace cocaine { namespace io {
 
