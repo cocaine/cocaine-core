@@ -35,7 +35,7 @@ storage(context_t& context, const std::string& name) {
     return context.get<storage_t>(
         it->second.type,
         context,
-        cocaine::format("storage/%s", name),
+        name,
         it->second.args
     );
 }

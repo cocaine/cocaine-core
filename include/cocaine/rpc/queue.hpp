@@ -27,8 +27,6 @@
 #include "cocaine/rpc/slot.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
-#include "cocaine/tuple.hpp"
-
 #include <deque>
 
 #include <boost/mpl/lambda.hpp>
@@ -72,6 +70,7 @@ make_frozen(Args&&... args) {
 struct frozen_visitor_t:
     public boost::static_visitor<void>
 {
+    explicit
     frozen_visitor_t(const std::shared_ptr<basic_upstream_t>& u):
         upstream_(u)
     { }

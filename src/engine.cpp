@@ -26,15 +26,22 @@
 
 #include "cocaine/detail/chamber.hpp"
 
-#include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/session.hpp"
+
+#include <blackhole/scoped_attributes.hpp>
+
+using namespace blackhole;
+
+using namespace boost::asio;
+using namespace boost::asio::ip;
 
 using namespace cocaine;
 
-execution_unit_t::execution_unit_t(context_t& context, const std::string& name):
-    m_log(context.log(name)),
-    m_reactor(std::make_shared<io::reactor_t>()),
-    m_chamber(std::make_unique<io::chamber_t>(name, m_reactor))
+execution_unit_t::execution_unit_t(context_t& context):
+    m_log(context.log("cocaine/io-pool")),
+    m_asio(new io_service()),
+    m_chamber(new io::chamber_t("cocaine/io-pool", m_asio))
 { }
 
 execution_unit_t::~execution_unit_t() {
@@ -49,72 +56,55 @@ execution_unit_t::~execution_unit_t() {
 }
 
 void
-execution_unit_t::attach(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
-    m_reactor->post(std::bind(&execution_unit_t::on_connect, this, socket, dispatch));
+execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
+    m_asio->post(std::bind(&execution_unit_t::attach_impl, this, ptr, dispatch));
 }
 
 void
-execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
-    auto fd = socket->fd();
+execution_unit_t::detach(int fd) {
+    m_sessions[fd]->detach();
+    m_sessions.erase(fd);
+}
+
+void
+execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
+    auto fd = ::dup(ptr->native_handle());
 
     // Make sure that the fd wasn't reused before it was actually processed for disconnection.
     BOOST_ASSERT(!m_sessions.count(fd));
 
-    auto ptr = std::make_unique<io::channel<io::socket<io::tcp>>>(*m_reactor, socket);
+    // Copy the socket into the new reactor.
+    auto channel = std::make_unique<io::channel<tcp>>(std::make_unique<tcp::socket>(
+       *m_asio,
+        ptr->local_endpoint().protocol(),
+        fd
+    ));
 
     using namespace std::placeholders;
 
-    ptr->rd->bind(
-        std::bind(&execution_unit_t::on_message, this, fd, _1),
-        std::bind(&execution_unit_t::on_failure, this, fd, _1)
-    );
+    m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
+    m_sessions[fd]->signals.failure.connect(std::bind(&execution_unit_t::signal_impl, this, _1, fd));
 
-    ptr->wr->bind(
-        std::bind(&execution_unit_t::on_failure, this, fd, _1)
-    );
-
-    m_sessions[fd] = std::make_shared<session_t>(std::move(ptr), dispatch);
+    // Start the message dispatching.
+    m_sessions[fd]->pull();
 }
 
 void
-execution_unit_t::on_message(int fd, const io::message_t& message) {
+execution_unit_t::signal_impl(const boost::system::error_code& ec, int fd) {
     auto it = m_sessions.find(fd);
 
-    BOOST_ASSERT(it != m_sessions.end());
+    BOOST_ASSERT(ec && it != m_sessions.end());
 
-    try {
-        it->second->invoke(message);
-    } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(m_log, "client has been forced to disconnect")(
-            "fd", fd,
-            "reason", e.what()
-        );
+    scoped_attributes_t attributes(*m_log, {
+        attribute::make("endpoint", boost::lexical_cast<std::string>(it->second->remote_endpoint())),
+        attribute::make("service", it->second->name())
+    });
 
-        // NOTE: This destroys the connection but not necessarily the session itself, as it might be
-        // still in use by shared upstreams even in other threads. In other words, this doesn't guarantee
-        // that the session will be actually deleted, but it's fine, since the connection is closed.
-        it->second->detach();
-        m_sessions.erase(it);
-    }
-}
-
-void
-execution_unit_t::on_failure(int fd, const std::error_code& error) {
-    if(!m_sessions.count(fd)) {
-        // TODO: COCAINE-75 fixes this via cancellation.
-        // Check whether the connection actually exists, in case multiple errors were queued up in
-        // the reactor and it was already dropped.
-        return;
-    } else if(error) {
-        COCAINE_LOG_ERROR(m_log, "client has disconnected")(
-            "fd", fd,
-            "errno", error.value(),
-            "reason", error.message()
-        );
+    if(ec != error::eof) {
+        COCAINE_LOG_ERROR(m_log, "client has disconnected: [%d] %s", ec.value(), ec.message());
     } else {
-        COCAINE_LOG_DEBUG(m_log, "client has disconnected")("fd", fd);
+        COCAINE_LOG_DEBUG(m_log, "client has disconnected");
     }
 
-    m_sessions[fd]->detach();
-    m_sessions.erase(fd);
+    detach(fd);
 }

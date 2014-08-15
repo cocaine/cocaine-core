@@ -14,3 +14,4 @@
 #cmakedefine COCAINE_DEBUG
 #cmakedefine COCAINE_ALLOW_CGROUPS
 #cmakedefine COCAINE_ALLOW_RAFT
+#cmakedefine COCAINE_ALLOW_NODE

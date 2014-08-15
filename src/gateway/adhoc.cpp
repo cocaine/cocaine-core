@@ -61,9 +61,7 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
 
     std::advance(lb, distribution(m_random_generator));
 
-    const auto endpoint = std::get<0>(lb->second.meta);
-
-    COCAINE_LOG_DEBUG(m_log, "providing service using remote node", std::get<0>(endpoint), std::get<1>(endpoint))(
+    COCAINE_LOG_DEBUG(m_log, "providing service using remote node")(
         "service", name,
         "uuid", lb->second.uuid
     );

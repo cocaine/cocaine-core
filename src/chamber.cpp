@@ -19,11 +19,12 @@
 */
 
 #include "cocaine/detail/chamber.hpp"
-#include "cocaine/asio/reactor.hpp"
 #include "cocaine/memory.hpp"
 
 #if defined(__linux__)
     #include <sys/prctl.h>
+#elif defined(__APPLE__)
+    #include <pthread.h>
 #endif
 
 using namespace cocaine::io;
@@ -37,25 +38,29 @@ struct chamber_t::named_runnable {
         } else {
             ::prctl(PR_SET_NAME, name.substr(0, 16).data());
         }
+#elif defined(__APPLE__)
+        pthread_setname_np(name.c_str());
 #endif
 
-        reactor->run();
+        asio->run();
     }
 
     const std::string name;
-    const std::shared_ptr<io::reactor_t>& reactor;
+    const std::shared_ptr<boost::asio::io_service>& asio;
 };
 
-chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<io::reactor_t>& reactor_):
+chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<boost::asio::io_service>& asio_):
     name(name_),
-    reactor(reactor_)
-{
-    thread = std::make_unique<boost::thread>(named_runnable{name, reactor});
-}
+    asio(asio_),
+    work(new boost::asio::io_service::work(*asio)),
+    thread(new boost::thread(named_runnable{name, asio}))
+{ }
 
 chamber_t::~chamber_t() {
-    reactor->post(std::bind(&io::reactor_t::stop, reactor));
+    // NOTE: Instead of calling io_service::stop() to terminate the reactor immediately, kill the
+    // work object and wait for all the outstanding operations to gracefully finish up.
+    work.reset();
 
+    // TODO: Check if this might hang forever because of the above.
     thread->join();
-    thread.reset();
 }

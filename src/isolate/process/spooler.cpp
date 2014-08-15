@@ -34,7 +34,7 @@ void
 process_t::spool() {
     std::string blob;
 
-    COCAINE_LOG_INFO(m_log, "deploying the app")("target", m_working_directory);
+    COCAINE_LOG_INFO(m_log, "deploying the app to %s", m_working_directory);
 
     auto storage = api::storage(m_context, "core");
 

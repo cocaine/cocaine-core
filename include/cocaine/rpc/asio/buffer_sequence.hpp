@@ -18,21 +18,45 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_LOCAL_HPP
-#define COCAINE_IO_LOCAL_HPP
+#ifndef COCAINE_IO_BUFFER_SEQUENCE_HPP
+#define COCAINE_IO_BUFFER_SEQUENCE_HPP
 
-#include <boost/asio/local/stream_protocol.hpp>
+#include <boost/asio/buffer.hpp>
 
 namespace cocaine { namespace io {
 
-struct local {
-    typedef boost::asio::local::stream_protocol::endpoint endpoint;
+struct buffer_sequence_t {
+    typedef boost::asio::const_buffer value_type;
+    typedef const value_type* const_iterator;
 
-    static
-    void
-    configure(int /* fd */) {
-        // Do nothing.
+    static const size_t kMaximumBuffers = 32;
+
+    template<class Iterator>
+    buffer_sequence_t(Iterator begin, Iterator end, size_t offset):
+        m_size(0)
+    {
+        if(begin == end) return;
+
+        for(auto it = begin; it != end && m_size != kMaximumBuffers; ++it) {
+            m_buffers[m_size++] = *it;
+        }
+
+        m_buffers[0] = m_buffers[0] + offset;
     }
+
+    const_iterator
+    begin() const {
+        return &m_buffers[0];
+    }
+
+    const_iterator
+    end() const {
+        return &m_buffers[m_size];
+    }
+
+private:
+    value_type m_buffers[kMaximumBuffers];
+    size_t m_size;
 };
 
 }} // namespace cocaine::io

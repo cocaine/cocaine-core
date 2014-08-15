@@ -25,14 +25,15 @@
 #include "cocaine/memory.hpp"
 
 #include "cocaine/detail/actor.hpp"
-#include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/tuple.hpp"
 #include "cocaine/traits/vector.hpp"
 
+#include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/multicast.hpp>
 
+using namespace boost::asio;
 using namespace boost::asio::ip;
 
 using namespace cocaine;
@@ -85,7 +86,7 @@ struct multicast_t::packet_t {
      /* Node ID. */
         std::string,
      /* A list of node endpoints, sorted according to RFC3484. */
-        std::vector<boost::asio::ip::tcp::endpoint>
+        std::vector<tcp::endpoint>
     > tuple_type;
 
     std::array<char, 1024> buffer;
@@ -97,13 +98,12 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
     m_context(context),
     m_locator(locator),
     m_log(context.log(name)),
-    m_uuid(unique_id_t().string()),
     m_config(args.to<multicast_config_t>()),
-    m_socket(m_reactor),
-    m_timer(m_reactor)
+    m_socket(locator.asio()),
+    m_timer(locator.asio())
 {
     m_socket.open(m_config.endpoint.protocol());
-    m_socket.set_option(boost::asio::socket_base::reuse_address(true));
+    m_socket.set_option(socket_base::reuse_address(true));
 
     if(m_config.endpoint.address().is_v4()) {
         m_socket.bind(udp::endpoint(address_v4::any(), m_config.endpoint.port()));
@@ -125,66 +125,67 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
     m_socket.set_option(multicast::hops(args.as_object().at("hops", 1u).as_uint()));
 
     COCAINE_LOG_INFO(m_log, "joining multicast group '%s'", m_config.endpoint)(
-        "uuid", m_uuid
+        "uuid", m_locator.uuid()
     );
 
     m_socket.set_option(multicast::join_group(m_config.endpoint.address()));
 
     auto packet = std::make_shared<packet_t>();
 
-    m_socket.async_receive_from(boost::asio::buffer(packet->buffer.data(), packet->buffer.size()), packet->origin,
+    m_socket.async_receive_from(buffer(packet->buffer.data(), packet->buffer.size()), packet->origin,
         std::bind(&multicast_t::receive, this, std::placeholders::_1, std::placeholders::_2, packet)
     );
 
     m_timer.expires_from_now(m_config.interval);
     m_timer.async_wait(std::bind(&multicast_t::publish, this, std::placeholders::_1));
-
-    m_thread = std::make_unique<std::thread>([&](){m_reactor.run();});
 }
 
 multicast_t::~multicast_t() {
-    m_reactor.stop();
-    m_thread->join();
+    for(auto it = m_expirations.begin(); it != m_expirations.end(); ++it) {
+        it->second->cancel();
+    }
+
+    m_expirations.clear();
+
+    m_timer.cancel();
+    m_socket.close();
 }
 
 void
 multicast_t::publish(const boost::system::error_code& ec) {
-    if(ec == boost::asio::error::operation_aborted) {
+    if(ec == error::operation_aborted) {
         return;
     }
 
-    tcp::resolver::iterator it, end;
+    auto actor = m_context.locate("locator");
 
-    // This will always succeed, because this plugin is used by the locator service.
-    auto& locator = m_context.locate("locator").get();
-
-    try {
-        it = tcp::resolver(m_reactor).resolve(tcp::resolver::query(
-            m_context.config.network.hostname,
-            boost::lexical_cast<std::string>(locator.location().front().port())
-        ));
-    } catch(const boost::system::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: %s", e.code());
+    if(!actor) {
+        COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: locator is not available");
+        return;
     }
 
-    if(it != end) {
-        COCAINE_LOG_DEBUG(m_log, "announcing %d local endpoint(s)", std::distance(it, end))(
-            "uuid", m_uuid
+    auto endpoints = actor.get().endpoints();
+
+    if(!endpoints.empty()) {
+        COCAINE_LOG_DEBUG(m_log, "announcing %d local endpoint(s)", endpoints.size())(
+            "uuid", m_locator.uuid()
         );
 
-        msgpack::sbuffer buffer;
-        msgpack::packer<msgpack::sbuffer> packer(buffer);
+        msgpack::sbuffer target;
+        msgpack::packer<msgpack::sbuffer> packer(target);
 
         io::type_traits<packet_t::tuple_type>::pack(packer, std::make_tuple(
-            m_uuid,
-            std::vector<tcp::endpoint>(it, end)
+            m_locator.uuid(),
+            endpoints
         ));
 
         try {
-            m_socket.send_to(boost::asio::buffer(buffer.data(), buffer.size()), m_config.endpoint);
+            m_socket.send_to(buffer(target.data(), target.size()), m_config.endpoint);
         } catch(const boost::system::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: %s", e.code());
+            COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: [%d] %s", e.code().value(), e.code().message());
         }
+    } else {
+        COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: no endpoints have been found");
     }
 
     m_timer.expires_from_now(m_config.interval);
@@ -193,8 +194,10 @@ multicast_t::publish(const boost::system::error_code& ec) {
 
 void
 multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std::shared_ptr<packet_t>& ptr) {
-    if(ec) {
-        COCAINE_LOG_ERROR(m_log, "receive(): [%d] %s", ec.value(), ec.message());
+    if(ec == error::operation_aborted) {
+        return;
+    } else if(ec) {
+        COCAINE_LOG_ERROR(m_log, "unexpected error in multicast_t::receive(): [%d] %s", ec.value(), ec.message());
         return;
     }
 
@@ -217,7 +220,7 @@ multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std
         return;
     }
 
-    if(uuid != m_uuid) {
+    if(uuid != m_locator.uuid()) {
         COCAINE_LOG_DEBUG(m_log, "received %d remote endpoint(s) from %s", endpoints.size(), ptr->origin)(
             "uuid", uuid
         );
@@ -225,7 +228,7 @@ multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std
         auto& expiration = m_expirations[uuid];
 
         if(!expiration) {
-            expiration = std::make_unique<boost::asio::deadline_timer>(m_reactor);
+            expiration = std::make_unique<deadline_timer>(m_locator.asio());
 
             // Link a new node only when seen for the first time.
             m_locator.link_node(uuid, endpoints);
@@ -237,16 +240,20 @@ multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std
 
     auto packet = std::make_shared<packet_t>();
 
-    m_socket.async_receive_from(boost::asio::buffer(packet->buffer.data(), packet->buffer.size()), packet->origin,
+    m_socket.async_receive_from(buffer(packet->buffer.data(), packet->buffer.size()), packet->origin,
         std::bind(&multicast_t::receive, this, std::placeholders::_1, std::placeholders::_2, packet)
     );
 }
 
 void
 multicast_t::cleanup(const boost::system::error_code& ec, const std::string& uuid) {
-    if(ec == boost::asio::error::operation_aborted) {
+    if(ec == error::operation_aborted) {
         return;
     }
+
+    COCAINE_LOG_ERROR(m_log, "remote endpoints have expired")(
+        "uuid", uuid
+    );
 
     m_locator.drop_node(uuid);
     m_expirations.erase(uuid);

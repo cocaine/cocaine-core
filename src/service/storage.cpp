@@ -18,27 +18,27 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/api/storage.hpp"
-
 #include "cocaine/detail/service/storage.hpp"
+
+#include "cocaine/api/storage.hpp"
 
 #include "cocaine/context.hpp"
 
 using namespace cocaine::io;
 using namespace cocaine::service;
 
-storage_t::storage_t(context_t& context, reactor_t& reactor, const std::string& name, const dynamic_t& args):
-    api::service_t(context, reactor, name, args),
-    dispatch<io::storage_tag>(name)
+storage_t::storage_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args):
+    api::service_t(context, asio, name, args),
+    dispatch<storage_tag>(name)
 {
     auto storage = api::storage(context, args.as_object().at("backend", "core").as_string());
 
     using namespace std::placeholders;
 
-    on<io::storage::read>(std::bind(&api::storage_t::read, storage, _1, _2));
-    on<io::storage::write>(std::bind(&api::storage_t::write, storage, _1, _2, _3, _4));
-    on<io::storage::remove>(std::bind(&api::storage_t::remove, storage, _1, _2));
-    on<io::storage::find>(std::bind(&api::storage_t::find, storage, _1, _2));
+    on<storage::read>(std::bind(&api::storage_t::read, storage, _1, _2));
+    on<storage::write>(std::bind(&api::storage_t::write, storage, _1, _2, _3, _4));
+    on<storage::remove>(std::bind(&api::storage_t::remove, storage, _1, _2));
+    on<storage::find>(std::bind(&api::storage_t::find, storage, _1, _2));
 }
 
 auto

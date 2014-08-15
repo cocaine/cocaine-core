@@ -22,6 +22,7 @@
 #define COCAINE_IO_FROZEN_SERIALIZATION_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
+
 #include "cocaine/rpc/queue.hpp"
 
 namespace cocaine { namespace io {

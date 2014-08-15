@@ -92,7 +92,9 @@ class repository_t {
     category_map_t m_categories;
 
 public:
+    explicit
     repository_t(logging::logger_t& log);
+
    ~repository_t();
 
     void
@@ -117,7 +119,7 @@ repository_t::get(const std::string& name, Args&&... args) const {
     const std::string id = typeid(Category).name();
 
     if(!m_categories.count(id) || !m_categories.at(id).count(name)) {
-        throw repository_error_t("the '%s' component is not available", name);
+        throw repository_error_t("component '%s' is not available", name);
     }
 
     factory_map_t::const_iterator it = m_categories.at(id).find(name);
@@ -149,7 +151,7 @@ repository_t::insert(const std::string& name) {
     const std::string id = typeid(category_type).name();
 
     if(m_categories.count(id) && m_categories.at(id).count(name)) {
-        throw repository_error_t("the '%s' component is a duplicate", name);
+        throw repository_error_t("component '%s' is a duplicate", name);
     }
 
     m_categories[id][name] = std::make_unique<factory_type>();

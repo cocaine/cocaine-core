@@ -26,6 +26,8 @@
 
 #include "cocaine/tuple.hpp"
 
+#include <boost/asio/ip/tcp.hpp>
+
 namespace cocaine { namespace io {
 
 // Service locator interface
@@ -33,20 +35,6 @@ namespace cocaine { namespace io {
 struct locator_tag;
 
 struct locator {
-
-typedef std::tuple<
- /* Fully-qualified domain name of the service node. */
-    std::string,
- /* Service port in host byte order. */
-    uint16_t
-> endpoint_tuple_type;
-
-typedef std::tuple<
- /* Node's UUID. */
-    std::string,
- /* Node's Locator endpoint. */
-    endpoint_tuple_type
-> remote_id_type;
 
 struct resolve {
     typedef locator_tag tag;
@@ -63,8 +51,8 @@ struct resolve {
     > tuple_type;
 
     typedef boost::mpl::list<
-     /* An endpoint for the client to connect to in order to use the the service. */
-        endpoint_tuple_type,
+     /* Endpoints for the client to connect to in order to use the the service. */
+        std::vector<boost::asio::ip::tcp::endpoint>,
      /* Service protocol version. If the client wishes to use the service, the protocol
         versions must match. */
         unsigned int,

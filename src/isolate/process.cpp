@@ -35,7 +35,7 @@
 #include <boost/filesystem/operations.hpp>
 
 #ifdef COCAINE_ALLOW_CGROUPS
-#include <boost/lexical_cast.hpp>
+    #include <boost/lexical_cast.hpp>
 #endif
 
 #include <fcntl.h>
@@ -44,7 +44,7 @@
 #include <unistd.h>
 
 #ifdef COCAINE_ALLOW_CGROUPS
-#include <libcgroup.h>
+    #include <libcgroup.h>
 #endif
 
 using namespace cocaine;
@@ -87,48 +87,42 @@ private:
 
 #ifdef COCAINE_ALLOW_CGROUPS
 struct cgroup_configurator_t:
-    public boost::static_visitor<>
+    public boost::static_visitor<void>
 {
-    cgroup_configurator_t(cgroup_controller* ctl, const char* name, const char* parameter, const std::unique_ptr<logging::log_t>& log):
-        m_ctl(ctl),
-        m_name(name),
-        m_parameter(parameter),
-        m_log(log)
+    cgroup_configurator_t(cgroup_controller* impl_, const char* parameter_):
+        impl(impl_),
+        parameter(parameter_)
     { }
 
     void
     operator()(const dynamic_t::bool_t& value) const {
-        cgroup_add_value_bool(m_ctl, m_parameter, value);
+        cgroup_add_value_bool(impl, parameter, value);
     }
 
     void
     operator()(const dynamic_t::int_t& value) const {
-        cgroup_add_value_int64(m_ctl, m_parameter, value);
+        cgroup_add_value_int64(impl, parameter, value);
     }
 
     void
     operator()(const dynamic_t::uint_t& value) const {
-        cgroup_add_value_uint64(m_ctl, m_parameter, value);
+        cgroup_add_value_uint64(impl, parameter, value);
     }
 
     void
     operator()(const dynamic_t::string_t& value) const {
-        cgroup_add_value_string(m_ctl, m_parameter, value.c_str());
+        cgroup_add_value_string(impl, parameter, value.c_str());
     }
 
     template<class T>
     void
     operator()(const T& /* value */) const {
-        COCAINE_LOG_WARNING(m_log, "cgroup controller '%s' parameter '%s' type is not supported", m_name, m_parameter);
+        throw cocaine::error_t("parameter type is not supported");
     }
 
 private:
-    cgroup_controller* m_ctl;
-
-    const char* m_name;
-    const char* m_parameter;
-
-    const std::unique_ptr<logging::log_t> &m_log;
+    cgroup_controller* impl;
+    const char* parameter;
 };
 #endif
 
@@ -153,22 +147,28 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     // TODO: Check if it changes anything.
     cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());
 
-    for(auto c = args.as_object().begin(); c != args.as_object().end(); ++c) {
-        if(!c->second.is_object() || c->second.as_object().empty()) {
+    for(auto type = args.as_object().begin(); type != args.as_object().end(); ++type) {
+        if(!type->second.is_object() || type->second.as_object().empty()) {
             continue;
         }
 
-        cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->first.c_str());
+        cgroup_controller* impl = cgroup_add_controller(m_cgroup, type->first.c_str());
 
-        for(auto p = c->second.as_object().begin(); p != c->second.as_object().end(); ++p) {
-            p->second.apply(cgroup_configurator_t(ctl, c->first.c_str(), p->first.c_str(), m_log));
+        for(auto it = type->second.as_object().begin(); it != type->second.as_object().end(); ++it) {
+            try {
+                it->second.apply(cgroup_configurator_t(impl, it->first.c_str()));
+            } catch(const cocaine::error_t& e) {
+                COCAINE_LOG_ERROR(m_log, "unable to set cgroup controller '%s' parameter '%s' - %s",
+                    type->first,
+                    it->first,
+                    std::string(e.what())
+                );
+            }
 
-            COCAINE_LOG_DEBUG(
-                m_log,
-                "setting cgroup controller '%s' parameter '%s' to '%s'",
-                c->first,
-                p->first,
-                boost::lexical_cast<std::string>(p->second)
+            COCAINE_LOG_INFO(m_log, "setting cgroup controller '%s' parameter '%s' to '%s'",
+                type->first,
+                it->first,
+                boost::lexical_cast<std::string>(it->second)
             );
         }
     }

@@ -38,13 +38,12 @@ struct deferred_slot:
     typedef function_slot<Event, T<R>> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
-
     typedef typename parent_type::dispatch_type dispatch_type;
     typedef typename parent_type::tuple_type tuple_type;
     typedef typename parent_type::upstream_type upstream_type;
-
     typedef typename parent_type::protocol protocol;
 
+    explicit
     deferred_slot(callable_type callable):
         parent_type(callable)
     { }
@@ -53,7 +52,7 @@ struct deferred_slot:
     boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
-            const T<R> result = this->call(args);
+            const T<R> result = this->call(std::move(args));
 
             // Upstream is attached in a critical section, because the internal message queue might
             // be already in use in some other processing thread of the service.
@@ -107,21 +106,25 @@ struct deferred {
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
     deferred():
-        queue(std::make_shared<synchronized<queue_type>>())
+        queue(new synchronized<queue_type>())
     { }
 
     template<class U>
-    typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type
+    typename std::enable_if<
+        std::is_convertible<typename pristine<U>::type, T>::value,
+        deferred&
+    >::type
     write(U&& value) {
-        auto locked = (*queue).synchronize();
-
-        locked->template append<typename protocol::chunk>(std::forward<U>(value));
-        locked->template append<typename protocol::choke>();
+        auto ptr = (*queue).synchronize();
+        ptr->template append<typename protocol::chunk>(std::forward<U>(value));
+        ptr->template append<typename protocol::choke>();
+        return *this;
     }
 
-    void
+    deferred&
     abort(int code, const std::string& reason) {
         (*queue)->template append<typename protocol::error>(code, reason);
+        return *this;
     }
 
 private:
@@ -138,17 +141,19 @@ struct deferred<void> {
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
     deferred():
-        queue(std::make_shared<synchronized<queue_type>>())
+        queue(new synchronized<queue_type>())
     { }
 
-    void
+    deferred&
     abort(int code, const std::string& reason) {
         (*queue)->append<protocol::error>(code, reason);
+        return *this;
     }
 
-    void
+    deferred&
     close() {
         (*queue)->append<protocol::choke>();
+        return *this;
     }
 
 private:

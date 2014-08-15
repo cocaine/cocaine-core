@@ -73,6 +73,7 @@ struct function_slot:
 
     typedef std::function<function_type> callable_type;
 
+    explicit
     function_slot(callable_type callable_):
         callable(callable_)
     { }
@@ -86,7 +87,7 @@ struct function_slot:
     >::scope protocol;
 
     R
-    call(const tuple_type& args) const {
+    call(tuple_type&& args) const {
         return tuple::invoke(callable, args);
     }
 

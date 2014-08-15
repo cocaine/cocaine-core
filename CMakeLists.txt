@@ -14,7 +14,8 @@ ELSE()
     OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" OFF)
 ENDIF()
 
-OPTION(COCAINE_ALLOW_RAFT "Build Raft support for Runtime" ON)
+OPTION(COCAINE_ALLOW_RAFT "Build Raft support for Runtime" OFF)
+OPTION(COCAINE_ALLOW_NODE "Build Node support for Runtime" OFF)
 
 INCLUDE(cmake/locate_library.cmake)
 
@@ -37,7 +38,6 @@ IF(COCAINE_ALLOW_CGROUPS)
     SET(LIBCGROUP_LIBRARY "cgroup")
 ENDIF()
 
-LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBMHASH "mhash.h" "mhash")
@@ -55,7 +55,6 @@ INCLUDE_DIRECTORIES(
     ${Boost_INCLUDE_DIRS}
     ${LIBCGROUP_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
-    ${LIBEV_INCLUDE_DIRS}
     ${LIBMHASH_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
     ${LIBARCHIVE_INCLUDE_DIRS}
@@ -70,7 +69,6 @@ INCLUDE_DIRECTORIES(BEFORE
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
     ${LIBCGROUP_LIBRARY_DIRS}
-    ${LIBEV_LIBRARY_DIRS}
     ${LIBMHASH_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
     ${LIBARCHIVE_LIBRARY_DIRS}
@@ -87,6 +85,26 @@ IF(COCAINE_ALLOW_RAFT)
     SET(LIBCOCAINE_RAFT cocaine-raft)
 ENDIF()
 
+IF(COCAINE_ALLOW_NODE)
+    ADD_LIBRARY(cocaine-node STATIC
+        src/isolate/process.cpp
+        src/isolate/process/archive.cpp
+        src/isolate/process/spooler.cpp
+        src/service/node.cpp
+        src/service/node/app.cpp
+        src/service/node/engine.cpp
+        src/service/node/manifest.cpp
+        src/service/node/profile.cpp
+        src/service/node/queue.cpp
+        src/service/node/session.cpp
+        src/service/node/slave.cpp)
+
+    SET_TARGET_PROPERTIES(cocaine-node PROPERTIES
+        COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic -fPIC")
+
+    SET(LIBCOCAINE_NODE cocaine-node)
+ENDIF()
+
 ADD_LIBRARY(cocaine-core SHARED
     src/actor.cpp
     src/api.cpp
@@ -100,21 +118,10 @@ ADD_LIBRARY(cocaine-core SHARED
     src/engine.cpp
     src/essentials.cpp
     src/gateway/adhoc.cpp
-    src/isolate/process.cpp
-    src/isolate/process/archive.cpp
-    src/isolate/process/spooler.cpp
     src/logging.cpp
     src/repository.cpp
     src/service/locator.cpp
     src/service/logging.cpp
-    src/service/node.cpp
-    src/service/node/app.cpp
-    src/service/node/engine.cpp
-    src/service/node/manifest.cpp
-    src/service/node/profile.cpp
-    src/service/node/queue.cpp
-    src/service/node/session.cpp
-    src/service/node/slave.cpp
     src/service/storage.cpp
     src/session.cpp
     src/storage/files.cpp
@@ -124,15 +131,15 @@ TARGET_LINK_LIBRARIES(cocaine-core
     archive
     ${Boost_LIBRARIES}
     ${LIBCGROUP_LIBRARY}
+    ${LIBCOCAINE_NODE}
     ${LIBCOCAINE_RAFT}
-    ev
     ltdl
     mhash
     msgpack
     ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
-    VERSION 2)
+    VERSION 3)
 
 ADD_EXECUTABLE(cocaine-runtime
     src/runtime/pid_file.cpp

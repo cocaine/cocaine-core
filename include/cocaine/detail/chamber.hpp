@@ -23,6 +23,8 @@
 
 #include "cocaine/common.hpp"
 
+#include <boost/asio/io_service.hpp>
+
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/thread/thread.hpp>
 
@@ -32,13 +34,16 @@ class chamber_t {
     struct named_runnable;
 
     const std::string name;
-    const std::shared_ptr<io::reactor_t>& reactor;
+    const std::shared_ptr<boost::asio::io_service> asio;
+
+    // Keeps reactor alive.
+    std::unique_ptr<const boost::asio::io_service::work> work;
 
     // This thread will run the reactor's event loop until terminated.
-    std::unique_ptr<boost::thread> thread;
+    const std::unique_ptr<boost::thread> thread;
 
 public:
-    chamber_t(const std::string& name, const std::shared_ptr<io::reactor_t>& reactor);
+    chamber_t(const std::string& name, const std::shared_ptr<boost::asio::io_service>& asio);
    ~chamber_t();
 };
 

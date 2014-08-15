@@ -22,7 +22,6 @@
 #define COCAINE_IO_SLOT_HPP
 
 #include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/upstream.hpp"
 
 #include "cocaine/tuple.hpp"
 
@@ -62,12 +61,6 @@ public:
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) = 0;
-
-public:
-    std::string
-    name() const {
-        return event_type::alias();
-    }
 };
 
 }} // namespace cocaine::io

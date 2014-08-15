@@ -28,9 +28,12 @@
 
 #include <queue>
 
-#include <boost/optional.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 #define BOOST_BIND_NO_PLACEHOLDERS
+#include <boost/optional.hpp>
+#include <boost/signals2/signal.hpp>
+
 #include <blackhole/blackhole.hpp>
 
 namespace cocaine {
@@ -108,6 +111,7 @@ class port_mapping_t {
     queue_type m_shared;
 
 public:
+    explicit
     port_mapping_t(const config_t& config);
 
     port_t
@@ -154,6 +158,17 @@ class context_t {
 public:
     const config_t config;
 
+    // Lifecycle management signals
+
+    struct {
+        boost::signals2::signal<void()> shutdown;
+
+        struct {
+            boost::signals2::signal<void(const actor_t& service)> birth;
+            boost::signals2::signal<void(const actor_t& service)> death;
+        } service;
+    } signals;
+
 public:
     context_t(config_t config, const std::string& logger);
     context_t(config_t config, std::unique_ptr<logging::logger_t> logger);
@@ -186,12 +201,13 @@ public:
     remove(const std::string& name) -> std::unique_ptr<actor_t>;
 
     auto
-    locate(const std::string& name) const -> boost::optional<actor_t&>;
+    locate(const std::string& name) const -> boost::optional<const actor_t&>;
 
     // I/O
 
     void
-    attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
+    attach(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr,
+           const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
 
 private:
     void

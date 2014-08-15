@@ -78,7 +78,7 @@ repository_t::load(const std::string& path) {
     const auto status = fs::status(path);
 
     if(!fs::exists(status) || !fs::is_directory(status)) {
-        COCAINE_LOG_INFO(m_log, "unable to load plugins: path '%s' is not valid", path);
+        COCAINE_LOG_ERROR(m_log, "unable to load plugins: path '%s' is not valid", path);
         return;
     }
 
@@ -145,7 +145,7 @@ repository_t::open(const std::string& target) {
         } catch(const std::exception& e) {
             throw repository_error_t("unable to initialize '%s' - %s", target, e.what());
         } catch(...) {
-            throw repository_error_t("unable to initialize '%s' - unexpected exception", target);
+            throw repository_error_t("unable to initialize '%s'", target);
         }
     } else {
         throw repository_error_t("unable to initialize '%s' - initialize() is missing", target);

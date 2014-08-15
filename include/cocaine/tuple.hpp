@@ -63,10 +63,10 @@ struct invoke_impl;
 
 template<size_t... Indices>
 struct invoke_impl<index_sequence<Indices...>> {
-    template<class F, class T>
+    template<class F, typename... Args>
     static inline
     typename result_of<F>::type
-    apply(const F& callable, const T& args) {
+    apply(const F& callable, const std::tuple<Args...>& args) {
         return callable(std::get<Indices>(args)...);
     }
 };

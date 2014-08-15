@@ -25,7 +25,6 @@
 #include "cocaine/locked_ptr.hpp"
 
 #include "cocaine/rpc/graph.hpp"
-#include "cocaine/rpc/message.hpp"
 
 #include "cocaine/rpc/slot/blocking.hpp"
 #include "cocaine/rpc/slot/deferred.hpp"
@@ -55,6 +54,7 @@ class basic_dispatch_t {
     const std::string m_name;
 
 public:
+    explicit
     basic_dispatch_t(const std::string& name);
 
     virtual
@@ -69,7 +69,7 @@ public:
 
     virtual
     transition_t
-    call(const message_t& message, const std::shared_ptr<basic_upstream_t>& upstream) const = 0;
+    call(const decoder_t::message_type& message, const std::shared_ptr<basic_upstream_t>& upstream) const = 0;
 
     virtual
     auto
@@ -124,6 +124,7 @@ class dispatch:
     { };
 
 public:
+    explicit
     dispatch(const std::string& name):
         basic_dispatch_t(name),
         graph(io::traverse<Tag>().get())
@@ -148,7 +149,7 @@ public:
 public:
     virtual
     io::transition_t
-    call(const io::message_t& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const;
+    call(const io::decoder_t::message_type& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const;
 
     virtual
     auto
@@ -200,9 +201,13 @@ struct calling_visitor_t:
         // Unpacked arguments storage.
         typename slot_type::tuple_type args;
 
-        // Unpacks the object into a tuple using the message typelist as opposed to using the plain
-        // tuple type traits, in order to support parameter tags, like optional<T>.
-        io::type_traits<typename io::event_traits<Event>::tuple_type>::unpack(unpacked, args);
+        try {
+            // Unpacks the object into a tuple using the message typelist as opposed to using the plain
+            // tuple type traits, in order to support parameter tags, like optional<T>.
+            io::type_traits<typename io::event_traits<Event>::tuple_type>::unpack(unpacked, args);
+        } catch(const msgpack::type_error& e) {
+            throw cocaine::error_t("unable to unpack message arguments");
+        }
 
         // Call the slot with the upstream constrained using the event's drain protocol type tag.
         return result_type((*slot)(std::move(args), typename slot_type::upstream_type(upstream)));
@@ -231,8 +236,10 @@ template<class Tag>
 template<class Event>
 dispatch<Tag>&
 dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
-    if(!m_slots->insert(std::make_pair(io::event_traits<Event>::id, ptr)).second) {
-        throw cocaine::error_t("duplicate type %d slot: %s", io::event_traits<Event>::id, ptr->name());
+    typedef io::event_traits<Event> traits;
+
+    if(!m_slots->insert(std::make_pair(traits::id, ptr)).second) {
+        throw cocaine::error_t("duplicate type %d slot: %s", traits::id, Event::alias());
     }
 
     return *this;
@@ -262,6 +269,8 @@ dispatch<Tag>::invoke(int id, const Visitor& visitor) const {
         // This happens only when the underlying slot has miserably failed to manage its exceptions.
         // In such case, the client is disconnected to prevent any further damage.
         throw cocaine::error_t("unable to invoke type %d slot - %s", id, e.what());
+    } catch(...) {
+        throw cocaine::error_t("unable to invoke type %d slot", id);
     }
 }
 
@@ -276,8 +285,8 @@ dispatch<Tag>::forget() {
 
 template<class Tag>
 io::transition_t
-dispatch<Tag>::call(const io::message_t& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const {
-    return invoke(message.id(), aux::calling_visitor_t(message.args(), upstream));
+dispatch<Tag>::call(const io::decoder_t::message_type& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const {
+    return invoke(message.type(), aux::calling_visitor_t(message.args(), upstream));
 }
 
 } // namespace cocaine

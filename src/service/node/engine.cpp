@@ -75,7 +75,7 @@ engine_t::engine_t(context_t& context,
                    const profile_t& profile,
                    const std::shared_ptr<io::socket<local>>& control):
     m_context(context),
-    m_log(context.log(cocaine::format("app/%1%", manifest.name))),
+    m_log(context.log(manifest.name)),
     m_manifest(manifest),
     m_profile(profile),
     m_state(states::stopped),
@@ -541,9 +541,8 @@ engine_t::migrate(states target) {
     if(!m_queue.empty()) {
         COCAINE_LOG_DEBUG(
             m_log,
-            "dropping %llu incomplete %s due to the engine state migration",
-            m_queue.size(),
-            m_queue.size() == 1 ? "session" : "sessions"
+            "dropping %llu incomplete session(s) due to the engine state migration",
+            m_queue.size()
         );
 
         // Abort all the outstanding sessions.
@@ -574,10 +573,9 @@ engine_t::migrate(states target) {
     if(!pending) {
         stop();
     } else {
-        COCAINE_LOG_INFO(m_log, "waiting for %d active %s to terminate",
-            pending,
-            pending == 1 ? "slave" : "slaves")
-        ("timeout", m_profile.termination_timeout);
+        COCAINE_LOG_INFO(m_log, "waiting for %d active session(s) to terminate", pending)(
+            "timeout", m_profile.termination_timeout
+        );
 
         m_termination_timer->set<engine_t, &engine_t::on_termination>(this);
         m_termination_timer->start(m_profile.termination_timeout);

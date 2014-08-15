@@ -47,9 +47,9 @@ namespace po = boost::program_options;
 
 namespace {
 
-void stacktrace(int signal, siginfo_t* /* info */, void* context) {
+void stacktrace(int signum, siginfo_t* /* info */, void* context) {
     ucontext_t* uctx = static_cast<ucontext_t*>(context);
-    
+
     using namespace backward;
 
     StackTrace trace;
@@ -73,7 +73,7 @@ void stacktrace(int signal, siginfo_t* /* info */, void* context) {
     printer.print(trace);
 
     // Re-raise so that a core dump is generated.
-    std::raise(signal);
+    std::raise(signum);
 
     // Just in case, if the default handler returns for some weird reason.
     std::_Exit(EXIT_FAILURE);
@@ -81,7 +81,7 @@ void stacktrace(int signal, siginfo_t* /* info */, void* context) {
 
 struct runtime_t {
     runtime_t():
-        m_signals(m_reactor, SIGINT, SIGTERM, SIGQUIT)
+        m_signals(m_asio, SIGINT, SIGTERM, SIGQUIT)
     {
         using namespace std::placeholders;
 
@@ -136,7 +136,7 @@ struct runtime_t {
 
     int
     run() {
-        m_reactor.run();
+        m_asio.run();
 
         // There's no way it can actually go wrong.
         return EXIT_SUCCESS;
@@ -144,16 +144,24 @@ struct runtime_t {
 
 private:
     void
-    terminate(const boost::system::error_code& ec, int __attribute__((unused)) signal) {
+    terminate(const boost::system::error_code& ec, int signum) {
         if(ec == boost::asio::error::operation_aborted) {
             return;
         }
 
-        m_reactor.stop();
+        static const std::map<int, std::string> signals = {
+            { SIGINT,  "SIGINT"  },
+            { SIGQUIT, "SIGQUIT" },
+            { SIGTERM, "SIGTERM" }
+        };
+
+        std::cout << "[Runtime] Caught " << signals.at(signum) << ", exiting." << std::endl;
+
+        m_asio.stop();
     }
 
 private:
-    boost::asio::io_service m_reactor;
+    boost::asio::io_service m_asio;
     boost::asio::signal_set m_signals;
 
     // An alternative signal stack for SIGSEGV handling.
@@ -210,6 +218,8 @@ main(int argc, char* argv[]) {
 
     std::unique_ptr<config_t> config;
 
+    std::cout << "[Runtime] Parsing the configuration." << std::endl;
+
     try {
         config.reset(new config_t(vm["configuration"].as<std::string>()));
     } catch(const cocaine::error_t& e) {
@@ -251,9 +261,11 @@ main(int argc, char* argv[]) {
 
     std::unique_ptr<context_t> context;
 
+    std::cout << "[Runtime] Initializing the server." << std::endl;
+
     try {
         context.reset(new context_t(*config, "core"));
-    } catch(const std::exception& e) {
+    } catch(const cocaine::error_t& e) {
         std::cerr << cocaine::format("ERROR: unable to initialize the context - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }

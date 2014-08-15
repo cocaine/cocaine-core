@@ -27,10 +27,6 @@
 
 namespace cocaine {
 
-struct sources {
-    enum values { cache, storage };
-};
-
 template<class T>
 struct cached:
     protected T
@@ -47,8 +43,10 @@ struct cached:
         return static_cast<const T&>(*this);
     }
 
+    enum class sources { cache, storage };
+
     auto
-    source() const -> sources::values {
+    source() const -> sources {
         return m_source;
     }
 
@@ -57,7 +55,7 @@ private:
     download(context_t& context, const std::string& collection, const std::string& name);
 
 private:
-    sources::values m_source;
+    sources m_source;
 };
 
 template<class T>

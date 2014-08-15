@@ -30,6 +30,7 @@ namespace cocaine {
 struct archive_error_t:
     public std::runtime_error
 {
+    explicit
     archive_error_t(archive* source);
 };
 

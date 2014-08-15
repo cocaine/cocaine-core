@@ -24,7 +24,15 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
+#include "cocaine/rpc/asio/encoder.hpp"
+#include "cocaine/rpc/asio/decoder.hpp"
+
 #include <mutex>
+
+#include <boost/asio/ip/tcp.hpp>
+
+#define BOOST_BIND_NO_PLACEHOLDERS
+#include <boost/signals2/signal.hpp>
 
 namespace cocaine {
 
@@ -33,43 +41,76 @@ class session_t:
 {
     class channel_t;
 
+    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
+
     // NOTE: The underlying connection and session mutex. Upstreams use this mutex to synchronize
     // their state when sending messages, however it does not seem to be under contention.
-    std::unique_ptr<io::channel<io::socket<io::tcp>>> ptr;
+    std::unique_ptr<io::channel<boost::asio::ip::tcp>> ptr;
     std::mutex mutex;
+
+    // Keep the remote endpoint in case the socket is closed abruptly and we need to report it.
+    const boost::asio::ip::tcp::endpoint endpoint;
 
     // Initial dispatch.
     const std::shared_ptr<const io::basic_dispatch_t> prototype;
-
-    // Virtual channels.
-    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
 
     // Incoming channels counter. It stores the maximum channel id processed by the session. The
     // session assumes that ids of incoming channels are strongly increasing and discards messages
     // with old channel ids.
     uint64_t max_channel;
 
-    // NOTE: Virtual channels use their own synchronization to decouple invocation and messaging.
+    // Virtual channels. Separate synchronization to decouple invocation and messaging.
     synchronized<channel_map_t> channels;
 
-public:
-    friend class io::basic_upstream_t;
+    class pull_action_t;
+    class push_action_t;
 
-    session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr,
-              const std::shared_ptr<const io::basic_dispatch_t>& prototype = std::shared_ptr<const io::basic_dispatch_t>());
+public:
+    struct {
+        boost::signals2::signal<void(const boost::system::error_code&)> failure;
+    } signals;
+
+public:
+    session_t(std::unique_ptr<io::channel<boost::asio::ip::tcp>> ptr,
+              const std::shared_ptr<const io::basic_dispatch_t>& prototype);
+
+    // Channel operations
 
     void
-    invoke(const io::message_t& message);
+    invoke(const io::decoder_t::message_type& message);
 
     std::shared_ptr<io::basic_upstream_t>
-    invoke(const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
+    inject(const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
+
+    void
+    revoke(uint64_t index);
+
+    // I/O
+
+    void
+    pull();
+
+    void
+    push(io::encoder_t::message_type&& message);
+
+    // NOTE: Detaching a session destroys the connection but not necessarily the session itself, as
+    // it might be still in use by shared upstreams even in other threads. In other words, this does
+    // not guarantee that the session will be actually deleted, but it's fine, since the connection
+    // is closed.
 
     void
     detach();
 
-private:
-    void
-    revoke(uint64_t index);
+    // Information
+
+    auto
+    remote_endpoint() const -> boost::asio::ip::tcp::endpoint;
+
+    auto
+    name() const -> std::string;
+
+    auto
+    active_channels() const -> std::map<uint64_t, std::string>;
 };
 
 } // namespace cocaine

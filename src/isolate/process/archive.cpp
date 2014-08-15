@@ -142,7 +142,7 @@ archive_t::deploy(const std::string& prefix_) {
 
     const size_t count = archive_file_count(m_archive);
 
-    COCAINE_LOG_INFO(m_log, "extracted %d %s", count, count == 1 ? "file" : "files");
+    COCAINE_LOG_INFO(m_log, "extracted %d file(s)", count);
 }
 
 void

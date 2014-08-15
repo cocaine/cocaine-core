@@ -22,11 +22,6 @@
 
 #include "cocaine/api/isolate.hpp"
 
-#include "cocaine/asio/acceptor.hpp"
-#include "cocaine/asio/reactor.hpp"
-#include "cocaine/asio/local.hpp"
-#include "cocaine/asio/socket.hpp"
-
 #include "cocaine/context.hpp"
 #include "cocaine/defaults.hpp"
 
@@ -44,19 +39,19 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
-#include "cocaine/rpc/channel.hpp"
+#include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/dispatch.hpp"
 
 #include "cocaine/traits/dynamic.hpp"
 #include "cocaine/traits/literal.hpp"
 
-#include <tuple>
-
-#define BOOST_BIND_NO_PLACEHOLDERS
-#include <boost/bind.hpp>
+#include <boost/asio/local/connect_pair.hpp>
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+
+using namespace boost::asio;
+using namespace boost::asio::local;
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -67,18 +62,16 @@ namespace fs = boost::filesystem;
 namespace {
 
 class streaming_service_t:
-    public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
+    public dispatch<event_traits<app::enqueue>::dispatch_type>
 {
     const api::stream_ptr_t downstream;
 
 public:
     streaming_service_t(const std::string& name, const api::stream_ptr_t& downstream_):
-        dispatch<io::event_traits<io::app::enqueue>::dispatch_type>(name),
+        dispatch<event_traits<app::enqueue>::dispatch_type>(name),
         downstream(downstream_)
     {
-        typedef io::protocol<
-            io::event_traits<io::app::enqueue>::dispatch_type
-        >::scope protocol;
+        typedef io::protocol<event_traits<app::enqueue>::dispatch_type>::scope protocol;
 
         using namespace std::placeholders;
 
@@ -106,33 +99,33 @@ private:
 };
 
 class app_service_t:
-    public dispatch<io::app_tag>
+    public dispatch<app_tag>
 {
-    app_t& app;
+    app_t* impl;
 
 private:
     struct enqueue_slot_t:
-        public basic_slot<io::app::enqueue>
+        public basic_slot<app::enqueue>
     {
-        enqueue_slot_t(app_service_t& self_):
-            self(self_)
+        enqueue_slot_t(app_service_t* impl_):
+            impl(impl_)
         { }
 
-        typedef basic_slot<io::app::enqueue>::dispatch_type dispatch_type;
-        typedef basic_slot<io::app::enqueue>::tuple_type tuple_type;
-        typedef basic_slot<io::app::enqueue>::upstream_type upstream_type;
+        typedef basic_slot<app::enqueue>::dispatch_type dispatch_type;
+        typedef basic_slot<app::enqueue>::tuple_type tuple_type;
+        typedef basic_slot<app::enqueue>::upstream_type upstream_type;
 
         virtual
         boost::optional<std::shared_ptr<const dispatch_type>>
         operator()(tuple_type&& args, upstream_type&& upstream) {
             return tuple::invoke(
-                boost::bind(&app_service_t::enqueue, &self, boost::ref(upstream), boost::arg<1>(), boost::arg<2>()),
-                args
+                std::bind(&app_service_t::enqueue, impl, std::ref(upstream), std::placeholders::_1, std::placeholders::_2),
+                std::move(args)
             );
         }
 
     private:
-        app_service_t& self;
+        app_service_t* impl;
     };
 
     struct engine_stream_adapter_t:
@@ -171,21 +164,21 @@ private:
         api::stream_ptr_t downstream;
 
         if(tag.empty()) {
-            downstream = app.enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream));
+            downstream = impl->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream));
         } else {
-            downstream = app.enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
+            downstream = impl->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
         }
 
         return std::make_shared<const streaming_service_t>(name(), downstream);
     }
 
 public:
-    app_service_t(const std::string& name_, app_t& app_):
-        dispatch<io::app_tag>(cocaine::format("service/%s", name_)),
-        app(app_)
+    app_service_t(const std::string& name_, app_t* impl_):
+        dispatch<app_tag>(name_),
+        impl(impl_)
     {
-        on<io::app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
-        on<io::app::info>(std::bind(&app_t::info, std::ref(app)));
+        on<app::enqueue>(std::make_shared<enqueue_slot_t>(this));
+        on<app::info>(std::bind(&app_t::info, impl));
     }
 };
 
@@ -193,7 +186,7 @@ public:
 
 app_t::app_t(context_t& context, const std::string& name, const std::string& profile):
     m_context(context),
-    m_log(context.log(cocaine::format("app/%1%", name))),
+    m_log(context.log(name)),
     m_manifest(new manifest_t(context, name)),
     m_profile(new profile_t(context, profile))
 {
@@ -204,27 +197,22 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
         m_profile->isolate.args
     );
 
-    if(m_manifest->source() != sources::cache) {
+    if(m_manifest->source() != cached<dynamic_t>::sources::cache) {
         isolate->spool();
     }
 
-    std::shared_ptr<io::socket<local>> lhs, rhs;
+    auto lhs = std::make_unique<stream_protocol::socket>(m_asio),
+         rhs = std::make_unique<stream_protocol::socket>(m_asio);
 
     // Create the engine control sockets.
-    std::tie(lhs, rhs) = io::link<local>();
+    connect_pair(*lhs, *rhs);
 
-    m_reactor = std::make_unique<reactor_t>();
-    m_engine_control = std::make_unique<channel<io::socket<local>>>(*m_reactor, lhs);
+    m_engine_control = std::make_unique<channel<stream_protocol>>(std::move(rhs));
 
     try {
-        m_engine.reset(new engine_t(m_context, std::make_shared<reactor_t>(), *m_manifest, *m_profile, rhs));
+        m_engine = std::make_shared<engine_t>(m_context, *m_manifest, *m_profile, std::move(lhs));
     } catch(const std::system_error& e) {
-        throw cocaine::error_t(
-            "unable to initialize the engine - %s - [%d] %s",
-            e.what(),
-            e.code().value(),
-            e.code().message()
-        );
+        throw cocaine::error_t("unable to create the engine - [%d] %s", e.code().value(), e.code().message());
     }
 }
 
@@ -237,142 +225,76 @@ app_t::start() {
     COCAINE_LOG_INFO(m_log, "starting the engine");
 
     // Start the engine thread.
-    m_thread.reset(new std::thread(std::bind(&engine_t::run, m_engine)));
+    m_thread = std::make_unique<std::thread>(std::bind(&engine_t::run, m_engine));
 
     COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
 
     // Publish the app service.
     m_context.insert(m_manifest->name, std::make_unique<actor_t>(
         m_context,
-        std::make_shared<reactor_t>(),
-        std::make_unique<app_service_t>(m_manifest->name, *this)
+        std::make_shared<io_service>(),
+        std::make_unique<app_service_t>(m_manifest->name, this)
     ));
 
     COCAINE_LOG_INFO(m_log, "the engine has started");
 }
 
 namespace {
-    namespace detail {
-        template<class It, class End, typename... Args>
-        struct fold_impl {
-            typedef typename fold_impl<
-                typename boost::mpl::next<It>::type,
-                End,
-                Args...,
-                typename std::add_lvalue_reference<
-                    typename boost::mpl::deref<It>::type
-                >::type
-            >::type type;
-        };
 
-        template<class End, typename... Args>
-        struct fold_impl<End, End, Args...> {
-            typedef std::tuple<Args...> type;
-        };
+struct engine_action_t {
+    engine_action_t(io::channel<stream_protocol>& channel_, encoder_t::message_type&& message):
+        request(std::move(message)),
+        channel(channel_)
+    { }
 
-        template<class TupleType, int N = std::tuple_size<TupleType>::value>
-        struct unfold_impl {
-            template<class Event, typename... Args>
-            static inline
-            void
-            apply(const message_t& message,
-                  TupleType& tuple,
-                  Args&&... args)
-            {
-                unfold_impl<TupleType, N - 1>::template apply<Event>(
-                    message,
-                    tuple,
-                    std::get<N - 1>(tuple),
-                    std::forward<Args>(args)...
-                );
-            }
-        };
+    enum class phases { request, message };
 
-        template<class TupleType>
-        struct unfold_impl<TupleType, 0> {
-            template<class Event, typename... Args>
-            static inline
-            void
-            apply(const message_t& message,
-                  TupleType& /* tuple */,
-                  Args&&... args)
-            {
-                message.as<Event>(std::forward<Args>(args)...);
-            }
-        };
-    } // namespace detail
+    void
+    operator()() {
+        channel.writer->write(request,
+            std::bind(&engine_action_t::finalize, this, std::placeholders::_1, phases::request)
+        );
 
-    template<class TypeList>
-    struct fold {
-        typedef typename detail::fold_impl<
-            typename boost::mpl::begin<TypeList>::type,
-            typename boost::mpl::end<TypeList>::type
-        >::type type;
-    };
-
-    template<class TupleType>
-    struct unfold {
-        template<class Event>
-        static inline
-        void
-        apply(const message_t& message,
-              TupleType& tuple)
-        {
-            return detail::unfold_impl<
-                TupleType
-            >::template apply<Event>(message, tuple);
-        }
-    };
+        channel.reader->read(message,
+            std::bind(&engine_action_t::finalize, this, std::placeholders::_1, phases::message)
+        );
+    }
 
     template<class Event>
-    struct expect {
-        template<class>
-        struct result {
-            typedef void type;
-        };
-
-        template<typename... Args>
-        expect(reactor_t& reactor, Args&&... args):
-            m_reactor(reactor),
-            m_tuple(std::forward<Args>(args)...)
-        { }
-
-        expect(expect&& other):
-            m_reactor(other.m_reactor),
-            m_tuple(std::move(other.m_tuple))
-        { }
-
-        expect&
-        operator=(expect&& other) {
-            m_tuple = std::move(other.m_tuple);
-            return *this;
+    auto
+    response() const -> typename basic_slot<Event>::tuple_type {
+        if(message.type() != event_traits<Event>::id) {
+            throw cocaine::error_t("unexpected engine response - %d", message.type());
         }
 
-        void
-        operator()(const message_t& message) {
-            if(message.id() == event_traits<Event>::id) {
-                unfold<tuple_type>::template apply<Event>(
-                    message,
-                    m_tuple
-                );
+        typename basic_slot<Event>::tuple_type tuple;
 
-                m_reactor.stop();
-            }
+        // Unpacks the object into a tuple using the message typelist as opposed to using the plain
+        // tuple type traits, in order to support parameter tags, like optional<T>.
+        io::type_traits<typename io::event_traits<Event>::tuple_type>::unpack(message.args(), tuple);
+
+        return tuple;
+    }
+
+private:
+    void
+    finalize(const boost::system::error_code& ec, phases phase) {
+        if(ec) {
+            throw cocaine::error_t("unable to access the engine - [%d] %s", ec.value(), ec.message());
         }
 
-        void
-        operator()(const std::error_code& ec) {
-            throw cocaine::error_t("i/o failure — [%d] %s", ec.value(), ec.message());
+        if(phase == phases::message) {
+            channel.socket->get_io_service().stop();
         }
+    }
 
-    private:
-        typedef typename fold<
-            typename event_traits<Event>::tuple_type
-        >::type tuple_type;
+private:
+    encoder_t::message_type request;
+    decoder_t::message_type message;
 
-        reactor_t& m_reactor;
-        tuple_type m_tuple;
-    };
+    channel<stream_protocol>& channel;
+};
+
 } // namespace
 
 void
@@ -384,18 +306,25 @@ app_t::stop() {
         m_context.remove(m_manifest->name);
     }
 
-    auto callback = expect<control::terminate>(*m_reactor);
+    auto action = std::make_shared<engine_action_t>(
+       *m_engine_control,
+        encoded<control::terminate>(1)
+    );
 
-    m_engine_control->rd->bind(std::ref(callback), std::ref(callback));
-    m_engine_control->wr->write<control::terminate>(0UL);
+    // Start the terminate action.
+    m_asio.post(std::bind(&engine_action_t::operator(), action));
 
-    // Blocks until the engine is stopped.
-    m_reactor->run();
+    try {
+        m_asio.run();
+    } catch(const cocaine::error_t& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to stop the engine - %s", e.what());
+
+        // Eventually the process will crash because the engine's thread is still on.
+        return;
+    }
 
     m_thread->join();
     m_thread.reset();
-
-    m_engine.reset();
 
     COCAINE_LOG_INFO(m_log, "the engine has stopped");
 }
@@ -409,17 +338,30 @@ app_t::info() const {
         return info;
     }
 
-    auto callback = expect<control::info>(*m_reactor, info);
+    auto action = std::make_shared<engine_action_t>(
+       *m_engine_control,
+        encoded<control::report>(1)
+    );
 
-    m_engine_control->rd->bind(std::ref(callback), std::ref(callback));
-    m_engine_control->wr->write<control::report>(0UL);
+    boost::asio::deadline_timer timeout(m_asio, boost::posix_time::seconds(defaults::control_timeout));
+    boost::system::error_code ec;
+
+    // Start the info action.
+    m_asio.post(std::bind(&engine_action_t::operator(), action));
 
     try {
-        // Blocks until either the response or timeout happens.
-        m_reactor->run_with_timeout(defaults::control_timeout);
+        // Blocks until either the response cancels the timer or timeout happens.
+        timeout.wait(ec);
     } catch(const cocaine::error_t& e) {
-        info.as_object()["error"] = "the engine is unresponsive";
+        info.as_object()["error"] = std::string(e.what());
         return info;
+    }
+
+    if(ec != boost::asio::error::operation_aborted) {
+        // Timer has succesfully finished, means no response has arrived.
+        info.as_object()["error"] = "the engine is unresponsive";
+    } else {
+        std::tie(info) = action->response<control::info>();
     }
 
     info.as_object()["profile"] = m_profile->name;

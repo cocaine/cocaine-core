@@ -31,16 +31,14 @@ using namespace cocaine::io;
 using namespace cocaine::logging;
 using namespace cocaine::service;
 
-logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& name, const dynamic_t& args):
-    api::service_t(context, reactor, name, args),
-    dispatch<io::log_tag>(name)
+logging_t::logging_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args):
+    api::service_t(context, asio, name, args),
+    dispatch<log_tag>(name)
 {
-    typedef logger_t logger_type;
-
     auto backend = args.as_object().at("backend", "core").as_string();
 
     try {
-        m_logger = std::make_unique<logger_type>(blackhole::repository_t::instance().create<priorities>(backend));
+        m_logger = std::make_unique<logger_t>(blackhole::repository_t::instance().create<priorities>(backend));
         m_logger->verbosity(context.log(name)->log().verbosity());
     } catch(const std::out_of_range&) {
         throw cocaine::error_t("the '%s' logger is not configured", backend);
@@ -48,12 +46,12 @@ logging_t::logging_t(context_t& context, reactor_t& reactor, const std::string& 
 
     using namespace std::placeholders;
 
-    auto getter = static_cast<priorities(logger_type::*)()const>(&logger_type::verbosity);
-    auto setter = static_cast<void(logger_type::*)(priorities)>(&logger_type::verbosity);
+    auto getter = static_cast<priorities(logger_t::*)()const>(&logger_t::verbosity);
+    auto setter = static_cast<void(logger_t::*)(priorities)>(&logger_t::verbosity);
 
-    on<io::log::emit>(std::bind(&logging_t::emit, this, _1, _2, _3, _4));
-    on<io::log::verbosity>(std::bind(getter, std::ref(*m_logger)));
-    on<io::log::set_verbosity>(std::bind(setter, std::ref(*m_logger), _1));
+    on<log::emit>(std::bind(&logging_t::emit, this, _1, _2, _3, _4));
+    on<log::verbosity>(std::bind(getter, std::ref(*m_logger)));
+    on<log::set_verbosity>(std::bind(setter, std::ref(*m_logger), _1));
 }
 
 auto

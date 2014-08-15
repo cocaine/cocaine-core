@@ -26,7 +26,6 @@
 #include "cocaine/api/storage.hpp"
 
 #define PROTOTYPES
-
 #include <mutils/mincludes.h>
 #include <mutils/mhash.h>
 

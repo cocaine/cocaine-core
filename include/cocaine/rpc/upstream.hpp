@@ -21,11 +21,7 @@
 #ifndef COCAINE_IO_UPSTREAM_HPP
 #define COCAINE_IO_UPSTREAM_HPP
 
-#include "cocaine/asio/socket.hpp"
-#include "cocaine/asio/tcp.hpp"
-
 #include "cocaine/rpc/session.hpp"
-#include "cocaine/rpc/channel.hpp"
 
 namespace cocaine {
 
@@ -37,13 +33,9 @@ class basic_upstream_t {
     const std::shared_ptr<session_t> session;
     const uint64_t index;
 
-    struct states {
-        enum values: int { active, sealed };
-    };
-
     // NOTE: Sealed upstreams ignore any messages. At some point it might change to an explicit way
     // to show that the operation won't be completed.
-    states::values state;
+    enum class states { active, sealed } state;
 
 public:
     basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_):
@@ -57,7 +49,7 @@ public:
     send(Args&&... args);
 
     void
-    revoke();
+    drop();
 };
 
 template<class Event, typename... Args>
@@ -71,16 +63,12 @@ basic_upstream_t::send(Args&&... args) {
         state = states::sealed;
     }
 
-    std::lock_guard<std::mutex> guard(session->mutex);
-
-    if(session->ptr) {
-        session->ptr->wr->write<Event>(index, std::forward<Args>(args)...);
-    }
+    session->push(encoded<Event>(index, std::forward<Args>(args)...));
 }
 
 inline
 void
-basic_upstream_t::revoke() {
+basic_upstream_t::drop() {
     session->revoke(index);
 }
 
@@ -98,6 +86,7 @@ class upstream {
 public:
     template<class> friend class io::message_queue;
 
+    explicit
     upstream(const std::shared_ptr<io::basic_upstream_t>& upstream_):
         ptr(upstream_)
     { }

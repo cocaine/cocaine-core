@@ -22,10 +22,6 @@
 
 #include "cocaine/api/service.hpp"
 
-#include "cocaine/asio/acceptor.hpp"
-#include "cocaine/asio/connector.hpp"
-#include "cocaine/asio/reactor.hpp"
-
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
@@ -34,19 +30,38 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
+using namespace boost::asio;
+using namespace boost::asio::ip;
+
 using namespace cocaine;
 
-actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t> prototype):
+// Actor internals
+
+struct actor_t::connection_t {
+    explicit
+    connection_t(io_service& asio):
+        socket(new tcp::socket(asio))
+    { }
+
+    std::shared_ptr<tcp::socket> socket;
+
+    // Remote peer endpoint address.
+    tcp::endpoint origin;
+};
+
+// Actor
+
+actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio, std::unique_ptr<io::basic_dispatch_t> prototype):
     m_context(context),
     m_log(context.log(prototype->name())),
-    m_reactor(reactor),
+    m_asio(asio),
     m_prototype(std::move(prototype))
 { }
 
-actor_t::actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t> service):
+actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio, std::unique_ptr<api::service_t> service):
     m_context(context),
     m_log(context.log(service->prototype().name())),
-    m_reactor(reactor)
+    m_asio(asio)
 {
     const io::basic_dispatch_t* prototype = &service->prototype();
 
@@ -62,56 +77,94 @@ actor_t::~actor_t() {
 }
 
 void
-actor_t::run(std::vector<io::tcp::endpoint> endpoints) {
+actor_t::run(std::vector<tcp::endpoint> endpoints) {
     BOOST_ASSERT(!m_chamber);
 
     for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
-        m_connectors.emplace_back(
-            *m_reactor,
-            std::make_unique<io::acceptor<io::tcp>>(*it)
+        COCAINE_LOG_DEBUG(m_log, "exposing service on [%s]", it->address())(
+            "service", m_prototype->name()
         );
 
-        m_connectors.back().bind(std::bind(&actor_t::on_connect, this, std::placeholders::_1));
+        m_connectors.emplace_back(*m_asio, *it);
+
+        auto connection = std::make_shared<connection_t>(*m_asio);
+
+        m_connectors.back().async_accept(*connection->socket, connection->origin,
+            std::bind(&actor_t::accept_impl, this, std::placeholders::_1, connection)
+        );
     }
 
-    m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_reactor);
+    m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_asio);
 }
 
 void
 actor_t::terminate() {
     BOOST_ASSERT(m_chamber);
 
-    m_chamber.reset();
-    m_connectors.clear();
-}
-
-auto
-actor_t::location() const -> std::vector<io::tcp::endpoint> {
-    std::vector<io::tcp::endpoint> endpoints;
-
     for(auto it = m_connectors.begin(); it != m_connectors.end(); ++it) {
-        endpoints.push_back(it->endpoint());
+        it->close();
     }
 
-    return endpoints;
+    m_connectors.clear();
+    m_chamber.reset();
 }
 
 auto
-actor_t::metadata() const -> metadata_t {
-    const auto port = location().front().port();
-    const auto endpoint = io::locator::endpoint_tuple_type(m_context.config.network.hostname, port);
+actor_t::endpoints() const -> std::vector<tcp::endpoint> {
+    if(!is_active()) {
+        return std::vector<tcp::endpoint>();
+    }
 
-    return metadata_t(endpoint, m_prototype->versions(), m_prototype->protocol());
+    tcp::resolver::iterator it, end;
+
+    try {
+        it = tcp::resolver(*m_asio).resolve(tcp::resolver::query(
+            m_context.config.network.hostname,
+            boost::lexical_cast<std::string>(m_connectors.front().local_endpoint().port())
+        ));
+    } catch(const boost::system::system_error& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: [%d] %s", e.code().value(), e.code().message())(
+            "service", m_prototype->name()
+        );
+    }
+
+    return std::vector<tcp::endpoint>(it, end);
+}
+
+auto
+actor_t::prototype() const -> const io::basic_dispatch_t& {
+    return *m_prototype;
+}
+
+bool
+actor_t::is_active() const {
+    return m_chamber && !m_connectors.empty();
 }
 
 void
-actor_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket) {
-    COCAINE_LOG_DEBUG(m_log, "accepted a new client")(
-        "endpoint", socket->remote_endpoint(),
-        "fd", socket->fd()
-    );
+actor_t::accept_impl(const boost::system::error_code& ec, const std::shared_ptr<connection_t>& ptr) {
+    if(ec) {
+        if(ec == error::operation_aborted) {
+            return;
+        }
 
-    // This won't attach the socket immediately, instead it will post a new action to the designated
-    // unit's event loop queue. It could probably be done with some locking, but whatever.
-    m_context.attach(socket, m_prototype);
+        COCAINE_LOG_ERROR(m_log, "unable to accept a new client connection: %s", ec)(
+            "service", m_prototype->name()
+        );
+    } else {
+        COCAINE_LOG_DEBUG(m_log, "accepted a new client connection")(
+            "endpoint", ptr->origin,
+            "service", m_prototype->name()
+        );
+
+        // This won't attach the socket immediately, instead it will post a new action to the designated
+        // unit's event loop queue. It could probably be done with some locking, but whatever.
+        m_context.attach(std::move(ptr->socket), m_prototype);
+    }
+
+    auto connection = std::make_shared<connection_t>(*m_asio);
+
+    m_connectors.back().async_accept(*connection->socket, connection->origin,
+        std::bind(&actor_t::accept_impl, this, std::placeholders::_1, connection)
+    );
 }

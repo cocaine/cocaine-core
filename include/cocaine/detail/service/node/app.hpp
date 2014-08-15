@@ -26,6 +26,9 @@
 
 #include <thread>
 
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
+
 namespace cocaine { namespace api {
 
 struct event_t;
@@ -56,13 +59,11 @@ class app_t {
     std::unique_ptr<const engine::manifest_t> m_manifest;
     std::unique_ptr<const engine::profile_t> m_profile;
 
-    // Control
+    // I/O
 
-    std::unique_ptr<io::reactor_t> m_reactor;
-    std::unique_ptr<io::channel<io::socket<io::local>>> m_engine_control;
+    mutable boost::asio::io_service m_asio;
 
-    // Engine
-
+    std::unique_ptr<io::channel<boost::asio::local::stream_protocol>> m_engine_control;
     std::shared_ptr<engine::engine_t> m_engine;
     std::unique_ptr<std::thread> m_thread;
 
@@ -76,8 +77,8 @@ public:
     void
     stop();
 
-    dynamic_t
-    info() const;
+    auto
+    info() const -> dynamic_t;
 
     // Scheduling
 

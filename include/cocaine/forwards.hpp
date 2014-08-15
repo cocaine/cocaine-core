@@ -48,53 +48,30 @@ struct storage_t;
 
 namespace cocaine { namespace io {
 
-struct local;
-struct tcp;
-struct udp;
-
-template<class>
-struct socket;
-
-template<class>
-struct acceptor;
-
-// I/O privimites
-
-struct reactor_t;
-
-template<class>
-struct connector;
-
-template<class>
-struct readable_stream;
-
-template<class>
-struct writable_stream;
-
-struct timeout_t;
-
-// RPC primitives
+// I/O threads
 
 class chamber_t;
 
-template<class>
-struct protocol;
+// I/O streams
 
-struct message_t;
+template<class, class>
+class readable_stream;
+
+template<class, class>
+class writable_stream;
+
+// Stream composition
+
+template<class>
+struct channel;
+
+// Generic RPC objects
 
 class basic_dispatch_t;
 class basic_upstream_t;
 
-// Messaging
-
 template<class>
-class encoder;
-
-template<class>
-class decoder;
-
-template<class>
-struct channel;
+struct protocol;
 
 }} // namespace cocaine::io
 
