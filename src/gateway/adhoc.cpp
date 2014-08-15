@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/gateways/adhoc.hpp"
+#include "cocaine/detail/gateway/adhoc.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

@@ -24,6 +24,7 @@
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/asio/reactor.hpp"
+#include "cocaine/asio/socket.hpp"
 
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/bootstrap/logging.hpp"
@@ -38,6 +39,8 @@
 
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
+
+#include <numeric>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/host_name.hpp>

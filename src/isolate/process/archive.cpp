@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/isolates/archive.hpp"
+#include "cocaine/detail/isolate/archive.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"

@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/clusters/multicast.hpp"
+#include "cocaine/detail/cluster/multicast.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
