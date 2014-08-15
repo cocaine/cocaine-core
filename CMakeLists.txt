@@ -79,7 +79,7 @@ LINK_DIRECTORIES(
 IF(COCAINE_ALLOW_RAFT)
     ADD_LIBRARY(cocaine-raft STATIC
         src/raft.cpp
-        src/services/counter.cpp)
+        src/service/counter.cpp)
 
     SET_TARGET_PROPERTIES(cocaine-raft PROPERTIES
         COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic -fPIC")
