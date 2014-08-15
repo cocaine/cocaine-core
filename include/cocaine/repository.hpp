@@ -152,7 +152,7 @@ repository_t::insert(const std::string& name) {
         throw repository_error_t("the '%s' component is a duplicate", name);
     }
 
-    m_categories[id].emplace(name, std::make_unique<factory_type>());
+    m_categories[id][name] = std::make_unique<factory_type>();
 
     COCAINE_LOG_DEBUG(m_log, "component has been registered")(
         "component", name
