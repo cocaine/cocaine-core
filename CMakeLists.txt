@@ -25,7 +25,7 @@ IF(NOT APPLE)
     SET(LIBBFD_LIBRARY "bfd" "dl")
 ENDIF()
 
-FIND_PACKAGE(Boost 1.40.0
+FIND_PACKAGE(Boost 1.48.0
     REQUIRED COMPONENTS
         filesystem
         program_options
