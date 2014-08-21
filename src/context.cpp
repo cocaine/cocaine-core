@@ -130,7 +130,7 @@ config_t::config_t(const std::string& config_path) {
         throw std::system_error(rv, io::gai_category(), "unable to determine the hostname");
     }
 
-    network.hostname = result->ai_canonname;
+    network.hostname = root["locator"].get("hostname", result->ai_canonname).asString();
     network.uuid     = unique_id_t().string();
 
     freeaddrinfo(result);
