@@ -305,9 +305,9 @@ config_t::config_t(const std::string& source) {
         throw cocaine::error_t("the configuration file version is invalid");
     }
 
-    const auto& path_config = root.as_object().at("paths", dynamic_t::object_t()).as_object();
-    const auto& network_config = root.as_object().at("network", dynamic_t::object_t()).as_object();
 
+    const auto& path_config = root.as_object().at("paths", dynamic_t::empty_object).as_object();
+    const auto& network_config = root.as_object().at("network", dynamic_t::empty_object).as_object();
     // Path configuration
 
     path.plugins = path_config.at("plugins", defaults::plugins_path).as_string();
@@ -351,11 +351,11 @@ config_t::config_t(const std::string& source) {
     }
 
     // Blackhole logging configuration
-    logging = root.as_object().at("logging",  dynamic_t::object_t()).to<config_t::logging_t>();
+    logging = root.as_object().at("logging",  dynamic_t::empty_object).to<config_t::logging_t>();
 
     // Component configuration
-    services = root.as_object().at("services", dynamic_t::object_t()).to<config_t::component_map_t>();
-    storages = root.as_object().at("storages", dynamic_t::object_t()).to<config_t::component_map_t>();
+    services = root.as_object().at("services", dynamic_t::empty_object).to<config_t::component_map_t>();
+    storages = root.as_object().at("storages", dynamic_t::empty_object).to<config_t::component_map_t>();
 
 #ifdef COCAINE_ALLOW_RAFT
     create_raft_cluster = false;
