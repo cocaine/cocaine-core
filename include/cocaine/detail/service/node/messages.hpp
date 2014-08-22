@@ -101,7 +101,48 @@ struct protocol<rpc_tag> {
         rpc::error,
         rpc::choke
     > messages;
+
+    typedef rpc scope;
 };
+
+struct control_tag;
+
+struct control {
+
+struct report {
+    typedef control_tag tag;
+};
+
+struct info {
+    typedef control_tag tag;
+
+    typedef boost::mpl::list<
+        /* info */ dynamic_t
+    > tuple_type;
+};
+
+struct terminate {
+    typedef control_tag tag;
+};
+
+}; // struct control
+
+template<>
+struct protocol<control_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        control::report,
+        control::info,
+        control::terminate
+    > messages;
+
+    typedef control scope;
+};
+
+} // namespace io
 
 }} // namespace cocaine::io
 

@@ -30,17 +30,18 @@ template<class Tag> class upstream;
 namespace io {
 
 class basic_upstream_t {
+    const std::shared_ptr<session_t> session;
+    const uint64_t channel;
+
     enum class states { active, sealed } state;
 
-    const std::shared_ptr<session_t> session;
-    const uint64_t index;
-
 public:
-    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_):
-        state(states::active),
+    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_):
         session(session_),
-        index(index_)
-    { }
+        channel(channel_)
+    {
+        state = states::active;
+    }
 
     template<class Event, typename... Args>
     void
@@ -63,13 +64,13 @@ basic_upstream_t::send(Args&&... args) {
         state = states::sealed;
     }
 
-    session->push(encoded<Event>(index, std::forward<Args>(args)...));
+    session->push(encoded<Event>(channel, std::forward<Args>(args)...));
 }
 
 inline
 void
 basic_upstream_t::drop() {
-    session->revoke(index);
+    session->revoke(channel);
 }
 
 // Forwards for the upstream<T> class

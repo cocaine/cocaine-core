@@ -298,7 +298,7 @@ private:
 } // namespace
 
 void
-app_t::stop() {
+app_t::pause() {
     COCAINE_LOG_INFO(m_log, "stopping the engine");
 
     if(!m_manifest->local) {

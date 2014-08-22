@@ -35,45 +35,7 @@
 
 #include <boost/mpl/list.hpp>
 
-namespace ev {
-    struct async;
-    struct timer;
-}
-
-namespace cocaine { namespace io {
-
-struct control_tag;
-
-struct control {
-    struct report {
-        typedef control_tag tag;
-    };
-
-    struct info {
-        typedef control_tag tag;
-
-        typedef boost::mpl::list<
-            /* info */ dynamic_t
-        > tuple_type;
-    };
-
-    struct terminate {
-        typedef control_tag tag;
-    };
-};
-
-template<>
-struct protocol<control_tag> {
-    typedef boost::mpl::list<
-        control::report,
-        control::info,
-        control::terminate
-    > messages;
-};
-
-} // namespace io
-
-namespace engine {
+namespace cocaine { namespace engine {
 
 class slave_t;
 

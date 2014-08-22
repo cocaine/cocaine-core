@@ -85,7 +85,7 @@ struct runtime_t {
     {
         using namespace std::placeholders;
 
-        m_signals.async_wait(std::bind(&runtime_t::terminate, this, _1, _2));
+        m_signals.async_wait(std::bind(&runtime_t::on_signal, this, _1, _2));
 
         // Establish an alternative signal stack
 
@@ -144,7 +144,7 @@ struct runtime_t {
 
 private:
     void
-    terminate(const boost::system::error_code& ec, int signum) {
+    on_signal(const boost::system::error_code& ec, int signum) {
         if(ec == boost::asio::error::operation_aborted) {
             return;
         }

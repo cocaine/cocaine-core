@@ -39,7 +39,7 @@ class actor_t {
     const std::shared_ptr<boost::asio::io_service> m_asio;
 
     // I/O acceptors. Actors have a separate thread to accept new connections. After a connection
-    // is accepted, it is assigned on a random thread from the main thread pool.
+    // is accepted, it is assigned to a random thread from the main thread pool.
     std::list<boost::asio::ip::tcp::acceptor> m_acceptors;
 
     class accept_action_t;

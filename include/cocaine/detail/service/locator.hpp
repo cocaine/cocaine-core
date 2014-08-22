@@ -61,6 +61,7 @@ class locator_t:
     typedef result_of<io::locator::resolve>::type resolve_result_t;
     typedef result_of<io::locator::connect>::type connect_result_t;
     typedef result_of<io::locator::refresh>::type refresh_result_t;
+    typedef result_of<io::locator::cluster>::type cluster_result_t;
 
     // Remote sessions indexed by uuid. The uuid is required to disambiguate between different
     // instances on the same host, even if the instance was restarted on the same port.
@@ -117,26 +118,29 @@ public:
 
 private:
     auto
-    resolve(const std::string& name) const -> resolve_result_t;
+    on_resolve(const std::string& name) const -> resolve_result_t;
 
     auto
-    connect(const std::string& uuid) -> streamed<connect_result_t>;
+    on_connect(const std::string& uuid) -> streamed<connect_result_t>;
 
     auto
-    refresh(const std::string& name) -> refresh_result_t;
+    on_refresh(const std::string& name) -> refresh_result_t;
 
-    // Session I/O
+    auto
+    on_cluster() const -> cluster_result_t;
+
+    // Session signals
 
     void
-    signal_impl(const boost::system::error_code& ec, const std::string& uuid);
+    on_session_shutdown(const boost::system::error_code& ec, const std::string& uuid);
 
     // Context signals
 
     void
-    handle_life_event(const actor_t& actor);
+    on_service(const actor_t& actor);
 
     void
-    terminate();
+    on_context_shutdown();
 };
 
 }} // namespace cocaine::service

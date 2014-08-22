@@ -40,10 +40,7 @@ class node_t:
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    typedef std::map<
-        std::string,
-        std::shared_ptr<app_t>
-    > app_map_t;
+    typedef std::map<std::string, std::shared_ptr<app_t>> app_map_t;
 
     // Apps.
     synchronized<app_map_t> m_apps;

@@ -49,7 +49,7 @@ logging_t::logging_t(context_t& context, boost::asio::io_service& asio, const st
     auto getter = static_cast<priorities(logger_t::*)()const>(&logger_t::verbosity);
     auto setter = static_cast<void(logger_t::*)(priorities)>(&logger_t::verbosity);
 
-    on<log::emit>(std::bind(&logging_t::emit, this, _1, _2, _3, _4));
+    on<log::emit>(std::bind(&logging_t::on_emit, this, _1, _2, _3, _4));
     on<log::verbosity>(std::bind(getter, std::ref(*m_logger)));
     on<log::set_verbosity>(std::bind(setter, std::ref(*m_logger), _1));
 }
@@ -60,15 +60,15 @@ logging_t::prototype() const -> const basic_dispatch_t& {
 }
 
 void
-logging_t::emit(logging::priorities level, const std::string& source, const std::string& message,
-                const blackhole::log::attributes_t& attributes)
+logging_t::on_emit(logging::priorities level, const std::string& source, const std::string& message,
+                   const blackhole::log::attributes_t& attributes)
 {
     auto record = m_logger->open_record(level);
 
     if(record.valid()) {
         record.attributes.insert(attributes.begin(), attributes.end());
-        record.attributes.insert(blackhole::keyword::message() = message);
         record.attributes.insert(cocaine::logging::keyword::source() = source);
+        record.attributes.insert(blackhole::keyword::message() = message);
 
         m_logger->push(std::move(record));
     }

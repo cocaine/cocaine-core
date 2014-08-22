@@ -129,16 +129,12 @@ class execution_unit_t;
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
 
-    typedef std::deque<
-        std::pair<std::string, std::unique_ptr<actor_t>>
-    > service_list_t;
-
-    // Service port mapping and pinning, synchronized using service list lock.
-    port_mapping_t m_port_mapping;
-
     // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
     // for the Blackhole, when all the common stuff is extracted to a separate library.
     std::unique_ptr<logging::logger_t> m_logger;
+
+    // Service port mapping and pinning, synchronized using service list lock.
+    port_mapping_t m_port_mapping;
 
     // NOTE: This is the first object in the component tree, all the other dynamic components, be it
     // storages or isolates, have to be declared after this one.
@@ -146,6 +142,10 @@ class context_t {
 
     // A pool of execution units - threads responsible for doing all the service invocations.
     std::vector<std::unique_ptr<execution_unit_t>> m_pool;
+
+    typedef std::deque<
+        std::pair<std::string, std::unique_ptr<actor_t>>
+    > service_list_t;
 
     // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
     // because services are allowed to start and stop other services during their lifetime.

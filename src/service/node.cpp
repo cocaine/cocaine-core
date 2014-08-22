@@ -86,7 +86,7 @@ node_t::~node_t() {
     COCAINE_LOG_INFO(m_log, "stopping the apps");
 
     for(auto it = ptr->begin(); it != ptr->end(); ++it) {
-        it->second->stop();
+        it->second->pause();
     }
 
     ptr->clear();
@@ -159,7 +159,7 @@ node_t::on_pause_app(const std::vector<std::string>& applist) {
         auto ptr = m_apps.synchronize();
         auto app = ptr->find(*it);
 
-        app->second->stop();
+        app->second->pause();
         ptr->erase(app);
 
         result[*it] = "the app has been stopped";

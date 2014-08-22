@@ -54,7 +54,7 @@ class multicast_t:
     // Announce expiration timeouts.
     std::map<std::string, std::unique_ptr<boost::asio::deadline_timer>> m_expirations;
 
-    struct packet_t;
+    struct announce_t;
 
 public:
     multicast_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args);
@@ -64,13 +64,13 @@ public:
 
 private:
     void
-    publish(const boost::system::error_code& ec);
+    on_publish(const boost::system::error_code& ec);
 
     void
-    receive(const boost::system::error_code& ec, size_t rcvd, const std::shared_ptr<packet_t>& ptr);
+    on_receive(const boost::system::error_code& ec, size_t rcvd, const std::shared_ptr<announce_t>& ptr);
 
     void
-    cleanup(const boost::system::error_code& ec, const std::string& uuid);
+    on_expired(const boost::system::error_code& ec, const std::string& uuid);
 };
 
 }} // namespace cocaine::cluster

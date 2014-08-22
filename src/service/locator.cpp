@@ -39,6 +39,7 @@
 
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"
+#include "cocaine/traits/map.hpp"
 #include "cocaine/traits/tuple.hpp"
 #include "cocaine/traits/vector.hpp"
 
@@ -73,20 +74,20 @@ public:
     {
         typedef io::protocol<event_traits<locator::connect>::upstream_type>::scope protocol;
 
-        on<protocol::chunk>(std::bind(&remote_client_t::announce, this, std::placeholders::_1));
-        on<protocol::choke>(std::bind(&remote_client_t::shutdown, this));
+        on<protocol::chunk>(std::bind(&remote_client_t::on_announce, this, std::placeholders::_1));
+        on<protocol::choke>(std::bind(&remote_client_t::on_shutdown, this));
     }
 
 private:
     void
-    announce(const connect_result_t& update);
+    on_announce(const connect_result_t& update);
 
     void
-    shutdown();
+    on_shutdown();
 };
 
 void
-locator_t::remote_client_t::announce(const connect_result_t& update) {
+locator_t::remote_client_t::on_announce(const connect_result_t& update) {
     if(update.empty()) return;
 
     std::ostringstream stream;
@@ -112,7 +113,7 @@ locator_t::remote_client_t::announce(const connect_result_t& update) {
 }
 
 void
-locator_t::remote_client_t::shutdown() {
+locator_t::remote_client_t::on_shutdown() {
     COCAINE_LOG_INFO(impl->m_log, "remote node is shutting down")(
         "uuid", uuid
     );
@@ -133,9 +134,10 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 {
     using namespace std::placeholders;
 
-    on<locator::resolve>(std::bind(&locator_t::resolve, this, _1));
-    on<locator::connect>(std::bind(&locator_t::connect, this, _1));
-    on<locator::refresh>(std::bind(&locator_t::refresh, this, _1));
+    on<locator::resolve>(std::bind(&locator_t::on_resolve, this, _1));
+    on<locator::connect>(std::bind(&locator_t::on_connect, this, _1));
+    on<locator::refresh>(std::bind(&locator_t::on_refresh, this, _1));
+    on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
 
     // It's here to keep the reference alive.
     const auto storage = api::storage(m_context, "core");
@@ -176,11 +178,11 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     }
 
     // Connect service lifecycle signals.
-    context.signals.service.birth.connect(std::bind(&locator_t::handle_life_event, this, _1));
-    context.signals.service.death.connect(std::bind(&locator_t::handle_life_event, this, _1));
+    context.signals.service.birth.connect(std::bind(&locator_t::on_service, this, _1));
+    context.signals.service.death.connect(std::bind(&locator_t::on_service, this, _1));
 
     // Connect context lifecycle signals.
-    context.signals.shutdown.connect(std::bind(&locator_t::terminate, this));
+    context.signals.shutdown.connect(std::bind(&locator_t::on_context_shutdown, this));
 }
 
 locator_t::~locator_t() {
@@ -229,7 +231,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
     using namespace std::placeholders;
 
     m_remotes[uuid] = std::make_shared<session_t>(std::move(channel), nullptr);
-    m_remotes[uuid]->signals.collect.connect(std::bind(&locator_t::signal_impl, this, _1, uuid));
+    m_remotes[uuid]->signals.shutdown.connect(std::bind(&locator_t::on_session_shutdown, this, _1, uuid));
 
     // Start the message dispatching.
     m_remotes[uuid]->pull();
@@ -266,7 +268,7 @@ locator_t::uuid() const {
 }
 
 auto
-locator_t::resolve(const std::string& name) const -> resolve_result_t {
+locator_t::on_resolve(const std::string& name) const -> resolve_result_t {
     auto basename = m_router->select_service(name);
     auto provided = m_context.locate(basename);
 
@@ -295,7 +297,7 @@ locator_t::resolve(const std::string& name) const -> resolve_result_t {
 }
 
 auto
-locator_t::connect(const std::string& uuid) -> streamed<connect_result_t> {
+locator_t::on_connect(const std::string& uuid) -> streamed<connect_result_t> {
     streamed<connect_result_t> stream;
 
     if(!m_cluster) {
@@ -321,7 +323,7 @@ locator_t::connect(const std::string& uuid) -> streamed<connect_result_t> {
 }
 
 auto
-locator_t::refresh(const std::string& name) -> refresh_result_t {
+locator_t::on_refresh(const std::string& name) -> refresh_result_t {
     std::vector<std::string> groups;
 
     // It's here to keep the reference alive.
@@ -349,8 +351,19 @@ locator_t::refresh(const std::string& name) -> refresh_result_t {
     }
 }
 
+auto
+locator_t::on_cluster() const -> cluster_result_t {
+    cluster_result_t result;
+
+    for(auto it = m_remotes.begin(); it != m_remotes.end(); ++it) {
+        result[it->first] = it->second->remote_endpoint();
+    }
+
+    return result;
+}
+
 void
-locator_t::signal_impl(const boost::system::error_code& ec, const std::string& uuid) {
+locator_t::on_session_shutdown(const boost::system::error_code& ec, const std::string& uuid) {
     if(!ec) return;
 
     scoped_attributes_t attributes(*m_log, {
@@ -367,7 +380,7 @@ locator_t::signal_impl(const boost::system::error_code& ec, const std::string& u
 }
 
 void
-locator_t::handle_life_event(const actor_t& actor) {
+locator_t::on_service(const actor_t& actor) {
     if(!m_cluster) {
         // No cluster means there are no streams.
         return;
@@ -432,7 +445,7 @@ public:
 };
 
 void
-locator_t::terminate() {
+locator_t::on_context_shutdown() {
     auto ptr = m_locals.synchronize();
 
     if(!ptr->streams.empty()) {

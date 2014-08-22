@@ -100,6 +100,20 @@ struct refresh {
     > tuple_type;
 };
 
+struct cluster {
+    typedef locator_tag tag;
+
+    static
+    const char*
+    alias() {
+        return "cluster";
+    }
+
+    typedef stream_of<
+        std::map<std::string, boost::asio::ip::tcp::endpoint>
+    >::tag upstream_type;
+};
+
 }; // struct locator
 
 template<>
@@ -111,7 +125,8 @@ struct protocol<locator_tag> {
     typedef boost::mpl::list<
         locator::resolve,
         locator::connect,
-        locator::refresh
+        locator::refresh,
+        locator::cluster
     > messages;
 
     typedef locator scope;

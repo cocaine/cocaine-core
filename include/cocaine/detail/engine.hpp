@@ -39,7 +39,7 @@ class execution_unit_t {
 
     std::map<int, std::shared_ptr<session_t>> m_sessions;
 
-    // I/O Reactor
+    // I/O
 
     std::shared_ptr<boost::asio::io_service> m_asio;
     std::unique_ptr<io::chamber_t> m_chamber;
@@ -63,7 +63,7 @@ private:
                 const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
 
     void
-    signal_impl(const boost::system::error_code& ec, int fd);
+    on_session_shutdown(const boost::system::error_code& ec, int fd);
 };
 
 } // namespace cocaine

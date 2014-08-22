@@ -83,14 +83,14 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const std
     using namespace std::placeholders;
 
     m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
-    m_sessions[fd]->signals.collect.connect(std::bind(&execution_unit_t::signal_impl, this, _1, fd));
+    m_sessions[fd]->signals.shutdown.connect(std::bind(&execution_unit_t::on_session_shutdown, this, _1, fd));
 
     // Start the message dispatching.
     m_sessions[fd]->pull();
 }
 
 void
-execution_unit_t::signal_impl(const boost::system::error_code& ec, int fd) {
+execution_unit_t::on_session_shutdown(const boost::system::error_code& ec, int fd) {
     auto it = m_sessions.find(fd);
 
     BOOST_ASSERT(ec && it != m_sessions.end());

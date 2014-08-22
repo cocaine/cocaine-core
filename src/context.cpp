@@ -473,8 +473,8 @@ context_t::context_t(config_t config_, const std::string& logger_backend):
 }
 
 context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger):
-    m_port_mapping(config_),
     m_logger(std::move(logger)),
+    m_port_mapping(config_),
     config(config_)
 {
     bootstrap();

@@ -81,7 +81,7 @@ struct dynamic_converter<multicast_config_t> {
 
 } // namespace cocaine
 
-struct multicast_t::packet_t {
+struct multicast_t::announce_t {
     typedef std::tuple<
      /* Node ID. */
         std::string,
@@ -90,7 +90,7 @@ struct multicast_t::packet_t {
     > tuple_type;
 
     std::array<char, 1024> buffer;
-    udp::endpoint origin;
+    udp::endpoint endpoint;
 };
 
 multicast_t::multicast_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args):
@@ -130,14 +130,14 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
 
     m_socket.set_option(multicast::join_group(m_config.endpoint.address()));
 
-    auto packet = std::make_shared<packet_t>();
+    auto announce = std::make_shared<announce_t>();
 
-    m_socket.async_receive_from(buffer(packet->buffer.data(), packet->buffer.size()), packet->origin,
-        std::bind(&multicast_t::receive, this, std::placeholders::_1, std::placeholders::_2, packet)
+    m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()), announce->endpoint,
+        std::bind(&multicast_t::on_receive, this, std::placeholders::_1, std::placeholders::_2, announce)
     );
 
     m_timer.expires_from_now(m_config.interval);
-    m_timer.async_wait(std::bind(&multicast_t::publish, this, std::placeholders::_1));
+    m_timer.async_wait(std::bind(&multicast_t::on_publish, this, std::placeholders::_1));
 }
 
 multicast_t::~multicast_t() {
@@ -152,7 +152,7 @@ multicast_t::~multicast_t() {
 }
 
 void
-multicast_t::publish(const boost::system::error_code& ec) {
+multicast_t::on_publish(const boost::system::error_code& ec) {
     if(ec == boost::asio::error::operation_aborted) {
         return;
     }
@@ -174,7 +174,7 @@ multicast_t::publish(const boost::system::error_code& ec) {
         msgpack::sbuffer target;
         msgpack::packer<msgpack::sbuffer> packer(target);
 
-        io::type_traits<packet_t::tuple_type>::pack(packer, std::make_tuple(
+        io::type_traits<announce_t::tuple_type>::pack(packer, std::make_tuple(
             m_locator.uuid(),
             endpoints
         ));
@@ -189,15 +189,15 @@ multicast_t::publish(const boost::system::error_code& ec) {
     }
 
     m_timer.expires_from_now(m_config.interval);
-    m_timer.async_wait(std::bind(&multicast_t::publish, this, std::placeholders::_1));
+    m_timer.async_wait(std::bind(&multicast_t::on_publish, this, std::placeholders::_1));
 }
 
 void
-multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std::shared_ptr<packet_t>& ptr) {
+multicast_t::on_receive(const boost::system::error_code& ec, size_t rcvd, const std::shared_ptr<announce_t>& ptr) {
     if(ec == boost::asio::error::operation_aborted) {
         return;
     } else if(ec) {
-        COCAINE_LOG_ERROR(m_log, "unexpected error in multicast_t::receive(): [%d] %s", ec.value(), ec.message());
+        COCAINE_LOG_ERROR(m_log, "unexpected error in multicast_t::on_receive(): [%d] %s", ec.value(), ec.message());
         return;
     }
 
@@ -214,14 +214,14 @@ multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std
     std::vector<tcp::endpoint> endpoints;
 
     try {
-        io::type_traits<packet_t::tuple_type>::unpack(unpacked.get(), std::tie(uuid, endpoints));
+        io::type_traits<announce_t::tuple_type>::unpack(unpacked.get(), std::tie(uuid, endpoints));
     } catch(const msgpack::type_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to unpack an announce");
         return;
     }
 
     if(uuid != m_locator.uuid()) {
-        COCAINE_LOG_DEBUG(m_log, "received %d remote endpoint(s) from %s", endpoints.size(), ptr->origin)(
+        COCAINE_LOG_DEBUG(m_log, "received %d remote endpoint(s) from %s", endpoints.size(), ptr->endpoint)(
             "uuid", uuid
         );
 
@@ -235,18 +235,18 @@ multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std
         }
 
         expiration->expires_from_now(m_config.interval * 3);
-        expiration->async_wait(std::bind(&multicast_t::cleanup, this, std::placeholders::_1, uuid));
+        expiration->async_wait(std::bind(&multicast_t::on_expired, this, std::placeholders::_1, uuid));
     }
 
-    auto packet = std::make_shared<packet_t>();
+    auto announce = std::make_shared<announce_t>();
 
-    m_socket.async_receive_from(buffer(packet->buffer.data(), packet->buffer.size()), packet->origin,
-        std::bind(&multicast_t::receive, this, std::placeholders::_1, std::placeholders::_2, packet)
+    m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()), announce->endpoint,
+        std::bind(&multicast_t::on_receive, this, std::placeholders::_1, std::placeholders::_2, announce)
     );
 }
 
 void
-multicast_t::cleanup(const boost::system::error_code& ec, const std::string& uuid) {
+multicast_t::on_expired(const boost::system::error_code& ec, const std::string& uuid) {
     if(ec == boost::asio::error::operation_aborted) {
         return;
     }

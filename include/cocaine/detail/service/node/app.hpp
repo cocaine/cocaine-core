@@ -75,7 +75,7 @@ public:
     start();
 
     void
-    stop();
+    pause();
 
     auto
     info() const -> dynamic_t;
@@ -86,7 +86,8 @@ public:
     enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream);
 
     std::shared_ptr<api::stream_t>
-    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag);
+    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream,
+            const std::string& tag);
 };
 
 } // namespace cocaine

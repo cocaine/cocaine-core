@@ -171,7 +171,7 @@ private:
     finalize(const boost::system::error_code& ec) {
         if(ec) {
             if(session->ptr) {
-                session->signals.collect(ec);
+                session->signals.shutdown(ec);
             }
 
             return;
@@ -181,7 +181,7 @@ private:
             session->invoke(message);
         } catch(const cocaine::error_t& e) {
             if(session->ptr) {
-                session->signals.collect(error::uncaught_error);
+                session->signals.shutdown(error::uncaught_error);
             }
 
             return;
@@ -232,7 +232,7 @@ private:
     void
     finalize(const boost::system::error_code& ec) {
         if(ec && session->ptr) {
-            session->signals.collect(ec);
+            session->signals.shutdown(ec);
         }
     }
 };

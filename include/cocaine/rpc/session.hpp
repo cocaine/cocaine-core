@@ -67,7 +67,7 @@ class session_t:
 
 public:
     struct {
-        boost::signals2::signal<void(const boost::system::error_code&)> collect;
+        boost::signals2::signal<void(const boost::system::error_code&)> shutdown;
     } signals;
 
 public:
