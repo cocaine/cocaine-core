@@ -83,7 +83,7 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const std
     using namespace std::placeholders;
 
     m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
-    m_sessions[fd]->signals.failure.connect(std::bind(&execution_unit_t::signal_impl, this, _1, fd));
+    m_sessions[fd]->signals.collect.connect(std::bind(&execution_unit_t::signal_impl, this, _1, fd));
 
     // Start the message dispatching.
     m_sessions[fd]->pull();
@@ -100,7 +100,7 @@ execution_unit_t::signal_impl(const boost::system::error_code& ec, int fd) {
         attribute::make("service", it->second->name())
     });
 
-    if(ec != error::eof) {
+    if(ec != boost::asio::error::eof) {
         COCAINE_LOG_ERROR(m_log, "client has disconnected: [%d] %s", ec.value(), ec.message());
     } else {
         COCAINE_LOG_DEBUG(m_log, "client has disconnected");

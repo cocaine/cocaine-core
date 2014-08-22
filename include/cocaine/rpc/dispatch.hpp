@@ -254,7 +254,6 @@ dispatch<Tag>::invoke(int id, const Visitor& visitor) const {
     std::tie(lb, ub) = m_slots->equal_range(id);
 
     if(lb == ub) {
-        // TODO: COCAINE-82 adds a 'client' error category.
         throw cocaine::error_t("unbound type %d slot", id);
     }
 
@@ -265,7 +264,6 @@ dispatch<Tag>::invoke(int id, const Visitor& visitor) const {
     try {
         return boost::apply_visitor(visitor, slot);
     } catch(const std::exception& e) {
-        // TODO: COCAINE-82 adds a 'server' error category.
         // This happens only when the underlying slot has miserably failed to manage its exceptions.
         // In such case, the client is disconnected to prevent any further damage.
         throw cocaine::error_t("unable to invoke type %d slot - %s", id, e.what());

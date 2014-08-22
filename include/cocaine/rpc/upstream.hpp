@@ -30,18 +30,16 @@ template<class Tag> class upstream;
 namespace io {
 
 class basic_upstream_t {
+    enum class states { active, sealed } state;
+
     const std::shared_ptr<session_t> session;
     const uint64_t index;
 
-    // NOTE: Sealed upstreams ignore any messages. At some point it might change to an explicit way
-    // to show that the operation won't be completed.
-    enum class states { active, sealed } state;
-
 public:
     basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_):
+        state(states::active),
         session(session_),
-        index(index_),
-        state(states::active)
+        index(index_)
     { }
 
     template<class Event, typename... Args>
@@ -60,6 +58,8 @@ basic_upstream_t::send(Args&&... args) {
     }
 
     if(std::is_same<typename io::event_traits<Event>::dispatch_type, void>::value) {
+        // NOTE: Sealed upstreams ignore any messages. At some point it might change to an explicit
+        // way to show that the operation won't be completed.
         state = states::sealed;
     }
 

@@ -23,10 +23,10 @@
 
 #include <boost/system/error_code.hpp>
 
-namespace cocaine { namespace io { namespace error {
+namespace cocaine { namespace error {
 
 enum decode_errors {
-    parse_error,
+    parse_error = 1,
     frame_format_error,
     insufficient_bytes
 };
@@ -39,7 +39,7 @@ class decode_category_t:
     virtual
     const char*
     name() const throw() {
-        return "cocaine.io.decode";
+        return "cocaine.rpc.asio";
     }
 
     virtual
@@ -56,7 +56,7 @@ class decode_category_t:
             return "insufficient bytes provided to decode the message";
         }
 
-        return "generic cocaine.io.decode error";    
+        return "cocaine.rpc.asio error";
     }
 };
 
@@ -75,12 +75,12 @@ make_error_code(decode_errors code) {
     return boost::system::error_code(static_cast<int>(code), decode_category());
 }
 
-}}} // namespace cocaine::io::error
+}} // namespace cocaine::error
 
 namespace boost { namespace system {
 
 template<>
-struct is_error_code_enum<cocaine::io::error::decode_errors>:
+struct is_error_code_enum<cocaine::error::decode_errors>:
     public true_type
 { };
 

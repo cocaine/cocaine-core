@@ -25,20 +25,20 @@
 #include "cocaine/memory.hpp"
 
 #include <array>
+#include <iostream>
+
 #include <cerrno>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
-#include <system_error>
 
 #include <boost/filesystem/operations.hpp>
+#include <boost/system/system_error.hpp>
 
 #ifdef COCAINE_ALLOW_CGROUPS
     #include <boost/lexical_cast.hpp>
 #endif
 
-#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -208,7 +208,7 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
     std::array<int, 2> pipes;
 
     if(::pipe(pipes.data()) != 0) {
-        throw std::system_error(errno, std::system_category(), "unable to create an output pipe");
+        throw boost::system::system_error(errno, boost::system::system_category(), "unable to create an output pipe");
     }
 
     for(auto it = pipes.begin(); it != pipes.end(); ++it) {
@@ -219,7 +219,7 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
 
     if(pid < 0) {
         std::for_each(pipes.begin(), pipes.end(), ::close);
-        throw std::system_error(errno, std::system_category(), "unable to fork");
+        throw boost::system::system_error(errno, boost::system::system_category(), "unable to fork");
     }
 
     ::close(pipes[pid > 0]);

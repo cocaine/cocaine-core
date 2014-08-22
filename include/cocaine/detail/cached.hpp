@@ -31,6 +31,8 @@ template<class T>
 struct cached:
     protected T
 {
+    enum class sources { cache, storage };
+
     cached(context_t& context, const std::string& collection, const std::string& name);
 
     T&
@@ -42,8 +44,6 @@ struct cached:
     object() const {
         return static_cast<const T&>(*this);
     }
-
-    enum class sources { cache, storage };
 
     auto
     source() const -> sources {

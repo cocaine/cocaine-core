@@ -37,16 +37,54 @@ using namespace cocaine;
 
 // Actor internals
 
-struct actor_t::connection_t {
-    explicit
-    connection_t(io_service& asio):
-        socket(new tcp::socket(asio))
+class actor_t::accept_action_t:
+    public std::enable_shared_from_this<accept_action_t>
+{
+    actor_t* impl;
+
+    tcp::acceptor& socket;
+
+    tcp::socket peer;
+    tcp::endpoint endpoint;
+
+public:
+    accept_action_t(actor_t* impl_, tcp::acceptor& socket_):
+        impl(impl_),
+        socket(socket_),
+        peer(*impl_->m_asio)
     { }
 
-    std::shared_ptr<tcp::socket> socket;
+    void
+    operator()() {
+        socket.async_accept(peer, endpoint,
+            std::bind(&accept_action_t::finalize, shared_from_this(), std::placeholders::_1)
+        );
+    }
 
-    // Remote peer endpoint address.
-    tcp::endpoint origin;
+private:
+    void
+    finalize(const boost::system::error_code& ec) {
+        if(ec) {
+            if(ec == boost::asio::error::operation_aborted) {
+                return;
+            }
+
+            COCAINE_LOG_ERROR(impl->m_log, "unable to accept a new client connection: %s", ec)(
+                "service", impl->m_prototype->name()
+            );
+        } else {
+            COCAINE_LOG_DEBUG(impl->m_log, "accepted a new client connection")(
+                "endpoint", endpoint,
+                "service", impl->m_prototype->name()
+            );
+
+            // This won't attach the socket immediately, instead it will post a new action to the designated
+            // unit's event loop queue. It could probably be done with some locking, but whatever.
+            impl->m_context.attach(std::make_shared<tcp::socket>(std::move(peer)), impl->m_prototype);
+        }
+
+        operator()();
+    }
 };
 
 // Actor
@@ -85,13 +123,12 @@ actor_t::run(std::vector<tcp::endpoint> endpoints) {
             "service", m_prototype->name()
         );
 
-        m_connectors.emplace_back(*m_asio, *it);
+        m_acceptors.emplace_back(*m_asio, *it);
 
-        auto connection = std::make_shared<connection_t>(*m_asio);
-
-        m_connectors.back().async_accept(*connection->socket, connection->origin,
-            std::bind(&actor_t::accept_impl, this, std::placeholders::_1, connection)
-        );
+        m_asio->dispatch(std::bind(&accept_action_t::operator(), std::make_shared<accept_action_t>(
+            this,
+            m_acceptors.back()
+        )));
     }
 
     m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_asio);
@@ -101,11 +138,11 @@ void
 actor_t::terminate() {
     BOOST_ASSERT(m_chamber);
 
-    for(auto it = m_connectors.begin(); it != m_connectors.end(); ++it) {
+    for(auto it = m_acceptors.begin(); it != m_acceptors.end(); ++it) {
         it->close();
     }
 
-    m_connectors.clear();
+    m_acceptors.clear();
     m_chamber.reset();
 }
 
@@ -120,7 +157,7 @@ actor_t::endpoints() const -> std::vector<tcp::endpoint> {
     try {
         it = tcp::resolver(*m_asio).resolve(tcp::resolver::query(
             m_context.config.network.hostname,
-            boost::lexical_cast<std::string>(m_connectors.front().local_endpoint().port())
+            boost::lexical_cast<std::string>(m_acceptors.front().local_endpoint().port())
         ));
     } catch(const boost::system::system_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: [%d] %s", e.code().value(), e.code().message())(
@@ -138,33 +175,5 @@ actor_t::prototype() const -> const io::basic_dispatch_t& {
 
 bool
 actor_t::is_active() const {
-    return m_chamber && !m_connectors.empty();
-}
-
-void
-actor_t::accept_impl(const boost::system::error_code& ec, const std::shared_ptr<connection_t>& ptr) {
-    if(ec) {
-        if(ec == error::operation_aborted) {
-            return;
-        }
-
-        COCAINE_LOG_ERROR(m_log, "unable to accept a new client connection: %s", ec)(
-            "service", m_prototype->name()
-        );
-    } else {
-        COCAINE_LOG_DEBUG(m_log, "accepted a new client connection")(
-            "endpoint", ptr->origin,
-            "service", m_prototype->name()
-        );
-
-        // This won't attach the socket immediately, instead it will post a new action to the designated
-        // unit's event loop queue. It could probably be done with some locking, but whatever.
-        m_context.attach(std::move(ptr->socket), m_prototype);
-    }
-
-    auto connection = std::make_shared<connection_t>(*m_asio);
-
-    m_connectors.back().async_accept(*connection->socket, connection->origin,
-        std::bind(&actor_t::accept_impl, this, std::placeholders::_1, connection)
-    );
+    return m_chamber && !m_acceptors.empty();
 }

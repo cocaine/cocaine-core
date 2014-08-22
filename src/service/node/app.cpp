@@ -211,7 +211,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
 
     try {
         m_engine = std::make_shared<engine_t>(m_context, *m_manifest, *m_profile, std::move(lhs));
-    } catch(const std::system_error& e) {
+    } catch(const boost::system::system_error& e) {
         throw cocaine::error_t("unable to create the engine - [%d] %s", e.code().value(), e.code().message());
     }
 }
@@ -241,13 +241,19 @@ app_t::start() {
 
 namespace {
 
-struct engine_action_t {
-    engine_action_t(io::channel<stream_protocol>& channel_, encoder_t::message_type&& message):
-        request(std::move(message)),
-        channel(channel_)
-    { }
-
+class call_action_t {
     enum class phases { request, message };
+
+    channel<stream_protocol>& channel;
+
+    encoder_t::message_type request;
+    decoder_t::message_type message;
+
+public:
+    call_action_t(io::channel<stream_protocol>& channel_, encoder_t::message_type&& request_):
+        channel(channel_),
+        request(std::move(request_))
+    { }
 
     void
     operator()() {
@@ -287,12 +293,6 @@ private:
             channel.socket->get_io_service().stop();
         }
     }
-
-private:
-    encoder_t::message_type request;
-    decoder_t::message_type message;
-
-    channel<stream_protocol>& channel;
 };
 
 } // namespace
@@ -306,13 +306,13 @@ app_t::stop() {
         m_context.remove(m_manifest->name);
     }
 
-    auto action = std::make_shared<engine_action_t>(
+    auto action = std::make_shared<call_action_t>(
        *m_engine_control,
         encoded<control::terminate>(1)
     );
 
     // Start the terminate action.
-    m_asio.post(std::bind(&engine_action_t::operator(), action));
+    m_asio.dispatch(std::bind(&call_action_t::operator(), action));
 
     try {
         m_asio.run();
@@ -338,7 +338,7 @@ app_t::info() const {
         return info;
     }
 
-    auto action = std::make_shared<engine_action_t>(
+    auto action = std::make_shared<call_action_t>(
        *m_engine_control,
         encoded<control::report>(1)
     );
@@ -347,7 +347,7 @@ app_t::info() const {
     boost::system::error_code ec;
 
     // Start the info action.
-    m_asio.post(std::bind(&engine_action_t::operator(), action));
+    m_asio.dispatch(std::bind(&call_action_t::operator(), action));
 
     try {
         // Blocks until either the response cancels the timer or timeout happens.

@@ -54,7 +54,7 @@ struct blocking_slot:
         } catch(const std::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
-            upstream.template send<typename protocol::error>(invocation_error, std::string(e.what()));
+            upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
         }
 
         // Return a corresponding protocol dispatch.
@@ -92,7 +92,7 @@ struct blocking_slot<Event, void>:
         } catch(const std::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
         } catch(const std::exception& e) {
-            upstream.template send<typename protocol::error>(invocation_error, std::string(e.what()));
+            upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
         }
 
         // Return a corresponding protocol dispatch.

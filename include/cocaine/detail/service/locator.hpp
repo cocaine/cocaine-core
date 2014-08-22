@@ -83,7 +83,7 @@ class locator_t:
     std::unique_ptr<router_t> m_router;
 
     // Used to clean up non-synchronized internal state inside the reactor's event loop.
-    struct cleanup_action_t;
+    class cleanup_action_t;
 
 public:
     locator_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);

@@ -37,6 +37,8 @@ template<class Protocol, class Encoder>
 class writable_stream {
     COCAINE_DECLARE_NONCOPYABLE(writable_stream)
 
+    enum class states { idle, flushing } m_state;
+
     typedef boost::asio::basic_stream_socket<Protocol> channel_type;
 
     typedef Encoder encoder_type;
@@ -49,13 +51,11 @@ class writable_stream {
     std::deque<boost::asio::const_buffer> m_messages;
     std::deque<handler_type> m_handlers;
 
-    enum class states { idle, flushing } m_state;
-
 public:
     explicit
     writable_stream(const std::shared_ptr<channel_type>& channel):
-        m_channel(channel),
-        m_state(states::idle)
+        m_state(states::idle),
+        m_channel(channel)
     { }
 
     void

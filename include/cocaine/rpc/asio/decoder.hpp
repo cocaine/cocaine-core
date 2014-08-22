@@ -51,6 +51,9 @@ struct decoded_message_t {
 
 private:
     msgpack::object object;
+
+    // Keeps the decoder's zone alive until all the decoded messages are destroyed.
+    std::shared_ptr<msgpack::zone> zone;
 };
 
 } // namespace aux
@@ -58,7 +61,10 @@ private:
 struct decoder_t {
     COCAINE_DECLARE_NONCOPYABLE(decoder_t)
 
-    decoder_t() = default;
+    decoder_t():
+        zone(new msgpack::zone())
+    { }
+
    ~decoder_t() = default;
 
     typedef aux::decoded_message_t message_type;
@@ -67,7 +73,7 @@ struct decoder_t {
     decode(const char* data, size_t size, message_type& message, boost::system::error_code& ec) {
         size_t offset = 0;
 
-        msgpack::unpack_return rv = msgpack::unpack(data, size, &offset, &zone, &message.object);
+        msgpack::unpack_return rv = msgpack::unpack(data, size, &offset, zone.get(), &message.object);
 
         if(rv == msgpack::UNPACK_CONTINUE) {
             ec = error::insufficient_bytes;
@@ -82,12 +88,15 @@ struct decoder_t {
             ec = error::frame_format_error;
         }
 
+        if(rv == msgpack::UNPACK_SUCCESS || rv == msgpack::UNPACK_EXTRA_BYTES) {
+            message.zone = zone;
+        }
+
         return offset;
     }
 
 private:
-    // Might be a better idea to create a new zone for each message and carry it around with it.
-    msgpack::zone zone;
+    std::shared_ptr<msgpack::zone> zone;
 };
 
 }} // namespace cocaine::io

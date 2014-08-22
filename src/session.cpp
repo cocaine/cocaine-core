@@ -52,7 +52,6 @@ public:
 void
 session_t::channel_t::invoke(const decoder_t::message_type& message) {
     if(!dispatch) {
-        // TODO: COCAINE-82 adds a 'client' error category.
         throw cocaine::error_t("no dispatch has been assigned");
     }
 
@@ -85,7 +84,7 @@ session_t::invoke(const decoder_t::message_type& message) {
         std::tie(lb, ub) = ptr->equal_range(index);
 
         if(lb == ub) {
-            if(!prototype || index <= max_channel) {
+            if(index <= max_channel) {
                 return;
             }
 
@@ -158,18 +157,21 @@ public:
 
     void
     operator()() {
-        if(!session->ptr) return;
+        if(!session->ptr) {
+            return;
+        }
 
-        session->ptr->reader->read(std::ref(message),
+        session->ptr->reader->read(message,
             std::bind(&pull_action_t::finalize, shared_from_this(), std::placeholders::_1)
         );
     }
 
+private:
     void
     finalize(const boost::system::error_code& ec) {
         if(ec) {
             if(session->ptr) {
-                session->signals.failure(ec);
+                session->signals.collect(ec);
             }
 
             return;
@@ -178,8 +180,10 @@ public:
         try {
             session->invoke(message);
         } catch(const cocaine::error_t& e) {
-            // TODO: Die horribly.
-            session->signals.failure(boost::system::error_code());
+            if(session->ptr) {
+                session->signals.collect(error::uncaught_error);
+            }
+
             return;
         }
 
@@ -215,17 +219,20 @@ public:
 
     void
     operator()() {
-        if(!session->ptr) return;
+        if(!session->ptr) {
+            return;
+        }
 
-        session->ptr->writer->write(std::ref(message),
+        session->ptr->writer->write(message,
             std::bind(&push_action_t::finalize, shared_from_this(), std::placeholders::_1)
         );
     }
 
+private:
     void
     finalize(const boost::system::error_code& ec) {
         if(ec && session->ptr) {
-            session->signals.failure(ec);
+            session->signals.collect(ec);
         }
     }
 };

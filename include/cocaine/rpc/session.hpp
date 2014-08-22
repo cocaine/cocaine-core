@@ -48,6 +48,9 @@ class session_t:
     std::unique_ptr<io::channel<boost::asio::ip::tcp>> ptr;
     std::mutex mutex;
 
+    class pull_action_t;
+    class push_action_t;
+
     // Keep the remote endpoint in case the socket is closed abruptly and we need to report it.
     const boost::asio::ip::tcp::endpoint endpoint;
 
@@ -62,12 +65,9 @@ class session_t:
     // Virtual channels. Separate synchronization to decouple invocation and messaging.
     synchronized<channel_map_t> channels;
 
-    class pull_action_t;
-    class push_action_t;
-
 public:
     struct {
-        boost::signals2::signal<void(const boost::system::error_code&)> failure;
+        boost::signals2::signal<void(const boost::system::error_code&)> collect;
     } signals;
 
 public:

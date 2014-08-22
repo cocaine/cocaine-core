@@ -31,8 +31,6 @@
 namespace cocaine { namespace io {
 
 class chamber_t {
-    struct named_runnable;
-
     const std::string name;
     const std::shared_ptr<boost::asio::io_service> asio;
 
@@ -40,7 +38,9 @@ class chamber_t {
     std::unique_ptr<const boost::asio::io_service::work> work;
 
     // This thread will run the reactor's event loop until terminated.
-    const std::unique_ptr<boost::thread> thread;
+    std::unique_ptr<boost::thread> thread;
+
+    class named_runnable_t;
 
 public:
     chamber_t(const std::string& name, const std::shared_ptr<boost::asio::io_service>& asio);

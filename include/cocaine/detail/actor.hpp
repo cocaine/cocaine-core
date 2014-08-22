@@ -38,9 +38,11 @@ class actor_t {
     const std::unique_ptr<logging::log_t> m_log;
     const std::shared_ptr<boost::asio::io_service> m_asio;
 
-    // I/O connectors. Actors have a separate thread to accept new connections. After a connection
+    // I/O acceptors. Actors have a separate thread to accept new connections. After a connection
     // is accepted, it is assigned on a random thread from the main thread pool.
-    std::list<boost::asio::ip::tcp::acceptor> m_connectors;
+    std::list<boost::asio::ip::tcp::acceptor> m_acceptors;
+
+    class accept_action_t;
 
     // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
     // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
@@ -49,8 +51,6 @@ class actor_t {
 
     // I/O authentication & processing.
     std::unique_ptr<io::chamber_t> m_chamber;
-
-    struct connection_t;
 
 public:
     actor_t(context_t& context, std::shared_ptr<boost::asio::io_service> asio,
@@ -71,15 +71,11 @@ public:
     auto
     endpoints() const -> std::vector<boost::asio::ip::tcp::endpoint>;
 
-    const io::basic_dispatch_t&
-    prototype() const;
+    auto
+    prototype() const -> const io::basic_dispatch_t&;
 
     bool
     is_active() const;
-
-private:
-    void
-    accept_impl(const boost::system::error_code& ec, const std::shared_ptr<connection_t>& ptr);
 };
 
 } // namespace cocaine

@@ -152,7 +152,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
             m_router->add_group(*it, storage->get<group_t>("groups", *it));
         }
     } catch(const storage_error_t& e) {
-        throw cocaine::error_t("unable to initialize the routing groups - %s", e.what());
+        throw cocaine::error_t("unable to initialize routing groups - %s", e.what());
     }
 
     if(root.as_object().count("discovery")) {
@@ -229,7 +229,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
     using namespace std::placeholders;
 
     m_remotes[uuid] = std::make_shared<session_t>(std::move(channel), nullptr);
-    m_remotes[uuid]->signals.failure.connect(std::bind(&locator_t::signal_impl, this, _1, uuid));
+    m_remotes[uuid]->signals.collect.connect(std::bind(&locator_t::signal_impl, this, _1, uuid));
 
     // Start the message dispatching.
     m_remotes[uuid]->pull();
@@ -402,7 +402,14 @@ locator_t::handle_life_event(const actor_t& actor) {
     }
 }
 
-struct locator_t::cleanup_action_t {
+class locator_t::cleanup_action_t {
+    locator_t* impl;
+
+public:
+    cleanup_action_t(locator_t* impl_):
+        impl(impl_)
+    { }
+
     void
     operator()() {
         if(!impl->m_remotes.empty()) {
@@ -422,8 +429,6 @@ struct locator_t::cleanup_action_t {
         impl->m_gateway.reset();
         impl->m_cluster.reset();
     }
-
-    locator_t* impl;
 };
 
 void
@@ -441,5 +446,5 @@ locator_t::terminate() {
     }
 
     // Finish off the rest of internal state inside the reactor's event loop.
-    m_asio.post(cleanup_action_t{this});
+    m_asio.post(cleanup_action_t(this));
 }

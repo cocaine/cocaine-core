@@ -29,7 +29,16 @@
 
 using namespace cocaine::io;
 
-struct chamber_t::named_runnable {
+class chamber_t::named_runnable_t {
+    const std::string name;
+    const std::shared_ptr<boost::asio::io_service>& asio;
+
+public:
+    named_runnable_t(const std::string& name_, const std::shared_ptr<boost::asio::io_service>& asio_):
+        name(name_),
+        asio(asio_)
+    { }
+
     void
     operator()() const {
 #if defined(__linux__)
@@ -45,16 +54,15 @@ struct chamber_t::named_runnable {
         asio->run();
     }
 
-    const std::string name;
-    const std::shared_ptr<boost::asio::io_service>& asio;
 };
 
 chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<boost::asio::io_service>& asio_):
     name(name_),
     asio(asio_),
-    work(new boost::asio::io_service::work(*asio)),
-    thread(new boost::thread(named_runnable{name, asio}))
-{ }
+    work(new boost::asio::io_service::work(*asio))
+{
+    thread = std::make_unique<boost::thread>(named_runnable_t(name, asio));
+}
 
 chamber_t::~chamber_t() {
     // NOTE: Instead of calling io_service::stop() to terminate the reactor immediately, kill the
@@ -63,4 +71,5 @@ chamber_t::~chamber_t() {
 
     // TODO: Check if this might hang forever because of the above.
     thread->join();
+    thread.reset();
 }

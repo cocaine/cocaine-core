@@ -153,7 +153,7 @@ multicast_t::~multicast_t() {
 
 void
 multicast_t::publish(const boost::system::error_code& ec) {
-    if(ec == error::operation_aborted) {
+    if(ec == boost::asio::error::operation_aborted) {
         return;
     }
 
@@ -194,7 +194,7 @@ multicast_t::publish(const boost::system::error_code& ec) {
 
 void
 multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std::shared_ptr<packet_t>& ptr) {
-    if(ec == error::operation_aborted) {
+    if(ec == boost::asio::error::operation_aborted) {
         return;
     } else if(ec) {
         COCAINE_LOG_ERROR(m_log, "unexpected error in multicast_t::receive(): [%d] %s", ec.value(), ec.message());
@@ -247,7 +247,7 @@ multicast_t::receive(const boost::system::error_code& ec, size_t rcvd, const std
 
 void
 multicast_t::cleanup(const boost::system::error_code& ec, const std::string& uuid) {
-    if(ec == error::operation_aborted) {
+    if(ec == boost::asio::error::operation_aborted) {
         return;
     }
 

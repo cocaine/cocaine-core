@@ -25,14 +25,66 @@
 
 #include <exception>
 
-namespace cocaine {
+#include <boost/system/error_code.hpp>
 
-enum error_code {
-    invocation_error = 1,
+namespace cocaine { namespace error {
+
+enum dispatch_errors {
+    service_error = 1,
+    uncaught_error,
     resource_error,
     timeout_error,
     deadline_error
 };
+
+namespace aux {
+
+class dispatch_category_t:
+    public boost::system::error_category
+{
+    virtual
+    const char*
+    name() const throw() {
+        return "cocaine.rpc.dispatch";
+    }
+
+    virtual
+    std::string
+    message(int code) const {
+        switch(code) {
+          case dispatch_errors::uncaught_error:
+            return "invocation has failed";
+
+          case dispatch_errors::resource_error:
+            return "no resources available to complete invocation";
+
+          case dispatch_errors::timeout_error:
+            return "invocation has timed out";
+
+          case dispatch_errors::deadline_error:
+            return "invocation deadline has passed";
+        }
+
+        return "cocaine.rpc.dispatch error";
+    }
+};
+
+} // namespace aux
+
+inline
+const boost::system::error_category&
+dispatch_category() {
+    static aux::dispatch_category_t instance;
+    return instance;
+}
+
+inline
+boost::system::error_code
+make_error_code(dispatch_errors code) {
+    return boost::system::error_code(static_cast<int>(code), dispatch_category());
+}
+
+} // namespace error
 
 struct error_t:
     public std::exception
@@ -58,5 +110,14 @@ private:
 };
 
 } // namespace cocaine
+
+namespace boost { namespace system {
+
+template<>
+struct is_error_code_enum<cocaine::error::dispatch_errors>:
+    public true_type
+{ };
+
+}} // namespace boost::system
 
 #endif
