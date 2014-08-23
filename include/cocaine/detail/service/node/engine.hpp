@@ -33,8 +33,6 @@
 
 #include <mutex>
 
-#include <boost/mpl/list.hpp>
-
 namespace cocaine { namespace engine {
 
 class slave_t;

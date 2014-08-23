@@ -57,8 +57,11 @@ struct blocking_slot:
             upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
         }
 
-        // Return a corresponding protocol dispatch.
-        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
+        if(is_recursive<Event>::value) {
+            return boost::none;
+        } else {
+            return boost::make_optional<std::shared_ptr<const dispatch_type>>(nullptr);
+        }
     }
 };
 
@@ -95,8 +98,11 @@ struct blocking_slot<Event, void>:
             upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
         }
 
-        // Return a corresponding protocol dispatch.
-        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
+        if(is_recursive<Event>::value) {
+            return boost::none;
+        } else {
+            return boost::make_optional<std::shared_ptr<const dispatch_type>>(nullptr);
+        }
     }
 };
 
@@ -128,8 +134,11 @@ struct blocking_slot<Event, terminal_slot_tag>:
             throw cocaine::error_t("error while calling terminal slot - %s", e.what());
         }
 
-        // Return a corresponding protocol dispatch.
-        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
+        if(is_recursive<Event>::value) {
+            return boost::none;
+        } else {
+            return boost::make_optional<std::shared_ptr<const dispatch_type>>(nullptr);
+        }
     }
 };
 

@@ -137,10 +137,6 @@ repository_t::open(const std::string& target) {
 
     if(initialize.ptr) {
         try {
-            COCAINE_LOG_INFO(m_log, "initializing plugin")(
-                "plugin", target
-            );
-
             initialize.call(*this);
         } catch(const std::exception& e) {
             throw repository_error_t("unable to initialize '%s' - %s", target, e.what());

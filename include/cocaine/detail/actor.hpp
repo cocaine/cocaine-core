@@ -47,7 +47,7 @@ class actor_t {
     // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
     // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
     // after the authentication process completes successfully.
-    std::shared_ptr<const io::basic_dispatch_t> m_prototype;
+    io::dispatch_ptr_t m_prototype;
 
     // I/O authentication & processing.
     std::unique_ptr<io::chamber_t> m_chamber;

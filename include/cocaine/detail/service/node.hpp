@@ -40,10 +40,7 @@ class node_t:
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    typedef std::map<std::string, std::shared_ptr<app_t>> app_map_t;
-
-    // Apps.
-    synchronized<app_map_t> m_apps;
+    synchronized<std::map<std::string, std::shared_ptr<app_t>>> m_apps;
 
 public:
     node_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
@@ -56,11 +53,11 @@ public:
     prototype() const -> const io::basic_dispatch_t&;
 
 private:
-    dynamic_t
-    on_start_app(const std::map<std::string, std::string>& runlist);
+    void
+    on_start_app(const std::string& name, const std::string& profile);
 
-    dynamic_t
-    on_pause_app(const std::vector<std::string>& applist);
+    void
+    on_pause_app(const std::string& name);
 
     dynamic_t
     on_list() const;

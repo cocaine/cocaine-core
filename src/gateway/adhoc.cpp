@@ -48,7 +48,7 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
     remote_service_map_t::const_iterator lb, ub;
 
     if(!m_remote_services.count(name)) {
-        throw cocaine::error_t("the specified service is not available in the cluster");
+        throw cocaine::error_t("service '%s' is not available in the cluster", name);
     }
 
     std::tie(lb, ub) = m_remote_services.equal_range(name);

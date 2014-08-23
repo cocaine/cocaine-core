@@ -56,7 +56,7 @@ execution_unit_t::~execution_unit_t() {
 }
 
 void
-execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
+execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
     m_asio->post(std::bind(&execution_unit_t::attach_impl, this, ptr, dispatch));
 }
 
@@ -67,7 +67,7 @@ execution_unit_t::detach(int fd) {
 }
 
 void
-execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
+execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
     auto fd = ::dup(ptr->native_handle());
 
     // Make sure that the fd wasn't reused before it was actually processed for disconnection.
@@ -80,17 +80,19 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const std
         fd
     ));
 
-    using namespace std::placeholders;
-
     m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
-    m_sessions[fd]->signals.shutdown.connect(std::bind(&execution_unit_t::on_session_shutdown, this, _1, fd));
+
+    // Bind the shutdown signals.
+    m_sessions[fd]->signals.shutdown.connect(
+        std::bind(&execution_unit_t::on_shutdown, this, std::placeholders::_1, fd)
+    );
 
     // Start the message dispatching.
     m_sessions[fd]->pull();
 }
 
 void
-execution_unit_t::on_session_shutdown(const boost::system::error_code& ec, int fd) {
+execution_unit_t::on_shutdown(const boost::system::error_code& ec, int fd) {
     auto it = m_sessions.find(fd);
 
     BOOST_ASSERT(ec && it != m_sessions.end());

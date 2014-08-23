@@ -212,7 +212,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     try {
         m_engine = std::make_shared<engine_t>(m_context, *m_manifest, *m_profile, std::move(lhs));
     } catch(const boost::system::system_error& e) {
-        throw cocaine::error_t("unable to create the engine - [%d] %s", e.code().value(), e.code().message());
+        throw cocaine::error_t("unable to create engine - [%d] %s", e.code().value(), e.code().message());
     }
 }
 
@@ -222,12 +222,12 @@ app_t::~app_t() {
 
 void
 app_t::start() {
-    COCAINE_LOG_INFO(m_log, "starting the engine");
+    COCAINE_LOG_INFO(m_log, "starting engine");
 
     // Start the engine thread.
     m_thread = std::make_unique<std::thread>(std::bind(&engine_t::run, m_engine));
 
-    COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
+    COCAINE_LOG_DEBUG(m_log, "starting invocation service");
 
     // Publish the app service.
     m_context.insert(m_manifest->name, std::make_unique<actor_t>(
@@ -235,8 +235,6 @@ app_t::start() {
         std::make_shared<io_service>(),
         std::make_unique<app_service_t>(m_manifest->name, this)
     ));
-
-    COCAINE_LOG_INFO(m_log, "the engine has started");
 }
 
 namespace {
@@ -286,7 +284,7 @@ private:
     void
     finalize(const boost::system::error_code& ec, phases phase) {
         if(ec) {
-            throw cocaine::error_t("unable to access the engine - [%d] %s", ec.value(), ec.message());
+            throw cocaine::error_t("unable to access engine - [%d] %s", ec.value(), ec.message());
         }
 
         if(phase == phases::message) {
@@ -299,7 +297,7 @@ private:
 
 void
 app_t::pause() {
-    COCAINE_LOG_INFO(m_log, "stopping the engine");
+    COCAINE_LOG_INFO(m_log, "trying to stop engine");
 
     if(!m_manifest->local) {
         // Destroy the app service.
@@ -317,7 +315,7 @@ app_t::pause() {
     try {
         m_asio.run();
     } catch(const cocaine::error_t& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to stop the engine - %s", e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to stop engine - %s", e.what());
 
         // Eventually the process will crash because the engine's thread is still on.
         return;
@@ -326,7 +324,7 @@ app_t::pause() {
     m_thread->join();
     m_thread.reset();
 
-    COCAINE_LOG_INFO(m_log, "the engine has stopped");
+    COCAINE_LOG_INFO(m_log, "engine is now stopped");
 }
 
 dynamic_t
@@ -334,7 +332,7 @@ app_t::info() const {
     dynamic_t info = dynamic_t::object_t();
 
     if(!m_thread) {
-        info.as_object()["error"] = "the engine is not active";
+        info.as_object()["error"] = "engine is not active";
         return info;
     }
 
@@ -359,7 +357,7 @@ app_t::info() const {
 
     if(ec != boost::asio::error::operation_aborted) {
         // Timer has succesfully finished, means no response has arrived.
-        info.as_object()["error"] = "the engine is unresponsive";
+        info.as_object()["error"] = "engine is unresponsive";
     } else {
         std::tie(info) = action->response<control::info>();
     }

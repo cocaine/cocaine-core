@@ -69,11 +69,11 @@ private:
                 return;
             }
 
-            COCAINE_LOG_ERROR(impl->m_log, "unable to accept a new client connection: %s", ec)(
+            COCAINE_LOG_ERROR(impl->m_log, "unable to accept client connection: %s", ec)(
                 "service", impl->m_prototype->name()
             );
         } else {
-            COCAINE_LOG_DEBUG(impl->m_log, "accepted a new client connection")(
+            COCAINE_LOG_DEBUG(impl->m_log, "accepted client connection")(
                 "endpoint", endpoint,
                 "service", impl->m_prototype->name()
             );
@@ -104,7 +104,7 @@ actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio, std::uniq
     const io::basic_dispatch_t* prototype = &service->prototype();
 
     // Aliasing the pointer to the service to point to the dispatch (sub-)object.
-    m_prototype = std::shared_ptr<const io::basic_dispatch_t>(
+    m_prototype = io::dispatch_ptr_t(
         std::shared_ptr<api::service_t>(std::move(service)),
         prototype
     );

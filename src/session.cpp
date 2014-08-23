@@ -36,26 +36,26 @@ using namespace cocaine::io;
 class session_t::channel_t {
     friend class session_t;
 
-    std::shared_ptr<const basic_dispatch_t> dispatch;
-    std::shared_ptr<basic_upstream_t> upstream;
+    dispatch_ptr_t dispatch;
+    upstream_ptr_t upstream;
 
 public:
-    channel_t(const std::shared_ptr<const basic_dispatch_t>& dispatch_, const std::shared_ptr<basic_upstream_t>& upstream_):
+    channel_t(const dispatch_ptr_t& dispatch_, const upstream_ptr_t& upstream_):
         dispatch(dispatch_),
         upstream(upstream_)
     { }
 
     void
-    invoke(const decoder_t::message_type& message);
+    process(const decoder_t::message_type& message);
 };
 
 void
-session_t::channel_t::invoke(const decoder_t::message_type& message) {
+session_t::channel_t::process(const decoder_t::message_type& message) {
     if(!dispatch) {
         throw cocaine::error_t("no dispatch has been assigned");
     }
 
-    if((dispatch = dispatch->call(message, upstream).get_value_or(dispatch)) == nullptr) {
+    if((dispatch = dispatch->process(message, upstream).get_value_or(dispatch)) == nullptr) {
         // NOTE: If the client has sent us the last message according to the dispatch graph, then
         // revoke the channel.
         upstream->drop();
@@ -64,70 +64,68 @@ session_t::channel_t::invoke(const decoder_t::message_type& message) {
 
 // Session
 
-session_t::session_t(std::unique_ptr<channel<tcp>> ptr_, const std::shared_ptr<const basic_dispatch_t>& prototype_):
+session_t::session_t(std::unique_ptr<channel<tcp>> ptr_, const dispatch_ptr_t& prototype_):
     ptr(std::move(ptr_)),
     endpoint(ptr->remote_endpoint()),
     prototype(prototype_),
-    max_channel(0)
+    max_channel_id(0)
 { }
 
 void
 session_t::invoke(const decoder_t::message_type& message) {
     channel_map_t::const_iterator lb, ub;
-    const channel_map_t::key_type index = message.span();
+    const channel_map_t::key_type channel_id = message.span();
 
     std::shared_ptr<channel_t> channel;
 
     {
         auto ptr = channels.synchronize();
 
-        std::tie(lb, ub) = ptr->equal_range(index);
+        std::tie(lb, ub) = ptr->equal_range(channel_id);
 
         if(lb == ub) {
-            if(index <= max_channel) {
+            if(channel_id <= max_channel_id) {
+                // NOTE: Checking whether channel number is always higher than the previous channel
+                // number is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be
+                // not the best approach, but since we have 2^64 possible channels, and it is a lot
+                // more than 2^16 ports for sockets, it is fit to avoid stray messages.
                 return;
             }
 
-            // NOTE: Checking whether channel number is always higher than the previous channel number
-            // is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be not the best
-            // aproach, but since we have 2^64 possible channels, unlike 2^16 ports for sockets, it is
-            // fit to avoid stray messages.
+            max_channel_id = channel_id;
 
-            max_channel = index;
-
-            std::tie(lb, std::ignore) = ptr->insert({index, std::make_shared<channel_t>(
+            std::tie(lb, std::ignore) = ptr->insert({channel_id, std::make_shared<channel_t>(
                 prototype,
-                std::make_shared<basic_upstream_t>(shared_from_this(), index)
+                std::make_shared<basic_upstream_t>(shared_from_this(), channel_id)
             )});
         }
 
         // NOTE: The virtual channel pointer is copied here so that if the slot decides to close the
-        // virtual channel, it won't destroy it inside the channel_t::invoke(). Instead, it will be
+        // virtual channel, it won't destroy it inside the channel_t::process(). Instead, it will be
         // destroyed when this function scope is exited, liberating us from thinking of some voodoo
-        // magic to handle it.
-
+        // workaround magic.
         channel = lb->second;
     }
 
-    channel->invoke(message);
+    channel->process(message);
 }
 
-std::shared_ptr<basic_upstream_t>
-session_t::inject(const std::shared_ptr<const basic_dispatch_t>& dispatch) {
+auto
+session_t::inject(const dispatch_ptr_t& dispatch) -> upstream_ptr_t {
     auto ptr = channels.synchronize();
 
-    const auto index = ++max_channel;
-    const auto upstream = std::make_shared<basic_upstream_t>(shared_from_this(), index);
+    const auto channel_id = ++max_channel_id;
+    const auto upstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
     // TODO: Think about skipping dispatch registration in case of fire-and-forget service events.
-    ptr->insert({index, std::make_shared<channel_t>(dispatch, upstream)});
+    ptr->insert({channel_id, std::make_shared<channel_t>(dispatch, upstream)});
 
     return upstream;
 }
 
 void
-session_t::revoke(uint64_t index) {
-    channels->erase(index);
+session_t::revoke(uint64_t channel_id) {
+    channels->erase(channel_id);
 }
 
 void
@@ -137,7 +135,9 @@ session_t::detach() {
         ptr.reset();
     }
 
-    channels->clear();
+    // Detach all the signal handlers, because the session will be in detached state and triggering
+    // more signals will result in an undefined behavior.
+    signals.shutdown.disconnect_all_slots();
 }
 
 // I/O
@@ -170,20 +170,14 @@ private:
     void
     finalize(const boost::system::error_code& ec) {
         if(ec) {
-            if(session->ptr) {
-                session->signals.shutdown(ec);
-            }
-
+            session->signals.shutdown(ec);
             return;
         }
 
         try {
             session->invoke(message);
         } catch(const cocaine::error_t& e) {
-            if(session->ptr) {
-                session->signals.shutdown(error::uncaught_error);
-            }
-
+            session->signals.shutdown(error::uncaught_error);
             return;
         }
 
@@ -231,7 +225,7 @@ public:
 private:
     void
     finalize(const boost::system::error_code& ec) {
-        if(ec && session->ptr) {
+        if(ec) {
             session->signals.shutdown(ec);
         }
     }

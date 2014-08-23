@@ -38,10 +38,7 @@ class process_t:
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    // Spooling prefix.
     const std::string m_name;
-
-    // Spooling target directory.
     const boost::filesystem::path m_working_directory;
 
 #ifdef COCAINE_ALLOW_CGROUPS

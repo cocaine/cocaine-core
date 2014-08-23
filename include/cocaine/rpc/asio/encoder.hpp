@@ -73,8 +73,8 @@ private:
 struct encoded_message_t {
     friend struct io::encoder_t;
 
-    const char*
-    data() const {
+    auto
+    data() const -> const char* {
         return buffer.vector.data();
     }
 

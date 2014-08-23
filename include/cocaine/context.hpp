@@ -206,8 +206,7 @@ public:
     // I/O
 
     void
-    attach(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr,
-           const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
+    attach(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
 private:
     void

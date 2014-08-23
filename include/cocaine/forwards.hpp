@@ -70,6 +70,9 @@ struct channel;
 class basic_dispatch_t;
 class basic_upstream_t;
 
+typedef std::shared_ptr<const basic_dispatch_t> dispatch_ptr_t;
+typedef std::shared_ptr<      basic_upstream_t> upstream_ptr_t;
+
 template<class>
 struct protocol;
 

@@ -37,8 +37,8 @@ class decode_category_t:
     public boost::system::error_category
 {
     virtual
-    const char*
-    name() const throw() {
+    auto
+    name() const throw() -> const char* {
         return "cocaine.rpc.asio";
     }
 

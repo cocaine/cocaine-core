@@ -139,10 +139,10 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     int rv = 0;
 
     if((rv = cgroup_init()) != 0) {
-        throw cocaine::error_t("unable to initialize the cgroups isolate - %s", cgroup_strerror(rv));
+        throw cocaine::error_t("unable to initialize cgroups - %s", cgroup_strerror(rv));
     }
 
-    m_cgroup = cgroup_new_cgroup(name.c_str());
+    m_cgroup = cgroup_new_cgroup(m_name.c_str());
 
     // TODO: Check if it changes anything.
     cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());
@@ -175,7 +175,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
 
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
         cgroup_free(&m_cgroup);
-        throw cocaine::error_t("unable to create the cgroup - %s", cgroup_strerror(rv));
+        throw cocaine::error_t("unable to create cgroup - %s", cgroup_strerror(rv));
     }
 #endif
 }
@@ -185,11 +185,7 @@ process_t::~process_t() {
     int rv = 0;
 
     if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
-        COCAINE_LOG_ERROR(
-            m_log,
-            "unable to delete the cgroup - %s",
-            cgroup_strerror(rv)
-        );
+        COCAINE_LOG_ERROR(m_log, "unable to delete cgroup - %s", cgroup_strerror(rv));
     }
 
     cgroup_free(&m_cgroup);

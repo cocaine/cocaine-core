@@ -55,12 +55,12 @@ class session_t:
     const boost::asio::ip::tcp::endpoint endpoint;
 
     // Initial dispatch.
-    const std::shared_ptr<const io::basic_dispatch_t> prototype;
+    const io::dispatch_ptr_t prototype;
 
     // Incoming channels counter. It stores the maximum channel id processed by the session. The
     // session assumes that ids of incoming channels are strongly increasing and discards messages
     // with old channel ids.
-    uint64_t max_channel;
+    uint64_t max_channel_id;
 
     // Virtual channels. Separate synchronization to decouple invocation and messaging.
     synchronized<channel_map_t> channels;
@@ -71,21 +71,17 @@ public:
     } signals;
 
 public:
-    session_t(std::unique_ptr<io::channel<boost::asio::ip::tcp>> ptr,
-              const std::shared_ptr<const io::basic_dispatch_t>& prototype);
+    session_t(std::unique_ptr<io::channel<boost::asio::ip::tcp>> ptr, const io::dispatch_ptr_t& prototype);
 
-    // Channel operations
+    // Operations
 
-    void
-    invoke(const io::decoder_t::message_type& message);
-
-    std::shared_ptr<io::basic_upstream_t>
-    inject(const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
+    auto
+    inject(const io::dispatch_ptr_t& dispatch) -> io::upstream_ptr_t;
 
     void
-    revoke(uint64_t index);
+    revoke(uint64_t channel_id);
 
-    // I/O
+    // Channel I/O
 
     void
     pull();
@@ -111,6 +107,10 @@ public:
 
     auto
     active_channels() const -> std::map<uint64_t, std::string>;
+
+private:
+    void
+    invoke(const io::decoder_t::message_type& message);
 };
 
 } // namespace cocaine

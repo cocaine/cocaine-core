@@ -41,7 +41,7 @@ logging_t::logging_t(context_t& context, boost::asio::io_service& asio, const st
         m_logger = std::make_unique<logger_t>(blackhole::repository_t::instance().create<priorities>(backend));
         m_logger->verbosity(context.log(name)->log().verbosity());
     } catch(const std::out_of_range&) {
-        throw cocaine::error_t("the '%s' logger is not configured", backend);
+        throw cocaine::error_t("logger '%s' is not configured", backend);
     }
 
     using namespace std::placeholders;

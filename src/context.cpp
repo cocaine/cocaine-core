@@ -271,13 +271,13 @@ config_t::config_t(const std::string& source) {
     const auto source_file_status = fs::status(source);
 
     if(!fs::exists(source_file_status) || !fs::is_regular_file(source_file_status)) {
-        throw cocaine::error_t("the configuration file path is invalid");
+        throw cocaine::error_t("configuration file path is invalid");
     }
 
     fs::ifstream stream(source);
 
     if(!stream) {
-        throw cocaine::error_t("unable to read the configuration file");
+        throw cocaine::error_t("unable to read configuration file");
     }
 
     rapidjson::MemoryPoolAllocator<> json_allocator;
@@ -288,9 +288,9 @@ config_t::config_t(const std::string& source) {
 
     if(!json_reader.Parse<rapidjson::kParseDefaultFlags>(json_stream, configuration_constructor)) {
         if(json_reader.HasParseError()) {
-            throw cocaine::error_t("the configuration file is corrupted - %s", json_reader.GetParseError());
+            throw cocaine::error_t("configuration file is corrupted - %s", json_reader.GetParseError());
         } else {
-            throw cocaine::error_t("the configuration file is corrupted");
+            throw cocaine::error_t("configuration file is corrupted");
         }
     }
 
@@ -299,7 +299,7 @@ config_t::config_t(const std::string& source) {
     // Version validation
 
     if(root.as_object().at("version", 0).to<unsigned int>() != 3) {
-        throw cocaine::error_t("the configuration file version is invalid");
+        throw cocaine::error_t("configuration file version is invalid");
     }
 
     const auto path_config    = root.as_object().at("paths",   dynamic_t::object_t()).as_object();
@@ -313,9 +313,9 @@ config_t::config_t(const std::string& source) {
     const auto runtime_path_status = fs::status(path.runtime);
 
     if(!fs::exists(runtime_path_status)) {
-        throw cocaine::error_t("the %s directory does not exist", path.runtime);
+        throw cocaine::error_t("directory %s does not exist", path.runtime);
     } else if(!fs::is_directory(runtime_path_status)) {
-        throw cocaine::error_t("the %s path is not a directory", path.runtime);
+        throw cocaine::error_t("%s is not a directory", path.runtime);
     }
 
     // Network configuration
@@ -466,7 +466,7 @@ context_t::context_t(config_t config_, const std::string& logger_backend):
         m_logger = std::make_unique<logger_type>(repository.create<logging::priorities>(logger_backend));
         m_logger->verbosity(logger.verbosity);
     } catch(const std::out_of_range&) {
-        throw cocaine::error_t("the '%s' logger is not configured", logger_backend);
+        throw cocaine::error_t("logger '%s' is not configured", logger_backend);
     }
 
     bootstrap();
@@ -486,7 +486,7 @@ context_t::~context_t() {
         blackhole::log::attributes_t({logging::keyword::source() = "bootstrap"})
     );
 
-    COCAINE_LOG_INFO(m_logger, "stopping the services");
+    COCAINE_LOG_INFO(m_logger, "stopping services");
 
     // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
     // the outstanding connections are closed, so services have a change to send their last wishes.
@@ -511,7 +511,7 @@ context_t::~context_t() {
     // app invocation services from the node service, should be dead by now.
     BOOST_ASSERT(m_services->empty());
 
-    COCAINE_LOG_INFO(m_logger, "stopping the execution units");
+    COCAINE_LOG_INFO(m_logger, "stopping execution units");
 
     m_pool.clear();
 
@@ -622,7 +622,7 @@ context_t::locate(const std::string& name) const -> boost::optional<const actor_
 }
 
 void
-context_t::attach(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
+context_t::attach(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr, const dispatch_ptr_t& dispatch) {
     m_pool[ptr->native_handle() % m_pool.size()]->attach(ptr, dispatch);
 }
 
@@ -646,7 +646,7 @@ context_t::bootstrap() {
     // Load the rest of plugins.
     m_repository->load(config.path.plugins);
 
-    COCAINE_LOG_INFO(m_logger, "growing the execution unit pool to %d units", config.network.pool);
+    COCAINE_LOG_INFO(m_logger, "growing I/O pool to %d threads", config.network.pool);
 
     while(m_pool.size() != config.network.pool) {
         m_pool.emplace_back(std::make_unique<execution_unit_t>(*this));

@@ -55,7 +55,8 @@ struct storage_t {
 
     virtual
     void
-    write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags) = 0;
+    write(const std::string& collection, const std::string& key, const std::string& blob,
+          const std::vector<std::string>& tags) = 0;
 
     virtual
     void
@@ -73,7 +74,8 @@ struct storage_t {
 
     template<class T>
     void
-    put(const std::string& collection, const std::string& key, const T& object, const std::vector<std::string>& tags);
+    put(const std::string& collection, const std::string& key, const T& object,
+        const std::vector<std::string>& tags);
 
 protected:
     storage_t(context_t&, const std::string& /* name */, const dynamic_t& /* args */) {
@@ -106,7 +108,9 @@ storage_t::get(const std::string& collection, const std::string& key) {
 
 template<class T>
 void
-storage_t::put(const std::string& collection, const std::string& key, const T& object, const std::vector<std::string>& tags) {
+storage_t::put(const std::string& collection, const std::string& key, const T& object,
+               const std::vector<std::string>& tags)
+{
     std::ostringstream buffer;
     msgpack::packer<std::ostringstream> packer(buffer);
 

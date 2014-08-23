@@ -50,7 +50,6 @@ namespace io {
 class basic_dispatch_t {
     COCAINE_DECLARE_NONCOPYABLE(basic_dispatch_t)
 
-    // For actor's named threads feature.
     const std::string m_name;
 
 public:
@@ -65,19 +64,19 @@ public:
     name() const -> std::string;
 
 public:
-    typedef boost::optional<std::shared_ptr<const basic_dispatch_t>> transition_t;
+    typedef boost::optional<dispatch_ptr_t> transition_t;
 
     virtual
     transition_t
-    call(const decoder_t::message_type& message, const std::shared_ptr<basic_upstream_t>& upstream) const = 0;
+    process(const decoder_t::message_type& message, const upstream_ptr_t& upstream) const = 0;
 
     virtual
     auto
-    protocol() const -> const dispatch_graph_t& = 0;
+    graph() const -> const dispatch_graph_t& = 0;
 
     virtual
     int
-    versions() const = 0;
+    version() const = 0;
 };
 
 typedef basic_dispatch_t::transition_t transition_t;
@@ -90,7 +89,7 @@ template<class Tag>
 class dispatch:
     public io::basic_dispatch_t
 {
-    const io::dispatch_graph_t graph;
+    const io::dispatch_graph_t m_graph;
 
     // Slot construction
 
@@ -127,20 +126,16 @@ public:
     explicit
     dispatch(const std::string& name):
         basic_dispatch_t(name),
-        graph(io::traverse<Tag>().get())
+        m_graph(io::traverse<Tag>().get())
     { }
 
     template<class Event, class F>
     dispatch&
-    on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type* = nullptr);
+    on(const F& callable, typename boost::disable_if<is_slot<F, Event>>::type* = nullptr);
 
     template<class Event>
     dispatch&
     on(const std::shared_ptr<io::basic_slot<Event>>& ptr);
-
-    template<class Visitor>
-    typename Visitor::result_type
-    invoke(int id, const Visitor& visitor) const;
 
     template<class Event>
     void
@@ -149,19 +144,24 @@ public:
 public:
     virtual
     io::transition_t
-    call(const io::decoder_t::message_type& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const;
+    process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const;
 
     virtual
     auto
-    protocol() const -> const io::dispatch_graph_t& {
-        return graph;
+    graph() const -> const io::dispatch_graph_t& {
+        return m_graph;
     }
 
     virtual
     int
-    versions() const {
+    version() const {
         return io::protocol<Tag>::version::value;
     }
+
+private:
+    template<class Visitor>
+    typename Visitor::result_type
+    visit(int id, const Visitor& visitor) const;
 };
 
 namespace aux {
@@ -188,7 +188,7 @@ struct select<streamed<R>, Event> {
 struct calling_visitor_t:
     public boost::static_visitor<io::transition_t>
 {
-    calling_visitor_t(const msgpack::object& unpacked_, const std::shared_ptr<io::basic_upstream_t>& upstream_):
+    calling_visitor_t(const msgpack::object& unpacked_, const io::upstream_ptr_t& upstream_):
         unpacked(unpacked_),
         upstream(upstream_)
     { }
@@ -215,7 +215,7 @@ struct calling_visitor_t:
 
 private:
     const msgpack::object& unpacked;
-    const std::shared_ptr<io::basic_upstream_t>& upstream;
+    const io::upstream_ptr_t& upstream;
 };
 
 } // namespace aux
@@ -223,7 +223,7 @@ private:
 template<class Tag>
 template<class Event, class F>
 dispatch<Tag>&
-dispatch<Tag>::on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type*) {
+dispatch<Tag>::on(const F& callable, typename boost::disable_if<is_slot<F, Event>>::type*) {
     typedef typename aux::select<
         typename result_of<F>::type,
         Event
@@ -246,9 +246,24 @@ dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
 }
 
 template<class Tag>
+template<class Event>
+void
+dispatch<Tag>::forget() {
+    if(!m_slots->erase(io::event_traits<Event>::id)) {
+        throw cocaine::error_t("type %d slot does not exist", io::event_traits<Event>::id);
+    }
+}
+
+template<class Tag>
+io::transition_t
+dispatch<Tag>::process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const {
+    return visit(message.type(), aux::calling_visitor_t(message.args(), upstream));
+}
+
+template<class Tag>
 template<class Visitor>
 typename Visitor::result_type
-dispatch<Tag>::invoke(int id, const Visitor& visitor) const {
+dispatch<Tag>::visit(int id, const Visitor& visitor) const {
     typename slot_map_t::const_iterator lb, ub;
 
     std::tie(lb, ub) = m_slots->equal_range(id);
@@ -270,21 +285,6 @@ dispatch<Tag>::invoke(int id, const Visitor& visitor) const {
     } catch(...) {
         throw cocaine::error_t("unable to invoke type %d slot", id);
     }
-}
-
-template<class Tag>
-template<class Event>
-void
-dispatch<Tag>::forget() {
-    if(!m_slots->erase(io::event_traits<Event>::id)) {
-        throw cocaine::error_t("type %d slot does not exist", io::event_traits<Event>::id);
-    }
-}
-
-template<class Tag>
-io::transition_t
-dispatch<Tag>::call(const io::decoder_t::message_type& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const {
-    return invoke(message.type(), aux::calling_visitor_t(message.args(), upstream));
 }
 
 } // namespace cocaine

@@ -226,20 +226,24 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         return;
     }
 
-    auto channel = std::make_unique<io::channel<tcp>>(std::move(socket));
+    // Set up a session
 
-    using namespace std::placeholders;
+    m_remotes[uuid] = std::make_shared<session_t>(
+        std::make_unique<io::channel<tcp>>(std::move(socket)),
+        nullptr
+    );
 
-    m_remotes[uuid] = std::make_shared<session_t>(std::move(channel), nullptr);
-    m_remotes[uuid]->signals.shutdown.connect(std::bind(&locator_t::on_session_shutdown, this, _1, uuid));
+    m_remotes[uuid]->signals.shutdown.connect(
+        std::bind(&locator_t::on_session_shutdown, this, std::placeholders::_1, uuid)
+    );
 
-    // Start the message dispatching.
+    // Start the message dispatching
+
+    m_remotes[uuid]->inject(
+        std::make_shared<remote_client_t>(this, uuid)
+    )->send<locator::connect>(m_uuid);
+
     m_remotes[uuid]->pull();
-
-    // Start the synchronization stream.
-    m_remotes[uuid]->inject(std::make_shared<remote_client_t>(this, uuid))->send<
-        locator::connect
-    >(m_uuid);
 }
 
 void
@@ -286,7 +290,7 @@ locator_t::on_resolve(const std::string& name) const -> resolve_result_t {
         const std::vector<tcp::endpoint> endpoints = actor.endpoints();
         const basic_dispatch_t& prototype = actor.prototype();
 
-        return resolve_result_t(endpoints, prototype.versions(), prototype.protocol());
+        return resolve_result_t(endpoints, prototype.version(), prototype.graph());
     }
 
     if(m_gateway) {
@@ -335,7 +339,7 @@ locator_t::on_refresh(const std::string& name) -> refresh_result_t {
             "active"
         }));
     } catch(const storage_error_t& e) {
-        throw cocaine::error_t("unable to read the routing group list - %s", e.what());
+        throw cocaine::error_t("unable to read routing group list - %s", e.what());
     }
 
     if(std::find(groups.begin(), groups.end(), name) != groups.end()) {
@@ -390,8 +394,8 @@ locator_t::on_service(const actor_t& actor) {
 
     auto metadata = resolve_result_t {
         actor.endpoints(),
-        actor.prototype().versions(),
-        actor.prototype().protocol()
+        actor.prototype().version(),
+        actor.prototype().graph()
     };
 
     if(!ptr->streams.empty()) {
@@ -436,7 +440,7 @@ public:
             impl->m_remotes.clear();
         }
 
-        COCAINE_LOG_DEBUG(impl->m_log, "shutting down the clustering infrastructure");
+        COCAINE_LOG_DEBUG(impl->m_log, "shutting down clustering components");
 
         // Destroy the clustering stuff.
         impl->m_gateway.reset();

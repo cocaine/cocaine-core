@@ -31,14 +31,14 @@ namespace io {
 
 class basic_upstream_t {
     const std::shared_ptr<session_t> session;
-    const uint64_t channel;
+    const uint64_t channel_id;
 
     enum class states { active, sealed } state;
 
 public:
-    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_):
+    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_):
         session(session_),
-        channel(channel_)
+        channel_id(channel_id_)
     {
         state = states::active;
     }
@@ -64,13 +64,13 @@ basic_upstream_t::send(Args&&... args) {
         state = states::sealed;
     }
 
-    session->push(encoded<Event>(channel, std::forward<Args>(args)...));
+    session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
 }
 
 inline
 void
 basic_upstream_t::drop() {
-    session->revoke(channel);
+    session->revoke(channel_id);
 }
 
 // Forwards for the upstream<T> class
@@ -81,19 +81,15 @@ template<class Tag> class message_queue;
 
 template<class Tag>
 class upstream {
-    // It should be constant, but GCC 4.4 can't compile C++.
-    std::shared_ptr<io::basic_upstream_t> ptr;
-
-public:
     template<class> friend class io::message_queue;
 
-    explicit
-    upstream(const std::shared_ptr<io::basic_upstream_t>& upstream_):
+    // The original non-typed upstream.
+    const io::upstream_ptr_t ptr;
+
+public:
+    upstream(const io::upstream_ptr_t& upstream_):
         ptr(upstream_)
     { }
-
-    // Protocol constraint for this upstream.
-    typedef typename io::protocol<Tag>::scope protocol;
 
     template<class Event, typename... Args>
     void
@@ -105,6 +101,14 @@ public:
 
         ptr->send<Event>(std::forward<Args>(args)...);
     }
+};
+
+template<>
+class upstream<void> {
+    template<class> friend class io::message_queue;
+
+public:
+    upstream(const io::upstream_ptr_t&) { }
 };
 
 } // namespace cocaine

@@ -63,8 +63,11 @@ struct deferred_slot:
             upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
         }
 
-        // Return a corresponding protocol dispatch.
-        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
+        if(is_recursive<Event>::value) {
+            return boost::none;
+        } else {
+            return boost::make_optional<std::shared_ptr<const dispatch_type>>(nullptr);
+        }
     }
 };
 
@@ -115,7 +118,7 @@ struct deferred {
         deferred&
     >::type
     write(U&& value) {
-        auto ptr = (*queue).synchronize();
+        auto ptr = queue->synchronize();
         ptr->template append<typename protocol::chunk>(std::forward<U>(value));
         ptr->template append<typename protocol::choke>();
         return *this;

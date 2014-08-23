@@ -89,7 +89,7 @@ struct multicast_t::announce_t {
         std::vector<tcp::endpoint>
     > tuple_type;
 
-    std::array<char, 1024> buffer;
+    std::array<char, 65536> buffer;
     udp::endpoint endpoint;
 };
 
@@ -121,7 +121,7 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
         }
     }
 
-    m_socket.set_option(multicast::enable_loopback(true));
+    m_socket.set_option(multicast::enable_loopback(args.as_object().at("loopback", false).as_bool()));
     m_socket.set_option(multicast::hops(args.as_object().at("hops", 1u).as_uint()));
 
     COCAINE_LOG_INFO(m_log, "joining multicast group '%s'", m_config.endpoint)(

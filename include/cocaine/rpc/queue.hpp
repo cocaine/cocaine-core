@@ -27,8 +27,6 @@
 #include "cocaine/rpc/slot.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
-#include <deque>
-
 #include <boost/mpl/lambda.hpp>
 #include <boost/mpl/transform.hpp>
 
@@ -71,18 +69,18 @@ struct frozen_visitor_t:
     public boost::static_visitor<void>
 {
     explicit
-    frozen_visitor_t(const std::shared_ptr<basic_upstream_t>& u):
-        upstream_(u)
+    frozen_visitor_t(const upstream_ptr_t& upstream_):
+        upstream(upstream_)
     { }
 
     template<class Event>
     void
     operator()(const frozen<Event>& frozen) const {
-        upstream_->send<Event>(frozen.tuple);
+        upstream->send<Event>(frozen.tuple);
     }
 
 private:
-    const std::shared_ptr<basic_upstream_t>& upstream_;
+    const upstream_ptr_t& upstream;
 };
 
 } // namespace aux
@@ -97,11 +95,11 @@ class message_queue {
     typedef typename boost::make_variant_over<frozen_types>::type variant_type;
 
     // Operation log.
-    std::deque<variant_type> operations;
+    std::vector<variant_type> m_operations;
 
     // The upstream might be attached during state method invocation, so it has to be synchronized
     // for thread safety - the atomicicity guarantee of the shared_ptr<T> is not enough.
-    std::shared_ptr<basic_upstream_t> upstream_;
+    upstream_ptr_t m_upstream;
 
 public:
     template<class Event, typename... Args>
@@ -112,34 +110,35 @@ public:
             "message protocol is not compatible with this message queue"
         );
 
-        if(!upstream_) {
-            return operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
+        if(!m_upstream) {
+            m_operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
+            return;
         }
 
-        upstream_->send<Event>(std::forward<Args>(args)...);
+        m_upstream->send<Event>(std::forward<Args>(args)...);
     }
 
     template<class OtherTag>
     void
-    attach(upstream<OtherTag>&& u) {
+    attach(upstream<OtherTag>&& upstream) {
         static_assert(
             detail::is_compatible<Tag, OtherTag>::value,
             "upstream protocol is not compatible with this message queue"
         );
 
-        upstream_ = std::move(u.ptr);
+        m_upstream = std::move(upstream.ptr);
 
-        if(operations.empty()) {
+        if(m_operations.empty()) {
             return;
         }
 
-        aux::frozen_visitor_t visitor(upstream_);
+        aux::frozen_visitor_t visitor(m_upstream);
 
-        for(auto it = operations.begin(); it != operations.end(); ++it) {
+        for(auto it = m_operations.begin(); it != m_operations.end(); ++it) {
             boost::apply_visitor(visitor, *it);
         }
 
-        operations.clear();
+        m_operations.clear();
     }
 };
 
