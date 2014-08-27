@@ -34,6 +34,8 @@
 #include <boost/function_types/function_type.hpp>
 #include <boost/mpl/push_front.hpp>
 
+#include <boost/system/system_error.hpp>
+
 namespace cocaine { namespace io {
 
 template<class Event, class R> struct function_slot;

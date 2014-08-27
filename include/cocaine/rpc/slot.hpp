@@ -40,7 +40,7 @@ class basic_slot {
 public:
     typedef typename mpl::transform<
         typename traits_type::tuple_type,
-        typename mpl::lambda<io::detail::unwrap_type<mpl::_1>>
+        typename mpl::lambda<io::details::unwrap_type<mpl::_1>>
     >::type sequence_type;
 
     // Expected parameter types, stripped of any tags.

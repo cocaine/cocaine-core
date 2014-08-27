@@ -128,7 +128,7 @@ struct type_traits<
 
     minimal = boost::mpl::count_if<
         T,
-        boost::mpl::lambda<detail::is_required<boost::mpl::_1>>
+        boost::mpl::lambda<details::is_required<boost::mpl::_1>>
     >::value
 
     };
@@ -223,7 +223,7 @@ private:
         typedef typename boost::mpl::deref<It>::type element_type;
 
         static_assert(
-            std::is_convertible<type, typename detail::unwrap_type<element_type>::type>::value,
+            std::is_convertible<type, typename details::unwrap_type<element_type>::type>::value,
             "sequence element type mismatch"
         );
 
@@ -249,7 +249,7 @@ private:
         typedef typename boost::mpl::deref<It>::type element_type;
 
         static_assert(
-            std::is_convertible<type, typename detail::unwrap_type<element_type>::type>::value,
+            std::is_convertible<type, typename details::unwrap_type<element_type>::type>::value,
             "sequence element type mismatch"
         );
 

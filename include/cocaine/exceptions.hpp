@@ -49,8 +49,8 @@ class dispatch_category_t:
     }
 
     virtual
-    std::string
-    message(int code) const {
+    auto
+    message(int code) const -> std::string {
         switch(code) {
           case dispatch_errors::uncaught_error:
             return "invocation has failed";
@@ -72,15 +72,15 @@ class dispatch_category_t:
 } // namespace aux
 
 inline
-const boost::system::error_category&
-dispatch_category() {
+auto
+dispatch_category() -> const boost::system::error_category& {
     static aux::dispatch_category_t instance;
     return instance;
 }
 
 inline
-boost::system::error_code
-make_error_code(dispatch_errors code) {
+auto
+make_error_code(dispatch_errors code) -> boost::system::error_code {
     return boost::system::error_code(static_cast<int>(code), dispatch_category());
 }
 

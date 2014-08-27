@@ -51,8 +51,8 @@ struct blocking_slot:
         try {
             upstream.template send<typename protocol::chunk>(this->call(std::move(args)));
             upstream.template send<typename protocol::choke>();
-        } catch(const std::system_error& e) {
-            upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
+        } catch(const boost::system::system_error& e) {
+            upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {
             upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
         }
@@ -92,8 +92,8 @@ struct blocking_slot<Event, void>:
 
             // This is needed anyway so that service clients could detect operation completion.
             upstream.template send<typename protocol::choke>();
-        } catch(const std::system_error& e) {
-            upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
+        } catch(const boost::system::system_error& e) {
+            upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {
             upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
         }
@@ -128,7 +128,7 @@ struct blocking_slot<Event, terminal_slot_tag>:
     operator()(tuple_type&& args, upstream_type&& /* upstream */) {
         try {
             this->call(std::move(args));
-        } catch(const std::system_error& e) {
+        } catch(const boost::system::system_error& e) {
             throw cocaine::error_t("error while calling terminal slot - [%d] %s", e.code().value(), e.code().message());
         } catch(const std::exception& e) {
             throw cocaine::error_t("error while calling terminal slot - %s", e.what());

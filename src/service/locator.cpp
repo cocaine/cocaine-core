@@ -93,11 +93,12 @@ locator_t::remote_client_t::on_announce(const connect_result_t& update) {
     std::ostringstream stream;
     std::ostream_iterator<std::string> builder(stream, ", ");
 
-    for(auto it = update.begin(); it != update.end(); ++it) {
-        *builder++ = it->first;
-    }
+    std::transform(update.begin(), update.end(),
+        builder,
+        std::bind(&connect_result_t::value_type::first, std::placeholders::_1)
+    );
 
-    COCAINE_LOG_INFO(impl->m_log, "remote node services updated: %s", stream.str())(
+    COCAINE_LOG_INFO(impl->m_log, "remote node has updated its services: %s", stream.str())(
         "uuid", uuid
     );
 
@@ -114,7 +115,7 @@ locator_t::remote_client_t::on_announce(const connect_result_t& update) {
 
 void
 locator_t::remote_client_t::on_shutdown() {
-    COCAINE_LOG_INFO(impl->m_log, "remote node is shutting down")(
+    COCAINE_LOG_INFO(impl->m_log, "remote node has stopped synchronization")(
         "uuid", uuid
     );
 
@@ -283,20 +284,20 @@ locator_t::on_resolve(const std::string& name) const -> resolve_result_t {
 
         const actor_t& actor = provided.get();
 
-        if(!actor.is_active()) {
-            throw cocaine::error_t("service '%s' is not reachable", name);
+        if(actor.is_active()) {
+            const std::vector<tcp::endpoint> endpoints = actor.endpoints();
+            const basic_dispatch_t& prototype = actor.prototype();
+
+            return resolve_result_t(endpoints, prototype.version(), prototype.graph());
         }
 
-        const std::vector<tcp::endpoint> endpoints = actor.endpoints();
-        const basic_dispatch_t& prototype = actor.prototype();
-
-        return resolve_result_t(endpoints, prototype.version(), prototype.graph());
+        throw boost::system::system_error(error::service_not_reachable);
     }
 
     if(m_gateway) {
         return m_gateway->resolve(basename);
     } else {
-        throw cocaine::error_t("service '%s' is not available", name);
+        throw boost::system::system_error(error::service_not_available);
     }
 }
 
@@ -339,19 +340,19 @@ locator_t::on_refresh(const std::string& name) -> refresh_result_t {
             "active"
         }));
     } catch(const storage_error_t& e) {
-        throw cocaine::error_t("unable to read routing group list - %s", e.what());
+        throw boost::system::system_error(error::routing_storage_error);
     }
 
-    if(std::find(groups.begin(), groups.end(), name) != groups.end()) {
-        typedef std::map<std::string, unsigned int> group_t;
+    if(std::find(groups.begin(), groups.end(), name) == groups.end()) {
+        return m_router->remove_group(name);
+    }
 
-        try {
-            m_router->add_group(name, storage->get<group_t>("groups", name));
-        } catch(const storage_error_t& e) {
-            throw cocaine::error_t("unable to read routing group '%s' - %s", name, e.what());
-        }
-    } else {
-        m_router->remove_group(name);
+    typedef std::map<std::string, unsigned int> group_t;
+
+    try {
+        m_router->add_group(name, storage->get<group_t>("groups", name));
+    } catch(const storage_error_t& e) {
+        throw boost::system::system_error(error::routing_storage_error);
     }
 }
 
@@ -465,3 +466,49 @@ locator_t::on_context_shutdown() {
     // Finish off the rest of internal state inside the reactor's event loop.
     m_asio.post(cleanup_action_t(this));
 }
+
+namespace {
+
+// Locator errors
+
+struct locator_category_t:
+    public boost::system::error_category
+{
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.service.locator";
+    }
+
+    virtual
+    auto
+    message(int code) const -> std::string {
+        switch(code) {
+          case cocaine::error::locator_errors::service_not_available:
+            return "service is not available";
+          case cocaine::error::locator_errors::service_not_reachable:
+            return "service is not reachable";
+          case cocaine::error::locator_errors::routing_storage_error:
+            return "routing storage is unavailable";
+        }
+
+        return "cocaine.service.locator error";
+    }
+};
+
+auto
+locator_category() -> const boost::system::error_category& {
+    static locator_category_t instance;
+    return instance;
+}
+
+} // namespace
+
+namespace cocaine { namespace error {
+
+auto
+make_error_code(locator_errors code) -> boost::system::error_code {
+    return boost::system::error_code(static_cast<int>(code), locator_category());
+}
+
+}} // namespace cocaine::error

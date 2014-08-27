@@ -30,9 +30,9 @@
 
 namespace cocaine { namespace io {
 
-// Service locator interface
-
 struct locator_tag;
+
+// Service locator interface
 
 struct locator {
 
@@ -133,5 +133,27 @@ struct protocol<locator_tag> {
 };
 
 }} // namespace cocaine::io
+
+namespace cocaine { namespace error {
+
+enum locator_errors {
+    service_not_available = 1,
+    service_not_reachable,
+    routing_storage_error
+};
+
+auto
+make_error_code(locator_errors code) -> boost::system::error_code;
+
+}} // namespace cocaine::error
+
+namespace boost { namespace system {
+
+template<>
+struct is_error_code_enum<cocaine::error::locator_errors>:
+    public true_type
+{ };
+
+}} // namespace boost::system
 
 #endif

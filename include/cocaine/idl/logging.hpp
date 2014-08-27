@@ -27,9 +27,9 @@
 
 namespace cocaine { namespace io {
 
-// Logging service interface
-
 struct log_tag;
+
+// Logging service interface
 
 struct log {
 

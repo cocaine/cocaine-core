@@ -333,7 +333,7 @@ config_t::config_t(const std::string& source) {
             boost::asio::ip::tcp::resolver::query::canonical_name
         ));
     } catch(const boost::system::system_error& e) {
-        throw cocaine::error_t("unable to determine local hostname: %s", e.code());
+        throw cocaine::error_t("unable to determine local hostname - %s", e.code());
     }
 
     network.hostname = network_config.at("hostname", it->host_name()).as_string();
@@ -672,7 +672,7 @@ context_t::bootstrap() {
                 it->second.args
             )));
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_logger, "unable to initialize service: %s", e.what());
+            COCAINE_LOG_ERROR(m_logger, "unable to initialize service - %s", e.what());
         } catch(...) {
             COCAINE_LOG_ERROR(m_logger, "unable to initialize service");
         }

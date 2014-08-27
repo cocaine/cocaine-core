@@ -122,7 +122,7 @@ public:
     void
     attach(upstream<OtherTag>&& upstream) {
         static_assert(
-            detail::is_compatible<Tag, OtherTag>::value,
+            details::is_compatible<Tag, OtherTag>::value,
             "upstream protocol is not compatible with this message queue"
         );
 

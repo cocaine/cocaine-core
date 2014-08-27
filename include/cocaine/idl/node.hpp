@@ -25,9 +25,9 @@
 
 namespace cocaine { namespace io {
 
-// App invocation service interface
-
 struct app_tag;
+
+// App invocation service interface
 
 struct app {
 

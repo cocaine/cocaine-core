@@ -176,7 +176,7 @@ private:
 
         try {
             session->invoke(message);
-        } catch(const cocaine::error_t& e) {
+        } catch(...) {
             session->signals.shutdown(error::uncaught_error);
             return;
         }

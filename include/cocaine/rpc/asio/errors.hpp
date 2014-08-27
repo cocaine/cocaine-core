@@ -43,8 +43,8 @@ class decode_category_t:
     }
 
     virtual
-    std::string
-    message(int code) const {
+    auto
+    message(int code) const -> std::string {
         switch(code) {
           case decode_errors::parse_error:
             return "unable to parse the incoming data";
@@ -63,15 +63,15 @@ class decode_category_t:
 } // namespace aux
 
 inline
-const boost::system::error_category&
-decode_category() {
+auto
+decode_category() -> const boost::system::error_category& {
     static aux::decode_category_t instance;
     return instance;
 }
 
 inline
-boost::system::error_code
-make_error_code(decode_errors code) {
+auto
+make_error_code(decode_errors code) -> boost::system::error_code {
     return boost::system::error_code(static_cast<int>(code), decode_category());
 }
 
