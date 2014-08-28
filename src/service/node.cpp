@@ -28,7 +28,7 @@
 
 #include "cocaine/traits/dynamic.hpp"
 
-#include <tuple>
+#include "cocaine/tuple.hpp"
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -71,6 +71,8 @@ node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::str
 
     COCAINE_LOG_INFO(m_log, "starting %d app(s)", runlist.size());
 
+    size_t errors = 0;
+
     for(auto it = runlist.begin(); it != runlist.end(); ++it) {
         try {
             on_start_app(it->first, it->second);
@@ -78,7 +80,13 @@ node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::str
             COCAINE_LOG_ERROR(m_log, "unable to initialize app: %s", e.what())(
                 "app", it->first
             );
+
+            errors++;
         }
+    }
+
+    if(errors) {
+        COCAINE_LOG_ERROR(m_log, "%d app(s) failed to start", errors);
     }
 }
 
@@ -146,10 +154,9 @@ node_t::on_list() const -> results::list {
     dynamic_t::array_t result;
 
     auto ptr = m_apps.synchronize();
+    auto builder = std::back_inserter(result);
 
-    for(auto it = ptr->begin(); it != ptr->end(); ++it) {
-        result.push_back(it->first);
-    }
+    std::transform(ptr->begin(), ptr->end(), builder, tuple::nth_element<0>());
 
     return result;
 }

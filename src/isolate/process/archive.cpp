@@ -76,7 +76,7 @@ void
 archive_t::deploy(const std::string& prefix_) {
     const fs::path prefix = prefix_;
 
-    for(fs::directory_iterator end_dir_it, it(prefix); it != end_dir_it; ++it) {
+    for(fs::directory_iterator it(prefix), end; it != end; ++it) {
         fs::remove_all(it->path());
     }
 

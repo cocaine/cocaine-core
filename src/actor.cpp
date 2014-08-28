@@ -164,9 +164,9 @@ actor_t::endpoints() const -> std::vector<tcp::endpoint> {
             boost::lexical_cast<std::string>(m_acceptors.front().local_endpoint().port())
         ));
     } catch(const boost::system::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: [%d] %s", e.code().value(), e.code().message())(
-            "service", m_prototype->name()
-        );
+        COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: [%d] %s",
+            e.code().value(), e.code().message()
+        )("service", m_prototype->name());
     }
 
     return std::vector<tcp::endpoint>(it, end);

@@ -72,7 +72,7 @@ public:
 
     virtual
     void
-    discard(const boost::system::error_code& COCAINE_UNUSED_(ec)) {
+    discard(const boost::system::error_code& COCAINE_UNUSED_(ec)) const {
         // Called on abnormal channel destruction.
     }
 

@@ -130,7 +130,7 @@ public:
 
     virtual
     void
-    discard(const boost::system::error_code& ec) {
+    discard(const boost::system::error_code& ec) const {
         parent->m_asio.post(std::bind(handle, ec));
     }
 
@@ -200,7 +200,7 @@ private:
     void
     finalize(const boost::system::error_code& ec, Iterator endpoint) {
         if(!ec) {
-            COCAINE_LOG_DEBUG(parent->m_log, "connected to remote service using %s", *endpoint);
+            COCAINE_LOG_DEBUG(parent->m_log, "connected to remote service via %s", *endpoint);
             client.connect(std::move(socket));
         } else {
             socket = nullptr;
@@ -257,7 +257,9 @@ resolve_t::connect(details::basic_client_t& client, const std::vector<endpoint_t
 void
 resolve_t::resolve_pending(const boost::system::error_code& ec) {
     if(ec) {
-        COCAINE_LOG_ERROR(m_log, "unable to connect to remote locator - [%d] %s", ec.value(), ec.message());
+        COCAINE_LOG_ERROR(m_log, "unable to connect to remote locator - [%d] %s",
+            ec.value(), ec.message()
+        );
 
         for(auto it = m_pending.begin(); it != m_pending.end(); ++it) {
             it->dispatch->discard(ec);

@@ -565,9 +565,9 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
         service->run(endpoints);
 
-        COCAINE_LOG_INFO(m_logger, "service has been published on port %d", service->endpoints().front().port())(
-            "service", name
-        );
+        COCAINE_LOG_INFO(m_logger, "service has been published on port %d",
+            service->endpoints().front().port()
+        )("service", name);
 
         ptr->emplace_back(name, std::move(service));
     }

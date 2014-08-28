@@ -79,7 +79,11 @@ public:
     }
 
     void
-    on_resolved(const boost::system::error_code& ec);
+    on_link(const boost::system::error_code& ec);
+
+    virtual
+    void
+    discard(const boost::system::error_code& ec) const;
 
 private:
     void
@@ -90,17 +94,27 @@ private:
 };
 
 void
-locator_t::remote_client_t::on_resolved(const boost::system::error_code& ec) {
+locator_t::remote_client_t::on_link(const boost::system::error_code& ec) {
     if(ec) {
-        COCAINE_LOG_ERROR(impl->m_log, "unable to connect to remote node: [%d] %s", ec.value(), ec.message())(
-            "uuid", uuid
-        );
+        COCAINE_LOG_ERROR(impl->m_log, "unable to connect to remote node: [%d] %s",
+            ec.value(), ec.message()
+        )("uuid", uuid);
 
         impl->m_remotes.erase(uuid);
+
         return;
     }
 
     impl->m_remotes[uuid]->invoke<locator::connect>(shared_from_this(), impl->m_uuid);
+}
+
+void
+locator_t::remote_client_t::discard(const boost::system::error_code& ec) const {
+    COCAINE_LOG_ERROR(impl->m_log, "remote node has unexpectedly disappeared: [%d] %s",
+        ec.value(), ec.message()
+    )("uuid", uuid);
+
+    impl->m_asio.post(std::bind(&locator_t::drop_node, impl, uuid));
 }
 
 void
@@ -205,24 +219,23 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     }
 
     if(root.as_object().count("cluster")) {
-        const auto& cluster_conf = root.as_object().at("cluster").as_object();
-        const auto& cluster_type = cluster_conf.at("type", "unspecified").as_string();
-        const auto& cluster_args = cluster_conf.at("args", dynamic_t::object_t());
+        const auto conf = root.as_object().at("cluster").as_object();
+        const auto type = conf.at("type", "unspecified").as_string();
+        const auto args = conf.at("args", dynamic_t::object_t());
 
-        COCAINE_LOG_INFO(m_log, "using '%s' for cluster discovery", cluster_type);
+        COCAINE_LOG_INFO(m_log, "using '%s' for cluster discovery", type);
 
-        m_cluster = m_context.get<api::cluster_t>(cluster_type, m_context, *this, name + ":cluster",
-                                                  cluster_args);
+        m_cluster = m_context.get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
     }
 
     if(root.as_object().count("gateway")) {
-        const auto& gateway_conf = root.as_object().at("gateway").as_object();
-        const auto& gateway_type = gateway_conf.at("type", "unspecified").as_string();
-        const auto& gateway_args = gateway_conf.at("args", dynamic_t::object_t());
+        const auto conf = root.as_object().at("gateway").as_object();
+        const auto type = conf.at("type", "unspecified").as_string();
+        const auto args = conf.at("args", dynamic_t::object_t());
 
-        COCAINE_LOG_INFO(m_log, "using '%s' as a cluster accessor", gateway_type);
+        COCAINE_LOG_INFO(m_log, "using '%s' as a cluster accessor", type);
 
-        m_gateway = m_context.get<api::gateway_t>(gateway_type, m_context, name + ":gateway", gateway_args);
+        m_gateway = m_context.get<api::gateway_t>(type, m_context, name + ":gateway", args);
     }
 
     // Connect service lifecycle signals.
@@ -259,7 +272,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
 
     auto client = std::make_shared<api::client<locator_tag>>();
 
-    m_resolve->connect(*client, endpoints, std::bind(&remote_client_t::on_resolved,
+    m_resolve->connect(*client, endpoints, std::bind(&remote_client_t::on_link,
         std::make_shared<remote_client_t>(this, uuid), std::placeholders::_1
     ));
 
@@ -453,8 +466,6 @@ struct locator_category_t:
         switch(code) {
           case cocaine::error::locator_errors::service_not_available:
             return "service is not available";
-          case cocaine::error::locator_errors::service_not_reachable:
-            return "service is not reachable";
           case cocaine::error::locator_errors::routing_storage_error:
             return "routing storage is unavailable";
         }

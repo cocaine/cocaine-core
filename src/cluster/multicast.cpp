@@ -132,7 +132,8 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
 
     auto announce = std::make_shared<announce_t>();
 
-    m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()), announce->endpoint,
+    m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()),
+        announce->endpoint,
         std::bind(&multicast_t::on_receive, this, std::placeholders::_1, std::placeholders::_2, announce)
     );
 
@@ -141,14 +142,14 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
 }
 
 multicast_t::~multicast_t() {
+    m_timer.cancel();
+    m_socket.close();
+
     for(auto it = m_expirations.begin(); it != m_expirations.end(); ++it) {
         it->second->cancel();
     }
 
     m_expirations.clear();
-
-    m_timer.cancel();
-    m_socket.close();
 }
 
 void
@@ -182,10 +183,12 @@ multicast_t::on_publish(const boost::system::error_code& ec) {
         try {
             m_socket.send_to(buffer(target.data(), target.size()), m_config.endpoint);
         } catch(const boost::system::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: [%d] %s", e.code().value(), e.code().message());
+            COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: [%d] %s",
+                e.code().value(), e.code().message()
+            );
         }
     } else {
-        COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: no endpoints have been found");
+        COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: node is not reachable");
     }
 
     m_timer.expires_from_now(m_config.interval);
@@ -193,18 +196,23 @@ multicast_t::on_publish(const boost::system::error_code& ec) {
 }
 
 void
-multicast_t::on_receive(const boost::system::error_code& ec, size_t rcvd, const std::shared_ptr<announce_t>& ptr) {
-    if(ec == boost::asio::error::operation_aborted) {
-        return;
-    } else if(ec) {
-        COCAINE_LOG_ERROR(m_log, "unexpected error in multicast_t::on_receive(): [%d] %s", ec.value(), ec.message());
+multicast_t::on_receive(const boost::system::error_code& ec, size_t bytes_received,
+                        const std::shared_ptr<announce_t>& ptr)
+{
+    if(ec) {
+        if(ec != boost::asio::error::operation_aborted) {
+            COCAINE_LOG_ERROR(m_log, "unexpected error in multicast_t::on_receive(): [%d] %s",
+                ec.value(), ec.message()
+            );
+        }
+
         return;
     }
 
     msgpack::unpacked unpacked;
 
     try {
-        msgpack::unpack(&unpacked, ptr->buffer.data(), rcvd);
+        msgpack::unpack(&unpacked, ptr->buffer.data(), bytes_received);
     } catch(const msgpack::unpack_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to unpack an announce");
         return;
@@ -221,7 +229,7 @@ multicast_t::on_receive(const boost::system::error_code& ec, size_t rcvd, const 
     }
 
     if(uuid != m_locator.uuid()) {
-        COCAINE_LOG_DEBUG(m_log, "received %d remote endpoint(s) from %s", endpoints.size(), ptr->endpoint)(
+        COCAINE_LOG_DEBUG(m_log, "received %d endpoint(s) from %s", endpoints.size(), ptr->endpoint)(
             "uuid", uuid
         );
 
@@ -240,7 +248,8 @@ multicast_t::on_receive(const boost::system::error_code& ec, size_t rcvd, const 
 
     auto announce = std::make_shared<announce_t>();
 
-    m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()), announce->endpoint,
+    m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()),
+        announce->endpoint,
         std::bind(&multicast_t::on_receive, this, std::placeholders::_1, std::placeholders::_2, announce)
     );
 }

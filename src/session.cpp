@@ -147,6 +147,31 @@ session_t::push_action_t::finalize(const boost::system::error_code& ec) {
     }
 }
 
+class session_t::discard_action_t {
+    synchronized<channel_map_t>& channels;
+
+public:
+    discard_action_t(synchronized<channel_map_t>& channels_):
+        channels(channels_)
+    { }
+
+    void
+    operator()(const boost::system::error_code& ec);
+};
+
+void
+session_t::discard_action_t::operator()(const boost::system::error_code& ec) {
+    auto ptr = channels.synchronize();
+
+    for(auto it = ptr->begin(); it != ptr->end(); ++it) {
+        if(it->second->dispatch) {
+            it->second->dispatch->discard(ec);
+        }
+    }
+
+    ptr->clear();
+}
+
 // Session
 
 session_t::session_t(std::unique_ptr<channel<tcp>> ptr_, const dispatch_ptr_t& prototype_):
@@ -154,7 +179,9 @@ session_t::session_t(std::unique_ptr<channel<tcp>> ptr_, const dispatch_ptr_t& p
     endpoint(ptr->remote_endpoint()),
     prototype(prototype_),
     max_channel_id(0)
-{ }
+{
+    signals.shutdown.connect(0, discard_action_t(channels));
+}
 
 // Operations
 

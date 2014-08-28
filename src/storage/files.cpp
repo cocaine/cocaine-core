@@ -165,10 +165,10 @@ struct intersect {
     operator()(const T& accumulator, T& keys) const {
         T result;
 
-        auto output = std::back_inserter(result);
+        auto builder = std::back_inserter(result);
 
         std::sort(keys.begin(), keys.end());
-        std::set_intersection(accumulator.begin(), accumulator.end(), keys.begin(), keys.end(), output);
+        std::set_intersection(accumulator.begin(), accumulator.end(), keys.begin(), keys.end(), builder);
 
         return result;
     }

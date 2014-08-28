@@ -45,14 +45,13 @@ execution_unit_t::execution_unit_t(context_t& context):
 { }
 
 execution_unit_t::~execution_unit_t() {
-    m_chamber = nullptr;
-
     for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
         // Synchronously close the connections.
         it->second->detach();
     }
 
-    m_sessions.clear();
+    // This will block until all the outstanding operations are complete.
+    m_chamber = nullptr;
 }
 
 void

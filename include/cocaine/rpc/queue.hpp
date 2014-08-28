@@ -133,9 +133,7 @@ public:
 
         aux::frozen_visitor_t visitor(m_upstream);
 
-        for(auto it = m_operations.begin(); it != m_operations.end(); ++it) {
-            boost::apply_visitor(visitor, *it);
-        }
+        std::for_each(m_operations.begin(), m_operations.end(), boost::apply_visitor(visitor));
 
         m_operations.clear();
     }

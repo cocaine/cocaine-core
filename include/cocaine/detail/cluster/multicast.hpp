@@ -67,7 +67,8 @@ private:
     on_publish(const boost::system::error_code& ec);
 
     void
-    on_receive(const boost::system::error_code& ec, size_t rcvd, const std::shared_ptr<announce_t>& ptr);
+    on_receive(const boost::system::error_code& ec, size_t bytes_received,
+               const std::shared_ptr<announce_t>& ptr);
 
     void
     on_expired(const boost::system::error_code& ec, const std::string& uuid);

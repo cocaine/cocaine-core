@@ -41,6 +41,9 @@ class session_t:
 {
     class channel_t;
 
+    // Discards all the channel dispatches on errors.
+    class discard_action_t;
+
     class pull_action_t;
     class push_action_t;
 
