@@ -93,7 +93,7 @@ actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio,
                  std::unique_ptr<io::basic_dispatch_t> prototype)
 :
     m_context(context),
-    m_log(context.log(prototype->name())),
+    m_log(context.log("core:asio")),
     m_asio(asio),
     m_prototype(std::move(prototype))
 { }
@@ -102,7 +102,7 @@ actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio,
                  std::unique_ptr<api::service_t> service)
 :
     m_context(context),
-    m_log(context.log(service->prototype().name())),
+    m_log(context.log("core:asio")),
     m_asio(asio)
 {
     const io::basic_dispatch_t* prototype = &service->prototype();

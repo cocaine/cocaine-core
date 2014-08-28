@@ -23,11 +23,6 @@
 
 #include <type_traits>
 
-#if !defined(__clang__) && !defined(HAVE_GCC46)
-    // GCC 4.4 defines std::result_of<T> there.
-    #include <functional>
-#endif
-
 #include <boost/mpl/deque.hpp>
 #include <boost/mpl/push_back.hpp>
 
@@ -84,7 +79,7 @@ struct pristine {
 
 template<class F, class = void>
 struct result_of {
-    typedef typename std::result_of<F>::type type;
+    typedef decltype(std::declval<F>()) type;
 };
 
 template<class F>
