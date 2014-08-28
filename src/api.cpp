@@ -63,8 +63,23 @@ basic_client_t::is_connected() const {
     return static_cast<bool>(m_session);
 }
 
+auto
+basic_client_t::session() const -> const session_t& {
+    if(!is_connected()) {
+        throw cocaine::error_t("client is not connected");
+    }
+
+    return *m_session;
+}
+
 basic_client_t::basic_client_t(const basic_client_t& other) {
     *this = other;
+}
+
+basic_client_t::~basic_client_t() {
+    if(is_connected()) {
+        m_session->detach();
+    }
 }
 
 basic_client_t&
@@ -79,9 +94,9 @@ basic_client_t::operator=(const basic_client_t& rhs) {
 }
 
 void
-basic_client_t::on_interrupt(const boost::system::error_code& COCAINE_UNUSED(ec)) {
+basic_client_t::on_interrupt(const boost::system::error_code& COCAINE_UNUSED_(ec)) {
     m_session->detach();
-    m_session.reset();
+    m_session = nullptr;
 }
 
 }}} // namespace cocaine::api::details
@@ -113,6 +128,7 @@ public:
         on<protocol::choke>(std::bind(&resolve_action_t::on_choke, this));
     }
 
+    virtual
     void
     discard(const boost::system::error_code& ec) {
         parent->m_asio.post(std::bind(handle, ec));
@@ -129,7 +145,7 @@ private:
     }
 
     void
-    on_error(int code, const std::string& COCAINE_UNUSED(reason)) {
+    on_error(int code, const std::string& COCAINE_UNUSED_(reason)) {
         parent->m_asio.post(std::bind(handle, static_cast<error::locator_errors>(code)));
     }
 
@@ -153,8 +169,8 @@ class resolve_t::connect_action_t:
     std::unique_ptr<tcp::socket> socket;
 
 public:
-    connect_action_t(resolve_t* parent_, details::basic_client_t& client_, const std::vector<endpoint_type>& endpoints_,
-                     handler_type handle_)
+    connect_action_t(resolve_t* parent_, details::basic_client_t& client_,
+                     const std::vector<endpoint_type>& endpoints_, handler_type handle_)
     :
         parent(parent_),
         client(client_),
@@ -187,7 +203,7 @@ private:
             COCAINE_LOG_DEBUG(parent->m_log, "connected to remote service using %s", *endpoint);
             client.connect(std::move(socket));
         } else {
-            socket.reset();
+            socket = nullptr;
         }
 
         parent->m_asio.post(std::bind(handle, ec));
@@ -200,7 +216,9 @@ const std::vector<resolve_t::endpoint_type> resolve_t::kDefaultEndpoints = {
     { address::from_string("127.0.0.1"), 10053 }
 };
 
-resolve_t::resolve_t(std::unique_ptr<logging::log_t> log, io_service& asio, const std::vector<endpoint_type>& endpoints):
+resolve_t::resolve_t(std::unique_ptr<logging::log_t> log, io_service& asio,
+                     const std::vector<endpoint_type>& endpoints)
+:
     m_log(std::move(log)),
     m_asio(asio)
 {
@@ -218,11 +236,7 @@ resolve_t::resolve_t(std::unique_ptr<logging::log_t> log, io_service& asio, cons
 
 void
 resolve_t::resolve(details::basic_client_t& client, const std::string& name, handler_type handle) {
-    auto dispatch = std::make_shared<resolve_action_t>(
-        this,
-        client,
-        handle
-    );
+    auto dispatch = std::make_shared<resolve_action_t>(this, client, handle);
 
     if(!m_locator.is_connected()) {
         m_pending.push_back({dispatch, name});
@@ -232,7 +246,9 @@ resolve_t::resolve(details::basic_client_t& client, const std::string& name, han
 }
 
 void
-resolve_t::connect(details::basic_client_t& client, const std::vector<endpoint_type>& endpoints, handler_type handle) {
+resolve_t::connect(details::basic_client_t& client, const std::vector<endpoint_type>& endpoints,
+                   handler_type handle)
+{
     m_asio.dispatch(std::bind(&connect_action_t::operator(),
         std::make_shared<connect_action_t>(this, client, endpoints, handle)
     ));

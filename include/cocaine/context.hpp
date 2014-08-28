@@ -22,7 +22,9 @@
 #define COCAINE_CONTEXT_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/dynamic.hpp"
+
+#include "cocaine/dynamic/dynamic.hpp"
+
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
@@ -129,6 +131,8 @@ class execution_unit_t;
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
 
+    typedef std::deque<std::pair<std::string, std::unique_ptr<actor_t>>> service_list_t;
+
     // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
     // for the Blackhole, when all the common stuff is extracted to a separate library.
     std::unique_ptr<logging::logger_t> m_logger;
@@ -143,10 +147,6 @@ class context_t {
     // A pool of execution units - threads responsible for doing all the service invocations.
     std::vector<std::unique_ptr<execution_unit_t>> m_pool;
 
-    typedef std::deque<
-        std::pair<std::string, std::unique_ptr<actor_t>>
-    > service_list_t;
-
     // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
     // because services are allowed to start and stop other services during their lifetime.
     synchronized<service_list_t> m_services;
@@ -158,7 +158,7 @@ class context_t {
 public:
     const config_t config;
 
-    // Lifecycle management signals
+    // Service lifecycle management signals
 
     struct {
         boost::signals2::signal<void()> shutdown;

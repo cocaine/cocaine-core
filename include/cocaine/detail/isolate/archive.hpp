@@ -37,7 +37,6 @@ struct archive_error_t:
 class archive_t {
     const std::unique_ptr<logging::log_t> m_log;
 
-    // The source archive.
     archive* m_archive;
 
 public:

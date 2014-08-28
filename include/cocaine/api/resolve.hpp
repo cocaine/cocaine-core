@@ -29,18 +29,18 @@ namespace cocaine { namespace api {
 class resolve_t {
     COCAINE_DECLARE_NONCOPYABLE(resolve_t)
 
-    typedef boost::asio::ip::tcp::endpoint endpoint_type;
-    typedef std::function<void(const boost::system::error_code&)> handler_type;
-
     class resolve_action_t;
     class connect_action_t;
+
+    typedef boost::asio::ip::tcp::endpoint endpoint_type;
+    typedef std::function<void(const boost::system::error_code&)> handler_type;
 
     static const std::vector<endpoint_type> kDefaultEndpoints;
 
     const std::unique_ptr<logging::log_t> m_log;
 
     boost::asio::io_service& m_asio;
-    client<io::locator_tag>  m_locator;
+    client<io::locator_tag> m_locator;
 
     struct pending_request_t {
         std::shared_ptr<resolve_action_t> dispatch;
@@ -57,7 +57,8 @@ public:
     resolve(details::basic_client_t& client, const std::string& name, handler_type handle);
 
     void
-    connect(details::basic_client_t& client, const std::vector<endpoint_type>& endpoints, handler_type handle);
+    connect(details::basic_client_t& client, const std::vector<endpoint_type>& endpoints,
+            handler_type handle);
 
 private:
     void

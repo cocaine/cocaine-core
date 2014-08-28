@@ -141,8 +141,8 @@ node_t::on_pause_app(const std::string& name) {
     ptr->erase(it);
 }
 
-dynamic_t
-node_t::on_list() const {
+auto
+node_t::on_list() const -> results::list {
     dynamic_t::array_t result;
 
     auto ptr = m_apps.synchronize();

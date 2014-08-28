@@ -42,9 +42,6 @@ template<>
 struct protocol<void> {
     // Traversal termination.
     typedef mpl::list<> messages;
-
-    // Undefined protocol scope.
-    typedef struct { } scope;
 };
 
 template<class Tag>

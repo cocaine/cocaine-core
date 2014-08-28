@@ -62,6 +62,91 @@ session_t::channel_t::process(const decoder_t::message_type& message) {
     }
 }
 
+class session_t::pull_action_t:
+    public std::enable_shared_from_this<pull_action_t>
+{
+    std::shared_ptr<session_t> session;
+    decoder_t::message_type message;
+
+public:
+    pull_action_t(const std::shared_ptr<session_t>& session_):
+        session(session_)
+    { }
+
+    void
+    operator()();
+
+private:
+    void
+    finalize(const boost::system::error_code& ec);
+};
+
+void
+session_t::pull_action_t::operator()() {
+    // TODO: Locking.
+    if(!session->ptr) {
+        return;
+    }
+
+    session->ptr->reader->read(message,
+        std::bind(&pull_action_t::finalize, shared_from_this(), std::placeholders::_1)
+    );
+}
+
+void
+session_t::pull_action_t::finalize(const boost::system::error_code& ec) {
+    if(ec) {
+        return session->signals.shutdown(ec);
+    }
+
+    try {
+        session->invoke(message);
+    } catch(...) {
+        return session->signals.shutdown(error::uncaught_error);
+    }
+
+    operator()();
+}
+
+class session_t::push_action_t:
+    public enable_shared_from_this<push_action_t>
+{
+    std::shared_ptr<session_t> session;
+    encoder_t::message_type message;
+
+public:
+    push_action_t(const std::shared_ptr<session_t>& session_, encoder_t::message_type&& message):
+        session(session_),
+        message(std::move(message))
+    { }
+
+    void
+    operator()();
+
+private:
+    void
+    finalize(const boost::system::error_code& ec);
+};
+
+void
+session_t::push_action_t::operator()() {
+    // TODO: Locking.
+    if(!session->ptr) {
+        return;
+    }
+
+    session->ptr->writer->write(message,
+        std::bind(&push_action_t::finalize, shared_from_this(), std::placeholders::_1)
+    );
+}
+
+void
+session_t::push_action_t::finalize(const boost::system::error_code& ec) {
+    if(ec) {
+        return session->signals.shutdown(ec);
+    }
+}
+
 // Session
 
 session_t::session_t(std::unique_ptr<channel<tcp>> ptr_, const dispatch_ptr_t& prototype_):
@@ -70,6 +155,8 @@ session_t::session_t(std::unique_ptr<channel<tcp>> ptr_, const dispatch_ptr_t& p
     prototype(prototype_),
     max_channel_id(0)
 { }
+
+// Operations
 
 void
 session_t::invoke(const decoder_t::message_type& message) {
@@ -132,7 +219,7 @@ void
 session_t::detach() {
     {
         std::lock_guard<std::mutex> guard(mutex);
-        ptr.reset();
+        ptr = nullptr;
     }
 
     // Detach all the signal handlers, because the session will be in detached state and triggering
@@ -140,50 +227,7 @@ session_t::detach() {
     signals.shutdown.disconnect_all_slots();
 }
 
-// I/O
-
-class session_t::pull_action_t:
-    public std::enable_shared_from_this<pull_action_t>
-{
-    std::shared_ptr<session_t> session;
-    decoder_t::message_type message;
-
-public:
-    pull_action_t(const std::shared_ptr<session_t>& session_):
-        session(session_)
-    { }
-
-    // TODO: Locking.
-
-    void
-    operator()() {
-        if(!session->ptr) {
-            return;
-        }
-
-        session->ptr->reader->read(message,
-            std::bind(&pull_action_t::finalize, shared_from_this(), std::placeholders::_1)
-        );
-    }
-
-private:
-    void
-    finalize(const boost::system::error_code& ec) {
-        if(ec) {
-            session->signals.shutdown(ec);
-            return;
-        }
-
-        try {
-            session->invoke(message);
-        } catch(...) {
-            session->signals.shutdown(error::uncaught_error);
-            return;
-        }
-
-        operator()();
-    }
-};
+// Channel I/O
 
 void
 session_t::pull() {
@@ -197,40 +241,6 @@ session_t::pull() {
     ));
 }
 
-class session_t::push_action_t:
-    public enable_shared_from_this<push_action_t>
-{
-    std::shared_ptr<session_t> session;
-    encoder_t::message_type message;
-
-public:
-    push_action_t(const std::shared_ptr<session_t>& session_, encoder_t::message_type&& message):
-        session(session_),
-        message(std::move(message))
-    { }
-
-    // TODO: Locking.
-
-    void
-    operator()() {
-        if(!session->ptr) {
-            return;
-        }
-
-        session->ptr->writer->write(message,
-            std::bind(&push_action_t::finalize, shared_from_this(), std::placeholders::_1)
-        );
-    }
-
-private:
-    void
-    finalize(const boost::system::error_code& ec) {
-        if(ec) {
-            session->signals.shutdown(ec);
-        }
-    }
-};
-
 void
 session_t::push(encoder_t::message_type&& message) {
     std::lock_guard<std::mutex> guard(mutex);
@@ -242,6 +252,8 @@ session_t::push(encoder_t::message_type&& message) {
         std::bind(&push_action_t::operator(), std::make_shared<push_action_t>(shared_from_this(), std::move(message))
     ));
 }
+
+// Information
 
 tcp::endpoint
 session_t::remote_endpoint() const {

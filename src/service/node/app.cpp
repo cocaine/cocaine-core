@@ -317,12 +317,11 @@ app_t::pause() {
     } catch(const cocaine::error_t& e) {
         COCAINE_LOG_ERROR(m_log, "unable to stop engine - %s", e.what());
 
-        // Eventually the process will crash because the engine's thread is still on.
+        // NOTE: Eventually the process will crash because the engine's thread is still on.
         return;
     }
 
     m_thread->join();
-    m_thread.reset();
 
     COCAINE_LOG_INFO(m_log, "engine is now stopped");
 }

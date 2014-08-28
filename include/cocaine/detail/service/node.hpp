@@ -32,6 +32,12 @@
 
 namespace cocaine { namespace service {
 
+class node_t;
+
+namespace results {
+    typedef result_of<io::node::list>::type list;
+}
+
 class node_t:
     public api::service_t,
     public dispatch<io::node_tag>
@@ -59,8 +65,8 @@ private:
     void
     on_pause_app(const std::string& name);
 
-    dynamic_t
-    on_list() const;
+    auto
+    on_list() const -> results::list;
 };
 
 }} // namespace cocaine::service

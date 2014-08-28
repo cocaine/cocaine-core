@@ -65,8 +65,7 @@ cached<T>::cached(context_t& context, const std::string& collection, const std::
     try {
         cache = api::storage(context, "cache");
     } catch(const api::repository_error_t& e) {
-        download(context, collection, name);
-        return;
+        return download(context, collection, name);
     }
 
     try {

@@ -180,7 +180,10 @@ public:
         if(source.type != msgpack::type::ARRAY) {
             throw cocaine::error_t("sequence type mismatch");
         } else if(source.via.array.size < minimal) {
-            throw cocaine::error_t("sequence length mismatch - expected at least %d, got %d", minimal, source.via.array.size);
+            throw cocaine::error_t("sequence length mismatch - expected at least %d, got %d",
+                minimal,
+                source.via.array.size
+            );
         }
 
         #if defined(__GNUC__) && defined(HAVE_GCC46)

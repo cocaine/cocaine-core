@@ -21,6 +21,9 @@
 #ifndef COCAINE_CONNECT_HPP
 #define COCAINE_CONNECT_HPP
 
+#include "cocaine/common.hpp"
+#include "cocaine/locked_ptr.hpp"
+
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/session.hpp"
 #include "cocaine/rpc/upstream.hpp"
@@ -43,6 +46,9 @@ public:
     bool
     is_connected() const;
 
+    auto
+    session() const -> const session_t&;
+
     virtual
     int
     version() const = 0;
@@ -51,6 +57,9 @@ public:
 
     basic_client_t() = default;
     basic_client_t(const basic_client_t& other);
+
+    virtual
+   ~basic_client_t();
 
     basic_client_t&
     operator=(const basic_client_t& rhs);
@@ -67,19 +76,15 @@ class client:
     public details::basic_client_t
 {
     template<class Event>
-    struct invoke_traits {
-        typedef upstream<typename io::event_traits<Event>::dispatch_type> upstream_type;
-        typedef dispatch<typename io::event_traits<Event>::upstream_type> dispatch_type;
-
-        typedef std::shared_ptr<const dispatch_type> dispatch_ptr_type;
+    struct traits {
+        typedef upstream<typename io::event_traits<Event>::dispatch_type>       upstream_type;
+        typedef dispatch<typename io::event_traits<Event>::upstream_type> const dispatch_type;
     };
 
 public:
     template<class Event, typename... Args>
-    auto
-    invoke(const typename invoke_traits<Event>::dispatch_ptr_type& dispatch, Args&&... args)
-        -> typename invoke_traits<Event>::upstream_type
-    {
+    typename traits<Event>::upstream_type
+    invoke(const std::shared_ptr<typename traits<Event>::dispatch_type>& dispatch, Args&&... args) {
         if(!is_connected()) {
             throw cocaine::error_t("client is not connected");
         }
@@ -87,6 +92,7 @@ public:
         auto ptr = m_session->inject(dispatch);
 
         // TODO: Locking?
+        // Check for message protocol compatibility.
         upstream<Tag>(ptr).template send<Event>(std::forward<Args>(args)...);
 
         return ptr;

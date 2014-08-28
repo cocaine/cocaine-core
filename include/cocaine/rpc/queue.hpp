@@ -111,8 +111,7 @@ public:
         );
 
         if(!m_upstream) {
-            m_operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
-            return;
+            return m_operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
         }
 
         m_upstream->send<Event>(std::forward<Args>(args)...);

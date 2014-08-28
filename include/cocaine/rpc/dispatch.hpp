@@ -71,6 +71,12 @@ public:
     process(const decoder_t::message_type& message, const upstream_ptr_t& upstream) const = 0;
 
     virtual
+    void
+    discard(const boost::system::error_code& COCAINE_UNUSED_(ec)) {
+        // Called on abnormal channel destruction.
+    }
+
+    virtual
     auto
     graph() const -> const dispatch_graph_t& = 0;
 
@@ -202,8 +208,8 @@ struct calling_visitor_t:
         typename slot_type::tuple_type args;
 
         try {
-            // Unpacks the object into a tuple using the message typelist as opposed to using the plain
-            // tuple type traits, in order to support parameter tags, like optional<T>.
+            // Unpacks the object into a tuple using the message typelist as opposed to using the
+            // plain tuple type traits, in order to support parameter tags, like optional<T>.
             io::type_traits<typename io::event_traits<Event>::tuple_type>::unpack(unpacked, args);
         } catch(const msgpack::type_error& e) {
             throw cocaine::error_t("unable to unpack message arguments");

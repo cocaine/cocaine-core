@@ -76,9 +76,7 @@ public:
                 m_rd_offset = bytes_pending;
             }
 
-            m_channel->get_io_service().post(std::bind(handler, ec));
-
-            return;
+            return m_channel->get_io_service().post(std::bind(handler, ec));
         }
 
         if(bytes_pending > m_ring.size() / 2) {

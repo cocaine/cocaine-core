@@ -22,23 +22,30 @@
 #ifndef COCAINE_SERVICE_LOCATOR_HPP
 #define COCAINE_SERVICE_LOCATOR_HPP
 
-#include "cocaine/common.hpp"
-#include "cocaine/locked_ptr.hpp"
-
 #include "cocaine/api/cluster.hpp"
+#include "cocaine/api/resolve.hpp"
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/idl/locator.hpp"
 #include "cocaine/rpc/dispatch.hpp"
 
+#include "cocaine/locked_ptr.hpp"
+
 namespace cocaine {
 
 class actor_t;
-class session_t;
 
 } // namespace cocaine
 
 namespace cocaine { namespace service {
+
+class locator_t;
+
+namespace results {
+    typedef result_of<io::locator::resolve>::type resolve;
+    typedef result_of<io::locator::connect>::type connect;
+    typedef result_of<io::locator::cluster>::type cluster;
+}
 
 class locator_t:
     public api::service_t,
@@ -47,6 +54,8 @@ class locator_t:
 {
     class remote_client_t;
     class router_t;
+
+    class cleanup_action_t;
 
     context_t& m_context;
 
@@ -58,22 +67,21 @@ class locator_t:
     // Node UUID.
     const std::string m_uuid;
 
-    typedef result_of<io::locator::resolve>::type resolve_result_t;
-    typedef result_of<io::locator::connect>::type connect_result_t;
-    typedef result_of<io::locator::refresh>::type refresh_result_t;
-    typedef result_of<io::locator::cluster>::type cluster_result_t;
+    // Remote sessions are created using this resolve.
+    std::unique_ptr<api::resolve_t> m_resolve;
 
     // Remote sessions indexed by uuid. The uuid is required to disambiguate between different
     // instances on the same host, even if the instance was restarted on the same port.
-    std::map<std::string, std::shared_ptr<session_t>> m_remotes;
+    std::map<std::string, std::shared_ptr<api::client<io::locator_tag>>> m_remotes;
 
     struct locals_t {
-        connect_result_t snapshot;
+        results::connect snapshot;
 
         // Outgoing synchronization streams.
-        std::map<std::string, streamed<connect_result_t>> streams;
+        std::map<std::string, streamed<results::connect>> streams;
     };
 
+    // Local services state.
     synchronized<locals_t> m_locals;
 
     // Clustering.
@@ -81,10 +89,7 @@ class locator_t:
     std::unique_ptr<api::cluster_t> m_cluster;
 
     // Used to resolve service names against service groups based on weights and other metrics.
-    std::unique_ptr<router_t> m_router;
-
-    // Used to clean up non-synchronized internal state inside the reactor's event loop.
-    class cleanup_action_t;
+    std::unique_ptr<router_t> m_routing;
 
 public:
     locator_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
@@ -118,21 +123,16 @@ public:
 
 private:
     auto
-    on_resolve(const std::string& name) const -> resolve_result_t;
+    on_resolve(const std::string& name) const -> results::resolve;
 
     auto
-    on_connect(const std::string& uuid) -> streamed<connect_result_t>;
-
-    auto
-    on_refresh(const std::string& name) -> refresh_result_t;
-
-    auto
-    on_cluster() const -> cluster_result_t;
-
-    // Session signals
+    on_connect(const std::string& uuid) -> streamed<results::connect>;
 
     void
-    on_session_shutdown(const boost::system::error_code& ec, const std::string& uuid);
+    on_refresh(const std::string& name);
+
+    auto
+    on_cluster() const -> results::cluster;
 
     // Context signals
 

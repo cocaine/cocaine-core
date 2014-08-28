@@ -42,7 +42,6 @@ class process_t:
     const boost::filesystem::path m_working_directory;
 
 #ifdef COCAINE_ALLOW_CGROUPS
-    // Control group handle.
     cgroup* m_cgroup;
 #endif
 

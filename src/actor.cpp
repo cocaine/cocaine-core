@@ -89,14 +89,18 @@ private:
 
 // Actor
 
-actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio, std::unique_ptr<io::basic_dispatch_t> prototype):
+actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio,
+                 std::unique_ptr<io::basic_dispatch_t> prototype)
+:
     m_context(context),
     m_log(context.log(prototype->name())),
     m_asio(asio),
     m_prototype(std::move(prototype))
 { }
 
-actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio, std::unique_ptr<api::service_t> service):
+actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio,
+                 std::unique_ptr<api::service_t> service)
+:
     m_context(context),
     m_log(context.log(service->prototype().name())),
     m_asio(asio)
@@ -143,7 +147,7 @@ actor_t::terminate() {
     }
 
     m_acceptors.clear();
-    m_chamber.reset();
+    m_chamber = nullptr;
 }
 
 auto

@@ -21,7 +21,6 @@
 #ifndef COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 #define COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 
-#include "cocaine/rpc/asio/buffer_sequence.hpp"
 #include "cocaine/rpc/asio/errors.hpp"
 
 #include <functional>
@@ -37,8 +36,6 @@ template<class Protocol, class Encoder>
 class writable_stream {
     COCAINE_DECLARE_NONCOPYABLE(writable_stream)
 
-    enum class states { idle, flushing } m_state;
-
     typedef boost::asio::basic_stream_socket<Protocol> channel_type;
 
     typedef Encoder encoder_type;
@@ -51,11 +48,13 @@ class writable_stream {
     std::deque<boost::asio::const_buffer> m_messages;
     std::deque<handler_type> m_handlers;
 
+    enum class states { idle, flushing } m_state;
+
 public:
     explicit
     writable_stream(const std::shared_ptr<channel_type>& channel):
-        m_state(states::idle),
-        m_channel(channel)
+        m_channel(channel),
+        m_state(states::idle)
     { }
 
     void
@@ -69,12 +68,15 @@ public:
             bytes_written = m_channel->write_some(boost::asio::buffer(message.data(), message.size()), ec);
 
             if(!ec && bytes_written == message.size()) {
-                m_channel->get_io_service().post(std::bind(handler, ec));
-                return;
+                return m_channel->get_io_service().post(std::bind(handler, ec));
             }
         }
 
-        m_messages.emplace_back(boost::asio::buffer(message.data(), message.size()));
+        m_messages.emplace_back(
+            message.data() + bytes_written,
+            message.size() - bytes_written
+        );
+
         m_handlers.emplace_back(handler);
 
         if(m_state == states::flushing) {
@@ -83,7 +85,8 @@ public:
             m_state = states::flushing;
         }
 
-        m_channel->async_write_some(buffer_sequence_t(m_messages.begin(), m_messages.end(), bytes_written),
+        m_channel->async_write_some(
+            m_messages,
             std::bind(&writable_stream::flush, this, std::placeholders::_1, std::placeholders::_2)
         );
     }
@@ -114,16 +117,17 @@ private:
             const size_t message_size = boost::asio::buffer_size(m_messages.front());
 
             if(message_size > bytes_written) {
+                m_messages.front() = m_messages.front() + bytes_written;
                 break;
-            } else {
-                bytes_written -= message_size;
-
-                // Queue this block's handler for invocation.
-                m_channel->get_io_service().post(std::bind(m_handlers.front(), ec));
-
-                m_messages.pop_front();
-                m_handlers.pop_front();
             }
+
+            bytes_written -= message_size;
+
+            // Queue this block's handler for invocation.
+            m_channel->get_io_service().post(std::bind(m_handlers.front(), ec));
+
+            m_messages.pop_front();
+            m_handlers.pop_front();
         }
 
         if(m_messages.empty() && m_state == states::flushing) {
@@ -131,7 +135,8 @@ private:
             return;
         }
 
-        m_channel->async_write_some(buffer_sequence_t(m_messages.begin(), m_messages.end(), bytes_written),
+        m_channel->async_write_some(
+            m_messages,
             std::bind(&writable_stream::flush, this, std::placeholders::_1, std::placeholders::_2)
         );
     }

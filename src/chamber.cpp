@@ -67,9 +67,8 @@ chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<boost::asio
 chamber_t::~chamber_t() {
     // NOTE: Instead of calling io_service::stop() to terminate the reactor immediately, kill the
     // work object and wait for all the outstanding operations to gracefully finish up.
-    work.reset();
+    work = nullptr;
 
     // TODO: Check if this might hang forever because of the above.
     thread->join();
-    thread.reset();
 }

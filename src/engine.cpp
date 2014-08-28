@@ -39,13 +39,13 @@ using namespace boost::asio::ip;
 using namespace cocaine;
 
 execution_unit_t::execution_unit_t(context_t& context):
-    m_log(context.log("cocaine/io-pool")),
+    m_log(context.log("core:asio")),
     m_asio(new io_service()),
-    m_chamber(new io::chamber_t("cocaine/io-pool", m_asio))
+    m_chamber(new io::chamber_t("core:asio", m_asio))
 { }
 
 execution_unit_t::~execution_unit_t() {
-    m_chamber.reset();
+    m_chamber = nullptr;
 
     for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
         // Synchronously close the connections.
