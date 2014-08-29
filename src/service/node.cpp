@@ -30,6 +30,8 @@
 
 #include "cocaine/tuple.hpp"
 
+#include <blackhole/scoped_attributes.hpp>
+
 using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
@@ -71,22 +73,31 @@ node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::str
 
     COCAINE_LOG_INFO(m_log, "starting %d app(s)", runlist.size());
 
-    size_t errors = 0;
+    std::vector<std::string> errored;
 
     for(auto it = runlist.begin(); it != runlist.end(); ++it) {
+        blackhole::scoped_attributes_t attributes(*m_log, {
+            blackhole::attribute::make("app", it->first)
+        });
+
         try {
             on_start_app(it->first, it->second);
-        } catch(const cocaine::error_t& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize app: %s", e.what())(
-                "app", it->first
-            );
-
-            errors++;
+        } catch(const std::exception& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to initialize app: %s", e.what());
+            errored.push_back(it->first);
+        } catch(...) {
+            COCAINE_LOG_ERROR(m_log, "unable to initialize app");
+            errored.push_back(it->first);
         }
     }
 
-    if(errors) {
-        COCAINE_LOG_ERROR(m_log, "%d app(s) failed to start", errors);
+    if(!errored.empty()) {
+        std::ostringstream stream;
+        std::ostream_iterator<std::string> builder(stream, ", ");
+
+        std::copy(errored.begin(), errored.end(), builder);
+
+        COCAINE_LOG_ERROR(m_log, "coudn't start %d app(s): %s", errored.size(), stream.str());
     }
 }
 

@@ -58,7 +58,7 @@ public:
     { }
 
     void
-    write(const message_type& message, handler_type handler) {
+    write(const message_type& message, handler_type handle) {
         size_t bytes_written = 0;
 
         if(m_state == states::idle) {
@@ -68,7 +68,7 @@ public:
             bytes_written = m_channel->write_some(boost::asio::buffer(message.data(), message.size()), ec);
 
             if(!ec && bytes_written == message.size()) {
-                return m_channel->get_io_service().post(std::bind(handler, ec));
+                return m_channel->get_io_service().post(std::bind(handle, ec));
             }
         }
 
@@ -77,7 +77,7 @@ public:
             message.size() - bytes_written
         );
 
-        m_handlers.emplace_back(handler);
+        m_handlers.emplace_back(handle);
 
         if(m_state == states::flushing) {
             return;

@@ -39,7 +39,6 @@
 #include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include "cocaine/rpc/channel.hpp"
 

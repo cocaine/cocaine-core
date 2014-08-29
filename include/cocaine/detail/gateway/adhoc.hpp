@@ -55,8 +55,8 @@ public:
    ~adhoc_t();
 
     virtual
-    metadata_t
-    resolve(const std::string& name) const;
+    auto
+    resolve(const std::string& name) const -> metadata_t;
 
     virtual
     void

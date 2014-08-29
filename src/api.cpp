@@ -51,9 +51,10 @@ basic_client_t::connect(std::unique_ptr<tcp::socket> socket) {
         nullptr
     );
 
-    m_session->signals.shutdown.connect(
-        std::bind(&basic_client_t::on_interrupt, this, std::placeholders::_1)
-    );
+    m_session->signals.shutdown.connect(std::bind(&basic_client_t::on_interrupt,
+        this,
+        std::placeholders::_1
+    ));
 
     m_session->pull();
 }
@@ -86,9 +87,14 @@ basic_client_t&
 basic_client_t::operator=(const basic_client_t& rhs) {
     m_session = rhs.m_session;
 
-    m_session->signals.shutdown.connect(
-        std::bind(&basic_client_t::on_interrupt, this, std::placeholders::_1)
-    );
+    if(!m_session) {
+        return *this;
+    }
+
+    m_session->signals.shutdown.connect(std::bind(&basic_client_t::on_interrupt,
+        this,
+        std::placeholders::_1
+    ));
 
     return *this;
 }
@@ -140,7 +146,7 @@ private:
         if(version == client.version()) {
             parent->connect(client, endpoints, handle);
         } else {
-            parent->m_asio.post(std::bind(handle, make_error_code(error::version_mismatch)));
+            parent->m_asio.post(std::bind(handle, error::version_mismatch));
         }
     }
 
@@ -158,6 +164,8 @@ private:
 class resolve_t::connect_action_t:
     public std::enable_shared_from_this<connect_action_t>
 {
+    typedef std::vector<endpoint_type>::const_iterator iterator_type;
+
     resolve_t* parent;
     details::basic_client_t& client;
     handler_type handle;
@@ -184,11 +192,7 @@ public:
 
     void
     operator()() {
-        typedef std::vector<endpoint_type>::const_iterator
-                iterator_type;
-
-        async_connect(*socket, endpoints.begin(), std::bind(
-           &connect_action_t::finalize<iterator_type>,
+        async_connect(*socket, endpoints.begin(), endpoints.end(), std::bind(&connect_action_t::finalize,
             shared_from_this(),
             std::placeholders::_1,
             std::placeholders::_2
@@ -196,12 +200,16 @@ public:
     }
 
 private:
-    template<class Iterator>
     void
-    finalize(const boost::system::error_code& ec, Iterator endpoint) {
-        if(!ec) {
-            COCAINE_LOG_DEBUG(parent->m_log, "connected to remote service via %s", *endpoint);
-            client.connect(std::move(socket));
+    finalize(const boost::system::error_code& ec, iterator_type COCAINE_UNUSED_(endpoint)) {
+        if(ec == boost::system::errc::success) {
+            try {
+                client.connect(std::move(socket));
+            } catch(const boost::system::system_error& e) {
+                // The socket might already be disconnected by this time.
+                parent->m_asio.post(std::bind(handle, e.code()));
+                return;
+            }
         } else {
             socket = nullptr;
         }
@@ -229,9 +237,10 @@ resolve_t::resolve_t(std::unique_ptr<logging::log_t> log, io_service& asio,
 
     COCAINE_LOG_DEBUG(m_log, "connecting to remote locator, trying: %s", stream.str());
 
-    connect(m_locator, endpoints,
-        std::bind(&resolve_t::resolve_pending, this, std::placeholders::_1)
-    );
+    connect(m_locator, endpoints, std::bind(&resolve_t::resolve_pending,
+        this,
+        std::placeholders::_1
+    ));
 }
 
 void

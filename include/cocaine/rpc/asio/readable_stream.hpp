@@ -62,7 +62,7 @@ public:
     }
 
     void
-    read(message_type& message, handler_type handler) {
+    read(message_type& message, handler_type handle) {
         boost::system::error_code ec;
 
         const size_t
@@ -76,7 +76,7 @@ public:
                 m_rd_offset = bytes_pending;
             }
 
-            return m_channel->get_io_service().post(std::bind(handler, ec));
+            return m_channel->get_io_service().post(std::bind(handle, ec));
         }
 
         if(bytes_pending > m_ring.size() / 2) {
@@ -89,13 +89,13 @@ public:
 
         m_channel->async_read_some(
             boost::asio::buffer(m_ring.data() + m_rd_offset, m_ring.size() - m_rd_offset),
-            std::bind(&readable_stream::fill, this, std::ref(message), handler, _1, _2)
+            std::bind(&readable_stream::fill, this, std::ref(message), handle, _1, _2)
         );
     }
 
 private:
     void
-    fill(message_type& message, handler_type handler, const boost::system::error_code& ec, size_t bytes_read) {
+    fill(message_type& message, handler_type handle, const boost::system::error_code& ec, size_t bytes_read) {
         if(ec) {
             BOOST_ASSERT(!bytes_read);
 
@@ -103,12 +103,12 @@ private:
                 return;
             }
 
-            return m_channel->get_io_service().post(std::bind(handler, ec));
+            return m_channel->get_io_service().post(std::bind(handle, ec));
         }
 
         m_rd_offset += bytes_read;
 
-        read(std::ref(message), handler);
+        read(std::ref(message), handle);
     }
 };
 

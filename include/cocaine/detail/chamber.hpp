@@ -23,28 +23,45 @@
 
 #include "cocaine/common.hpp"
 
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/rolling_mean.hpp>
+
 #include <boost/asio/io_service.hpp>
+#include <boost/asio/deadline_timer.hpp>
 
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/thread/thread.hpp>
 
 namespace cocaine { namespace io {
 
+namespace baf = boost::accumulators;
+
 class chamber_t {
     class named_runnable_t;
+    class stats_periodic_action_t;
+
+    static const unsigned int kCollectionInterval = 2;
 
     const std::string name;
     const std::shared_ptr<boost::asio::io_service> asio;
 
-    // Keeps reactor alive.
-    std::unique_ptr<const boost::asio::io_service::work> work;
+    // Takes resource usage snapshots every kCollectInterval seconds.
+    std::unique_ptr<boost::asio::deadline_timer> cron;
 
     // This thread will run the reactor's event loop until terminated.
     std::unique_ptr<boost::thread> thread;
 
+    // Rolling resource usage mean over last minute.
+    baf::accumulator_set<double, baf::features<baf::tag::rolling_mean>> load;
+
 public:
     chamber_t(const std::string& name, const std::shared_ptr<boost::asio::io_service>& asio);
    ~chamber_t();
+
+    auto
+    load_avg1() const -> double {
+        return baf::rolling_mean(load);
+    }
 };
 
 }} // namespace cocaine::io

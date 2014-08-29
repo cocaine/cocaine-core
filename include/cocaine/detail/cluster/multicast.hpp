@@ -46,7 +46,7 @@ class multicast_t:
     interface& m_locator;
 
     const std::unique_ptr<logging::log_t> m_log;
-    const multicast_config_t m_config;
+    const multicast_config_t m_cfg;
 
     boost::asio::ip::udp::socket m_socket;
     boost::asio::deadline_timer m_timer;

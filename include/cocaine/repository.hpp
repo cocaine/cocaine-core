@@ -23,7 +23,6 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include <typeinfo>
 #include <type_traits>

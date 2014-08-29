@@ -55,5 +55,6 @@
 #include "cocaine/config.hpp"
 #include "cocaine/exceptions.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/memory.hpp"
 
 #endif

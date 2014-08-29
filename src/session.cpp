@@ -88,9 +88,10 @@ session_t::pull_action_t::operator()() {
         return;
     }
 
-    session->ptr->reader->read(message,
-        std::bind(&pull_action_t::finalize, shared_from_this(), std::placeholders::_1)
-    );
+    session->ptr->reader->read(message, std::bind(&pull_action_t::finalize,
+        shared_from_this(),
+        std::placeholders::_1
+    ));
 }
 
 void
@@ -135,9 +136,10 @@ session_t::push_action_t::operator()() {
         return;
     }
 
-    session->ptr->writer->write(message,
-        std::bind(&push_action_t::finalize, shared_from_this(), std::placeholders::_1)
-    );
+    session->ptr->writer->write(message, std::bind(&push_action_t::finalize,
+        shared_from_this(),
+        std::placeholders::_1
+    ));
 }
 
 void
@@ -164,9 +166,7 @@ session_t::discard_action_t::operator()(const boost::system::error_code& ec) {
     auto ptr = channels.synchronize();
 
     for(auto it = ptr->begin(); it != ptr->end(); ++it) {
-        if(it->second->dispatch) {
-            it->second->dispatch->discard(ec);
-        }
+        if(it->second->dispatch) it->second->dispatch->discard(ec);
     }
 
     ptr->clear();
@@ -176,7 +176,7 @@ session_t::discard_action_t::operator()(const boost::system::error_code& ec) {
 
 session_t::session_t(std::unique_ptr<channel<tcp>> ptr_, const dispatch_ptr_t& prototype_):
     ptr(std::move(ptr_)),
-    endpoint(ptr->remote_endpoint()),
+    endpoint(ptr->socket->remote_endpoint()),
     prototype(prototype_),
     max_channel_id(0)
 {
@@ -262,9 +262,9 @@ session_t::pull() {
 
     if(!ptr) return;
 
-    ptr->socket->get_io_service().dispatch(
-        // Use dispatch() instead of a direct call for thread safety.
-        std::bind(&pull_action_t::operator(), std::make_shared<pull_action_t>(shared_from_this())
+    // Use dispatch() instead of a direct call for thread safety.
+    ptr->socket->get_io_service().dispatch(std::bind(&pull_action_t::operator(),
+        std::make_shared<pull_action_t>(shared_from_this())
     ));
 }
 
@@ -274,9 +274,9 @@ session_t::push(encoder_t::message_type&& message) {
 
     if(!ptr) return;
 
-    ptr->socket->get_io_service().dispatch(
-        // Use dispatch() instead of a direct call for thread safety.
-        std::bind(&push_action_t::operator(), std::make_shared<push_action_t>(shared_from_this(), std::move(message))
+    // Use dispatch() instead of a direct call for thread safety.
+    ptr->socket->get_io_service().dispatch(std::bind(&push_action_t::operator(),
+        std::make_shared<push_action_t>(shared_from_this(), std::move(message))
     ));
 }
 

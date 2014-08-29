@@ -35,7 +35,6 @@
 #endif
 
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include <numeric>
 
@@ -322,8 +321,12 @@ config_t::config_t(const std::string& source) {
 
     network.pool = network_config.at("pool", boost::thread::hardware_concurrency() * 2).as_uint();
 
-    boost::asio::io_service service;
-    boost::asio::ip::tcp::resolver resolver(service);
+    if(network.pool <= 0) {
+        throw cocaine::error_t("network I/O pool size must be positive");
+    }
+
+    boost::asio::io_service asio;
+    boost::asio::ip::tcp::resolver resolver(asio);
     boost::asio::ip::tcp::resolver::iterator it, end;
 
     try {
@@ -517,6 +520,8 @@ context_t::~context_t() {
 
     // Destroy the service objects.
     actors.clear();
+
+    COCAINE_LOG_INFO(m_logger, "core has been terminated");
 }
 
 std::unique_ptr<logging::log_t>
@@ -573,7 +578,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
     }
 
     // Fire off the signal to alert concerned subscribers about the service removal event.
-    signals.service.birth(actor);
+    signals.service.exposed(actor);
 }
 
 auto
@@ -605,10 +610,8 @@ context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
         ptr->erase(it);
     }
 
-    const actor_t& actor = *service;
-
     // Fire off the signal to alert concerned subscribers about the service insertion event.
-    signals.service.death(actor);
+    signals.service.removed(*service);
 
     return service;
 }
@@ -621,9 +624,22 @@ context_t::locate(const std::string& name) const -> boost::optional<const actor_
     return boost::optional<const actor_t&>(it != ptr->end(), *it->second);
 }
 
-void
-context_t::attach(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr, const dispatch_ptr_t& dispatch) {
-    m_pool[ptr->native_handle() % m_pool.size()]->attach(ptr, dispatch);
+namespace {
+
+struct utilization_t {
+    typedef std::unique_ptr<execution_unit_t> value_type;
+
+    bool
+    operator()(const value_type& lhs, const value_type& rhs) const {
+        return lhs->utilization() < rhs->utilization();
+    }
+};
+
+} // namespace
+
+auto
+context_t::engine() -> execution_unit_t& {
+    return **std::min_element(m_pool.begin(), m_pool.end(), utilization_t());
 }
 
 void
@@ -632,7 +648,7 @@ context_t::bootstrap() {
         logging::keyword::source() = "bootstrap"
     }));
 
-    COCAINE_LOG_INFO(m_logger, "bootstrapping");
+    COCAINE_LOG_INFO(m_logger, "initializing the core");
 
     m_repository = std::make_unique<api::repository_t>(*m_logger);
 
@@ -654,6 +670,8 @@ context_t::bootstrap() {
 
     COCAINE_LOG_INFO(m_logger, "starting %d service(s)", config.services.size());
 
+    std::vector<std::string> errored;
+
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
         blackhole::scoped_attributes_t attributes(*m_logger, {
             blackhole::attribute::make("service", it->first)
@@ -673,10 +691,19 @@ context_t::bootstrap() {
             )));
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(m_logger, "unable to initialize service - %s", e.what());
+            errored.push_back(it->first);
         } catch(...) {
             COCAINE_LOG_ERROR(m_logger, "unable to initialize service");
+            errored.push_back(it->first);
         }
     }
 
-    COCAINE_LOG_INFO(m_logger, "bootstrapping has been finished");
+    if(!errored.empty()) {
+        std::ostringstream stream;
+        std::ostream_iterator<std::string> builder(stream, ", ");
+
+        std::copy(errored.begin(), errored.end(), builder);
+
+        COCAINE_LOG_ERROR(m_logger, "coudn't start %d service(s): %s", errored.size(), stream.str());
+    }
 }

@@ -30,8 +30,6 @@
 
 #include <queue>
 
-#include <boost/asio/ip/tcp.hpp>
-
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/optional.hpp>
 #include <boost/signals2/signal.hpp>
@@ -164,8 +162,8 @@ public:
         boost::signals2::signal<void()> shutdown;
 
         struct {
-            boost::signals2::signal<void(const actor_t& service)> birth;
-            boost::signals2::signal<void(const actor_t& service)> death;
+            boost::signals2::signal<void(const actor_t& service)> exposed;
+            boost::signals2::signal<void(const actor_t& service)> removed;
         } service;
     } signals;
 
@@ -205,8 +203,8 @@ public:
 
     // I/O
 
-    void
-    attach(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
+    auto
+    engine() -> execution_unit_t&;
 
 private:
     void

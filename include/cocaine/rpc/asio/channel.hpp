@@ -52,15 +52,6 @@ struct channel {
         }
     }
 
-    auto
-    remote_endpoint() const -> typename protocol_type::endpoint {
-        try {
-            return socket->remote_endpoint();
-        } catch(const boost::system::system_error& e) {
-            return typename protocol_type::endpoint();
-        }
-    }
-
     // The underlying shared socket object.
     const std::shared_ptr<socket_type> socket;
 

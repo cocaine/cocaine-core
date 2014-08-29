@@ -32,7 +32,6 @@
 #include "cocaine/idl/streaming.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"
@@ -63,8 +62,8 @@ class locator_t::remote_client_t:
     public dispatch<event_traits<locator::connect>::upstream_type>,
     public std::enable_shared_from_this<remote_client_t>
 {
-    locator_t*  impl;
-    std::string uuid;
+    locator_t * const impl;
+    const std::string uuid;
 
 public:
     remote_client_t(locator_t* impl_, const std::string& uuid_):
@@ -95,26 +94,40 @@ private:
 
 void
 locator_t::remote_client_t::on_link(const boost::system::error_code& ec) {
+    scoped_attributes_t attributes(*impl->m_log, {
+        attribute::make("uuid", uuid)
+    });
+
     if(ec) {
         COCAINE_LOG_ERROR(impl->m_log, "unable to connect to remote node: [%d] %s",
             ec.value(), ec.message()
-        )("uuid", uuid);
+        );
 
+        // Safe to erase directly — client is detached.
         impl->m_remotes.erase(uuid);
 
         return;
     }
 
-    impl->m_remotes[uuid]->invoke<locator::connect>(shared_from_this(), impl->m_uuid);
+    if(!impl->m_remotes.count(uuid)) {
+        COCAINE_LOG_ERROR(impl->m_log, "client has been dropped while connecting to remote node");
+        return;
+    }
+
+    auto& client = impl->m_remotes.at(uuid);
+
+    COCAINE_LOG_DEBUG(impl->m_log, "connected to remote node via %s", client.session().remote_endpoint());
+
+    client.invoke<locator::connect>(shared_from_this(), impl->m_uuid);
 }
 
 void
 locator_t::remote_client_t::discard(const boost::system::error_code& ec) const {
-    COCAINE_LOG_ERROR(impl->m_log, "remote node has unexpectedly disappeared: [%d] %s",
+    COCAINE_LOG_ERROR(impl->m_log, "remote node has been unexpectedly detached: [%d] %s",
         ec.value(), ec.message()
     )("uuid", uuid);
 
-    impl->m_asio.post(std::bind(&locator_t::drop_node, impl, uuid));
+    impl->drop_node(uuid);
 }
 
 void
@@ -147,7 +160,7 @@ locator_t::remote_client_t::on_shutdown() {
         "uuid", uuid
     );
 
-    impl->m_asio.post(std::bind(&locator_t::drop_node, impl, uuid));
+    impl->drop_node(uuid);
 }
 
 class locator_t::cleanup_action_t {
@@ -165,7 +178,7 @@ public:
 void
 locator_t::cleanup_action_t::operator()() {
     if(!impl->m_remotes.empty()) {
-        COCAINE_LOG_DEBUG(impl->m_log, "cleaning up %d remote node clients", impl->m_remotes.size());
+        COCAINE_LOG_DEBUG(impl->m_log, "cleaning up %d remote node client(s)", impl->m_remotes.size());
 
         // Disconnect all the remote nodes.
         impl->m_remotes.clear();
@@ -239,8 +252,8 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     }
 
     // Connect service lifecycle signals.
-    context.signals.service.birth.connect(std::bind(&locator_t::on_service, this, _1));
-    context.signals.service.death.connect(std::bind(&locator_t::on_service, this, _1));
+    context.signals.service.exposed.connect(std::bind(&locator_t::on_service, this, _1));
+    context.signals.service.removed.connect(std::bind(&locator_t::on_service, this, _1));
 
     // Connect context lifecycle signals.
     context.signals.shutdown.connect(std::bind(&locator_t::on_context_shutdown, this));
@@ -270,13 +283,10 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         "uuid", uuid
     );
 
-    auto client = std::make_shared<api::client<locator_tag>>();
-
-    m_resolve->connect(*client, endpoints, std::bind(&remote_client_t::on_link,
-        std::make_shared<remote_client_t>(this, uuid), std::placeholders::_1
+    m_resolve->connect(m_remotes[uuid], endpoints, std::bind(&remote_client_t::on_link,
+        std::make_shared<remote_client_t>(this, uuid),
+        std::placeholders::_1
     ));
-
-    m_remotes[uuid] = client;
 }
 
 void
@@ -387,7 +397,7 @@ locator_t::on_cluster() const -> results::cluster {
     results::cluster result;
 
     for(auto it = m_remotes.begin(); it != m_remotes.end(); ++it) {
-        result[it->first] = it->second->session().remote_endpoint();
+        result[it->first] = it->second.session().remote_endpoint();
     }
 
     return result;
@@ -409,7 +419,7 @@ locator_t::on_service(const actor_t& actor) {
     };
 
     if(!ptr->streams.empty()) {
-        COCAINE_LOG_DEBUG(m_log, "synchronizing service state with %d remote nodes", ptr->streams.size())(
+        COCAINE_LOG_DEBUG(m_log, "synchronizing service state with %d remote node(s)", ptr->streams.size())(
             "service", actor.prototype().name()
         );
 
@@ -434,7 +444,7 @@ locator_t::on_context_shutdown() {
     auto ptr = m_locals.synchronize();
 
     if(!ptr->streams.empty()) {
-        COCAINE_LOG_DEBUG(m_log, "closing %d remote node synchronization streams", ptr->streams.size());
+        COCAINE_LOG_DEBUG(m_log, "closing %d remote node synchronization stream(s)", ptr->streams.size());
 
         for(auto it = ptr->streams.begin(); it != ptr->streams.end(); ++it) {
             it->second.close();

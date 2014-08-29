@@ -22,7 +22,6 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include "cocaine/detail/actor.hpp"
 
@@ -98,23 +97,23 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
     m_context(context),
     m_locator(locator),
     m_log(context.log(name)),
-    m_config(args.to<multicast_config_t>()),
+    m_cfg(args.to<multicast_config_t>()),
     m_socket(locator.asio()),
     m_timer(locator.asio())
 {
-    m_socket.open(m_config.endpoint.protocol());
+    m_socket.open(m_cfg.endpoint.protocol());
     m_socket.set_option(socket_base::reuse_address(true));
 
-    if(m_config.endpoint.address().is_v4()) {
-        m_socket.bind(udp::endpoint(address_v4::any(), m_config.endpoint.port()));
+    if(m_cfg.endpoint.address().is_v4()) {
+        m_socket.bind(udp::endpoint(address_v4::any(), m_cfg.endpoint.port()));
     } else {
-        m_socket.bind(udp::endpoint(address_v6::any(), m_config.endpoint.port()));
+        m_socket.bind(udp::endpoint(address_v6::any(), m_cfg.endpoint.port()));
     }
 
     if(args.as_object().count("interface")) {
         auto interface = args.as_object().at("interface");
 
-        if(m_config.endpoint.address().is_v4()) {
+        if(m_cfg.endpoint.address().is_v4()) {
             m_socket.set_option(multicast::outbound_interface(interface.to<address>().to_v4()));
         } else {
             m_socket.set_option(multicast::outbound_interface(interface.as_uint()));
@@ -124,11 +123,11 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
     m_socket.set_option(multicast::enable_loopback(args.as_object().at("loopback", false).as_bool()));
     m_socket.set_option(multicast::hops(args.as_object().at("hops", 1u).as_uint()));
 
-    COCAINE_LOG_INFO(m_log, "joining multicast group '%s'", m_config.endpoint)(
+    COCAINE_LOG_INFO(m_log, "joining multicast group '%s'", m_cfg.endpoint)(
         "uuid", m_locator.uuid()
     );
 
-    m_socket.set_option(multicast::join_group(m_config.endpoint.address()));
+    m_socket.set_option(multicast::join_group(m_cfg.endpoint.address()));
 
     auto announce = std::make_shared<announce_t>();
 
@@ -137,7 +136,7 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
         std::bind(&multicast_t::on_receive, this, std::placeholders::_1, std::placeholders::_2, announce)
     );
 
-    m_timer.expires_from_now(m_config.interval);
+    m_timer.expires_from_now(m_cfg.interval);
     m_timer.async_wait(std::bind(&multicast_t::on_publish, this, std::placeholders::_1));
 }
 
@@ -181,7 +180,7 @@ multicast_t::on_publish(const boost::system::error_code& ec) {
         ));
 
         try {
-            m_socket.send_to(buffer(target.data(), target.size()), m_config.endpoint);
+            m_socket.send_to(buffer(target.data(), target.size()), m_cfg.endpoint);
         } catch(const boost::system::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: [%d] %s",
                 e.code().value(), e.code().message()
@@ -191,7 +190,7 @@ multicast_t::on_publish(const boost::system::error_code& ec) {
         COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: node is not reachable");
     }
 
-    m_timer.expires_from_now(m_config.interval);
+    m_timer.expires_from_now(m_cfg.interval);
     m_timer.async_wait(std::bind(&multicast_t::on_publish, this, std::placeholders::_1));
 }
 
@@ -242,7 +241,7 @@ multicast_t::on_receive(const boost::system::error_code& ec, size_t bytes_receiv
             m_locator.link_node(uuid, endpoints);
         }
 
-        expiration->expires_from_now(m_config.interval * 3);
+        expiration->expires_from_now(m_cfg.interval * 3);
         expiration->async_wait(std::bind(&multicast_t::on_expired, this, std::placeholders::_1, uuid));
     }
 

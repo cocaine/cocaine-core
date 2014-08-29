@@ -22,7 +22,6 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include "cocaine/detail/chamber.hpp"
 
@@ -56,13 +55,12 @@ execution_unit_t::~execution_unit_t() {
 
 void
 execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
-    m_asio->post(std::bind(&execution_unit_t::attach_impl, this, ptr, dispatch));
+    m_asio->dispatch(std::bind(&execution_unit_t::attach_impl, this, ptr, dispatch));
 }
 
-void
-execution_unit_t::detach(int fd) {
-    m_sessions[fd]->detach();
-    m_sessions.erase(fd);
+double
+execution_unit_t::utilization() const {
+    return m_chamber->load_avg1();
 }
 
 void
@@ -79,15 +77,28 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
         fd
     ));
 
-    m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
+    try {
+        m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
+    } catch(const boost::system::system_error& e) {
+        COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session");
+        return;
+    }
 
     // Bind the shutdown signals.
-    m_sessions[fd]->signals.shutdown.connect(
-        std::bind(&execution_unit_t::on_shutdown, this, std::placeholders::_1, fd)
-    );
+    m_sessions[fd]->signals.shutdown.connect(std::bind(&execution_unit_t::on_shutdown,
+        this,
+        std::placeholders::_1,
+        fd
+    ));
 
     // Start the message dispatching.
     m_sessions[fd]->pull();
+}
+
+void
+execution_unit_t::detach(int fd) {
+    m_sessions[fd]->detach();
+    m_sessions.erase(fd);
 }
 
 void

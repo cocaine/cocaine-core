@@ -37,7 +37,6 @@
 #include "cocaine/idl/node.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/dispatch.hpp"
@@ -255,13 +254,17 @@ public:
 
     void
     operator()() {
-        channel.writer->write(request,
-            std::bind(&engine_action_t::finalize, this, std::placeholders::_1, phases::request)
-        );
+        channel.writer->write(request, std::bind(&engine_action_t::finalize,
+            this,
+            std::placeholders::_1,
+            phases::request
+        ));
 
-        channel.reader->read(message,
-            std::bind(&engine_action_t::finalize, this, std::placeholders::_1, phases::message)
-        );
+        channel.reader->read(message, std::bind(&engine_action_t::finalize,
+            this,
+            std::placeholders::_1,
+            phases::message
+        ));
     }
 
     template<class Event>
@@ -310,7 +313,7 @@ app_t::pause() {
     );
 
     // Start the terminate action.
-    m_asio.dispatch(std::bind(&call_action_t::operator(), action));
+    m_asio.post(std::bind(&call_action_t::operator(), action));
 
     try {
         m_asio.run();
@@ -344,7 +347,7 @@ app_t::info() const {
     boost::system::error_code ec;
 
     // Start the info action.
-    m_asio.dispatch(std::bind(&call_action_t::operator(), action));
+    m_asio.post(std::bind(&call_action_t::operator(), action));
 
     try {
         // Blocks until either the response cancels the timer or timeout happens.

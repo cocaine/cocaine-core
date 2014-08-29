@@ -53,7 +53,7 @@ class dispatch_category_t:
     message(int code) const -> std::string {
         switch(code) {
           case dispatch_errors::uncaught_error:
-            return "invocation has failed";
+            return "uncaught invocation exception";
 
           case dispatch_errors::resource_error:
             return "no resources available to complete invocation";

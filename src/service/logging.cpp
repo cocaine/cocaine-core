@@ -22,7 +22,6 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include "cocaine/traits/attributes.hpp"
 #include "cocaine/traits/enum.hpp"

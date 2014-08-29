@@ -24,11 +24,15 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include "cocaine/detail/chamber.hpp"
+#include "cocaine/detail/engine.hpp"
 
 #include "cocaine/rpc/dispatch.hpp"
+
+#include <blackhole/scoped_attributes.hpp>
+
+using namespace blackhole;
 
 using namespace boost::asio;
 using namespace boost::asio::ip;
@@ -56,31 +60,37 @@ public:
 
     void
     operator()() {
-        socket.async_accept(peer, endpoint,
-            std::bind(&accept_action_t::finalize, shared_from_this(), std::placeholders::_1)
-        );
+        socket.async_accept(peer, endpoint, std::bind(&accept_action_t::finalize,
+            shared_from_this(),
+            std::placeholders::_1
+        ));
     }
 
 private:
     void
     finalize(const boost::system::error_code& ec) {
+        scoped_attributes_t attributes(*impl->m_log, {
+            attribute::make("service", impl->m_prototype->name())
+        });
+
         if(ec) {
             if(ec == boost::asio::error::operation_aborted) {
                 return;
             }
 
-            COCAINE_LOG_ERROR(impl->m_log, "unable to accept client connection: %s", ec)(
-                "service", impl->m_prototype->name()
+            COCAINE_LOG_ERROR(impl->m_log, "unable to accept client connection: [%d] %s",
+                ec.value(), ec.message()
             );
         } else {
-            COCAINE_LOG_DEBUG(impl->m_log, "accepted client connection")(
-                "endpoint", endpoint,
-                "service", impl->m_prototype->name()
-            );
+            execution_unit_t& engine = impl->m_context.engine();
 
-            // This won't attach the socket immediately, instead it will post a new action to the designated
-            // unit's event loop queue. It could probably be done with some locking, but whatever.
-            impl->m_context.attach(std::make_shared<tcp::socket>(std::move(peer)), impl->m_prototype);
+            COCAINE_LOG_DEBUG(impl->m_log, "attaching client to engine with utilization of %.2f%%",
+                engine.utilization() * 100
+            )("endpoint", endpoint);
+
+            // This won't attach the socket immediately, instead it will post a new action to the
+            // designated unit's event loop queue.
+            engine.attach(std::make_shared<tcp::socket>(std::move(peer)), impl->m_prototype);
         }
 
         operator()();
@@ -128,11 +138,12 @@ actor_t::run(std::vector<tcp::endpoint> endpoints) {
         );
 
         m_acceptors.emplace_back(*m_asio, *it);
+    }
 
-        m_asio->dispatch(std::bind(&accept_action_t::operator(), std::make_shared<accept_action_t>(
-            this,
-            m_acceptors.back()
-        )));
+    for(auto it = m_acceptors.begin(); it != m_acceptors.end(); ++it) {
+        m_asio->post(std::bind(&accept_action_t::operator(),
+            std::make_shared<accept_action_t>(this, *it)
+        ));
     }
 
     m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_asio);
@@ -156,12 +167,17 @@ actor_t::endpoints() const -> std::vector<tcp::endpoint> {
         return std::vector<tcp::endpoint>();
     }
 
-    tcp::resolver::iterator it, end;
+    tcp::resolver::query::flags flags =
+        tcp::resolver::query::numeric_service
+      | tcp::resolver::query::address_configured;
+
+    tcp::resolver::iterator begin, end;
 
     try {
-        it = tcp::resolver(*m_asio).resolve(tcp::resolver::query(
+        begin = tcp::resolver(*m_asio).resolve(tcp::resolver::query(
             m_context.config.network.hostname,
-            boost::lexical_cast<std::string>(m_acceptors.front().local_endpoint().port())
+            std::to_string(m_acceptors.front().local_endpoint().port()),
+            flags
         ));
     } catch(const boost::system::system_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: [%d] %s",
@@ -169,7 +185,7 @@ actor_t::endpoints() const -> std::vector<tcp::endpoint> {
         )("service", m_prototype->name());
     }
 
-    return std::vector<tcp::endpoint>(it, end);
+    return std::vector<tcp::endpoint>(begin, end);
 }
 
 auto

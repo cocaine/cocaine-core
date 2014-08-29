@@ -72,7 +72,7 @@ class locator_t:
 
     // Remote sessions indexed by uuid. The uuid is required to disambiguate between different
     // instances on the same host, even if the instance was restarted on the same port.
-    std::map<std::string, std::shared_ptr<api::client<io::locator_tag>>> m_remotes;
+    std::map<std::string, api::client<io::locator_tag>> m_remotes;
 
     struct locals_t {
         results::connect snapshot;
