@@ -210,8 +210,12 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
 
     try {
         m_engine = std::make_shared<engine_t>(m_context, *m_manifest, *m_profile, std::move(lhs));
-    } catch(const boost::system::system_error& e) {
-        throw cocaine::error_t("unable to create engine - [%d] %s", e.code().value(), e.code().message());
+    } catch(...) {
+#if defined(HAVE_GCC48)
+        std::throw_with_nested(cocaine::error_t("unable to create engine"));
+#else
+        throw cocaine::error_t("unable to create engine");
+#endif
     }
 }
 
@@ -271,7 +275,7 @@ public:
     auto
     response() const -> typename basic_slot<Event>::tuple_type {
         if(message.type() != event_traits<Event>::id) {
-            throw cocaine::error_t("unexpected engine response - %d", message.type());
+            throw cocaine::error_t("unexpected engine response type - %d", message.type());
         }
 
         typename basic_slot<Event>::tuple_type tuple;
@@ -287,7 +291,11 @@ private:
     void
     finalize(const boost::system::error_code& ec, phases phase) {
         if(ec) {
-            throw cocaine::error_t("unable to access engine - [%d] %s", ec.value(), ec.message());
+#if defined(HAVE_GCC48)
+            std::throw_with_nested(cocaine::error_t("unable to access engine"));
+#else
+            throw cocaine::error_t("unable to access engine");
+#endif
         }
 
         if(phase == phases::message) {

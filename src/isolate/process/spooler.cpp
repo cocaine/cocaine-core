@@ -41,7 +41,11 @@ process_t::spool() {
     try {
         blob = storage->get<std::string>("apps", m_name);
     } catch(const storage_error_t& e) {
-        throw cocaine::error_t("app '%s' is not available - %s", m_name, e.what());
+#if defined(HAVE_GCC48)
+        std::throw_with_nested(cocaine::error_t("app '%s' is not available", m_name));
+#else
+        throw cocaine::error_t("app '%s' is not available", m_name);
+#endif
     }
 
     try {
@@ -53,7 +57,11 @@ process_t::spool() {
         archive.deploy(m_working_directory.string());
 #endif
     } catch(const archive_error_t& e) {
-        throw cocaine::error_t("app '%s' is not available - %s", m_name, e.what());
+#if defined(HAVE_GCC48)
+        std::throw_with_nested(cocaine::error_t("app '%s' is not available", m_name));
+#else
+        throw cocaine::error_t("app '%s' is not available", m_name);
+#endif
     }
 }
 

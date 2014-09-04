@@ -128,10 +128,12 @@ struct blocking_slot<Event, terminal_slot_tag>:
     operator()(tuple_type&& args, upstream_type&& /* upstream */) {
         try {
             this->call(std::move(args));
-        } catch(const boost::system::system_error& e) {
-            throw cocaine::error_t("error while calling terminal slot - [%d] %s", e.code().value(), e.code().message());
-        } catch(const std::exception& e) {
-            throw cocaine::error_t("error while calling terminal slot - %s", e.what());
+        } catch(...) {
+#if defined(HAVE_GCC48)
+            std::throw_with_nested(cocaine::error_t("error while calling terminal slot"));
+#else
+            throw cocaine::error_t("error while calling terminal slot");
+#endif
         }
 
         if(is_recursive<Event>::value) {

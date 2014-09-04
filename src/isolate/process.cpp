@@ -123,9 +123,31 @@ private:
     cgroup_controller* impl;
     const char* parameter;
 };
+
+struct cgroup_category_t:
+    public boost::system::error_category
+{
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.isolate.cgroups";
+    }
+
+    virtual
+    auto
+    message(int code) const -> std::string {
+        return cgroup_strerror(code);
+    }
+};
+
+auto
+cgroup_category() -> const boost::system::error_category& {
+    static cgroup_category_t instance;
+    return instance;
+}
 #endif
 
-}
+} // namespace
 
 process_t::process_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
@@ -138,7 +160,9 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     int rv = 0;
 
     if((rv = cgroup_init()) != 0) {
-        throw cocaine::error_t("unable to initialize cgroups - %s", cgroup_strerror(rv));
+        throw boost::system::system_error(rv, cgroup_category_t(),
+            "unable to initialize cgroups"
+        );
     }
 
     m_cgroup = cgroup_new_cgroup(m_name.c_str());
@@ -154,27 +178,26 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
         cgroup_controller* impl = cgroup_add_controller(m_cgroup, type->first.c_str());
 
         for(auto it = type->second.as_object().begin(); it != type->second.as_object().end(); ++it) {
+            COCAINE_LOG_INFO(m_log, "setting cgroup controller '%s' parameter '%s' to '%s'",
+                type->first, it->first, boost::lexical_cast<std::string>(it->second)
+            );
+
             try {
                 it->second.apply(cgroup_configurator_t(impl, it->first.c_str()));
             } catch(const cocaine::error_t& e) {
                 COCAINE_LOG_ERROR(m_log, "unable to set cgroup controller '%s' parameter '%s' - %s",
-                    type->first,
-                    it->first,
-                    std::string(e.what())
+                    type->first, it->first, e.what()
                 );
             }
-
-            COCAINE_LOG_INFO(m_log, "setting cgroup controller '%s' parameter '%s' to '%s'",
-                type->first,
-                it->first,
-                boost::lexical_cast<std::string>(it->second)
-            );
         }
     }
 
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
         cgroup_free(&m_cgroup);
-        throw cocaine::error_t("unable to create cgroup - %s", cgroup_strerror(rv));
+
+        throw boost::system::system_error(rv, cgroup_category_t(),
+            "unable to create cgroup"
+        );
     }
 #endif
 }
@@ -203,7 +226,9 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
     std::array<int, 2> pipes;
 
     if(::pipe(pipes.data()) != 0) {
-        throw boost::system::system_error(errno, boost::system::system_category(), "unable to create an output pipe");
+        throw boost::system::system_error(errno, boost::system::system_category(),
+            "unable to create an output pipe"
+        );
     }
 
     for(auto it = pipes.begin(); it != pipes.end(); ++it) {
@@ -214,7 +239,10 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
 
     if(pid < 0) {
         std::for_each(pipes.begin(), pipes.end(), ::close);
-        throw boost::system::system_error(errno, boost::system::system_category(), "unable to fork");
+
+        throw boost::system::system_error(errno, boost::system::system_category(),
+            "unable to fork"
+        );
     }
 
     ::close(pipes[pid > 0]);

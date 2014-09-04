@@ -228,7 +228,11 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
             m_routing->add_group(*it, storage->get<group_t>("groups", *it));
         }
     } catch(const storage_error_t& e) {
-        throw cocaine::error_t("unable to initialize routing groups - %s", e.what());
+#if defined(HAVE_GCC48)
+        std::throw_with_nested(cocaine::error_t("unable to initialize routing groups"));
+#else
+        throw cocaine::error_t("unable to initialize routing groups");
+#endif
     }
 
     if(root.as_object().count("cluster")) {

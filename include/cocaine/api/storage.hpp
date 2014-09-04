@@ -94,13 +94,13 @@ storage_t::get(const std::string& collection, const std::string& key) {
     try {
         msgpack::unpack(&unpacked, blob.data(), blob.size());
     } catch(const msgpack::unpack_error& e) {
-        throw storage_error_t("corrupted object");
+        throw storage_error_t("object is corrupted");
     }
 
     try {
         io::type_traits<T>::unpack(unpacked.get(), result);
     } catch(const msgpack::type_error& e) {
-        throw storage_error_t("object type mismatch");
+        throw storage_error_t("invalid object type");
     }
 
     return result;

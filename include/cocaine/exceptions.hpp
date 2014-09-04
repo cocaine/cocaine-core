@@ -100,8 +100,8 @@ struct error_t:
     }
 
     virtual
-    const char*
-    what() const throw() {
+    auto
+    what() const throw() -> const char* {
         return m_message.c_str();
     }
 

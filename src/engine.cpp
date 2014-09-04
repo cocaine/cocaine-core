@@ -80,7 +80,7 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
     try {
         m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
     } catch(const boost::system::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session");
+        COCAINE_LOG_ERROR(m_log, "remote node has disappeared while creating session");
         return;
     }
 

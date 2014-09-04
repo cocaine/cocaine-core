@@ -77,7 +77,7 @@ cached<T>::cached(context_t& context, const std::string& collection, const std::
         try {
             cache->put(collection, name, object(), std::vector<std::string>());
         } catch(const storage_error_t& e) {
-            throw storage_error_t("unable to cache object '%s' in '%s' - %s", name, collection, e.what());
+            // Ignore.
         }
 
         return;

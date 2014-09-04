@@ -178,8 +178,10 @@ public:
         #endif
 
         if(source.type != msgpack::type::ARRAY) {
+            // TODO: Proper exception type.
             throw cocaine::error_t("sequence type mismatch");
         } else if(source.via.array.size < minimal) {
+            // TODO: Proper exception type.
             throw cocaine::error_t("sequence length mismatch - expected at least %d, got %d",
                 minimal,
                 source.via.array.size

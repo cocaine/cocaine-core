@@ -270,27 +270,27 @@ template<class Tag>
 template<class Visitor>
 typename Visitor::result_type
 dispatch<Tag>::visit(int id, const Visitor& visitor) const {
-    typename slot_map_t::const_iterator lb, ub;
+    typename slot_map_t::mapped_type slot;
 
-    std::tie(lb, ub) = m_slots->equal_range(id);
+    {
+        auto ptr = m_slots.synchronize();
 
-    if(lb == ub) {
-        throw cocaine::error_t("unbound type %d slot", id);
+        typename slot_map_t::const_iterator lb, ub;
+
+        // NOTE: Using equal_range() here instead of find() to check for slot existence and get the
+        // slot pointer in one call instead of two.
+        std::tie(lb, ub) = ptr->equal_range(id);
+
+        if(lb == ub) {
+            throw cocaine::error_t("unbound type %d slot", id);
+        }
+
+        // NOTE: The slot pointer is copied here so that the handling code could unregister the slot
+        // via dispatch<T>::forget() without pulling the object from underneath itself.
+        slot = lb->second;
     }
 
-    // NOTE: The slot pointer is copied here so that the handling code could unregister the slot via
-    // dispatch<T>::forget() without pulling the object from underneath itself.
-    typename slot_map_t::mapped_type slot = lb->second;
-
-    try {
-        return boost::apply_visitor(visitor, slot);
-    } catch(const std::exception& e) {
-        // This happens only when the underlying slot has miserably failed to manage its exceptions.
-        // In such case, the client is disconnected to prevent any further damage.
-        throw cocaine::error_t("unable to invoke type %d slot - %s", id, e.what());
-    } catch(...) {
-        throw cocaine::error_t("unable to invoke type %d slot", id);
-    }
+    return boost::apply_visitor(visitor, slot);
 }
 
 } // namespace cocaine

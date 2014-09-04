@@ -103,6 +103,9 @@ session_t::pull_action_t::finalize(const boost::system::error_code& ec) {
     try {
         session->invoke(message);
     } catch(...) {
+        // TODO: Show the actual error message.
+        // This happens only when the underlying slot has miserably failed to manage its exceptions.
+        // In such case, the client is disconnected to prevent any further damage.
         return session->signals.shutdown(error::uncaught_error);
     }
 

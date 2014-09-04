@@ -138,10 +138,12 @@ repository_t::open(const std::string& target) {
     if(initialize.ptr) {
         try {
             initialize.call(*this);
-        } catch(const std::exception& e) {
-            throw repository_error_t("unable to initialize '%s' - %s", target, e.what());
         } catch(...) {
-            throw repository_error_t("unable to initialize '%s'", target);
+#if defined(HAVE_GCC48)
+           std::throw_with_nested(repository_error_t("unable to initialize '%s'", target));
+#else
+           throw repository_error_t("unable to initialize '%s'", target);
+#endif
         }
     } else {
         throw repository_error_t("unable to initialize '%s' - initialize() is missing", target);
