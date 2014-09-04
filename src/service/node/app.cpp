@@ -57,6 +57,7 @@ using namespace cocaine::engine;
 using namespace cocaine::io;
 
 namespace fs = boost::filesystem;
+namespace ph = std::placeholders;
 
 namespace {
 
@@ -72,10 +73,8 @@ public:
     {
         typedef io::protocol<event_traits<app::enqueue>::dispatch_type>::scope protocol;
 
-        using namespace std::placeholders;
-
-        on<protocol::chunk>(std::bind(&streaming_service_t::write, this, _1));
-        on<protocol::error>(std::bind(&streaming_service_t::error, this, _1, _2));
+        on<protocol::chunk>(std::bind(&streaming_service_t::write, this, ph::_1));
+        on<protocol::error>(std::bind(&streaming_service_t::error, this, ph::_1, ph::_2));
         on<protocol::choke>(std::bind(&streaming_service_t::close, this));
     }
 
@@ -118,7 +117,7 @@ private:
         boost::optional<std::shared_ptr<const dispatch_type>>
         operator()(tuple_type&& args, upstream_type&& upstream) {
             return tuple::invoke(
-                std::bind(&app_service_t::enqueue, impl, std::ref(upstream), std::placeholders::_1, std::placeholders::_2),
+                std::bind(&app_service_t::enqueue, impl, std::ref(upstream), ph::_1, ph::_2),
                 std::move(args)
             );
         }
@@ -260,13 +259,13 @@ public:
     operator()() {
         channel.writer->write(request, std::bind(&engine_action_t::finalize,
             this,
-            std::placeholders::_1,
+            ph::_1,
             phases::request
         ));
 
         channel.reader->read(message, std::bind(&engine_action_t::finalize,
             this,
-            std::placeholders::_1,
+            ph::_1,
             phases::message
         ));
     }
@@ -292,7 +291,11 @@ private:
     finalize(const boost::system::error_code& ec, phases phase) {
         if(ec) {
 #if defined(HAVE_GCC48)
-            std::throw_with_nested(cocaine::error_t("unable to access engine"));
+            try {
+                throw boost::system::system_error(ec);
+            } catch(...) {
+                std::throw_with_nested(cocaine::error_t("unable to access engine"));
+            }
 #else
             throw cocaine::error_t("unable to access engine");
 #endif

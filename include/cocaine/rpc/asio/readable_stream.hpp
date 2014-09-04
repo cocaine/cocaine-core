@@ -32,8 +32,12 @@
 
 namespace cocaine { namespace io {
 
+namespace ph = std::placeholders;
+
 template<class Protocol, class Decoder>
-class readable_stream {
+class readable_stream:
+    public std::enable_shared_from_this<readable_stream<Protocol, Decoder>>
+{
     COCAINE_DECLARE_NONCOPYABLE(readable_stream)
 
     static const size_t kInitialBufferSize = 65536;
@@ -85,11 +89,9 @@ public:
             m_ring.resize(m_ring.size() * 2);
         }
 
-        using namespace std::placeholders;
-
         m_channel->async_read_some(
             boost::asio::buffer(m_ring.data() + m_rd_offset, m_ring.size() - m_rd_offset),
-            std::bind(&readable_stream::fill, this, std::ref(message), handle, _1, _2)
+            std::bind(&readable_stream::fill, this->shared_from_this(), std::ref(message), handle, ph::_1, ph::_2)
         );
     }
 

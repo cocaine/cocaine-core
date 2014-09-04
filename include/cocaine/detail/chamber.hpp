@@ -22,6 +22,7 @@
 #define COCAINE_CHAMBER_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/locked_ptr.hpp"
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/rolling_mean.hpp>
@@ -51,8 +52,13 @@ class chamber_t {
     // This thread will run the reactor's event loop until terminated.
     std::unique_ptr<boost::thread> thread;
 
+    typedef baf::accumulator_set<
+        double,
+        baf::features<baf::tag::rolling_mean>
+    > load_average_t;
+
     // Rolling resource usage mean over last minute.
-    baf::accumulator_set<double, baf::features<baf::tag::rolling_mean>> load;
+    synchronized<load_average_t> load_average;
 
 public:
     chamber_t(const std::string& name, const std::shared_ptr<boost::asio::io_service>& asio);
@@ -60,7 +66,7 @@ public:
 
     auto
     load_avg1() const -> double {
-        return baf::rolling_mean(load);
+        return baf::rolling_mean(*load_average.synchronize());
     }
 };
 

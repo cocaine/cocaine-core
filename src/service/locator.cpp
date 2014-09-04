@@ -50,7 +50,6 @@ using namespace blackhole;
 using namespace boost::asio;
 using namespace boost::asio::ip;
 
-using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
@@ -197,7 +196,7 @@ locator_t::cleanup_action_t::operator()() {
 // Locator
 
 locator_t::locator_t(context_t& context, io_service& asio, const std::string& name, const dynamic_t& root):
-    api::service_t(context, asio, name, root),
+    category_type(context, asio, name, root),
     dispatch<locator_tag>(name),
     m_context(context),
     m_log(context.log(name)),

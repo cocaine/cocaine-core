@@ -32,8 +32,12 @@
 
 namespace cocaine { namespace io {
 
+namespace ph = std::placeholders;
+
 template<class Protocol, class Encoder>
-class writable_stream {
+class writable_stream:
+    public std::enable_shared_from_this<writable_stream<Protocol, Encoder>>
+{
     COCAINE_DECLARE_NONCOPYABLE(writable_stream)
 
     typedef boost::asio::basic_stream_socket<Protocol> channel_type;
@@ -87,7 +91,7 @@ public:
 
         m_channel->async_write_some(
             m_messages,
-            std::bind(&writable_stream::flush, this, std::placeholders::_1, std::placeholders::_2)
+            std::bind(&writable_stream::flush, this->shared_from_this(), ph::_1, ph::_2)
         );
     }
 
@@ -137,7 +141,7 @@ private:
 
         m_channel->async_write_some(
             m_messages,
-            std::bind(&writable_stream::flush, this, std::placeholders::_1, std::placeholders::_2)
+            std::bind(&writable_stream::flush, this->shared_from_this(), ph::_1, ph::_2)
         );
     }
 };

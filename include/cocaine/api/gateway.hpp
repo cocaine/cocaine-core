@@ -46,7 +46,7 @@ struct gateway_t {
 
     virtual
     void
-    consume(const std::string& uuid, const std::string& name, const metadata_t& meta) = 0;
+    consume(const std::string& uuid, const std::string& name, const metadata_t& info) = 0;
 
     virtual
     void

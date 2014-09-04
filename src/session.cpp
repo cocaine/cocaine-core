@@ -100,6 +100,11 @@ session_t::pull_action_t::finalize(const boost::system::error_code& ec) {
         return session->signals.shutdown(ec);
     }
 
+    // TODO: Locking.
+    if(!session->ptr) {
+        return;
+    }
+
     try {
         session->invoke(message);
     } catch(...) {

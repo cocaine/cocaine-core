@@ -67,8 +67,8 @@ pid_file_t::pid_file_t(const fs::path& filepath):
 
 pid_file_t::~pid_file_t() {
     try {
-        remove();
-    } catch(...) {
+        fs::remove(m_filepath);
+    } catch(const fs::filesystem_error& e) {
         // Do nothing.
     }
 }

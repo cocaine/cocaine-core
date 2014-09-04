@@ -124,7 +124,9 @@ chamber_t::stats_periodic_action_t::finalize(const boost::system::error_code& ec
     // Sum up the user and system running time.
     timeradd(&tick_diff.ru_utime, &tick_diff.ru_stime, &real_time);
 
-    impl->load((real_time.tv_sec * 1e6 + real_time.tv_usec) / interval.total_microseconds());
+    (*impl->load_average.synchronize())(
+        (real_time.tv_sec * 1e6 + real_time.tv_usec) / interval.total_microseconds()
+    );
 
     operator()();
 }
@@ -137,7 +139,7 @@ chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<boost::asio
     name(name_),
     asio(asio_),
     cron(new boost::asio::deadline_timer(*asio)),
-    load(baf::rolling_window_size = 60 / kCollectionInterval)
+    load_average(baf::rolling_window_size = 60 / kCollectionInterval)
 {
     asio->post(std::bind(&stats_periodic_action_t::operator(),
         std::make_shared<stats_periodic_action_t>(this, bpt::seconds(kCollectionInterval))

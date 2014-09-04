@@ -32,7 +32,7 @@ using namespace cocaine::logging;
 using namespace cocaine::service;
 
 logging_t::logging_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args):
-    api::service_t(context, asio, name, args),
+    category_type(context, asio, name, args),
     dispatch<io::log_tag>(name)
 {
     auto backend = args.as_object().at("backend", "core").as_string();

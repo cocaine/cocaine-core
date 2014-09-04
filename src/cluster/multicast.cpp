@@ -35,11 +35,11 @@
 using namespace boost::asio;
 using namespace boost::asio::ip;
 
-using namespace cocaine;
-using namespace cocaine::api;
 using namespace cocaine::cluster;
 
 namespace cocaine {
+
+namespace ph = std::placeholders;
 
 template<>
 struct dynamic_converter<address> {
@@ -133,11 +133,11 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
 
     m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()),
         announce->endpoint,
-        std::bind(&multicast_t::on_receive, this, std::placeholders::_1, std::placeholders::_2, announce)
+        std::bind(&multicast_t::on_receive, this, ph::_1, ph::_2, announce)
     );
 
     m_timer.expires_from_now(m_cfg.interval);
-    m_timer.async_wait(std::bind(&multicast_t::on_publish, this, std::placeholders::_1));
+    m_timer.async_wait(std::bind(&multicast_t::on_publish, this, ph::_1));
 }
 
 multicast_t::~multicast_t() {
@@ -191,7 +191,7 @@ multicast_t::on_publish(const boost::system::error_code& ec) {
     }
 
     m_timer.expires_from_now(m_cfg.interval);
-    m_timer.async_wait(std::bind(&multicast_t::on_publish, this, std::placeholders::_1));
+    m_timer.async_wait(std::bind(&multicast_t::on_publish, this, ph::_1));
 }
 
 void
@@ -242,14 +242,14 @@ multicast_t::on_receive(const boost::system::error_code& ec, size_t bytes_receiv
         }
 
         expiration->expires_from_now(m_cfg.interval * 3);
-        expiration->async_wait(std::bind(&multicast_t::on_expired, this, std::placeholders::_1, uuid));
+        expiration->async_wait(std::bind(&multicast_t::on_expired, this, ph::_1, uuid));
     }
 
     auto announce = std::make_shared<announce_t>();
 
     m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()),
         announce->endpoint,
-        std::bind(&multicast_t::on_receive, this, std::placeholders::_1, std::placeholders::_2, announce)
+        std::bind(&multicast_t::on_receive, this, ph::_1, ph::_2, announce)
     );
 }
 

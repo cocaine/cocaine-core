@@ -32,12 +32,11 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
-using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
 node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args):
-    api::service_t(context, asio, name, args),
+    category_type(context, asio, name, args),
     dispatch<node_tag>(name),
     m_context(context),
     m_log(context.log(name))

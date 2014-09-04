@@ -164,7 +164,7 @@ private:
 };
 
 counter_t::counter_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args):
-    api::service_t(context, reactor, name, args),
+    category_type(context, reactor, name, args),
     dispatch<io::counter_tag>(name),
     m_log(context.log(name))
 {

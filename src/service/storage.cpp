@@ -22,13 +22,13 @@
 
 #include "cocaine/api/storage.hpp"
 
-#include "cocaine/context.hpp"
+#include "cocaine/dynamic/dynamic.hpp"
 
 using namespace cocaine::io;
 using namespace cocaine::service;
 
 storage_t::storage_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args):
-    api::service_t(context, asio, name, args),
+    category_type(context, asio, name, args),
     dispatch<storage_tag>(name)
 {
     auto storage = api::storage(context, args.as_object().at("backend", "core").as_string());

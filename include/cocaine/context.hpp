@@ -102,17 +102,23 @@ public:
 // Dynamic port mapper
 
 class port_mapping_t {
-    typedef std::priority_queue<port_t, std::vector<port_t>, std::greater<port_t>> queue_type;
+    typedef std::priority_queue<
+        port_t,
+        std::vector<port_t>,
+        std::greater<port_t>
+    > queue_type;
 
     // Pinned service ports.
-    std::map<std::string, port_t> m_pinned;
+    const std::map<std::string, port_t> m_pinned;
 
     // Ports available for dynamic allocation.
-    queue_type m_shared;
+    synchronized<queue_type> m_shared;
 
 public:
     explicit
     port_mapping_t(const config_t& config);
+
+    // Modifiers
 
     port_t
     assign(const std::string& name);
@@ -135,15 +141,15 @@ class context_t {
     // for the Blackhole, when all the common stuff is extracted to a separate library.
     std::unique_ptr<logging::logger_t> m_logger;
 
-    // Service port mapping and pinning, synchronized using service list lock.
-    port_mapping_t m_port_mapping;
-
     // NOTE: This is the first object in the component tree, all the other dynamic components, be it
     // storages or isolates, have to be declared after this one.
     std::unique_ptr<api::repository_t> m_repository;
 
     // A pool of execution units - threads responsible for doing all the service invocations.
     std::vector<std::unique_ptr<execution_unit_t>> m_pool;
+
+    // Service port mapping and pinning.
+    port_mapping_t m_port_mapping;
 
     // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
     // because services are allowed to start and stop other services during their lifetime.
@@ -172,25 +178,14 @@ public:
     context_t(config_t config, std::unique_ptr<logging::logger_t> logger);
    ~context_t();
 
-    // Component API
+    std::unique_ptr<logging::log_t>
+    log(const std::string& source);
 
     template<class Category, typename... Args>
     typename api::category_traits<Category>::ptr_type
     get(const std::string& type, Args&&... args);
 
-    // Logging
-
-    std::unique_ptr<logging::log_t>
-    log(const std::string& source);
-
-#ifdef COCAINE_ALLOW_RAFT
-    auto
-    raft() -> raft::repository_t& {
-        return *m_raft;
-    }
-#endif
-
-    // Services
+    // Service API
 
     void
     insert(const std::string& name, std::unique_ptr<actor_t> service);
@@ -201,10 +196,24 @@ public:
     auto
     locate(const std::string& name) const -> boost::optional<const actor_t&>;
 
-    // I/O
+    // Network I/O
 
     auto
     engine() -> execution_unit_t&;
+
+    auto
+    mapper() -> port_mapping_t& {
+        return m_port_mapping;
+    }
+
+    // Raft
+
+#ifdef COCAINE_ALLOW_RAFT
+    auto
+    raft() -> raft::repository_t& {
+        return *m_raft;
+    }
+#endif
 
 private:
     void

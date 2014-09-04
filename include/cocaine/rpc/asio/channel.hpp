@@ -56,8 +56,8 @@ struct channel {
     const std::shared_ptr<socket_type> socket;
 
     // Unidirectional channel streams.
-    const std::unique_ptr<readable_stream<protocol_type, decoder_t>> reader;
-    const std::unique_ptr<writable_stream<protocol_type, encoder_t>> writer;
+    const std::shared_ptr<readable_stream<protocol_type, decoder_t>> reader;
+    const std::shared_ptr<writable_stream<protocol_type, encoder_t>> writer;
 };
 
 }} // namespace cocaine::io

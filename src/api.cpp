@@ -143,11 +143,12 @@ public:
 private:
     void
     on_chunk(const std::vector<endpoint_type>& endpoints, int version, const io::dispatch_graph_t&) {
-        if(version == client.version()) {
-            parent->connect(client, endpoints, handle);
-        } else {
+        if(version != client.version()) {
             parent->m_asio.post(std::bind(handle, error::version_mismatch));
+            return;
         }
+
+        parent->connect(client, endpoints, handle);
     }
 
     void

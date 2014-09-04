@@ -55,7 +55,6 @@
 #include <blackhole/sink/socket.hpp>
 
 using namespace cocaine;
-using namespace cocaine::io;
 
 namespace fs = boost::filesystem;
 
@@ -376,21 +375,22 @@ config_t::versions() {
 port_mapping_t::port_mapping_t(const config_t& config):
     m_pinned(config.network.ports.pinned)
 {
-    port_t min, max;
+    port_t minimum, maximum;
 
-    std::tie(min, max) = config.network.ports.shared;
+    std::tie(minimum, maximum) = config.network.ports.shared;
 
     std::vector<port_t> seed;
 
-    if((min == 0 && max == 0) || max <= min) {
+    if((minimum == 0 && maximum == 0) || maximum <= minimum) {
         seed.resize(65535);
         std::fill(seed.begin(), seed.end(), 0);
     } else {
-        seed.resize(max - min);
-        std::iota(seed.begin(), seed.end(), min);
+        seed.resize(maximum - minimum);
+        std::iota(seed.begin(), seed.end(), minimum);
     }
 
-    m_shared = queue_type(seed.begin(), seed.end());
+    // Safe until fully constructed.
+    m_shared.unsafe() = queue_type(seed.begin(), seed.end());
 }
 
 port_t
@@ -399,13 +399,15 @@ port_mapping_t::assign(const std::string& name) {
         return m_pinned.at(name);
     }
 
-    if(m_shared.empty()) {
+    auto ptr = m_shared.synchronize();
+
+    if(ptr->empty()) {
         throw cocaine::error_t("no ports left for allocation");
     }
 
-    const auto port = m_shared.top();
+    auto port = ptr->top(); ptr->pop();
 
-    return m_shared.pop(), port;
+    return port;
 }
 
 void
@@ -414,7 +416,7 @@ port_mapping_t::retain(const std::string& name, port_t port) {
         return;
     }
 
-    return m_shared.push(port);
+    return m_shared->push(port);
 }
 
 // Context
@@ -480,10 +482,11 @@ context_t::context_t(config_t config_, const std::string& logger_backend):
 }
 
 context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger):
-    m_logger(std::move(logger)),
     m_port_mapping(config_),
     config(config_)
 {
+    m_logger = std::move(logger);
+
     bootstrap();
 }
 

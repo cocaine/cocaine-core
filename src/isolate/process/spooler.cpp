@@ -27,7 +27,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-using namespace cocaine;
 using namespace cocaine::isolate;
 
 void

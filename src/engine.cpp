@@ -109,7 +109,7 @@ execution_unit_t::on_shutdown(const boost::system::error_code& ec, int fd) {
 
     scoped_attributes_t attributes(*m_log, {
         attribute::make("endpoint", boost::lexical_cast<std::string>(it->second->remote_endpoint())),
-        attribute::make("service", it->second->name())
+        attribute::make("service",  it->second->name())
     });
 
     if(ec != boost::asio::error::eof) {

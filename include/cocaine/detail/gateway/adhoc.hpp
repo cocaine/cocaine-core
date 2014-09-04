@@ -40,7 +40,7 @@ class adhoc_t:
 
     struct remote_service_t {
         std::string uuid;
-        metadata_t  meta;
+        metadata_t  info;
     };
 
     typedef std::multimap<std::string, remote_service_t> remote_service_map_t;
