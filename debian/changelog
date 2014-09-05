@@ -1,6 +1,12 @@
+cocaine-core (0.11.2.8) unstable; urgency=low
+
+  * Bugfix: properly check platform macro definition.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 05 Sep 2014 07:27:02 +0400
+
 cocaine-core (0.11.2.7) unstable; urgency=low
 
- * Backport locator.hostname config option to v0.11 branch
+  * Backport locator.hostname config option to v0.11 branch
 
  -- Dmitry Unkovsky <diunko@yandex-team.ru>  Fri, 22 Aug 2014 00:38:38 +0400
 

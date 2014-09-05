@@ -49,7 +49,7 @@
     _name_&                                     \
     operator=(const _name_& other) = delete;
 
-#if HAVE_GCC47 || TARGET_OS_MAC
+#if defined(HAVE_GCC47) || defined(TARGET_OS_MAC)
     #define COCAINE_HAVE_FEATURE_STEADY_CLOCK
     #define COCAINE_HAVE_FEATURE_UNDERLYING_TYPE
 #endif

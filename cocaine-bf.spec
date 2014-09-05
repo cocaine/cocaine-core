@@ -2,8 +2,8 @@
 
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core2
-Version:	0.11.2.3
-Release:	2%{?dist}
+Version:	0.11.2.8
+Release:	1%{?dist}
 
 
 License:	GPLv2+
@@ -134,6 +134,9 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
+* Fri Sep 05 2014 Evgeny Safronov <division494@gmail.com> 0.11.2.8-1
+- Bugfix: properly check platform macro definition.
+
 * Wed Jun 11 2014 Evgeniy Polyakov <zbr@ioremap.net> 0.11.2.3-1
 - Updated spec to the latest version to date
 
