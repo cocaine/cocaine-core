@@ -31,9 +31,9 @@
 
 namespace cocaine { namespace io {
 
-template<class Tag>
+template<class Tag, class Vertex = graph_basis_t>
 auto
-traverse() -> boost::optional<dispatch_graph_t>;
+traverse() -> boost::optional<Vertex>;
 
 namespace mpl = boost::mpl;
 
@@ -46,16 +46,27 @@ struct traverse_impl {
 
     static inline
     void
-    apply(dispatch_graph_t& object) {
-        object[traits_type::id] = std::make_tuple(event_type::alias(),
-         /* Detect recurrent message transitions. */
+    apply(graph_basis_t& vertex) {
+        vertex[traits_type::id] = std::make_tuple(event_type::alias(),
             std::is_same<typename traits_type::dispatch_type, typename event_type::tag>::value
               ? boost::none
-              : traverse<typename traits_type::dispatch_type>(),
-            traverse<typename traits_type::upstream_type>()
+              : traverse<typename traits_type::dispatch_type, graph_point_t>(),
+            traverse<typename traits_type::upstream_type, graph_point_t>()
         );
 
-        traverse_impl<typename mpl::next<It>::type, End>::apply(object);
+        traverse_impl<typename mpl::next<It>::type, End>::apply(vertex);
+    }
+
+    static inline
+    void
+    apply(graph_point_t& vertex) {
+        vertex[traits_type::id] = std::make_tuple(event_type::alias(),
+            std::is_same<typename traits_type::dispatch_type, typename event_type::tag>::value
+              ? boost::none
+              : traverse<typename traits_type::dispatch_type, graph_point_t>()
+        );
+
+        traverse_impl<typename mpl::next<It>::type, End>::apply(vertex);
     }
 };
 
@@ -63,25 +74,31 @@ template<class End>
 struct traverse_impl<End, End> {
     static inline
     void
-    apply(dispatch_graph_t& /* object */) {
+    apply(graph_basis_t& COCAINE_UNUSED_(vertex)) {
+        // Empty.
+    }
+
+    static inline
+    void
+    apply(graph_point_t& COCAINE_UNUSED_(vertex)) {
         // Empty.
     }
 };
 
 } // namespace aux
 
-template<class Tag>
+template<class Tag, class Vertex>
 inline
 auto
-traverse() -> boost::optional<dispatch_graph_t> {
-    dispatch_graph_t result;
+traverse() -> boost::optional<Vertex> {
+    Vertex vertex;
 
     aux::traverse_impl<
         typename mpl::begin<typename protocol<Tag>::messages>::type,
-        typename mpl::end<typename protocol<Tag>::messages>::type
-    >::apply(result);
+        typename mpl::end  <typename protocol<Tag>::messages>::type
+    >::apply(vertex);
 
-    return result;
+    return vertex;
 }
 
 }} // namespace cocaine::io

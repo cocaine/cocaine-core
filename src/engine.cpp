@@ -41,13 +41,21 @@ execution_unit_t::execution_unit_t(context_t& context):
     m_log(context.log("core:asio")),
     m_asio(new io_service()),
     m_chamber(new io::chamber_t("core:asio", m_asio))
-{ }
+{
+    COCAINE_LOG_DEBUG(m_log, "engine started")(
+        "engine", m_chamber->uuid()
+    );
+}
 
 execution_unit_t::~execution_unit_t() {
     for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
         // Synchronously close the connections.
         it->second->detach();
     }
+
+    COCAINE_LOG_DEBUG(m_log, "engine waiting for outstanding operations to complete")(
+        "engine", m_chamber->uuid()
+    );
 
     // This will block until all the outstanding operations are complete.
     m_chamber = nullptr;
@@ -80,7 +88,7 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
     try {
         m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
     } catch(const boost::system::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "remote node has disappeared while creating session");
+        COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session");
         return;
     }
 
@@ -90,6 +98,12 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
         std::placeholders::_1,
         fd
     ));
+
+    COCAINE_LOG_DEBUG(m_log, "attached client to engine with %.2f%% utilization", utilization() * 100)(
+        "endpoint", m_sessions[fd]->remote_endpoint(),
+        "engine",   m_chamber->uuid(),
+        "service",  m_sessions[fd]->name()
+    );
 
     // Start the message dispatching.
     m_sessions[fd]->pull();
@@ -109,6 +123,7 @@ execution_unit_t::on_shutdown(const boost::system::error_code& ec, int fd) {
 
     scoped_attributes_t attributes(*m_log, {
         attribute::make("endpoint", boost::lexical_cast<std::string>(it->second->remote_endpoint())),
+        attribute::make("engine",   boost::lexical_cast<std::string>(m_chamber->uuid())),
         attribute::make("service",  it->second->name())
     });
 

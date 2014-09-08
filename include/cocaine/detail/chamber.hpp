@@ -68,6 +68,11 @@ public:
     load_avg1() const -> double {
         return baf::rolling_mean(*load_average.synchronize());
     }
+
+    auto
+    uuid() const -> boost::thread::id {
+        return thread->get_id();
+    }
 };
 
 }} // namespace cocaine::io

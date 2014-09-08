@@ -35,8 +35,8 @@ struct depend {
     typedef void type;
 };
 
-// Variadic pack conversion. Could be done with typdef mpl::list<Args...>, but GCC 4.4-4.6 cannot
-// compile this with a "sorry, not implemented" error message.
+// Variadic pack conversion. Could be done with typdef mpl::list<Args...>, but GCC 4.6 can't compile
+// this with a "sorry, not implemented" error message.
 
 namespace aux {
 
@@ -66,7 +66,8 @@ struct itemize {
     >::type type;
 };
 
-// Type decay
+// Type decay. This is a special case of std::decay<T>, which is not removing array extents, because
+// it breaks dynamic_t construction and conversion functions.
 
 template<class T>
 struct pristine {

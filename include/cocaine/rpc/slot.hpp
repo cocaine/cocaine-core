@@ -39,7 +39,7 @@ class basic_slot {
 
 public:
     typedef typename mpl::transform<
-        typename traits_type::tuple_type,
+        typename traits_type::argument_type,
         typename mpl::lambda<io::details::unwrap_type<mpl::_1>>
     >::type sequence_type;
 
@@ -63,6 +63,11 @@ public:
 template<class Event>
 struct is_recursive:
     public std::is_same<typename event_traits<Event>::dispatch_type, typename Event::tag>
+{ };
+
+template<class Event>
+struct is_final:
+    public std::is_same<typename event_traits<Event>::dispatch_type, void>
 { };
 
 }} // namespace cocaine::io

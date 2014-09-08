@@ -81,12 +81,12 @@ struct enumerate {
 };
 
 template<class Event, class = void>
-struct tuple_type {
+struct argument_type {
     typedef mpl::list<> type;
 };
 
 template<class Event>
-struct tuple_type<Event, typename depend<typename Event::tuple_type>::type> {
+struct argument_type<Event, typename depend<typename Event::tuple_type>::type> {
     typedef typename Event::tuple_type type;
 };
 
@@ -118,7 +118,7 @@ struct event_traits {
 
     // Tuple is the type list of the message arguments.
     // By default, all messages have no arguments, the only information they provide is their type.
-    typedef typename aux::tuple_type<Event>::type tuple_type;
+    typedef typename aux::argument_type<Event>::type argument_type;
 
     // Dispatch is a protocol tag type of the service channel dispatch after the given message is
     // successfully processed. The possible transitions types are: void, recursive protocol tag or

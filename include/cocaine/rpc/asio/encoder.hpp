@@ -95,18 +95,16 @@ struct encoded:
 {
     template<typename... Args>
     encoded(uint64_t span, Args&&... args) {
-        typedef event_traits<Event> traits;
-
         msgpack::packer<aux::encoded_buffers_t> packer(buffer);
 
         packer.pack_array(3);
 
         packer.pack_uint64(span);
-        packer.pack_uint32(traits::id);
+        packer.pack_uint32(event_traits<Event>::id);
 
-        typedef typename traits::tuple_type tuple_type;
+        typedef typename event_traits<Event>::argument_type argument_type;
 
-        type_traits<tuple_type>::pack(packer, std::forward<Args>(args)...);
+        type_traits<argument_type>::pack(packer, std::forward<Args>(args)...);
     }
 };
 

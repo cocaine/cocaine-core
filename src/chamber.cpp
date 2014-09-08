@@ -145,12 +145,16 @@ chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<boost::asio
         std::make_shared<stats_periodic_action_t>(this, bpt::seconds(kCollectionInterval))
     ));
 
+    // Bootstrap the rolling mean to avoid showing NaNs for the first clients.
+    (*load_average.synchronize())(0.0f);
+
     thread = std::make_unique<boost::thread>(named_runnable_t(name, asio));
 }
 
 chamber_t::~chamber_t() {
     cron = nullptr;
 
-    // TODO: Check if this might hang forever because of the above.
+    // NOTE: This might hang forever if io_service users have failed to abort their async operations
+    // upon context.signals.shutdown signal (or haven't connected to it at all).
     thread->join();
 }

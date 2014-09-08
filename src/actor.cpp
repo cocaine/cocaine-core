@@ -84,10 +84,6 @@ private:
         } else {
             execution_unit_t& engine = impl->m_context.engine();
 
-            COCAINE_LOG_DEBUG(impl->m_log, "attaching client to engine with utilization of %.2f%%",
-                engine.utilization() * 100
-            )("endpoint", endpoint);
-
             // This won't attach the socket immediately, instead it will post a new action to the
             // designated unit's event loop queue.
             engine.attach(std::make_shared<tcp::socket>(std::move(peer)), impl->m_prototype);

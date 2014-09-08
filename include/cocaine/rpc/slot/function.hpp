@@ -68,6 +68,11 @@ template<class Event, class R>
 struct function_slot:
     public basic_slot<Event>
 {
+    static_assert(
+        is_final<Event>::value || is_recursive<Event>::value,
+        "messages with dispatch transition are not supported"
+    );
+
     typedef typename basic_slot<Event>::sequence_type sequence_type;
 
     typedef typename bft::function_type<

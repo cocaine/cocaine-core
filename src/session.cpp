@@ -56,7 +56,7 @@ session_t::channel_t::process(const decoder_t::message_type& message) {
     }
 
     if((dispatch = dispatch->process(message, upstream).get_value_or(dispatch)) == nullptr) {
-        // NOTE: If the client has sent us the last message according to the dispatch graph, then
+        // NOTE: If the client has sent us the last message according to our dispatch graph, then
         // revoke the channel.
         upstream->drop();
     }

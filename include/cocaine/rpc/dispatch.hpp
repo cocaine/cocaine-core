@@ -78,7 +78,7 @@ public:
 
     virtual
     auto
-    graph() const -> const dispatch_graph_t& = 0;
+    graph() const -> const graph_basis_t& = 0;
 
     virtual
     int
@@ -95,7 +95,7 @@ template<class Tag>
 class dispatch:
     public io::basic_dispatch_t
 {
-    const io::dispatch_graph_t m_graph;
+    const io::graph_basis_t m_graph;
 
     // Slot construction
 
@@ -154,7 +154,7 @@ public:
 
     virtual
     auto
-    graph() const -> const io::dispatch_graph_t& {
+    graph() const -> const io::graph_basis_t& {
         return m_graph;
     }
 
@@ -208,9 +208,9 @@ struct calling_visitor_t:
         typename slot_type::tuple_type args;
 
         try {
-            // Unpacks the object into a tuple using the message typelist as opposed to using the
+            // Unpacks the object into a tuple using the argument typelist as opposed to using the
             // plain tuple type traits, in order to support parameter tags, like optional<T>.
-            io::type_traits<typename io::event_traits<Event>::tuple_type>::unpack(unpacked, args);
+            io::type_traits<typename io::event_traits<Event>::argument_type>::unpack(unpacked, args);
         } catch(const msgpack::type_error& e) {
             throw cocaine::error_t("unable to unpack message arguments");
         }

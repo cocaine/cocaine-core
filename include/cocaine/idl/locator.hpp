@@ -56,9 +56,9 @@ struct resolve {
      /* Service protocol version. If the client wishes to use the service, the protocol
         versions must match. */
         unsigned int,
-     /* A mapping between method slot numbers, method names and state protocol transitions for use
-        in dynamic languages like Python or Ruby. */
-        dispatch_graph_t
+     /* A mapping between slot id numbers, message names and state transitions for both the message
+        dispatch and upstream types to use in dynamic languages like Python, Ruby or JavaScript. */
+        graph_basis_t
     > value_type;
 
     typedef streaming_tag<value_type> upstream_type;

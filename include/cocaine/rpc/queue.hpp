@@ -97,8 +97,8 @@ class message_queue {
     // Operation log.
     std::vector<variant_type> m_operations;
 
-    // The upstream might be attached during state method invocation, so it has to be synchronized
-    // for thread safety - the atomicicity guarantee of the shared_ptr<T> is not enough.
+    // The upstream might be attached during message invocation, so it has to be synchronized for
+    // thread safety - the atomicicity guarantee of the shared_ptr<T> is not enough.
     upstream_ptr_t m_upstream;
 
 public:

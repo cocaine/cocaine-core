@@ -65,7 +65,7 @@ struct blocking_slot:
     }
 };
 
-// Blocking slot specialization for void functions
+// Blocking slot specialization for void functions (returning completion status)
 
 template<class Event>
 struct blocking_slot<Event, void>:
@@ -106,8 +106,10 @@ struct blocking_slot<Event, void>:
     }
 };
 
+// Blocking slot specialization for mute functions (returning nothing at all)
+
 template<class Event>
-struct blocking_slot<Event, terminal_slot_tag>:
+struct blocking_slot<Event, mute_slot_tag>:
     public function_slot<Event, void>
 {
     typedef function_slot<Event, void> parent_type;
