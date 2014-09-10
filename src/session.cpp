@@ -65,8 +65,10 @@ session_t::channel_t::process(const decoder_t::message_type& message) {
 class session_t::pull_action_t:
     public std::enable_shared_from_this<pull_action_t>
 {
-    std::shared_ptr<session_t> session;
     decoder_t::message_type message;
+
+    // Keeps the session alive until all the operations are complete.
+    const std::shared_ptr<session_t> session;
 
 public:
     pull_action_t(const std::shared_ptr<session_t>& session_):
@@ -120,13 +122,15 @@ session_t::pull_action_t::finalize(const boost::system::error_code& ec) {
 class session_t::push_action_t:
     public enable_shared_from_this<push_action_t>
 {
-    std::shared_ptr<session_t> session;
     encoder_t::message_type message;
 
+    // Keeps the session alive until all the operations are complete.
+    const std::shared_ptr<session_t> session;
+
 public:
-    push_action_t(const std::shared_ptr<session_t>& session_, encoder_t::message_type&& message):
-        session(session_),
-        message(std::move(message))
+    push_action_t(encoder_t::message_type&& message, const std::shared_ptr<session_t>& session_):
+        message(std::move(message)),
+        session(session_)
     { }
 
     void
@@ -284,7 +288,7 @@ session_t::push(encoder_t::message_type&& message) {
 
     // Use dispatch() instead of a direct call for thread safety.
     ptr->socket->get_io_service().dispatch(std::bind(&push_action_t::operator(),
-        std::make_shared<push_action_t>(shared_from_this(), std::move(message))
+        std::make_shared<push_action_t>(std::move(message), shared_from_this())
     ));
 }
 

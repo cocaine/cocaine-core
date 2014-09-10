@@ -493,10 +493,10 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger
 context_t::~context_t() {
     blackhole::scoped_attributes_t guard(
        *m_logger,
-        blackhole::log::attributes_t({logging::keyword::source() = "bootstrap"})
+        blackhole::log::attributes_t({logging::keyword::source() = "core"})
     );
 
-    COCAINE_LOG_INFO(m_logger, "stopping services");
+    COCAINE_LOG_INFO(m_logger, "stopping %d service(s)", m_services->size());
 
     // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
     // the outstanding connections are closed, so services have a change to send their last wishes.
@@ -521,7 +521,7 @@ context_t::~context_t() {
     // app invocation services from the node service, should be dead by now.
     BOOST_ASSERT(m_services->empty());
 
-    COCAINE_LOG_INFO(m_logger, "stopping execution units");
+    COCAINE_LOG_INFO(m_logger, "stopping %d execution unit(s)", m_pool.size());
 
     m_pool.clear();
 
@@ -555,7 +555,7 @@ struct match {
 void
 context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
     blackhole::scoped_attributes_t guard(*m_logger, blackhole::log::attributes_t({
-        logging::keyword::source() = "bootstrap"
+        logging::keyword::source() = "core"
     }));
 
     const actor_t& actor = *service;
@@ -591,7 +591,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 auto
 context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
     blackhole::scoped_attributes_t guard(*m_logger, blackhole::log::attributes_t({
-        logging::keyword::source() = "bootstrap"
+        logging::keyword::source() = "core"
     }));
 
     std::unique_ptr<actor_t> service;
@@ -652,7 +652,7 @@ context_t::engine() -> execution_unit_t& {
 void
 context_t::bootstrap() {
     blackhole::scoped_attributes_t guard(*m_logger, blackhole::log::attributes_t({
-        logging::keyword::source() = "bootstrap"
+        logging::keyword::source() = "core"
     }));
 
     COCAINE_LOG_INFO(m_logger, "initializing the core");
@@ -669,7 +669,7 @@ context_t::bootstrap() {
     // Load the rest of plugins.
     m_repository->load(config.path.plugins);
 
-    COCAINE_LOG_INFO(m_logger, "growing I/O pool to %d threads", config.network.pool);
+    COCAINE_LOG_INFO(m_logger, "starting %d execution unit(s)", config.network.pool);
 
     while(m_pool.size() != config.network.pool) {
         m_pool.emplace_back(std::make_unique<execution_unit_t>(*this));

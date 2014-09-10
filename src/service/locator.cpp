@@ -61,7 +61,7 @@ class locator_t::remote_client_t:
     public dispatch<event_traits<locator::connect>::upstream_type>,
     public std::enable_shared_from_this<remote_client_t>
 {
-    locator_t * const impl;
+    locator_t* impl;
     const std::string uuid;
 
 public:
@@ -234,6 +234,8 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 #endif
     }
 
+    // Initialize clustering components
+
     if(root.as_object().count("cluster")) {
         const auto conf = root.as_object().at("cluster").as_object();
         const auto type = conf.at("type", "unspecified").as_string();
@@ -242,6 +244,17 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         COCAINE_LOG_INFO(m_log, "using '%s' for cluster discovery", type);
 
         m_cluster = m_context.get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
+
+        // Connect service signals. Signals are set to track 'm_cluster' because it is responsible
+        // of handling them, so no cluster object - no service lifecycle signal handling
+
+        context.signals.service.exposed.connect(context_t::signals_t::service_signals_t::slot_type(
+            std::bind(&locator_t::on_service, this, _1)
+        ).track_foreign(m_cluster));
+
+        context.signals.service.removed.connect(context_t::signals_t::service_signals_t::slot_type(
+            std::bind(&locator_t::on_service, this, _1)
+        ).track_foreign(m_cluster));
     }
 
     if(root.as_object().count("gateway")) {
@@ -254,12 +267,12 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         m_gateway = m_context.get<api::gateway_t>(type, m_context, name + ":gateway", args);
     }
 
-    // Connect service lifecycle signals.
-    context.signals.service.exposed.connect(std::bind(&locator_t::on_service, this, _1));
-    context.signals.service.removed.connect(std::bind(&locator_t::on_service, this, _1));
+    // Context shutdown signal is set to track 'm_routing' because its lifetime essentially matches
+    // that of the Locator service itself
 
-    // Connect context lifecycle signals.
-    context.signals.shutdown.connect(std::bind(&locator_t::on_context_shutdown, this));
+    context.signals.shutdown.connect(context_t::signals_t::context_signals_t::slot_type(
+        std::bind(&locator_t::on_context_shutdown, this)
+    ).track_foreign(m_routing));
 }
 
 locator_t::~locator_t() {
@@ -367,31 +380,35 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
 }
 
 void
-locator_t::on_refresh(const std::string& name) {
-    std::vector<std::string> groups;
-
-    // It's here to keep the reference alive.
-    const auto storage = api::storage(m_context, "core");
-
-    try {
-        groups = storage->find("groups", std::vector<std::string>({
-            "group",
-            "active"
-        }));
-    } catch(const storage_error_t& e) {
-        throw boost::system::system_error(error::routing_storage_error);
-    }
-
-    if(std::find(groups.begin(), groups.end(), name) == groups.end()) {
-        return m_routing->remove_group(name);
-    }
-
+locator_t::on_refresh(const std::vector<std::string>& groups) {
     typedef std::map<std::string, unsigned int> group_t;
 
+    std::map<std::string, group_t> values;
+    std::map<std::string, group_t>::iterator lb, ub;
+
     try {
-        m_routing->add_group(name, storage->get<group_t>("groups", name));
+        const auto storage = api::storage(m_context, "core");
+        const auto updated = storage->find("groups", std::vector<std::string>({"group", "active"}));
+
+        for(auto it = groups.begin(); it != groups.end(); ++it) {
+            if(std::find(updated.begin(), updated.end(), *it) == updated.end()) {
+                continue;
+            }
+
+            values.insert({*it, storage->get<group_t>("groups", *it)});
+        }
     } catch(const storage_error_t& e) {
         throw boost::system::system_error(error::routing_storage_error);
+    }
+
+    for(auto it = groups.begin(); it != groups.end(); ++it) {
+        std::tie(lb, ub) = values.equal_range(*it);
+
+        if(lb == ub) {
+            m_routing->remove_group(*it);
+        } else {
+            m_routing->add_group(*it, lb->second);
+        }
     }
 }
 
@@ -408,11 +425,6 @@ locator_t::on_cluster() const -> results::cluster {
 
 void
 locator_t::on_service(const actor_t& actor) {
-    if(!m_cluster) {
-        // No cluster means there are no streams.
-        return;
-    }
-
     auto ptr = m_locals.synchronize();
 
     auto metadata = results::resolve {

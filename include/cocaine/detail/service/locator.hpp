@@ -86,10 +86,10 @@ class locator_t:
 
     // Clustering.
     std::unique_ptr<api::gateway_t> m_gateway;
-    std::unique_ptr<api::cluster_t> m_cluster;
+    std::shared_ptr<api::cluster_t> m_cluster;
 
     // Used to resolve service names against service groups based on weights and other metrics.
-    std::unique_ptr<router_t> m_routing;
+    std::shared_ptr<router_t> m_routing;
 
 public:
     locator_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
@@ -129,7 +129,7 @@ private:
     on_connect(const std::string& uuid) -> streamed<results::connect>;
 
     void
-    on_refresh(const std::string& name);
+    on_refresh(const std::vector<std::string>& groups);
 
     auto
     on_cluster() const -> results::cluster;

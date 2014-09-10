@@ -96,7 +96,7 @@ struct refresh {
 
     typedef boost::mpl::list<
      /* Name of the group to refresh. */
-        std::string
+        std::vector<std::string>
     > tuple_type;
 };
 

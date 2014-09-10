@@ -132,9 +132,9 @@ struct blocking_slot<Event, mute_slot_tag>:
             this->call(std::move(args));
         } catch(...) {
 #if defined(HAVE_GCC48)
-            std::throw_with_nested(cocaine::error_t("error while calling terminal slot"));
+            std::throw_with_nested(cocaine::error_t("error while calling mute slot"));
 #else
-            throw cocaine::error_t("error while calling terminal slot");
+            throw cocaine::error_t("error while calling mute slot");
 #endif
         }
 

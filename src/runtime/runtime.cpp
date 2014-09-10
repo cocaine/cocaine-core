@@ -50,10 +50,8 @@ namespace {
 void stacktrace(int signum, siginfo_t* /* info */, void* context) {
     ucontext_t* uctx = static_cast<ucontext_t*>(context);
 
-    using namespace backward;
-
-    StackTrace trace;
-    Printer printer;
+    backward::StackTrace trace;
+    backward::Printer printer;
 
 #if defined(REG_RIP)
     void* error_address = reinterpret_cast<void*>(uctx->uc_mcontext.gregs[REG_RIP]);
@@ -109,7 +107,7 @@ struct runtime_t {
         action.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND | SA_SIGINFO;
 
         ::sigaction(SIGABRT, &action, nullptr);
-        ::sigaction(SIGBUS, &action, nullptr);
+        ::sigaction(SIGBUS,  &action, nullptr);
         ::sigaction(SIGSEGV, &action, nullptr);
 
         // Block the deprecated signals.
