@@ -1,3 +1,9 @@
+cocaine-core (0.11.2.9) unstable; urgency=low
+
+  * Bugfix: cleanup stale conflicting engine endpoints on launch.
+
+ -- Andrey Sibiryov <me@kobology.ru>  Fri, 12 Sep 2014 15:27:02 -0500
+
 cocaine-core (0.11.2.8) unstable; urgency=low
 
   * Bugfix: properly check platform macro definition.

@@ -89,6 +89,16 @@ engine_t::engine_t(context_t& context,
 
     const auto endpoint = local::endpoint(m_manifest.endpoint);
 
+    if(boost::filesystem::exists(m_manifest.endpoint)) {
+        // If we already have the endpoint path on filesystem, then just remove it.
+        // The reason for it to exist is probably because the runtime has crashed
+        // without being able to cleanup. We use composite endpoint paths with pid
+        // of the process mixed in, so the only possible way for such collision to
+        // happen is when the new runtime instance has the same pid as the crashed
+        // one. Which is extremely rare, obviously.
+        boost::filesystem::remove(m_manifest.endpoint);
+    }
+
     m_connector.reset(new connector<acceptor<local>>(
         *m_reactor,
         std::make_unique<acceptor<local>>(endpoint)
