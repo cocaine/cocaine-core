@@ -34,18 +34,18 @@
 #include "cocaine/detail/service/node/profile.hpp"
 #include "cocaine/detail/service/node/stream.hpp"
 
-#include "cocaine/idl/node.hpp"
+#include "cocaine/idl/streaming.hpp"
 
 #include "cocaine/logging.hpp"
 
 #include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/rpc/upstream.hpp"
 
 #include "cocaine/traits/dynamic.hpp"
 #include "cocaine/traits/literal.hpp"
 
-#include <boost/asio/local/connect_pair.hpp>
-
+#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
@@ -57,7 +57,6 @@ using namespace cocaine::engine;
 using namespace cocaine::io;
 
 namespace fs = boost::filesystem;
-namespace ph = std::placeholders;
 
 namespace {
 
@@ -133,7 +132,7 @@ private:
             upstream(upstream_)
         { }
 
-        typedef enqueue_slot_t::upstream_type::protocol protocol;
+        typedef io::protocol<event_traits<app::enqueue>::upstream_type>::scope protocol;
 
         virtual
         void
@@ -186,7 +185,8 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     m_context(context),
     m_log(context.log(name)),
     m_manifest(new manifest_t(context, name)),
-    m_profile(new profile_t(context, profile))
+    m_profile(new profile_t(context, profile)),
+    m_asio(std::make_shared<boost::asio::io_service>())
 {
     auto isolate = m_context.get<api::isolate_t>(
         m_profile->isolate.type,
@@ -195,26 +195,9 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
         m_profile->isolate.args
     );
 
+    // TODO: Spooling state?
     if(m_manifest->source() != cached<dynamic_t>::sources::cache) {
         isolate->spool();
-    }
-
-    auto lhs = std::make_unique<stream_protocol::socket>(m_asio),
-         rhs = std::make_unique<stream_protocol::socket>(m_asio);
-
-    // Create the engine control sockets.
-    connect_pair(*lhs, *rhs);
-
-    m_engine_control = std::make_unique<channel<stream_protocol>>(std::move(rhs));
-
-    try {
-        m_engine = std::make_shared<engine_t>(m_context, *m_manifest, *m_profile, std::move(lhs));
-    } catch(...) {
-#if defined(HAVE_GCC48)
-        std::throw_with_nested(cocaine::error_t("unable to create engine"));
-#else
-        throw cocaine::error_t("unable to create engine");
-#endif
     }
 }
 
@@ -224,160 +207,107 @@ app_t::~app_t() {
 
 void
 app_t::start() {
-    COCAINE_LOG_INFO(m_log, "starting engine");
+    COCAINE_LOG_INFO(m_log, "creating '%s' engine", m_manifest->name);
 
     // Start the engine thread.
-    m_thread = std::make_unique<std::thread>(std::bind(&engine_t::run, m_engine));
+    try {
+        m_engine = std::make_shared<engine_t>(m_context, *m_manifest, *m_profile);
+    } catch(...) {
+#if defined(HAVE_GCC48)
+        std::throw_with_nested(cocaine::error_t("unable to create engine"));
+#else
+        throw cocaine::error_t("unable to create engine");
+#endif
+    }
 
     COCAINE_LOG_DEBUG(m_log, "starting invocation service");
 
     // Publish the app service.
     m_context.insert(m_manifest->name, std::make_unique<actor_t>(
         m_context,
-        std::make_shared<io_service>(),
+        m_asio,
         std::make_unique<app_service_t>(m_manifest->name, this)
     ));
 }
 
-namespace {
-
-class call_action_t {
-    enum class phases { request, message };
-
-    channel<stream_protocol>& channel;
-
-    encoder_t::message_type request;
-    decoder_t::message_type message;
-
-public:
-    call_action_t(io::channel<stream_protocol>& channel_, encoder_t::message_type&& request_):
-        channel(channel_),
-        request(std::move(request_))
-    { }
-
-    void
-    operator()() {
-        channel.writer->write(request, std::bind(&engine_action_t::finalize,
-            this,
-            ph::_1,
-            phases::request
-        ));
-
-        channel.reader->read(message, std::bind(&engine_action_t::finalize,
-            this,
-            ph::_1,
-            phases::message
-        ));
-    }
-
-    template<class Event>
-    auto
-    response() const -> typename basic_slot<Event>::tuple_type {
-        if(message.type() != event_traits<Event>::id) {
-            throw cocaine::error_t("unexpected engine response type - %d", message.type());
-        }
-
-        typename basic_slot<Event>::tuple_type tuple;
-
-        // Unpacks the object into a tuple using the message typelist as opposed to using the plain
-        // tuple type traits, in order to support parameter tags, like optional<T>.
-        io::type_traits<typename io::event_traits<Event>::tuple_type>::unpack(message.args(), tuple);
-
-        return tuple;
-    }
-
-private:
-    void
-    finalize(const boost::system::error_code& ec, phases phase) {
-        if(ec) {
-#if defined(HAVE_GCC48)
-            try {
-                throw boost::system::system_error(ec);
-            } catch(...) {
-                std::throw_with_nested(cocaine::error_t("unable to access engine"));
-            }
-#else
-            throw cocaine::error_t("unable to access engine");
-#endif
-        }
-
-        if(phase == phases::message) {
-            channel.socket->get_io_service().stop();
-        }
-    }
-};
-
-} // namespace
-
 void
 app_t::pause() {
-    COCAINE_LOG_INFO(m_log, "trying to stop engine");
+    COCAINE_LOG_DEBUG(m_log, "stopping app '%s'", m_manifest->name);
 
     if(!m_manifest->local) {
         // Destroy the app service.
         m_context.remove(m_manifest->name);
     }
 
-    auto action = std::make_shared<call_action_t>(
-       *m_engine_control,
-        encoded<control::terminate>(1)
-    );
+    m_engine.reset();
 
-    // Start the terminate action.
-    m_asio.post(std::bind(&call_action_t::operator(), action));
-
-    try {
-        m_asio.run();
-    } catch(const cocaine::error_t& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to stop engine - %s", e.what());
-
-        // NOTE: Eventually the process will crash because the engine's thread is still on.
-        return;
-    }
-
-    m_thread->join();
-
-    COCAINE_LOG_INFO(m_log, "engine is now stopped");
+    COCAINE_LOG_DEBUG(m_log, "app '%s' has been stopped", m_manifest->name);
 }
 
-dynamic_t
+namespace {
+
+class info_handler_t {
+    typedef result_of<io::app::info>::type result_type;
+    typedef cocaine::deferred<result_type> deferred_type;
+
+    boost::optional<deferred_type> deferred;
+    std::shared_ptr<boost::asio::deadline_timer> timer;
+
+public:
+    info_handler_t(deferred_type deferred, std::shared_ptr<boost::asio::deadline_timer> timer) :
+        deferred(std::move(deferred)),
+        timer(timer)
+    {}
+
+    void success(dynamic_t::object_t info) {
+        if(deferred) {
+            deferred->write(dynamic_t(info));
+            deferred.reset();
+            timer->cancel();
+        }
+    }
+
+    void timeout(const boost::system::error_code& ec) {
+        if(ec) {
+            if(ec == boost::asio::error::operation_aborted) {
+                return;
+            }
+            // Any other IO error except manual timer abort.
+            deferred->abort(-2, cocaine::format("internal error: %s", ec.message()));
+        } else {
+            deferred->abort(-1, "engine is unresponsive");
+        }
+        deferred.reset();
+    }
+};
+
+}
+
+deferred<result_of<io::app::info>::type>
 app_t::info() const {
-    dynamic_t info = dynamic_t::object_t();
+    typedef result_of<io::app::info>::type result_type;
 
-    if(!m_thread) {
-        info.as_object()["error"] = "engine is not active";
-        return info;
+    COCAINE_LOG_DEBUG(m_log, "handling info request");
+
+    deferred<result_type> deferred;
+
+    if(!m_engine) {
+        dynamic_t::object_t info;
+        info["profile"] = m_profile->name;
+        info["error"] = "engine is not active";
+        deferred.write(dynamic_t(info));
+        return deferred;
     }
 
-    auto action = std::make_shared<call_action_t>(
-       *m_engine_control,
-        encoded<control::report>(1)
-    );
+    auto timer = std::make_shared<boost::asio::deadline_timer>(*m_asio);
+    auto handler = std::make_shared<info_handler_t>(deferred, timer);
 
-    boost::asio::deadline_timer timeout(m_asio, boost::posix_time::seconds(defaults::control_timeout));
-    boost::system::error_code ec;
+    timer->expires_from_now(boost::posix_time::seconds(defaults::control_timeout));
+    timer->async_wait(std::bind(&info_handler_t::timeout, handler, ph::_1));
 
-    // Start the info action.
-    m_asio.post(std::bind(&call_action_t::operator(), action));
+    m_engine->info(std::bind(&info_handler_t::success, handler, ph::_1));
 
-    try {
-        // Blocks until either the response cancels the timer or timeout happens.
-        timeout.wait(ec);
-    } catch(const cocaine::error_t& e) {
-        info.as_object()["error"] = std::string(e.what());
-        return info;
-    }
-
-    if(ec != boost::asio::error::operation_aborted) {
-        // Timer has succesfully finished, means no response has arrived.
-        info.as_object()["error"] = "engine is unresponsive";
-    } else {
-        std::tie(info) = action->response<control::info>();
-    }
-
-    info.as_object()["profile"] = m_profile->name;
-
-    return info;
+    return deferred;
 }
 
 std::shared_ptr<api::stream_t>

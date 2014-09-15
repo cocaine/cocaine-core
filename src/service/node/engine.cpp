@@ -20,12 +20,6 @@
 
 #include "cocaine/detail/service/node/engine.hpp"
 
-#include "cocaine/asio/acceptor.hpp"
-#include "cocaine/asio/connector.hpp"
-#include "cocaine/asio/local.hpp"
-#include "cocaine/asio/reactor.hpp"
-#include "cocaine/asio/socket.hpp"
-
 #include "cocaine/context.hpp"
 
 #include "cocaine/detail/service/node/event.hpp"
@@ -38,9 +32,12 @@
 
 #include "cocaine/detail/unique_id.hpp"
 
-#include "cocaine/logging.hpp"
+#include "cocaine/idl/node.hpp"
 
-#include "cocaine/rpc/channel.hpp"
+#include "cocaine/rpc/asio/channel.hpp"
+#include "cocaine/rpc/asio/decoder.hpp"
+
+#include "cocaine/logging.hpp"
 
 #include "cocaine/traits/dynamic.hpp"
 #include "cocaine/traits/literal.hpp"
@@ -49,13 +46,13 @@
 #include <boost/accumulators/statistics/median.hpp>
 #include <boost/accumulators/statistics/sum.hpp>
 
+#include <memory>
+
 #include <boost/filesystem/operations.hpp>
 
 using namespace cocaine;
 using namespace cocaine::engine;
 using namespace cocaine::io;
-
-using namespace std::placeholders;
 
 namespace {
 
@@ -67,220 +64,6 @@ struct ignore {
 };
 
 } // namespace
-
-engine_t::engine_t(context_t& context,
-                   const std::shared_ptr<reactor_t>& reactor,
-                   const manifest_t& manifest,
-                   const profile_t& profile,
-                   const std::shared_ptr<io::socket<local>>& control):
-    m_context(context),
-    m_log(context.log(manifest.name)),
-    m_manifest(manifest),
-    m_profile(profile),
-    m_state(states::stopped),
-    m_reactor(reactor),
-    m_notification(new ev::async(m_reactor->native())),
-    m_termination_timer(new ev::timer(m_reactor->native())),
-    m_next_id(1)
-{
-    m_notification->set<engine_t, &engine_t::on_notification>(this);
-    m_notification->start();
-
-    const auto endpoint = local::endpoint(m_manifest.endpoint);
-
-    m_connector.reset(new connector<acceptor<local>>(
-        *m_reactor,
-        std::make_unique<acceptor<local>>(endpoint)
-    ));
-
-    m_connector->bind(
-        std::bind(&engine_t::on_connection, this, _1)
-    );
-
-    m_channel.reset(new channel<io::socket<local>>(
-        *m_reactor,
-        control
-    ));
-
-    m_channel->rd->bind(
-        std::bind(&engine_t::on_control, this, _1),
-        ignore()
-    );
-
-    m_channel->wr->bind(ignore());
-
-    m_isolate = m_context.get<api::isolate_t>(
-        m_profile.isolate.type,
-        m_context,
-        m_manifest.name,
-        m_profile.isolate.args
-    );
-}
-
-engine_t::~engine_t() {
-    BOOST_ASSERT(m_state == states::stopped);
-    boost::filesystem::remove(m_manifest.endpoint);
-}
-
-void
-engine_t::run() {
-    m_state = states::running;
-    m_reactor->run();
-}
-
-std::shared_ptr<api::stream_t>
-engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
-    if(m_state != states::running) {
-        throw cocaine::error_t("the engine is not active");
-    }
-
-    auto session = std::make_shared<session_t>(
-        m_next_id++,
-        event,
-        upstream
-    );
-
-    {
-        std::lock_guard<session_queue_t> queue_guard(m_queue);
-
-        if(m_profile.queue_limit > 0 && m_queue.size() >= m_profile.queue_limit) {
-            throw cocaine::error_t("the queue is full");
-        }
-
-        m_queue.push(session);
-    }
-
-    wake();
-
-    return std::make_shared<session_t::downstream_t>(session);
-}
-
-std::shared_ptr<api::stream_t>
-engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag) {
-    if(m_state != states::running) {
-        throw cocaine::error_t("the engine is not active");
-    }
-
-    auto session = std::make_shared<session_t>(
-        m_next_id++,
-        event,
-        upstream
-    );
-
-    pool_map_t::iterator it;
-
-    {
-        std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
-
-        it = m_pool.find(tag);
-
-        if(it == m_pool.end()) {
-            if(m_pool.size() >= m_profile.pool_limit) {
-                throw cocaine::error_t("the pool is full");
-            }
-
-            std::tie(it, std::ignore) = m_pool.insert(std::make_pair(
-                tag,
-                std::make_shared<slave_t>(m_context, *m_reactor, m_manifest, m_profile, tag, *this)
-            ));
-        }
-    }
-
-    it->second->assign(session);
-
-    return std::make_shared<session_t::downstream_t>(session);
-}
-
-void
-engine_t::erase(const std::string& id, int code, const std::string& reason) {
-    std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
-
-    m_pool.erase(id);
-
-    if(code == rpc::terminate::abnormal) {
-        COCAINE_LOG_ERROR(m_log, "the app seems to be broken")("reason", reason);
-        migrate(states::broken);
-    }
-
-    if(m_state != states::running && m_pool.empty()) {
-        // If it was the last slave, shut the engine down.
-        stop();
-    } else {
-        wake();
-    }
-}
-
-void
-engine_t::wake() {
-    m_notification->send();
-}
-
-void
-engine_t::on_connection(const std::shared_ptr<io::socket<local>>& socket_) {
-    const int fd = socket_->fd();
-
-    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake")("fd", fd);
-
-    auto channel_ = std::make_shared<channel<io::socket<local>>>(*m_reactor, socket_);
-
-    channel_->rd->bind(
-        std::bind(&engine_t::on_handshake,  this, fd, _1),
-        std::bind(&engine_t::on_disconnect, this, fd, _1)
-    );
-
-    channel_->wr->bind(
-        std::bind(&engine_t::on_disconnect, this, fd, _1)
-    );
-
-    m_backlog[fd] = channel_;
-}
-
-void
-engine_t::on_handshake(int fd, const message_t& message) {
-    std::string id;
-    backlog_t::mapped_type channel_ = m_backlog[fd];
-
-    // Pop the channel.
-    m_backlog.erase(fd);
-
-    try {
-        message.as<rpc::handshake>(id);
-    } catch(const std::system_error& e) {
-        COCAINE_LOG_WARNING(m_log, "disconnecting an incompatible slave")("fd", fd);
-        return;
-    }
-
-    pool_map_t::iterator it;
-
-    {
-        std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
-
-        it = m_pool.find(id);
-
-        if(it == m_pool.end()) {
-            COCAINE_LOG_WARNING(m_log, "disconnecting an unknown slave")(
-                "id", id,
-                "fd", fd
-            );
-            return;
-        }
-    }
-
-    COCAINE_LOG_DEBUG(m_log, "slave connected")("id", id, "fd", fd);
-
-    it->second->bind(channel_);
-}
-
-void
-engine_t::on_disconnect(int fd, const std::error_code& ec) {
-    COCAINE_LOG_INFO(m_log, "slave has disconnected during the handshake")(
-        "fd", fd,
-        "errc", ec.value(),
-        "reason", ec.message()
-    );
-
-    m_backlog.erase(fd);
-}
 
 namespace {
 
@@ -329,73 +112,6 @@ private:
 
 } // namespace
 
-void
-engine_t::on_control(const message_t& message) {
-    std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
-
-    switch(message.id()) {
-    case event_traits<control::report>::id: {
-        collector_t collector;
-
-        size_t active = std::count_if(
-            m_pool.begin(),
-            m_pool.end(),
-            std::bind<bool>(std::ref(collector), _1)
-        );
-
-        dynamic_t::object_t info;
-
-        info["load-median"] = dynamic_t::uint_t(collector.median());
-
-        info["queue"] = dynamic_t::object_t({
-            {"capacity", dynamic_t::uint_t(m_profile.queue_limit)},
-            {"depth", dynamic_t::uint_t(m_queue.size())}
-        });
-
-        info["sessions"] = dynamic_t::object_t({
-            {"pending", dynamic_t::uint_t(collector.sum())}
-        });
-
-        info["slaves"] = dynamic_t::object_t({
-            {"active", dynamic_t::uint_t(active)},
-            {"capacity", dynamic_t::uint_t(m_profile.pool_limit)},
-            {"idle", dynamic_t::uint_t(m_pool.size() - active)}
-        });
-
-        info["state"] = std::string(describe[static_cast<int>(m_state)]);
-
-        m_channel->wr->write<control::info>(0UL, dynamic_t(info));
-    } break;
-
-    case event_traits<control::terminate>::id: {
-        // Prepare for the shutdown.
-        migrate(states::stopping);
-
-        // NOTE: This message is needed to wake up the app's event loop, which is blocked
-        // in order to allow the stream to flush the message queue.
-        m_channel->wr->write<control::terminate>(0UL);
-    } break;
-
-    default:
-        COCAINE_LOG_ERROR(m_log, "dropping unknown type %d control message", message.id());
-    }
-}
-
-void
-engine_t::on_notification(ev::async&, int) {
-    pump();
-    balance();
-}
-
-void
-engine_t::on_termination(ev::timer&, int) {
-    std::lock_guard<session_queue_t> queue_guard(m_queue);
-
-    COCAINE_LOG_WARNING(m_log, "forcing the engine termination");
-
-    stop();
-}
-
 namespace {
 
 struct load {
@@ -441,6 +157,298 @@ min_element_if(It first, It last, Compare compare, Predicate predicate) {
 
 } // namespace
 
+engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile_t& profile):
+    m_context(context),
+    m_log(context.log(manifest.name)),
+    m_manifest(manifest),
+    m_profile(profile),
+    m_state(states::stopped),
+    m_termination_timer(m_loop),
+    m_socket(m_loop),
+    m_acceptor(m_loop, protocol_type::endpoint(m_manifest.endpoint)),
+    m_next_id(1)
+{
+    m_isolate = m_context.get<api::isolate_t>(
+        m_profile.isolate.type,
+        m_context,
+        m_manifest.name,
+        m_profile.isolate.args
+    );
+    COCAINE_LOG_DEBUG(m_log, "app '%s' engine has been published on '%s'", m_manifest.name, m_acceptor.local_endpoint().path());
+    m_thread = std::thread(std::bind(&engine_t::run, this));
+}
+
+engine_t::~engine_t() {
+    COCAINE_LOG_DEBUG(m_log, "stopping '%s' engine", m_manifest.name);
+
+    boost::filesystem::remove(m_manifest.endpoint);
+
+    m_loop.post(std::bind(&engine_t::migrate, this, states::stopping));
+
+    if(m_thread.joinable()) {
+        m_thread.join();
+    }
+}
+
+void
+engine_t::run() {
+    COCAINE_LOG_DEBUG(m_log, "starting the '%s' engine", m_manifest.name);
+
+    m_acceptor.async_accept(
+        m_socket,
+        m_endpoint,
+        std::bind(&engine_t::on_accept, this, ph::_1)
+    );
+
+    m_state = states::running;
+    boost::system::error_code ec;
+    m_loop.run(ec);
+    if(ec) {
+        COCAINE_LOG_DEBUG(m_log, "engine has been stopped with error: [%d] %s", ec.value(), ec.message());
+    } else {
+        COCAINE_LOG_DEBUG(m_log, "engine has been successfuly stopped");
+    }
+    m_state = states::stopped;
+}
+
+std::shared_ptr<api::stream_t>
+engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
+    if(m_state != states::running) {
+        throw cocaine::error_t("the engine is not active");
+    }
+
+    auto session = std::make_shared<session_t>(m_next_id++, event, upstream);
+
+    std::lock_guard<session_queue_t> lock(m_queue);
+    if(m_profile.queue_limit > 0 && m_queue.size() >= m_profile.queue_limit) {
+        throw cocaine::error_t("the queue is full");
+    }
+
+    m_queue.push(session);
+    wake();
+    return std::make_shared<session_t::downstream_t>(session);
+}
+
+std::shared_ptr<api::stream_t>
+engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag) {
+    if(m_state != states::running) {
+        throw cocaine::error_t("the engine is not active");
+    }
+
+    auto session = std::make_shared<session_t>(m_next_id++, event, upstream);
+
+    pool_map_t::iterator it;
+
+    {
+        std::lock_guard<std::mutex> pool_guard(m_pool_mutex);
+
+        it = m_pool.find(tag);
+
+        if(it == m_pool.end()) {
+            if(m_pool.size() >= m_profile.pool_limit) {
+                throw cocaine::error_t("the pool is full");
+            }
+
+            std::tie(it, std::ignore) = m_pool.insert(
+                std::make_pair(
+                    tag,
+                    std::make_shared<slave_t>(
+                        tag,
+                        m_manifest,
+                        m_profile,
+                        m_context,
+                        std::bind(&engine_t::wake, this),
+                        std::bind(&engine_t::erase, this, ph::_1, ph::_2, ph::_3),
+                        m_loop
+                    )
+                )
+            );
+        }
+    }
+
+    it->second->assign(session);
+
+    return std::make_shared<session_t::downstream_t>(session);
+}
+
+void
+engine_t::erase(const std::string& id, int code, const std::string& reason) {
+    COCAINE_LOG_DEBUG(m_log, "erasing slave '%s' from the pool", id);
+
+    std::lock_guard<std::mutex> lock(m_pool_mutex);
+    m_pool.erase(id);
+
+    if(code == rpc::terminate::abnormal) {
+        COCAINE_LOG_ERROR(m_log, "the app seems to be broken: %s", reason);
+        migrate(states::broken);
+    }
+
+    if(m_state != states::running && m_pool.empty()) {
+        // If it was the last slave, shut the engine down.
+        stop();
+    } else {
+        wake();
+    }
+}
+
+void engine_t::wake() {
+    m_loop.post(std::bind(&engine_t::do_wake, this));
+}
+
+void
+engine_t::do_wake() {
+    pump();
+    balance();
+}
+
+// Collect info about engine's status. Must be invoked only from engine's thread.
+void
+engine_t::do_info(std::function<void(dynamic_t::object_t)> callback) {
+    BOOST_ASSERT(std::this_thread::get_id() == m_thread.get_id());
+
+    collector_t collector;
+
+    std::lock_guard<std::mutex> plock(m_pool_mutex);
+
+    size_t active = std::count_if(
+        m_pool.begin(),
+        m_pool.end(),
+        std::bind<bool>(std::ref(collector), ph::_1)
+    );
+
+    std::lock_guard<session_queue_t> qlock(m_queue);
+    dynamic_t::object_t info;
+    info["profile"] = m_profile.name;
+    info["load-median"] = dynamic_t::uint_t(collector.median());
+    info["queue"] = dynamic_t::object_t(
+        {
+            { "capacity", dynamic_t::uint_t(m_profile.queue_limit) },
+            { "depth",    dynamic_t::uint_t(m_queue.size()) }
+        }
+    );
+    info["sessions"] = dynamic_t::object_t(
+        {
+            { "pending", dynamic_t::uint_t(collector.sum()) }
+        }
+    );
+    info["slaves"] = dynamic_t::object_t(
+        {
+            { "active",   dynamic_t::uint_t(active) },
+            { "capacity", dynamic_t::uint_t(m_profile.pool_limit) },
+            { "idle",     dynamic_t::uint_t(m_pool.size() - active) }
+        }
+    );
+    info["state"] = std::string(describe[static_cast<int>(m_state)]);
+
+    callback(std::move(info));
+}
+
+void
+engine_t::info(std::function<void(dynamic_t::object_t)> callback) {
+    m_loop.post(std::bind(&engine_t::do_info, this, callback));
+}
+
+void
+engine_t::on_accept(const boost::system::error_code& ec) {
+    if(ec) {
+        if(ec == boost::asio::error::operation_aborted) {
+            return;
+        }
+
+        COCAINE_LOG_ERROR(m_log, "unable to accept '%s' worker connection: %s", m_manifest.name, ec.message());
+        return;
+    }
+
+    COCAINE_LOG_INFO(m_log, "accepted new '%s' engine client", m_manifest.name);
+    on_connection(std::make_unique<protocol_type::socket>(std::move(m_socket)));
+
+    m_acceptor.async_accept(
+        m_socket,
+        m_endpoint,
+        std::bind(&engine_t::on_accept, this, ph::_1)
+    );
+}
+
+void
+engine_t::on_connection(std::unique_ptr<protocol_type::socket>&& socket) {
+    const int fd = socket->native_handle();
+
+    COCAINE_LOG_DEBUG(m_log, "initiating a slave handshake from %d fd", fd);
+    auto channel = std::make_shared<io::channel<protocol_type>>(std::move(socket));
+    channel->reader->read(
+        m_message,
+        std::bind(&engine_t::on_maybe_handshake, this, ph::_1, fd)
+    );
+    m_backlog[fd] = channel;
+}
+
+void
+engine_t::on_maybe_handshake(const boost::system::error_code& ec, int fd) {
+    if(ec) {
+        on_disconnect(fd, ec);
+    } else {
+        on_handshake(fd, m_message);
+    }
+}
+
+void
+engine_t::on_handshake(int fd, const decoder_t::message_type& message) {
+    COCAINE_LOG_DEBUG(m_log, "received possible handshake from slave on %d fd", fd);
+    auto fit = m_backlog.find(fd);
+    if(fit == m_backlog.end()) {
+        COCAINE_LOG_WARNING(m_log, "disconnecting an unexpected slave on %d fd", fd);
+        return;
+    }
+
+    auto channel = fit->second;
+    // Pop the channel.
+    m_backlog.erase(fd);
+
+    std::string id;
+    try {
+        io::type_traits<
+            typename io::event_traits<rpc::handshake>::argument_type
+        >::unpack(message.args(), id);
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_WARNING(m_log, "disconnecting an incompatible slave on %d fd: %s", fd, e.what());
+        return;
+    }
+
+    pool_map_t::iterator it;
+
+    {
+        std::lock_guard<std::mutex> lock(m_pool_mutex);
+        it = m_pool.find(id);
+        if(it == m_pool.end()) {
+            COCAINE_LOG_WARNING(m_log, "disconnecting an unknown '%s' slave on %d fd", id, fd);
+            return;
+        }
+    }
+
+    COCAINE_LOG_DEBUG(m_log, "slave '%s' on %d fd connected", id, fd);
+    it->second->bind(channel);
+}
+
+void
+engine_t::on_disconnect(int fd, const boost::system::error_code& ec) {
+    if(ec == boost::asio::error::operation_aborted) {
+        return;
+    }
+    COCAINE_LOG_INFO(m_log, "slave on %d fd has disconnected during the handshake: [%d] %s", fd, ec.value(), ec.message());
+    m_backlog.erase(fd);
+}
+
+void
+engine_t::on_termination(const boost::system::error_code& ec) {
+    if(ec == boost::asio::error::operation_aborted) {
+        return;
+    }
+
+    std::lock_guard<session_queue_t> queue_guard(m_queue);
+    COCAINE_LOG_WARNING(m_log, "forcing the engine termination due to timeout");
+    stop();
+}
+
 void
 engine_t::pump() {
     session_queue_t::value_type session;
@@ -457,8 +465,7 @@ engine_t::pump() {
         }
 
         {
-            std::lock_guard<session_queue_t> queue_guard(m_queue);
-
+            std::lock_guard<session_queue_t> lock(m_queue);
             if(m_queue.empty()) {
                 return;
             }
@@ -498,42 +505,25 @@ engine_t::balance() {
         return;
     }
 
-    COCAINE_LOG_INFO(m_log, "enlarging the slaves pool")(
-        "from", m_pool.size(),
-        "to", target
-    );
+    COCAINE_LOG_INFO(m_log, "enlarging the slaves pool from %d to %d", m_pool.size(), target);
 
     while(m_pool.size() != target) {
         const auto id = unique_id_t().string();
-
-        try {
-            m_pool.insert(std::make_pair(
-                id,
-                std::make_shared<slave_t>(m_context, *m_reactor, m_manifest, m_profile, id, *this)
-            ));
-        } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves")(
-                "errno", e.code().value(),
-                "reason", e.code().message()
-            );
-            break;
-        } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves")(
-                "reason", e.what()
-            );
-            break;
-        } catch(...) {
-            COCAINE_LOG_ERROR(m_log, "unable to spawn more slaves")(
-                "reason", "unknown exception"
-            );
-            break;
-        }
+        m_pool[id] = std::make_shared<slave_t>(
+            id,
+            m_manifest,
+            m_profile,
+            m_context,
+            std::bind(&engine_t::wake, this),
+            std::bind(&engine_t::erase, this, ph::_1, ph::_2, ph::_3),
+            m_loop
+        );
     }
 }
 
 void
 engine_t::migrate(states target) {
-    std::lock_guard<session_queue_t> queue_guard(m_queue);
+    std::lock_guard<session_queue_t> lock(m_queue);
 
     m_state = target;
 
@@ -547,7 +537,7 @@ engine_t::migrate(states target) {
         // Abort all the outstanding sessions.
         while(!m_queue.empty()) {
             m_queue.front()->upstream->error(
-                resource_error,
+                error::resource_error,
                 "engine is shutting down"
             );
 
@@ -576,22 +566,23 @@ engine_t::migrate(states target) {
             "timeout", m_profile.termination_timeout
         );
 
-        m_termination_timer->set<engine_t, &engine_t::on_termination>(this);
-        m_termination_timer->start(m_profile.termination_timeout);
+        m_termination_timer.expires_from_now(boost::posix_time::seconds(m_profile.termination_timeout));
+        m_termination_timer.async_wait(std::bind(&engine_t::on_termination, this, ph::_1));
     }
 }
 
 void
 engine_t::stop() {
-    m_termination_timer->stop();
+    COCAINE_LOG_DEBUG(m_log, "stopping '%s' engine", m_manifest.name);
+    m_acceptor.cancel();
+    m_termination_timer.cancel();
 
     // NOTE: This will force the slave pool termination.
     m_pool.clear();
 
     if(m_state == states::stopping) {
         m_state = states::stopped;
-
-        // Don't stop the event loop if the engine is becoming broken.
-        m_reactor->stop();
+        // Don't stop the event loop explicitly. Instead of this - we cancel all handlers and
+        // wait for graceful shutdown.
     }
 }

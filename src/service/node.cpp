@@ -41,14 +41,13 @@ node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::str
     m_context(context),
     m_log(context.log(name))
 {
-    using namespace std::placeholders;
-
-    on<node::start_app>(std::bind(&node_t::on_start_app, this, _1, _2));
-    on<node::pause_app>(std::bind(&node_t::on_pause_app, this, _1));
+    namespace ph = std::placeholders;
+    on<node::start_app>(std::bind(&node_t::on_start_app, this, ph::_1, ph::_2));
+    on<node::pause_app>(std::bind(&node_t::on_pause_app, this, ph::_1));
     on<node::list>(std::bind(&node_t::on_list, this));
 
-    std::map<std::string, std::string> runlist;
-
+    typedef std::map<std::string, std::string> runlist_type;
+    runlist_type runlist;
     const auto runlist_id = args.as_object().at("runlist", "default").as_string();
 
     // It's here to keep the reference alive.
@@ -58,8 +57,7 @@ node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::str
         COCAINE_LOG_INFO(m_log, "reading runlist")(
             "runlist", runlist_id
         );
-
-        runlist = storage->get<decltype(runlist)>("runlists", runlist_id);
+        runlist = storage->get<runlist_type>("runlists", runlist_id);
     } catch(const storage_error_t& e) {
         COCAINE_LOG_WARNING(m_log, "unable to read runlist: %s", e.what())(
             "runlist", runlist_id
@@ -96,7 +94,7 @@ node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::str
 
         std::copy(errored.begin(), errored.end(), builder);
 
-        COCAINE_LOG_ERROR(m_log, "coudn't start %d app(s): %s", errored.size(), stream.str());
+        COCAINE_LOG_ERROR(m_log, "couldn't start %d app(s): %s", errored.size(), stream.str());
     }
 }
 
@@ -107,9 +105,9 @@ node_t::~node_t() {
         return;
     }
 
-    COCAINE_LOG_INFO(m_log, "stopping apps");
-
+    COCAINE_LOG_INFO(m_log, "stopping %d apps", ptr->size());
     for(auto it = ptr->begin(); it != ptr->end(); ++it) {
+        COCAINE_LOG_INFO(m_log, "trying to stop '%s' app", it->first);
         it->second->pause();
     }
 
@@ -126,13 +124,11 @@ node_t::on_start_app(const std::string& name, const std::string& profile) {
     auto ptr = m_apps.synchronize();
     auto it = ptr->find(name);
 
+    COCAINE_LOG_INFO(m_log, "trying to start '%s' app", name);
     if(it != ptr->end()) {
         throw cocaine::error_t("app '%s' is already running", name);
     }
 
-    COCAINE_LOG_INFO(m_log, "starting app")(
-        "app", name
-    );
 
     std::tie(it, std::ignore) = ptr->insert({
         name,
@@ -147,13 +143,10 @@ node_t::on_pause_app(const std::string& name) {
     auto ptr = m_apps.synchronize();
     auto it = ptr->find(name);
 
+    COCAINE_LOG_INFO(m_log, "trying to stop '%s' app", name);
     if(it == ptr->end()) {
         throw cocaine::error_t("app '%s' is not running", name);
     }
-
-    COCAINE_LOG_INFO(m_log, "stopping app")(
-        "app", name
-    );
 
     it->second->pause();
     ptr->erase(it);

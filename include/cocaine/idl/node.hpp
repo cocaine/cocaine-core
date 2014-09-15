@@ -21,6 +21,8 @@
 #ifndef COCAINE_NODE_SERVICE_INTERFACE_HPP
 #define COCAINE_NODE_SERVICE_INTERFACE_HPP
 
+#include "cocaine/dynamic.hpp"
+
 #include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {

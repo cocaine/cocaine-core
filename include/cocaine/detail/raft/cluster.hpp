@@ -210,7 +210,7 @@ public:
     // Check if the node has won in the current term.
     void
     register_vote() {
-        if (won_elections(m_current) && (m_next.size() == 0 || won_elections(m_next))) {
+        if(won_elections(m_current) && (m_next.size() == 0 || won_elections(m_next))) {
             if(m_election_handler) {
                 m_election_handler();
                 m_election_handler = nullptr;

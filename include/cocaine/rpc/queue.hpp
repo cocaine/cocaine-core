@@ -36,7 +36,7 @@
 
 namespace cocaine { namespace io {
 
-template<class Tag> class message_queue;
+template<class Tag, class Upstream = basic_upstream_t> class message_queue;
 
 namespace mpl = boost::mpl;
 
@@ -65,28 +65,33 @@ make_frozen(Args&&... args) {
     return frozen<Event>(Event(), std::forward<Args>(args)...);
 }
 
-struct frozen_visitor_t:
+template<class Upstream>
+struct frozen_visitor:
     public boost::static_visitor<void>
 {
+    typedef Upstream upstream_type;
+
     explicit
-    frozen_visitor_t(const upstream_ptr_t& upstream_):
+    frozen_visitor(const std::shared_ptr<upstream_type>& upstream_):
         upstream(upstream_)
     { }
 
     template<class Event>
     void
     operator()(const frozen<Event>& frozen) const {
-        upstream->send<Event>(frozen.tuple);
+        upstream->template send<Event>(frozen.tuple);
     }
 
 private:
-    const upstream_ptr_t& upstream;
+    const std::shared_ptr<upstream_type>& upstream;
 };
 
 } // namespace aux
 
-template<class Tag>
+template<class Tag, class Upstream>
 class message_queue {
+    typedef Upstream upstream_type;
+
     typedef typename mpl::transform<
         typename protocol<Tag>::messages,
         typename mpl::lambda<aux::frozen<mpl::_1>>
@@ -98,8 +103,8 @@ class message_queue {
     std::vector<variant_type> m_operations;
 
     // The upstream might be attached during message invocation, so it has to be synchronized for
-    // thread safety - the atomicicity guarantee of the shared_ptr<T> is not enough.
-    upstream_ptr_t m_upstream;
+    // thread safety - the atomicity guarantee of the shared_ptr<T> is not enough.
+    std::shared_ptr<upstream_type> m_upstream;
 
 public:
     template<class Event, typename... Args>
@@ -114,7 +119,7 @@ public:
             return m_operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
         }
 
-        m_upstream->send<Event>(std::forward<Args>(args)...);
+        m_upstream->template send<Event>(std::forward<Args>(args)...);
     }
 
     template<class OtherTag>
@@ -125,13 +130,18 @@ public:
             "upstream protocol is not compatible with this message queue"
         );
 
-        m_upstream = std::move(upstream.ptr);
+        attach(std::move(upstream.ptr));
+    }
+
+    void
+    attach(std::shared_ptr<upstream_type> upstream) {
+        m_upstream = std::move(upstream);
 
         if(m_operations.empty()) {
             return;
         }
 
-        aux::frozen_visitor_t visitor(m_upstream);
+        aux::frozen_visitor<upstream_type> visitor(m_upstream);
 
         std::for_each(m_operations.begin(), m_operations.end(), boost::apply_visitor(visitor));
 

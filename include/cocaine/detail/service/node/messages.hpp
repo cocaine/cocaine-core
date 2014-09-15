@@ -142,8 +142,6 @@ struct protocol<control_tag> {
     typedef control scope;
 };
 
-} // namespace io
-
 }} // namespace cocaine::io
 
 #endif

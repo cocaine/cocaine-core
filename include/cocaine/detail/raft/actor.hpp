@@ -408,7 +408,7 @@ private:
            uint64_t commit_index)
     {
         std::vector<entry_type> unpacked;
-        for (auto it = entries.begin(); it != entries.end(); ++it) {
+        for(auto it = entries.begin(); it != entries.end(); ++it) {
             entry_type entry;
             io::type_traits<entry_type>::unpack(*it, entry);
             unpacked.emplace_back(std::move(entry));

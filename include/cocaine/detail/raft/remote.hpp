@@ -224,12 +224,12 @@ public:
     // Raft actor requests vote from the remote node via this method.
     void
     request_vote() {
-        if (m_won_term >= m_actor.config().current_term()) {
+        if(m_won_term >= m_actor.config().current_term()) {
             return;
-        } else if (m_id == m_actor.context().raft().id()) {
+        } else if(m_id == m_actor.context().raft().id()) {
             m_won_term = m_actor.config().current_term();
             m_cluster.register_vote();
-        } else if (!m_vote_state) {
+        } else if(!m_vote_state) {
             m_vote_state = std::make_shared<vote_handler_t>(*this);
             // The default TCP keep-alive timeout is large and
             // may not provide an error for actually dead connection for a long time,
@@ -508,7 +508,7 @@ private:
             handler();
             // If m_resolver is not null then we're already connecting to the remote node,
             // and there is a pending operation. So just do nothing.
-        } else if (!m_resolver) {
+        } else if(!m_resolver) {
             COCAINE_LOG_DEBUG(m_logger, "client is not connected, connecting...");
 
             m_resolver = std::make_shared<service_resolver_t>(

@@ -23,12 +23,17 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/api/service.hpp"
+
 #include "cocaine/dynamic/dynamic.hpp"
 
-#include <thread>
+#include "cocaine/idl/node.hpp"
 
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/local/stream_protocol.hpp>
+#include "cocaine/rpc/slot/deferred.hpp"
+
+#include "cocaine/utility.hpp"
+
+#include <thread>
 
 namespace cocaine { namespace api {
 
@@ -55,18 +60,13 @@ class app_t {
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    // Configuration
-
+    // Configuration.
     std::unique_ptr<const engine::manifest_t> m_manifest;
     std::unique_ptr<const engine::profile_t> m_profile;
 
-    // I/O
-
-    mutable boost::asio::io_service m_asio;
-
-    std::unique_ptr<io::channel<boost::asio::local::stream_protocol>> m_engine_control;
+    // IO.
+    std::shared_ptr<boost::asio::io_service> m_asio;
     std::shared_ptr<engine::engine_t> m_engine;
-    std::unique_ptr<std::thread> m_thread;
 
 public:
     app_t(context_t& context, const std::string& name, const std::string& profile);
@@ -78,17 +78,15 @@ public:
     void
     pause();
 
-    auto
-    info() const -> dynamic_t;
+    deferred<result_of<io::app::info>::type>
+    info() const;
 
-    // Scheduling
-
+    // Scheduling.
     std::shared_ptr<api::stream_t>
     enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream);
 
     std::shared_ptr<api::stream_t>
-    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream,
-            const std::string& tag);
+    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag);
 };
 
 } // namespace cocaine

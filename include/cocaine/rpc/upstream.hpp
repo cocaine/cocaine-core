@@ -75,13 +75,13 @@ basic_upstream_t::drop() {
 
 // Forwards for the upstream<T> class
 
-template<class Tag> class message_queue;
+template<class Tag, class Upstream> class message_queue;
 
 } // namespace io
 
 template<class Tag>
 class upstream {
-    template<class> friend class io::message_queue;
+    template<class, class> friend class io::message_queue;
 
     // The original non-typed upstream.
     const io::upstream_ptr_t ptr;
@@ -105,7 +105,7 @@ public:
 
 template<>
 class upstream<void> {
-    template<class> friend class io::message_queue;
+    template<class, class> friend class io::message_queue;
 
 public:
     upstream(const io::upstream_ptr_t&) { }
