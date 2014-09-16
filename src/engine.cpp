@@ -47,15 +47,32 @@ execution_unit_t::execution_unit_t(context_t& context):
     );
 }
 
-execution_unit_t::~execution_unit_t() {
-    for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
+namespace {
+
+struct detach_action_t {
+    void
+    operator()();
+
+    // Never becomes a dangling reference.
+    std::map<int, std::shared_ptr<session_t>>& sessions;
+};
+
+void
+detach_action_t::operator()() {
+    for(auto it = sessions.begin(); it != sessions.end(); ++it) {
         // Synchronously close the connections.
         it->second->detach();
     }
+}
 
+} // namespace
+
+execution_unit_t::~execution_unit_t() {
     COCAINE_LOG_DEBUG(m_log, "engine waiting for outstanding operations to complete")(
         "engine", m_chamber->uuid()
     );
+
+    m_asio->post(detach_action_t{m_sessions});
 
     // This will block until all the outstanding operations are complete.
     m_chamber = nullptr;

@@ -114,6 +114,43 @@ struct unpack_sequence_impl<optional_with_default<T, Default>> {
     }
 };
 
+// Exception helpers
+
+struct sequence_type_error:
+    public msgpack::type_error
+{
+    virtual
+    auto
+    what() const throw() -> const char* {
+        return "sequence type mismatch";
+    }
+};
+
+struct sequence_size_error:
+    public msgpack::type_error
+{
+    sequence_size_error(size_t size, size_t minimal) {
+        message = cocaine::format("sequence size mismatch — got %d elements, expected at least %d",
+            size,
+            minimal
+        );
+    }
+
+    virtual
+   ~sequence_size_error() noexcept {
+        // Empty.
+    }
+
+    virtual
+    auto
+    what() const throw() -> const char* {
+        return message.c_str();
+    }
+
+private:
+    std::string message;
+};
+
 } // namespace aux
 
 // Variadic pack serialization
@@ -178,14 +215,9 @@ public:
         #endif
 
         if(source.type != msgpack::type::ARRAY) {
-            // TODO: Proper exception type.
-            throw cocaine::error_t("sequence type mismatch");
+            throw aux::sequence_type_error();
         } else if(source.via.array.size < minimal) {
-            // TODO: Proper exception type.
-            throw cocaine::error_t("sequence length mismatch - expected at least %d, got %d",
-                minimal,
-                source.via.array.size
-            );
+            throw aux::sequence_size_error(source.via.array.size, minimal);
         }
 
         #if defined(__GNUC__) && defined(HAVE_GCC46)
