@@ -212,27 +212,27 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     on<locator::refresh>(std::bind(&locator_t::on_refresh, this, _1));
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
 
-    // It's here to keep the reference alive.
-    const auto storage = api::storage(m_context, "core");
+    // Service restrictions
 
-    try {
-        auto groups = storage->find("groups", std::vector<std::string>({
-            "group",
-            "active"
-        }));
+    m_restricted = root.as_object().at("restrict", dynamic_t::array_t()).to<std::set<std::string>>();
 
-        typedef std::map<std::string, unsigned int> group_t;
+    if(!m_restricted.empty()) {
+        std::ostringstream stream;
+        std::ostream_iterator<std::string> builder(stream);
 
-        for(auto it = groups.begin(); it != groups.end(); ++it) {
-            m_routing->add_group(*it, storage->get<group_t>("groups", *it));
-        }
-    } catch(const storage_error_t& e) {
-#if defined(HAVE_GCC48)
-        std::throw_with_nested(cocaine::error_t("unable to initialize routing groups"));
-#else
-        throw cocaine::error_t("unable to initialize routing groups");
-#endif
+        std::copy(m_restricted.begin(), m_restricted.end(), builder);
+
+        COCAINE_LOG_INFO(m_log, "restricting %d service(s): %s", m_restricted.size(), stream.str());
     }
+
+    m_restricted.insert(name);
+
+    // Context shutdown signal is set to track 'm_routing' because its lifetime essentially matches
+    // that of the Locator service itself
+
+    context.signals.shutdown.connect(context_t::signals_t::context_signals_t::slot_type(
+        std::bind(&locator_t::on_context_shutdown, this)
+    ).track_foreign(m_routing));
 
     // Initialize clustering components
 
@@ -267,12 +267,27 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         m_gateway = m_context.get<api::gateway_t>(type, m_context, name + ":gateway", args);
     }
 
-    // Context shutdown signal is set to track 'm_routing' because its lifetime essentially matches
-    // that of the Locator service itself
+    // It's here to keep the reference alive.
+    const auto storage = api::storage(m_context, "core");
 
-    context.signals.shutdown.connect(context_t::signals_t::context_signals_t::slot_type(
-        std::bind(&locator_t::on_context_shutdown, this)
-    ).track_foreign(m_routing));
+    try {
+        auto groups = storage->find("groups", std::vector<std::string>({
+            "group",
+            "active"
+        }));
+
+        typedef std::map<std::string, unsigned int> group_t;
+
+        for(auto it = groups.begin(); it != groups.end(); ++it) {
+            m_routing->add_group(*it, storage->get<group_t>("groups", *it));
+        }
+    } catch(const storage_error_t& e) {
+#if defined(HAVE_GCC48)
+        std::throw_with_nested(cocaine::error_t("unable to initialize routing groups"));
+#else
+        throw cocaine::error_t("unable to initialize routing groups");
+#endif
+    }
 }
 
 locator_t::~locator_t() {
@@ -425,13 +440,17 @@ locator_t::on_cluster() const -> results::cluster {
 
 void
 locator_t::on_service(const actor_t& actor) {
-    auto ptr = m_locals.synchronize();
+    if(m_restricted.count(actor.prototype().name())) {
+        return;
+    }
 
     auto metadata = results::resolve {
         actor.endpoints(),
         actor.prototype().version(),
         actor.prototype().graph()
     };
+
+    auto ptr = m_locals.synchronize();
 
     if(!ptr->streams.empty()) {
         COCAINE_LOG_DEBUG(m_log, "synchronizing service state with %d remote node(s)", ptr->streams.size())(

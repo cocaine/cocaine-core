@@ -84,11 +84,15 @@ class locator_t:
     // Local services state.
     synchronized<locals_t> m_locals;
 
-    // Clustering.
+    // A list of local-only services, i.e. restricted from being announced to remote nodes.
+    std::set<std::string> m_restricted;
+
+    // Clustering components.
     std::unique_ptr<api::gateway_t> m_gateway;
     std::shared_ptr<api::cluster_t> m_cluster;
 
     // Used to resolve service names against service groups based on weights and other metrics.
+    // TODO: Make it a part of this class itself.
     std::shared_ptr<router_t> m_routing;
 
 public:

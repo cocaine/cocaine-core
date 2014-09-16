@@ -71,11 +71,11 @@ public:
     auto
     endpoints() const -> std::vector<boost::asio::ip::tcp::endpoint>;
 
-    auto
-    prototype() const -> const io::basic_dispatch_t&;
-
     bool
     is_active() const;
+
+    auto
+    prototype() const -> const io::basic_dispatch_t&;
 };
 
 } // namespace cocaine

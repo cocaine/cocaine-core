@@ -184,12 +184,12 @@ actor_t::endpoints() const -> std::vector<tcp::endpoint> {
     return std::vector<tcp::endpoint>(begin, end);
 }
 
-auto
-actor_t::prototype() const -> const io::basic_dispatch_t& {
-    return *m_prototype;
-}
-
 bool
 actor_t::is_active() const {
     return m_chamber && !m_acceptors.empty();
+}
+
+auto
+actor_t::prototype() const -> const io::basic_dispatch_t& {
+    return *m_prototype;
 }

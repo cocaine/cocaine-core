@@ -195,7 +195,7 @@ public:
 
     template<class Category, typename... Args>
     typename api::category_traits<Category>::ptr_type
-    get(const std::string& type, Args&&... args);
+    get(const std::string& type, Args&&... args) const;
 
     // Service API
 
@@ -234,7 +234,7 @@ private:
 
 template<class Category, typename... Args>
 typename api::category_traits<Category>::ptr_type
-context_t::get(const std::string& type, Args&&... args) {
+context_t::get(const std::string& type, Args&&... args) const {
     return m_repository->get<Category>(type, std::forward<Args>(args)...);
 }
 
