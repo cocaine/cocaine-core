@@ -30,7 +30,7 @@ basic_dispatch_t::~basic_dispatch_t() {
     // Empty.
 }
 
-auto
-basic_dispatch_t::name() const -> std::string {
+std::string
+basic_dispatch_t::name() const {
     return m_name;
 }

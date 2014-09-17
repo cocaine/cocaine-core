@@ -95,7 +95,7 @@ private:
 
 // Actor
 
-actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio,
+actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
                  std::unique_ptr<io::basic_dispatch_t> prototype)
 :
     m_context(context),
@@ -104,7 +104,7 @@ actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio,
     m_prototype(std::move(prototype))
 { }
 
-actor_t::actor_t(context_t& context, std::shared_ptr<io_service> asio,
+actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
                  std::unique_ptr<api::service_t> service)
 :
     m_context(context),
@@ -125,7 +125,7 @@ actor_t::~actor_t() {
 }
 
 void
-actor_t::run(std::vector<tcp::endpoint> endpoints) {
+actor_t::run(const std::vector<tcp::endpoint>& endpoints) {
     BOOST_ASSERT(!m_chamber);
 
     for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
@@ -157,8 +157,8 @@ actor_t::terminate() {
     m_chamber = nullptr;
 }
 
-auto
-actor_t::endpoints() const -> std::vector<tcp::endpoint> {
+std::vector<tcp::endpoint>
+actor_t::endpoints() const {
     if(!is_active()) {
         return std::vector<tcp::endpoint>();
     }
@@ -189,7 +189,7 @@ actor_t::is_active() const {
     return m_chamber && !m_acceptors.empty();
 }
 
-auto
-actor_t::prototype() const -> const io::basic_dispatch_t& {
+const io::basic_dispatch_t&
+actor_t::prototype() const {
     return *m_prototype;
 }

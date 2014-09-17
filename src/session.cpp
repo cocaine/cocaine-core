@@ -236,15 +236,16 @@ session_t::invoke(const decoder_t::message_type& message) {
     channel->process(message);
 }
 
-auto
-session_t::inject(const dispatch_ptr_t& dispatch) -> upstream_ptr_t {
+upstream_ptr_t
+session_t::inject(const dispatch_ptr_t& dispatch) {
     auto ptr = channels.synchronize();
 
     const auto channel_id = ++max_channel_id;
     const auto upstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
-    // TODO: Think about skipping dispatch registration in case of fire-and-forget service events.
-    ptr->insert({channel_id, std::make_shared<channel_t>(dispatch, upstream)});
+    if(dispatch) {
+        ptr->insert({channel_id, std::make_shared<channel_t>(dispatch, upstream)});
+    }
 
     return upstream;
 }

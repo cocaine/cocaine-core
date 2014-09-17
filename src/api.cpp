@@ -64,8 +64,8 @@ basic_client_t::is_connected() const {
     return static_cast<bool>(m_session);
 }
 
-auto
-basic_client_t::session() const -> const session_t& {
+const session_t&
+basic_client_t::session() const {
     if(!is_connected()) {
         throw cocaine::error_t("client is not connected");
     }

@@ -588,8 +588,8 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
     signals.service.exposed(actor);
 }
 
-auto
-context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
+std::unique_ptr<actor_t>
+context_t::remove(const std::string& name) {
     blackhole::scoped_attributes_t guard(*m_logger, blackhole::log::attributes_t({
         logging::keyword::source() = "core"
     }));
@@ -623,8 +623,8 @@ context_t::remove(const std::string& name) -> std::unique_ptr<actor_t> {
     return service;
 }
 
-auto
-context_t::locate(const std::string& name) const -> boost::optional<const actor_t&> {
+boost::optional<const actor_t&>
+context_t::locate(const std::string& name) const {
     auto ptr = m_services.synchronize();
     auto it = std::find_if(ptr->begin(), ptr->end(), match{name});
 
@@ -644,8 +644,8 @@ struct utilization_t {
 
 } // namespace
 
-auto
-context_t::engine() -> execution_unit_t& {
+execution_unit_t&
+context_t::engine() {
     return **std::min_element(m_pool.begin(), m_pool.end(), utilization_t());
 }
 

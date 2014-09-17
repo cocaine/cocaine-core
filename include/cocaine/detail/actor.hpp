@@ -53,16 +53,16 @@ class actor_t {
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:
-    actor_t(context_t& context, std::shared_ptr<boost::asio::io_service> asio,
+    actor_t(context_t& context, const std::shared_ptr<boost::asio::io_service>& asio,
             std::unique_ptr<io::basic_dispatch_t> prototype);
 
-    actor_t(context_t& context, std::shared_ptr<boost::asio::io_service> asio,
+    actor_t(context_t& context, const std::shared_ptr<boost::asio::io_service>& asio,
             std::unique_ptr<api::service_t> service);
 
    ~actor_t();
 
     void
-    run(std::vector<boost::asio::ip::tcp::endpoint> endpoints);
+    run(const std::vector<boost::asio::ip::tcp::endpoint>& endpoints);
 
     void
     terminate();
