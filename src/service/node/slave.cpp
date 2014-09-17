@@ -190,7 +190,7 @@ slave_t::activate() {
             m_asio
         );
         m_output->stream.async_read_some(
-            boost::asio::buffer(m_output->buffer),
+            boost::asio::buffer(m_output->buffer.data(), m_output->buffer.size()),
             std::bind(&slave_t::on_output, shared_from_this(), ph::_1, ph::_2, std::string())
         );
     } catch(const std::system_error& e) {
@@ -255,7 +255,7 @@ slave_t::on_output(const boost::system::error_code& ec, std::size_t size, std::s
     }
 
     m_output->stream.async_read_some(
-        boost::asio::buffer(m_output->buffer),
+        boost::asio::buffer(m_output->buffer.data(), m_output->buffer.size()),
         std::bind(&slave_t::on_output, shared_from_this(), ph::_1, ph::_2, line)
     );
 }

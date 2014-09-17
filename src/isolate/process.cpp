@@ -160,7 +160,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     int rv = 0;
 
     if((rv = cgroup_init()) != 0) {
-        throw boost::system::system_error(rv, cgroup_category_t(),
+        throw boost::system::system_error(rv, cgroup_category(),
             "unable to initialize cgroups"
         );
     }
@@ -195,7 +195,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
         cgroup_free(&m_cgroup);
 
-        throw boost::system::system_error(rv, cgroup_category_t(),
+        throw boost::system::system_error(rv, cgroup_category(),
             "unable to create cgroup"
         );
     }
