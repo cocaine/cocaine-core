@@ -127,7 +127,7 @@ struct blocking_slot<Event, mute_slot_tag>:
 
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
-    operator()(tuple_type&& args, upstream_type&& /* upstream */) {
+    operator()(tuple_type&& args, upstream_type&& COCAINE_UNUSED_(upstream)) {
         try {
             this->call(std::move(args));
         } catch(...) {

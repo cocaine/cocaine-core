@@ -115,7 +115,7 @@ struct cgroup_configurator_t:
 
     template<class T>
     void
-    operator()(const T& /* value */) const {
+    operator()(const T& COCAINE_UNUSED_(value)) const {
         throw cocaine::error_t("parameter type is not supported");
     }
 

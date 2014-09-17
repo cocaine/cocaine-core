@@ -73,7 +73,7 @@ struct unpack_sequence_impl {
     template<class SourceIterator>
     static inline
     SourceIterator
-    apply(SourceIterator it, SourceIterator /* end */, T& target) {
+    apply(SourceIterator it, SourceIterator COCAINE_UNUSED_(end), T& target) {
         // The only place where the source iterator is actually could be incremented, all other
         // unpackers either delegate to this one, or don't touch the source at all.
         type_traits<T>::unpack(*it++, target);
@@ -248,7 +248,7 @@ private:
     template<class It, class Stream>
     static inline
     void
-    pack_sequence(msgpack::packer<Stream>& /* target */) {
+    pack_sequence(msgpack::packer<Stream>& COCAINE_UNUSED_(target)) {
         // Empty.
     }
 
@@ -274,7 +274,7 @@ private:
     template<class It, class SourceIterator>
     static inline
     void
-    unpack_sequence(SourceIterator /* it */, SourceIterator /* end */) {
+    unpack_sequence(SourceIterator COCAINE_UNUSED_(it), SourceIterator COCAINE_UNUSED_(end)) {
         // Empty.
     }
 

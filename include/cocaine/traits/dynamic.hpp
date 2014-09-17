@@ -41,7 +41,7 @@ struct pack_dynamic:
     { }
 
     void
-    operator()(const dynamic_t::null_t& /* source */) const {
+    operator()(const dynamic_t::null_t& COCAINE_UNUSED_(source)) const {
         m_target << msgpack::type::nil();
     }
 

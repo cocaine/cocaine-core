@@ -58,7 +58,7 @@ namespace {
 
 struct ignore {
     void
-    operator()(const std::error_code& /* ec */) const {
+    operator()(const std::error_code& COCAINE_UNUSED_(ec)) const {
         // Do nothing.
     }
 };
