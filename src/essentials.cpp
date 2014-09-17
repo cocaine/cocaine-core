@@ -22,14 +22,10 @@
 
 #include "cocaine/detail/cluster/multicast.hpp"
 #include "cocaine/detail/gateway/adhoc.hpp"
+#include "cocaine/detail/isolate/process.hpp"
 #include "cocaine/detail/service/locator.hpp"
 #include "cocaine/detail/service/logging.hpp"
-
-#ifdef COCAINE_ALLOW_NODE
-    #include "cocaine/detail/isolate/process.hpp"
-    #include "cocaine/detail/service/node.hpp"
-#endif
-
+#include "cocaine/detail/service/node.hpp"
 #include "cocaine/detail/service/storage.hpp"
 #include "cocaine/detail/storage/files.hpp"
 
@@ -42,14 +38,10 @@ void
 cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<cluster::multicast_t>("multicast");
     repository.insert<gateway::adhoc_t>("adhoc");
+    repository.insert<isolate::process_t>("process");
     repository.insert<service::locator_t>("locator");
     repository.insert<service::logging_t>("logging");
-
-#ifdef COCAINE_ALLOW_NODE
-    repository.insert<isolate::process_t>("process");
     repository.insert<service::node_t>("node");
-#endif
-
     repository.insert<service::storage_t>("storage");
     repository.insert<storage::files_t>("files");
 

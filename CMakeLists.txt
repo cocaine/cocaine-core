@@ -135,6 +135,7 @@ ADD_EXECUTABLE(cocaine-runtime
     src/runtime/runtime.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
+    stdc++
     ${LIBBFD_LIBRARY}
     ${Boost_LIBRARIES}
     cocaine-core)
