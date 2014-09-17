@@ -22,7 +22,16 @@
 #define COCAINE_APP_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/dynamic.hpp"
+
+#include "cocaine/api/service.hpp"
+
+#include "cocaine/dynamic/dynamic.hpp"
+
+#include "cocaine/idl/node.hpp"
+
+#include "cocaine/rpc/slot/deferred.hpp"
+
+#include "cocaine/utility.hpp"
 
 #include <thread>
 
@@ -51,20 +60,13 @@ class app_t {
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    // Configuration
-
+    // Configuration.
     std::unique_ptr<const engine::manifest_t> m_manifest;
     std::unique_ptr<const engine::profile_t> m_profile;
 
-    // Control
-
-    std::unique_ptr<io::reactor_t> m_reactor;
-    std::unique_ptr<io::channel<io::socket<io::local>>> m_engine_control;
-
-    // Engine
-
+    // IO.
+    std::shared_ptr<boost::asio::io_service> m_asio;
     std::shared_ptr<engine::engine_t> m_engine;
-    std::unique_ptr<std::thread> m_thread;
 
 public:
     app_t(context_t& context, const std::string& name, const std::string& profile);
@@ -74,13 +76,12 @@ public:
     start();
 
     void
-    stop();
+    pause();
 
-    dynamic_t
+    deferred<result_of<io::app::info>::type>
     info() const;
 
-    // Scheduling
-
+    // Scheduling.
     std::shared_ptr<api::stream_t>
     enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream);
 

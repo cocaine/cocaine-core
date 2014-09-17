@@ -23,8 +23,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-using namespace cocaine;
-using namespace cocaine::api;
 using namespace cocaine::gateway;
 
 adhoc_t::adhoc_t(context_t& context, const std::string& name, const dynamic_t& args):
@@ -48,7 +46,7 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
     remote_service_map_t::const_iterator lb, ub;
 
     if(!m_remote_services.count(name)) {
-        throw cocaine::error_t("the specified service is not available in the cluster");
+        throw boost::system::system_error(error::service_not_available);
     }
 
     std::tie(lb, ub) = m_remote_services.equal_range(name);
@@ -61,21 +59,19 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
 
     std::advance(lb, distribution(m_random_generator));
 
-    const auto endpoint = std::get<0>(lb->second.meta);
-
-    COCAINE_LOG_DEBUG(m_log, "providing service using remote node", std::get<0>(endpoint), std::get<1>(endpoint))(
+    COCAINE_LOG_DEBUG(m_log, "providing service using remote node")(
         "service", name,
         "uuid", lb->second.uuid
     );
 
-    return lb->second.meta;
+    return lb->second.info;
 }
 
 void
-adhoc_t::consume(const std::string& uuid, const std::string& name, const metadata_t& meta) {
+adhoc_t::consume(const std::string& uuid, const std::string& name, const metadata_t& info) {
     m_remote_services.insert({
         name,
-        remote_service_t { uuid, meta }
+        remote_service_t { uuid, info }
     });
 }
 

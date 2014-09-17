@@ -23,11 +23,6 @@
 
 #include <type_traits>
 
-#if !defined(__clang__) && !defined(HAVE_GCC46)
-    // GCC 4.4 defines std::result_of<T> there.
-    #include <functional>
-#endif
-
 #include <boost/mpl/deque.hpp>
 #include <boost/mpl/push_back.hpp>
 
@@ -40,8 +35,8 @@ struct depend {
     typedef void type;
 };
 
-// Variadic pack conversion. Could be done with typdef mpl::list<Args...>, but GCC 4.4-4.6 cannot
-// compile this with a "sorry, not implemented" error message.
+// Variadic pack conversion. Could be done with typdef mpl::list<Args...>, but GCC 4.6 can't compile
+// this with a "sorry, not implemented" error message.
 
 namespace aux {
 
@@ -71,7 +66,8 @@ struct itemize {
     >::type type;
 };
 
-// Type decay
+// Type decay. This is a special case of std::decay<T>, which is not removing array extents, because
+// it breaks dynamic_t construction and conversion functions.
 
 template<class T>
 struct pristine {
@@ -84,7 +80,7 @@ struct pristine {
 
 template<class F, class = void>
 struct result_of {
-    typedef typename std::result_of<F>::type type;
+    typedef decltype(std::declval<F>()) type;
 };
 
 template<class F>

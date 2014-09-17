@@ -22,15 +22,18 @@
 #define COCAINE_CONTEXT_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/dynamic.hpp"
+
+#include "cocaine/dynamic/dynamic.hpp"
+
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
 #include <queue>
 
-#include <boost/optional.hpp>
-
 #define BOOST_BIND_NO_PLACEHOLDERS
+#include <boost/optional.hpp>
+#include <boost/signals2/signal.hpp>
+
 #include <blackhole/blackhole.hpp>
 
 namespace cocaine {
@@ -99,16 +102,23 @@ public:
 // Dynamic port mapper
 
 class port_mapping_t {
-    typedef std::priority_queue<port_t, std::vector<port_t>, std::greater<port_t>> queue_type;
+    typedef std::priority_queue<
+        port_t,
+        std::vector<port_t>,
+        std::greater<port_t>
+    > queue_type;
 
     // Pinned service ports.
-    std::map<std::string, port_t> m_pinned;
+    const std::map<std::string, port_t> m_pinned;
 
     // Ports available for dynamic allocation.
-    queue_type m_shared;
+    synchronized<queue_type> m_shared;
 
 public:
+    explicit
     port_mapping_t(const config_t& config);
+
+    // Modifiers
 
     port_t
     assign(const std::string& name);
@@ -125,12 +135,7 @@ class execution_unit_t;
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
 
-    typedef std::deque<
-        std::pair<std::string, std::unique_ptr<actor_t>>
-    > service_list_t;
-
-    // Service port mapping and pinning, synchronized using service list lock.
-    port_mapping_t m_port_mapping;
+    typedef std::deque<std::pair<std::string, std::unique_ptr<actor_t>>> service_list_t;
 
     // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
     // for the Blackhole, when all the common stuff is extracted to a separate library.
@@ -143,6 +148,9 @@ class context_t {
     // A pool of execution units - threads responsible for doing all the service invocations.
     std::vector<std::unique_ptr<execution_unit_t>> m_pool;
 
+    // Service port mapping and pinning.
+    port_mapping_t m_port_mapping;
+
     // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
     // because services are allowed to start and stop other services during their lifetime.
     synchronized<service_list_t> m_services;
@@ -154,30 +162,42 @@ class context_t {
 public:
     const config_t config;
 
+    // Service lifecycle management signals
+
+    struct signals_t {
+        typedef boost::signals2::signal<void()> context_signals_t;
+        typedef boost::signals2::signal<void(const actor_t& service)> service_signals_t;
+
+        // Fired first thing on context shutdown. This is a very good time to cleanup persistent
+        // connections, synchronize disk state and so on.
+        context_signals_t shutdown;
+
+        struct {
+            // Fired on service creation, after service's thread is launched and is ready to accept
+            // and process new incoming connections.
+            service_signals_t exposed;
+
+            // Fired on service destruction, after the service was removed from its endpoints, but
+            // before the service object is actually destroyed.
+            service_signals_t removed;
+        } service;
+    };
+
+    signals_t signals;
+
 public:
     context_t(config_t config, const std::string& logger);
     context_t(config_t config, std::unique_ptr<logging::logger_t> logger);
    ~context_t();
 
-    // Component API
-
-    template<class Category, typename... Args>
-    typename api::category_traits<Category>::ptr_type
-    get(const std::string& type, Args&&... args);
-
-    // Logging
-
     std::unique_ptr<logging::log_t>
     log(const std::string& source);
 
-#ifdef COCAINE_ALLOW_RAFT
-    auto
-    raft() -> raft::repository_t& {
-        return *m_raft;
-    }
-#endif
+    template<class Category, typename... Args>
+    typename api::category_traits<Category>::ptr_type
+    get(const std::string& type, Args&&... args) const;
 
-    // Services
+    // Service API
 
     void
     insert(const std::string& name, std::unique_ptr<actor_t> service);
@@ -186,12 +206,26 @@ public:
     remove(const std::string& name) -> std::unique_ptr<actor_t>;
 
     auto
-    locate(const std::string& name) const -> boost::optional<actor_t&>;
+    locate(const std::string& name) const -> boost::optional<const actor_t&>;
 
-    // I/O
+    // Network I/O
 
-    void
-    attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
+    auto
+    engine() -> execution_unit_t&;
+
+    auto
+    mapper() -> port_mapping_t& {
+        return m_port_mapping;
+    }
+
+    // Raft
+
+#ifdef COCAINE_ALLOW_RAFT
+    auto
+    raft() -> raft::repository_t& {
+        return *m_raft;
+    }
+#endif
 
 private:
     void
@@ -200,7 +234,7 @@ private:
 
 template<class Category, typename... Args>
 typename api::category_traits<Category>::ptr_type
-context_t::get(const std::string& type, Args&&... args) {
+context_t::get(const std::string& type, Args&&... args) const {
     return m_repository->get<Category>(type, std::forward<Args>(args)...);
 }
 

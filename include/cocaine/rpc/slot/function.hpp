@@ -34,6 +34,8 @@
 #include <boost/function_types/function_type.hpp>
 #include <boost/mpl/push_front.hpp>
 
+#include <boost/system/system_error.hpp>
+
 namespace cocaine { namespace io {
 
 template<class Event, class R> struct function_slot;
@@ -48,12 +50,13 @@ struct protocol_impl;
 
 template<class T>
 struct protocol_impl<streaming_tag<T>> {
-    typedef typename protocol<streaming_tag<T>>::scope scope;
+    typedef typename protocol<streaming_tag<T>>::scope type;
 };
 
 template<>
 struct protocol_impl<void> {
-    typedef protocol<void>::scope scope;
+    // Undefined scope.
+    typedef struct { } type;
 };
 
 } // namespace aux
@@ -65,6 +68,11 @@ template<class Event, class R>
 struct function_slot:
     public basic_slot<Event>
 {
+    static_assert(
+        is_final<Event>::value || is_recursive<Event>::value,
+        "messages with dispatch transition are not supported"
+    );
+
     typedef typename basic_slot<Event>::sequence_type sequence_type;
 
     typedef typename bft::function_type<
@@ -73,6 +81,7 @@ struct function_slot:
 
     typedef std::function<function_type> callable_type;
 
+    explicit
     function_slot(callable_type callable_):
         callable(callable_)
     { }
@@ -83,10 +92,10 @@ struct function_slot:
 
     typedef typename aux::protocol_impl<
         typename event_traits<Event>::upstream_type
-    >::scope protocol;
+    >::type protocol;
 
     R
-    call(const tuple_type& args) const {
+    call(tuple_type&& args) const {
         return tuple::invoke(callable, args);
     }
 

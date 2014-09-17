@@ -26,13 +26,19 @@
 namespace cocaine { namespace api {
 
 struct policy_t {
+    // TODO: Consider some environment-independent workaround.
+#if defined(__clang__) || defined(HAVE_GCC48)
+    typedef std::chrono::steady_clock clock_type;
+#else
+    typedef std::chrono::monotonic_clock clock_type;
+#endif
+
     policy_t():
         urgent(false),
-        timeout(0.0f),
-        deadline(0.0f)
+        timeout(0.0f)
     { }
 
-    policy_t(bool urgent_, double timeout_, double deadline_):
+    policy_t(bool urgent_, double timeout_, clock_type::time_point deadline_):
         urgent(urgent_),
         timeout(timeout_),
         deadline(deadline_)
@@ -40,7 +46,7 @@ struct policy_t {
 
     bool urgent;
     double timeout;
-    double deadline;
+    clock_type::time_point deadline;
 };
 
 struct event_t {

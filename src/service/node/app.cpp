@@ -22,11 +22,6 @@
 
 #include "cocaine/api/isolate.hpp"
 
-#include "cocaine/asio/acceptor.hpp"
-#include "cocaine/asio/reactor.hpp"
-#include "cocaine/asio/local.hpp"
-#include "cocaine/asio/socket.hpp"
-
 #include "cocaine/context.hpp"
 #include "cocaine/defaults.hpp"
 
@@ -39,24 +34,23 @@
 #include "cocaine/detail/service/node/profile.hpp"
 #include "cocaine/detail/service/node/stream.hpp"
 
-#include "cocaine/idl/node.hpp"
+#include "cocaine/idl/streaming.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
-#include "cocaine/rpc/channel.hpp"
+#include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/rpc/upstream.hpp"
 
 #include "cocaine/traits/dynamic.hpp"
 #include "cocaine/traits/literal.hpp"
 
-#include <tuple>
-
-#define BOOST_BIND_NO_PLACEHOLDERS
-#include <boost/bind.hpp>
-
+#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+
+using namespace boost::asio;
+using namespace boost::asio::local;
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -67,23 +61,19 @@ namespace fs = boost::filesystem;
 namespace {
 
 class streaming_service_t:
-    public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
+    public dispatch<event_traits<app::enqueue>::dispatch_type>
 {
     const api::stream_ptr_t downstream;
 
 public:
     streaming_service_t(const std::string& name, const api::stream_ptr_t& downstream_):
-        dispatch<io::event_traits<io::app::enqueue>::dispatch_type>(name),
+        dispatch<event_traits<app::enqueue>::dispatch_type>(name),
         downstream(downstream_)
     {
-        typedef io::protocol<
-            io::event_traits<io::app::enqueue>::dispatch_type
-        >::scope protocol;
+        typedef io::protocol<event_traits<app::enqueue>::dispatch_type>::scope protocol;
 
-        using namespace std::placeholders;
-
-        on<protocol::chunk>(std::bind(&streaming_service_t::write, this, _1));
-        on<protocol::error>(std::bind(&streaming_service_t::error, this, _1, _2));
+        on<protocol::chunk>(std::bind(&streaming_service_t::write, this, ph::_1));
+        on<protocol::error>(std::bind(&streaming_service_t::error, this, ph::_1, ph::_2));
         on<protocol::choke>(std::bind(&streaming_service_t::close, this));
     }
 
@@ -106,33 +96,33 @@ private:
 };
 
 class app_service_t:
-    public dispatch<io::app_tag>
+    public dispatch<app_tag>
 {
-    app_t& app;
+    app_t* impl;
 
 private:
     struct enqueue_slot_t:
-        public basic_slot<io::app::enqueue>
+        public basic_slot<app::enqueue>
     {
-        enqueue_slot_t(app_service_t& self_):
-            self(self_)
+        enqueue_slot_t(app_service_t* impl_):
+            impl(impl_)
         { }
 
-        typedef basic_slot<io::app::enqueue>::dispatch_type dispatch_type;
-        typedef basic_slot<io::app::enqueue>::tuple_type tuple_type;
-        typedef basic_slot<io::app::enqueue>::upstream_type upstream_type;
+        typedef basic_slot<app::enqueue>::dispatch_type dispatch_type;
+        typedef basic_slot<app::enqueue>::tuple_type tuple_type;
+        typedef basic_slot<app::enqueue>::upstream_type upstream_type;
 
         virtual
         boost::optional<std::shared_ptr<const dispatch_type>>
         operator()(tuple_type&& args, upstream_type&& upstream) {
             return tuple::invoke(
-                boost::bind(&app_service_t::enqueue, &self, boost::ref(upstream), boost::arg<1>(), boost::arg<2>()),
-                args
+                std::bind(&app_service_t::enqueue, impl, std::ref(upstream), ph::_1, ph::_2),
+                std::move(args)
             );
         }
 
     private:
-        app_service_t& self;
+        app_service_t* impl;
     };
 
     struct engine_stream_adapter_t:
@@ -142,7 +132,7 @@ private:
             upstream(upstream_)
         { }
 
-        typedef enqueue_slot_t::upstream_type::protocol protocol;
+        typedef io::protocol<event_traits<app::enqueue>::upstream_type>::scope protocol;
 
         virtual
         void
@@ -171,21 +161,21 @@ private:
         api::stream_ptr_t downstream;
 
         if(tag.empty()) {
-            downstream = app.enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream));
+            downstream = impl->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream));
         } else {
-            downstream = app.enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
+            downstream = impl->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
         }
 
         return std::make_shared<const streaming_service_t>(name(), downstream);
     }
 
 public:
-    app_service_t(const std::string& name_, app_t& app_):
-        dispatch<io::app_tag>(cocaine::format("service/%s", name_)),
-        app(app_)
+    app_service_t(const std::string& name_, app_t* impl_):
+        dispatch<app_tag>(name_),
+        impl(impl_)
     {
-        on<io::app::enqueue>(std::make_shared<enqueue_slot_t>(*this));
-        on<io::app::info>(std::bind(&app_t::info, std::ref(app)));
+        on<app::enqueue>(std::make_shared<enqueue_slot_t>(this));
+        on<app::info>(std::bind(&app_t::info, impl));
     }
 };
 
@@ -193,9 +183,10 @@ public:
 
 app_t::app_t(context_t& context, const std::string& name, const std::string& profile):
     m_context(context),
-    m_log(context.log(cocaine::format("app/%1%", name))),
+    m_log(context.log(name)),
     m_manifest(new manifest_t(context, name)),
-    m_profile(new profile_t(context, profile))
+    m_profile(new profile_t(context, profile)),
+    m_asio(std::make_shared<boost::asio::io_service>())
 {
     auto isolate = m_context.get<api::isolate_t>(
         m_profile->isolate.type,
@@ -204,27 +195,9 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
         m_profile->isolate.args
     );
 
-    if(m_manifest->source() != sources::cache) {
+    // TODO: Spooling state?
+    if(m_manifest->source() != cached<dynamic_t>::sources::cache) {
         isolate->spool();
-    }
-
-    std::shared_ptr<io::socket<local>> lhs, rhs;
-
-    // Create the engine control sockets.
-    std::tie(lhs, rhs) = io::link<local>();
-
-    m_reactor = std::make_unique<reactor_t>();
-    m_engine_control = std::make_unique<channel<io::socket<local>>>(*m_reactor, lhs);
-
-    try {
-        m_engine.reset(new engine_t(m_context, std::make_shared<reactor_t>(), *m_manifest, *m_profile, rhs));
-    } catch(const std::system_error& e) {
-        throw cocaine::error_t(
-            "unable to initialize the engine - %s - [%d] %s",
-            e.what(),
-            e.code().value(),
-            e.code().message()
-        );
     }
 }
 
@@ -234,197 +207,107 @@ app_t::~app_t() {
 
 void
 app_t::start() {
-    COCAINE_LOG_INFO(m_log, "starting the engine");
+    COCAINE_LOG_INFO(m_log, "creating '%s' engine", m_manifest->name);
 
     // Start the engine thread.
-    m_thread.reset(new std::thread(std::bind(&engine_t::run, m_engine)));
+    try {
+        m_engine = std::make_shared<engine_t>(m_context, *m_manifest, *m_profile);
+    } catch(...) {
+#if defined(HAVE_GCC48)
+        std::throw_with_nested(cocaine::error_t("unable to create engine"));
+#else
+        throw cocaine::error_t("unable to create engine");
+#endif
+    }
 
-    COCAINE_LOG_DEBUG(m_log, "starting the invocation service");
+    COCAINE_LOG_DEBUG(m_log, "starting invocation service");
 
     // Publish the app service.
     m_context.insert(m_manifest->name, std::make_unique<actor_t>(
         m_context,
-        std::make_shared<reactor_t>(),
-        std::make_unique<app_service_t>(m_manifest->name, *this)
+        m_asio,
+        std::make_unique<app_service_t>(m_manifest->name, this)
     ));
-
-    COCAINE_LOG_INFO(m_log, "the engine has started");
 }
 
-namespace {
-    namespace detail {
-        template<class It, class End, typename... Args>
-        struct fold_impl {
-            typedef typename fold_impl<
-                typename boost::mpl::next<It>::type,
-                End,
-                Args...,
-                typename std::add_lvalue_reference<
-                    typename boost::mpl::deref<It>::type
-                >::type
-            >::type type;
-        };
-
-        template<class End, typename... Args>
-        struct fold_impl<End, End, Args...> {
-            typedef std::tuple<Args...> type;
-        };
-
-        template<class TupleType, int N = std::tuple_size<TupleType>::value>
-        struct unfold_impl {
-            template<class Event, typename... Args>
-            static inline
-            void
-            apply(const message_t& message,
-                  TupleType& tuple,
-                  Args&&... args)
-            {
-                unfold_impl<TupleType, N - 1>::template apply<Event>(
-                    message,
-                    tuple,
-                    std::get<N - 1>(tuple),
-                    std::forward<Args>(args)...
-                );
-            }
-        };
-
-        template<class TupleType>
-        struct unfold_impl<TupleType, 0> {
-            template<class Event, typename... Args>
-            static inline
-            void
-            apply(const message_t& message,
-                  TupleType& /* tuple */,
-                  Args&&... args)
-            {
-                message.as<Event>(std::forward<Args>(args)...);
-            }
-        };
-    } // namespace detail
-
-    template<class TypeList>
-    struct fold {
-        typedef typename detail::fold_impl<
-            typename boost::mpl::begin<TypeList>::type,
-            typename boost::mpl::end<TypeList>::type
-        >::type type;
-    };
-
-    template<class TupleType>
-    struct unfold {
-        template<class Event>
-        static inline
-        void
-        apply(const message_t& message,
-              TupleType& tuple)
-        {
-            return detail::unfold_impl<
-                TupleType
-            >::template apply<Event>(message, tuple);
-        }
-    };
-
-    template<class Event>
-    struct expect {
-        template<class>
-        struct result {
-            typedef void type;
-        };
-
-        template<typename... Args>
-        expect(reactor_t& reactor, Args&&... args):
-            m_reactor(reactor),
-            m_tuple(std::forward<Args>(args)...)
-        { }
-
-        expect(expect&& other):
-            m_reactor(other.m_reactor),
-            m_tuple(std::move(other.m_tuple))
-        { }
-
-        expect&
-        operator=(expect&& other) {
-            m_tuple = std::move(other.m_tuple);
-            return *this;
-        }
-
-        void
-        operator()(const message_t& message) {
-            if(message.id() == event_traits<Event>::id) {
-                unfold<tuple_type>::template apply<Event>(
-                    message,
-                    m_tuple
-                );
-
-                m_reactor.stop();
-            }
-        }
-
-        void
-        operator()(const std::error_code& ec) {
-            throw cocaine::error_t("i/o failure — [%d] %s", ec.value(), ec.message());
-        }
-
-    private:
-        typedef typename fold<
-            typename event_traits<Event>::tuple_type
-        >::type tuple_type;
-
-        reactor_t& m_reactor;
-        tuple_type m_tuple;
-    };
-} // namespace
-
 void
-app_t::stop() {
-    COCAINE_LOG_INFO(m_log, "stopping the engine");
+app_t::pause() {
+    COCAINE_LOG_DEBUG(m_log, "stopping app '%s'", m_manifest->name);
 
     if(!m_manifest->local) {
         // Destroy the app service.
         m_context.remove(m_manifest->name);
     }
 
-    auto callback = expect<control::terminate>(*m_reactor);
-
-    m_engine_control->rd->bind(std::ref(callback), std::ref(callback));
-    m_engine_control->wr->write<control::terminate>(0UL);
-
-    // Blocks until the engine is stopped.
-    m_reactor->run();
-
-    m_thread->join();
-    m_thread.reset();
-
     m_engine.reset();
 
-    COCAINE_LOG_INFO(m_log, "the engine has stopped");
+    COCAINE_LOG_DEBUG(m_log, "app '%s' has been stopped", m_manifest->name);
 }
 
-dynamic_t
+namespace {
+
+class info_handler_t {
+    typedef result_of<io::app::info>::type result_type;
+    typedef cocaine::deferred<result_type> deferred_type;
+
+    boost::optional<deferred_type> deferred;
+    std::shared_ptr<boost::asio::deadline_timer> timer;
+
+public:
+    info_handler_t(deferred_type deferred, std::shared_ptr<boost::asio::deadline_timer> timer) :
+        deferred(std::move(deferred)),
+        timer(timer)
+    {}
+
+    void success(dynamic_t::object_t info) {
+        if(deferred) {
+            deferred->write(dynamic_t(info));
+            deferred.reset();
+            timer->cancel();
+        }
+    }
+
+    void timeout(const boost::system::error_code& ec) {
+        if(ec) {
+            if(ec == boost::asio::error::operation_aborted) {
+                return;
+            }
+            // Any other IO error except manual timer abort.
+            deferred->abort(-2, cocaine::format("internal error: %s", ec.message()));
+        } else {
+            deferred->abort(-1, "engine is unresponsive");
+        }
+        deferred.reset();
+    }
+};
+
+}
+
+deferred<result_of<io::app::info>::type>
 app_t::info() const {
-    dynamic_t info = dynamic_t::object_t();
+    typedef result_of<io::app::info>::type result_type;
 
-    if(!m_thread) {
-        info.as_object()["error"] = "the engine is not active";
-        return info;
+    COCAINE_LOG_DEBUG(m_log, "handling info request");
+
+    deferred<result_type> deferred;
+
+    if(!m_engine) {
+        dynamic_t::object_t info;
+        info["profile"] = m_profile->name;
+        info["error"] = "engine is not active";
+        deferred.write(dynamic_t(info));
+        return deferred;
     }
 
-    auto callback = expect<control::info>(*m_reactor, info);
+    auto timer = std::make_shared<boost::asio::deadline_timer>(*m_asio);
+    auto handler = std::make_shared<info_handler_t>(deferred, timer);
 
-    m_engine_control->rd->bind(std::ref(callback), std::ref(callback));
-    m_engine_control->wr->write<control::report>(0UL);
+    timer->expires_from_now(boost::posix_time::seconds(defaults::control_timeout));
+    timer->async_wait(std::bind(&info_handler_t::timeout, handler, ph::_1));
 
-    try {
-        // Blocks until either the response or timeout happens.
-        m_reactor->run_with_timeout(defaults::control_timeout);
-    } catch(const cocaine::error_t& e) {
-        info.as_object()["error"] = "the engine is unresponsive";
-        return info;
-    }
+    m_engine->info(std::bind(&info_handler_t::success, handler, ph::_1));
 
-    info.as_object()["profile"] = m_profile->name;
-
-    return info;
+    return deferred;
 }
 
 std::shared_ptr<api::stream_t>

@@ -25,17 +25,20 @@
 
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/stream.hpp"
+#include "cocaine/detail/service/node/messages.hpp"
 
-#include "cocaine/asio/local.hpp"
-#include "cocaine/asio/socket.hpp"
-#include "cocaine/asio/writable_stream.hpp"
+#include "cocaine/rpc/asio/encoder.hpp"
+#include "cocaine/rpc/asio/writable_stream.hpp"
+#include "cocaine/rpc/queue.hpp"
 
-#include "cocaine/rpc/encoder.hpp"
+#include <boost/asio/local/stream_protocol.hpp>
 
 namespace cocaine { namespace engine {
 
 struct session_t {
     COCAINE_DECLARE_NONCOPYABLE(session_t)
+
+    typedef boost::asio::local::stream_protocol protocol_type;
 
     session_t(uint64_t id, const api::event_t& event, const api::stream_ptr_t& upstream);
 
@@ -64,7 +67,7 @@ struct session_t {
     };
 
     void
-    attach(const std::shared_ptr<io::writable_stream<io::socket<io::local>>>& downstream);
+    attach(const std::shared_ptr<io::writable_stream<protocol_type, io::encoder_t>>& downstream);
 
     void
     detach();
@@ -87,10 +90,13 @@ private:
     void
     send(Args&&... args);
 
+    template<class Event, typename... Args>
+    void
+    send(std::lock_guard<std::mutex>&, Args&&... args);
+
 private:
-    std::unique_ptr<
-        io::encoder<io::writable_stream<io::socket<io::local>>>
-    > m_encoder;
+    class stream_adapter_t;
+    std::shared_ptr<io::message_queue<io::rpc_tag, stream_adapter_t>> m_writer;
 
     // Session interlocking.
     std::mutex m_mutex;
@@ -107,14 +113,21 @@ template<class Event, typename... Args>
 void
 session_t::send(Args&&... args) {
     std::lock_guard<std::mutex> lock(m_mutex);
+    send<Event>(lock, std::forward<Args>(args)...);
+}
+
+template<class Event, typename... Args>
+void
+session_t::send(std::lock_guard<std::mutex>&, Args&&... args) {
+    BOOST_ASSERT(m_writer);
 
     if(m_state == state::open) {
-        m_encoder->write<Event>(id, std::forward<Args>(args)...);
+        m_writer->append<Event>(std::forward<Args>(args)...);
     } else {
         throw cocaine::error_t("the session is no longer valid");
     }
 }
 
-}}
+}} // namespace cocaine::engine
 
 #endif

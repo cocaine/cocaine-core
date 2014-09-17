@@ -21,6 +21,8 @@
 #ifndef COCAINE_LOCKED_PTR_HPP
 #define COCAINE_LOCKED_PTR_HPP
 
+#include "cocaine/utility.hpp"
+
 #include <mutex>
 
 namespace cocaine {
@@ -77,18 +79,18 @@ struct synchronized {
     typedef Lockable mutex_type;
 
     synchronized(): m_value() { }
+
+    // Implicit construction
+
     synchronized(const value_type& value): m_value(value) { }
     synchronized(value_type&& value): m_value(std::move(value)) { }
 
-    auto
-    value() -> value_type& {
-        return m_value;
-    }
+    // Forwarding construction
 
-    auto
-    value() const -> const value_type& {
-        return m_value;
-    }
+    template<typename... Args>
+    synchronized(Args&&... args): m_value(std::forward<Args>(args)...) { }
+
+    // Safe getters
 
     typedef locked_ptr<T, Lockable> ptr_type;
     typedef locked_ptr<const T, Lockable> const_ptr_type;
@@ -99,18 +101,46 @@ struct synchronized {
     }
 
     auto
-    synchronize() const -> const_ptr_type {
-        return const_ptr_type(m_value, m_mutex);
-    }
-
-    auto
     operator->() -> ptr_type {
         return synchronize();
     }
 
     auto
+    synchronize() const -> const_ptr_type {
+        return const_ptr_type(m_value, m_mutex);
+    }
+
+    auto
     operator->() const -> const_ptr_type {
         return synchronize();
+    }
+
+    // Unsafe getters
+
+    auto
+    unsafe() -> value_type& {
+        return m_value;
+    }
+
+    auto
+    unsafe() const -> const value_type& {
+        return m_value;
+    }
+
+    // Synchronized operations
+
+    template<class F>
+    auto
+    apply(const F& functor) -> typename result_of<F>::type {
+        std::lock_guard<std::mutex> guard(m_mutex);
+        return functor(m_value);
+    }
+
+    template<class F>
+    auto
+    apply(const F& functor) const -> typename result_of<F>::type {
+        std::lock_guard<std::mutex> guard(m_mutex);
+        return functor(m_value);
     }
 
 private:

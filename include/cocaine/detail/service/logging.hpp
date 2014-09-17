@@ -35,7 +35,7 @@ class logging_t:
     std::unique_ptr<logging::logger_t> m_logger;
 
 public:
-    logging_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
+    logging_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
 
     virtual
     auto
@@ -43,8 +43,8 @@ public:
 
 private:
     void
-    emit(logging::priorities level, const std::string& source, const std::string& message,
-         const blackhole::log::attributes_t& attributes);
+    on_emit(logging::priorities level, const std::string& source, const std::string& message,
+            const blackhole::log::attributes_t& attributes);
 };
 
 }} // namespace cocaine::service

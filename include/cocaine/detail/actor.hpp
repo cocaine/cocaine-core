@@ -23,65 +23,59 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/asio/tcp.hpp"
-
-// TODO: Drop this.
-#include "cocaine/idl/locator.hpp"
-#include "cocaine/rpc/result_of.hpp"
-
 #include <list>
+
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 namespace cocaine {
 
 class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
 
-    typedef io::connector<io::acceptor<io::tcp>> endpoint_type;
-
     context_t& m_context;
 
     const std::unique_ptr<logging::log_t> m_log;
-    const std::shared_ptr<io::reactor_t> m_reactor;
+    const std::shared_ptr<boost::asio::io_service> m_asio;
+
+    // I/O acceptors. Actors have a separate thread to accept new connections. After a connection
+    // is accepted, it is assigned to a random thread from the main thread pool.
+    std::list<boost::asio::ip::tcp::acceptor> m_acceptors;
+
+    class accept_action_t;
 
     // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
     // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
     // after the authentication process completes successfully.
-    std::shared_ptr<const io::basic_dispatch_t> m_prototype;
-
-    // I/O connectors. Actors have a separate thread to accept new connections. After a connection
-    // is accepted, it is assigned on a random thread from the main thread pool.
-    std::list<endpoint_type> m_connectors;
+    io::dispatch_ptr_t m_prototype;
 
     // I/O authentication & processing.
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:
-    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<io::basic_dispatch_t> prototype);
-    actor_t(context_t& context, std::shared_ptr<io::reactor_t> reactor, std::unique_ptr<api::service_t> service);
+    actor_t(context_t& context, std::shared_ptr<boost::asio::io_service> asio,
+            std::unique_ptr<io::basic_dispatch_t> prototype);
+
+    actor_t(context_t& context, std::shared_ptr<boost::asio::io_service> asio,
+            std::unique_ptr<api::service_t> service);
 
    ~actor_t();
 
     void
-    run(std::vector<io::tcp::endpoint> endpoints);
+    run(std::vector<boost::asio::ip::tcp::endpoint> endpoints);
 
     void
     terminate();
 
 public:
     auto
-    location() const -> std::vector<io::tcp::endpoint>;
+    endpoints() const -> std::vector<boost::asio::ip::tcp::endpoint>;
 
-    // TODO: Metadata about the service should be sent by the service itself on connection. Actors
-    // are only responsible for the messaging, not the high-level protocol stuff.
+    bool
+    is_active() const;
 
-    typedef result_of<io::locator::resolve>::type metadata_t;
-
-    metadata_t
-    metadata() const;
-
-private:
-    void
-    on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket);
+    auto
+    prototype() const -> const io::basic_dispatch_t&;
 };
 
 } // namespace cocaine

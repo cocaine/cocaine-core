@@ -27,22 +27,24 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-using namespace cocaine;
 using namespace cocaine::isolate;
 
 void
 process_t::spool() {
     std::string blob;
 
-    COCAINE_LOG_INFO(m_log, "deploying the app")("target", m_working_directory);
+    COCAINE_LOG_INFO(m_log, "deploying app to %s", m_working_directory);
 
     auto storage = api::storage(m_context, "core");
 
     try {
         blob = storage->get<std::string>("apps", m_name);
     } catch(const storage_error_t& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to fetch the app from the storage: %s", e.what());
-        throw cocaine::error_t("the '%s' app is not available", m_name);
+#if defined(HAVE_GCC48)
+        std::throw_with_nested(cocaine::error_t("app '%s' is not available", m_name));
+#else
+        throw cocaine::error_t("app '%s' is not available", m_name);
+#endif
     }
 
     try {
@@ -54,8 +56,11 @@ process_t::spool() {
         archive.deploy(m_working_directory.string());
 #endif
     } catch(const archive_error_t& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to extract the app files: %s", e.what());
-        throw cocaine::error_t("the '%s' app is not available", m_name);
+#if defined(HAVE_GCC48)
+        std::throw_with_nested(cocaine::error_t("app '%s' is not available", m_name));
+#else
+        throw cocaine::error_t("app '%s' is not available", m_name);
+#endif
     }
 }
 

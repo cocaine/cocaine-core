@@ -47,7 +47,7 @@ struct stream_of {
     typedef streaming_tag<typename itemize<Types...>::type> tag;
 };
 
-namespace detail {
+namespace details {
 
 template<class T>
 struct is_required:
@@ -91,6 +91,6 @@ struct is_compatible<streaming_tag<T>, streaming_tag<U>>:
     public boost::mpl::equal<T, U>::type
 { };
 
-}}} // namespace cocaine::io::detail
+}}} // namespace cocaine::io::details
 
 #endif

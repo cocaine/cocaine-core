@@ -71,7 +71,9 @@ files_t::read(const std::string& collection, const std::string& key) {
 }
 
 void
-files_t::write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags) {
+files_t::write(const std::string& collection, const std::string& key, const std::string& blob,
+               const std::vector<std::string>& tags)
+{
     std::lock_guard<std::mutex> guard(m_mutex);
 
     const fs::path store_path(m_storage_path / collection);
@@ -163,8 +165,10 @@ struct intersect {
     operator()(const T& accumulator, T& keys) const {
         T result;
 
+        auto builder = std::back_inserter(result);
+
         std::sort(keys.begin(), keys.end());
-        std::set_intersection(accumulator.begin(), accumulator.end(), keys.begin(), keys.end(), std::back_inserter(result));
+        std::set_intersection(accumulator.begin(), accumulator.end(), keys.begin(), keys.end(), builder);
 
         return result;
     }

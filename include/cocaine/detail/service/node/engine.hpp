@@ -28,57 +28,26 @@
 #include "cocaine/dynamic.hpp"
 
 #include "cocaine/detail/atomic.hpp"
+#include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/forwards.hpp"
 #include "cocaine/detail/service/node/queue.hpp"
 
+#include "cocaine/rpc/asio/encoder.hpp"
+#include "cocaine/rpc/asio/decoder.hpp"
+
 #include <mutex>
 
-#include <boost/mpl/list.hpp>
+#include <boost/asio/deadline_timer.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 
-namespace ev {
-    struct async;
-    struct timer;
-}
-
-namespace cocaine { namespace io {
-
-struct control_tag;
-
-struct control {
-    struct report {
-        typedef control_tag tag;
-    };
-
-    struct info {
-        typedef control_tag tag;
-
-        typedef boost::mpl::list<
-            /* info */ dynamic_t
-        > tuple_type;
-    };
-
-    struct terminate {
-        typedef control_tag tag;
-    };
-};
-
-template<>
-struct protocol<control_tag> {
-    typedef boost::mpl::list<
-        control::report,
-        control::info,
-        control::terminate
-    > messages;
-};
-
-} // namespace io
-
-namespace engine {
+namespace cocaine { namespace engine {
 
 class slave_t;
 
 class engine_t {
     COCAINE_DECLARE_NONCOPYABLE(engine_t)
+
+    typedef boost::asio::local::stream_protocol protocol_type;
 
     enum class states {
         running,
@@ -91,40 +60,32 @@ class engine_t {
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    // Configuration
-
+    // Configuration.
     const manifest_t& m_manifest;
     const profile_t& m_profile;
 
-    // Engine state
-
+    // Engine state.
     states m_state;
 
-    // Event loop
+    // Event loop.
+    boost::asio::io_service m_loop;
+    boost::asio::deadline_timer m_termination_timer;
 
-    std::shared_ptr<io::reactor_t> m_reactor;
+    // Unix socket server acceptor.
+    protocol_type::socket m_socket;
+    protocol_type::endpoint m_endpoint;
+    protocol_type::acceptor m_acceptor;
 
-    std::unique_ptr<ev::async> m_notification;
-    std::unique_ptr<ev::timer> m_termination_timer;
-
-    // I/O
-
-    std::unique_ptr<io::connector<io::acceptor<io::local>>> m_connector;
-    std::unique_ptr<io::channel<io::socket<io::local>>> m_channel;
-
-    // Session tagging
-
+    // Session tagging.
     std::atomic<uint64_t> m_next_id;
 
-    // Session queue
-
+    // Session queue.
     session_queue_t m_queue;
 
-    // Slave pool
-
+    // Slave pool.
     typedef std::map<
         int,
-        std::shared_ptr<io::channel<io::socket<io::local>>>
+        std::shared_ptr<io::channel<protocol_type>>
     > backlog_t;
 
     backlog_t m_backlog;
@@ -137,60 +98,69 @@ class engine_t {
     pool_map_t m_pool;
 
     // Spawning mutex.
-    std::mutex m_pool_mutex;
+    mutable std::mutex m_pool_mutex;
 
     // NOTE: A strong isolate reference, keeping it here
     // avoids isolate destruction, as the factory stores
     // only weak references to the isolate instances.
     api::category_traits<api::isolate_t>::ptr_type m_isolate;
 
-public:
-    engine_t(context_t& context,
-             const std::shared_ptr<io::reactor_t>& reactor,
-             const manifest_t& manifest,
-             const profile_t& profile,
-             const std::shared_ptr<io::socket<io::local>>& control);
+    // Engine's worker thread.
+    std::thread m_thread;
 
+    // Message buffer for handshake event.
+    io::decoder_t::message_type m_message;
+
+public:
+    engine_t(context_t& context, const manifest_t& manifest, const profile_t& profile);
    ~engine_t();
 
+    // Scheduling.
+    std::shared_ptr<api::stream_t>
+    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream);
+
+    std::shared_ptr<api::stream_t>
+    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag);
+
+    // Get information about engine's status. Fully asynchronous and thread-safe.
+    void
+    info(std::function<void(dynamic_t::object_t)> callback);
+
+private:
     void
     run();
 
     void
-    wake();
+    do_info(std::function<void(dynamic_t::object_t)> callback);
 
-    // Scheduling
+    // Called by acceptor, when a new connection from worker comes.
+    void
+    on_accept(const boost::system::error_code& ec);
 
-    std::shared_ptr<api::stream_t>
-    enqueue(const api::event_t& event,
-            const std::shared_ptr<api::stream_t>& upstream);
+    // Called on successful connection with worker.
+    void
+    on_connection(std::unique_ptr<protocol_type::socket>&& m_socket);
 
-    std::shared_ptr<api::stream_t>
-    enqueue(const api::event_t& event,
-            const std::shared_ptr<api::stream_t>& upstream,
-            const std::string& tag);
+    void
+    on_maybe_handshake(const boost::system::error_code& ec, int fd);
+
+    void
+    on_handshake(int fd, const io::decoder_t::message_type& m_message);
+
+    void
+    on_disconnect(int fd, const boost::system::error_code& ec);
+
+    void
+    on_termination(const boost::system::error_code& ec);
 
     void
     erase(const std::string& id, int code, const std::string& reason);
 
-private:
     void
-    on_connection(const std::shared_ptr<io::socket<io::local>>& socket);
+    wake();
 
     void
-    on_handshake(int fd, const io::message_t& message);
-
-    void
-    on_disconnect(int fd, const std::error_code& ec);
-
-    void
-    on_control(const io::message_t& message);
-
-    void
-    on_notification(ev::async&, int);
-
-    void
-    on_termination(ev::timer&, int);
+    do_wake();
 
     void
     pump();

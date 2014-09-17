@@ -32,7 +32,7 @@ namespace cocaine { namespace io {
 
 namespace mpl = boost::mpl;
 
-struct terminal_slot_tag;
+struct mute_slot_tag;
 
 namespace aux {
 
@@ -64,7 +64,7 @@ struct result_of_impl<streaming_tag<void>> {
 template<>
 struct result_of_impl<void> {
     // No messages will follow an invocation of this slot.
-    typedef terminal_slot_tag type;
+    typedef mute_slot_tag type;
 };
 
 }} // namespace io::aux

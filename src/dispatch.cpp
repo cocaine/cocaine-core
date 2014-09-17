@@ -20,7 +20,6 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
-using namespace cocaine;
 using namespace cocaine::io;
 
 basic_dispatch_t::basic_dispatch_t(const std::string& name):

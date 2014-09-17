@@ -21,11 +21,7 @@
 #ifndef COCAINE_IO_UPSTREAM_HPP
 #define COCAINE_IO_UPSTREAM_HPP
 
-#include "cocaine/asio/socket.hpp"
-#include "cocaine/asio/tcp.hpp"
-
 #include "cocaine/rpc/session.hpp"
-#include "cocaine/rpc/channel.hpp"
 
 namespace cocaine {
 
@@ -35,29 +31,24 @@ namespace io {
 
 class basic_upstream_t {
     const std::shared_ptr<session_t> session;
-    const uint64_t index;
+    const uint64_t channel_id;
 
-    struct states {
-        enum values: int { active, sealed };
-    };
-
-    // NOTE: Sealed upstreams ignore any messages. At some point it might change to an explicit way
-    // to show that the operation won't be completed.
-    states::values state;
+    enum class states { active, sealed } state;
 
 public:
-    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t index_):
+    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_):
         session(session_),
-        index(index_),
-        state(states::active)
-    { }
+        channel_id(channel_id_)
+    {
+        state = states::active;
+    }
 
     template<class Event, typename... Args>
     void
     send(Args&&... args);
 
     void
-    revoke();
+    drop();
 };
 
 template<class Event, typename... Args>
@@ -68,42 +59,37 @@ basic_upstream_t::send(Args&&... args) {
     }
 
     if(std::is_same<typename io::event_traits<Event>::dispatch_type, void>::value) {
+        // NOTE: Sealed upstreams ignore any messages. At some point it might change to an explicit
+        // way to show that the operation won't be completed.
         state = states::sealed;
     }
 
-    std::lock_guard<std::mutex> guard(session->mutex);
-
-    if(session->ptr) {
-        session->ptr->wr->write<Event>(index, std::forward<Args>(args)...);
-    }
+    session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
 }
 
 inline
 void
-basic_upstream_t::revoke() {
-    session->revoke(index);
+basic_upstream_t::drop() {
+    session->revoke(channel_id);
 }
 
 // Forwards for the upstream<T> class
 
-template<class Tag> class message_queue;
+template<class Tag, class Upstream> class message_queue;
 
 } // namespace io
 
 template<class Tag>
 class upstream {
-    // It should be constant, but GCC 4.4 can't compile C++.
-    std::shared_ptr<io::basic_upstream_t> ptr;
+    template<class, class> friend class io::message_queue;
+
+    // The original non-typed upstream.
+    const io::upstream_ptr_t ptr;
 
 public:
-    template<class> friend class io::message_queue;
-
-    upstream(const std::shared_ptr<io::basic_upstream_t>& upstream_):
+    upstream(const io::upstream_ptr_t& upstream_):
         ptr(upstream_)
     { }
-
-    // Protocol constraint for this upstream.
-    typedef typename io::protocol<Tag>::scope protocol;
 
     template<class Event, typename... Args>
     void
@@ -115,6 +101,14 @@ public:
 
         ptr->send<Event>(std::forward<Args>(args)...);
     }
+};
+
+template<>
+class upstream<void> {
+    template<class, class> friend class io::message_queue;
+
+public:
+    upstream(const io::upstream_ptr_t&) { }
 };
 
 } // namespace cocaine

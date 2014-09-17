@@ -49,7 +49,8 @@ public:
 
     virtual
     void
-    write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags);
+    write(const std::string& collection, const std::string& key, const std::string& blob,
+          const std::vector<std::string>& tags);
 
     virtual
     void

@@ -21,8 +21,6 @@
 #ifndef COCAINE_FORMAT_HPP
 #define COCAINE_FORMAT_HPP
 
-#include <sstream>
-
 #include <boost/format.hpp>
 
 namespace cocaine { namespace aux {
@@ -47,15 +45,9 @@ static inline
 std::string
 format(const std::string& format, const Args&... args) {
     try {
-        return aux::substitute(boost::format(format), args...);
+        return aux::substitute(std::move(boost::format(format)), args...);
     } catch(const boost::io::format_error& e) {
-        std::ostringstream stream;
-
-        stream << "<unable to format the message - "
-               << e.what()
-               << ">";
-
-        return stream.str();
+        return aux::substitute(std::move(boost::format("<unable to format message - %s>")), e.what());
     }
 }
 

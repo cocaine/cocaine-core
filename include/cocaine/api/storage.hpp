@@ -55,7 +55,8 @@ struct storage_t {
 
     virtual
     void
-    write(const std::string& collection, const std::string& key, const std::string& blob, const std::vector<std::string>& tags) = 0;
+    write(const std::string& collection, const std::string& key, const std::string& blob,
+          const std::vector<std::string>& tags) = 0;
 
     virtual
     void
@@ -73,7 +74,8 @@ struct storage_t {
 
     template<class T>
     void
-    put(const std::string& collection, const std::string& key, const T& object, const std::vector<std::string>& tags);
+    put(const std::string& collection, const std::string& key, const T& object,
+        const std::vector<std::string>& tags);
 
 protected:
     storage_t(context_t&, const std::string& /* name */, const dynamic_t& /* args */) {
@@ -92,13 +94,13 @@ storage_t::get(const std::string& collection, const std::string& key) {
     try {
         msgpack::unpack(&unpacked, blob.data(), blob.size());
     } catch(const msgpack::unpack_error& e) {
-        throw storage_error_t("corrupted object");
+        throw storage_error_t("object is corrupted");
     }
 
     try {
         io::type_traits<T>::unpack(unpacked.get(), result);
     } catch(const msgpack::type_error& e) {
-        throw storage_error_t("object type mismatch");
+        throw storage_error_t("invalid object type");
     }
 
     return result;
@@ -106,7 +108,9 @@ storage_t::get(const std::string& collection, const std::string& key) {
 
 template<class T>
 void
-storage_t::put(const std::string& collection, const std::string& key, const T& object, const std::vector<std::string>& tags) {
+storage_t::put(const std::string& collection, const std::string& key, const T& object,
+               const std::vector<std::string>& tags)
+{
     std::ostringstream buffer;
     msgpack::packer<std::ostringstream> packer(buffer);
 
@@ -141,7 +145,7 @@ struct category_traits<storage_t> {
             }
 
             if(!instance) {
-                instance = std::make_shared<T>(std::ref(context), name, args);
+                instance = std::make_shared<T>(context, name, args);
                 m_instances[name] = instance;
             }
 

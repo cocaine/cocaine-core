@@ -1,5 +1,6 @@
 cocaine-core (0.12.0.0) unstable; urgency=low
 
+  * Dropped libev in favor of Boost.ASIO.
   * Protocol transitions. Service protocols can now specify state transitions
     to support dispatch hierarchies. For example, storage protocol can
     implement a write_stream() method, which switches to stream protocol on

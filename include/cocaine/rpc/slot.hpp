@@ -22,7 +22,6 @@
 #define COCAINE_IO_SLOT_HPP
 
 #include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/upstream.hpp"
 
 #include "cocaine/tuple.hpp"
 
@@ -39,12 +38,9 @@ class basic_slot {
     typedef event_traits<event_type> traits_type;
 
 public:
-    // Detect if the event is recursive or not.
-    typedef std::is_same<typename traits_type::dispatch_type, typename event_type::tag> recursive;
-
     typedef typename mpl::transform<
-        typename traits_type::tuple_type,
-        typename mpl::lambda<io::detail::unwrap_type<mpl::_1>>
+        typename traits_type::argument_type,
+        typename mpl::lambda<io::details::unwrap_type<mpl::_1>>
     >::type sequence_type;
 
     // Expected parameter types, stripped of any tags.
@@ -62,13 +58,17 @@ public:
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) = 0;
-
-public:
-    std::string
-    name() const {
-        return event_type::alias();
-    }
 };
+
+template<class Event>
+struct is_recursive:
+    public std::is_same<typename event_traits<Event>::dispatch_type, typename Event::tag>
+{ };
+
+template<class Event>
+struct is_final:
+    public std::is_same<typename event_traits<Event>::dispatch_type, void>
+{ };
 
 }} // namespace cocaine::io
 

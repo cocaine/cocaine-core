@@ -40,14 +40,12 @@ class adhoc_t:
 
     struct remote_service_t {
         std::string uuid;
-        metadata_t meta;
+        metadata_t  info;
     };
 
-    typedef std::multimap<
-        std::string,
-        remote_service_t
-    > remote_service_map_t;
+    typedef std::multimap<std::string, remote_service_t> remote_service_map_t;
 
+    // TODO: Merge service metadata from remote nodes and check whether it's consistent.
     remote_service_map_t m_remote_services;
 
 public:
@@ -57,8 +55,8 @@ public:
    ~adhoc_t();
 
     virtual
-    metadata_t
-    resolve(const std::string& name) const;
+    auto
+    resolve(const std::string& name) const -> metadata_t;
 
     virtual
     void

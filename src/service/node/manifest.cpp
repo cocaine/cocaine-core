@@ -37,7 +37,7 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     if(as_object().find("slave") != as_object().end()) {
         executable = as_object().at("slave").as_string();
     } else {
-        throw cocaine::error_t("app runnable object has not been specified");
+        throw cocaine::error_t("runnable object has not been specified");
     }
 
     // TODO: Ability to choose app bindpoint.

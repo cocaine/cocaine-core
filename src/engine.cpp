@@ -22,99 +22,133 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include "cocaine/detail/chamber.hpp"
 
-#include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/session.hpp"
+
+#include <blackhole/scoped_attributes.hpp>
+
+using namespace blackhole;
+
+using namespace boost::asio;
+using namespace boost::asio::ip;
 
 using namespace cocaine;
 
-execution_unit_t::execution_unit_t(context_t& context, const std::string& name):
-    m_log(context.log(name)),
-    m_reactor(std::make_shared<io::reactor_t>()),
-    m_chamber(std::make_unique<io::chamber_t>(name, m_reactor))
-{ }
+execution_unit_t::execution_unit_t(context_t& context):
+    m_log(context.log("core:asio")),
+    m_asio(new io_service()),
+    m_chamber(new io::chamber_t("core:asio", m_asio))
+{
+    COCAINE_LOG_DEBUG(m_log, "engine started")(
+        "engine", m_chamber->uuid()
+    );
+}
 
-execution_unit_t::~execution_unit_t() {
-    m_chamber.reset();
+namespace {
 
-    for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
+struct detach_action_t {
+    void
+    operator()();
+
+    // Never becomes a dangling reference.
+    std::map<int, std::shared_ptr<session_t>>& sessions;
+};
+
+void
+detach_action_t::operator()() {
+    for(auto it = sessions.begin(); it != sessions.end(); ++it) {
         // Synchronously close the connections.
         it->second->detach();
     }
+}
 
-    m_sessions.clear();
+} // namespace
+
+execution_unit_t::~execution_unit_t() {
+    COCAINE_LOG_DEBUG(m_log, "engine waiting for outstanding operations to complete")(
+        "engine", m_chamber->uuid()
+    );
+
+    m_asio->post(detach_action_t{m_sessions});
+
+    // This will block until all the outstanding operations are complete.
+    m_chamber = nullptr;
 }
 
 void
-execution_unit_t::attach(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
-    m_reactor->post(std::bind(&execution_unit_t::on_connect, this, socket, dispatch));
+execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
+    m_asio->dispatch(std::bind(&execution_unit_t::attach_impl, this, ptr, dispatch));
+}
+
+double
+execution_unit_t::utilization() const {
+    return m_chamber->load_avg1();
 }
 
 void
-execution_unit_t::on_connect(const std::shared_ptr<io::socket<io::tcp>>& socket, const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
-    auto fd = socket->fd();
+execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
+    auto fd = ::dup(ptr->native_handle());
 
     // Make sure that the fd wasn't reused before it was actually processed for disconnection.
     BOOST_ASSERT(!m_sessions.count(fd));
 
-    auto ptr = std::make_unique<io::channel<io::socket<io::tcp>>>(*m_reactor, socket);
-
-    using namespace std::placeholders;
-
-    ptr->rd->bind(
-        std::bind(&execution_unit_t::on_message, this, fd, _1),
-        std::bind(&execution_unit_t::on_failure, this, fd, _1)
-    );
-
-    ptr->wr->bind(
-        std::bind(&execution_unit_t::on_failure, this, fd, _1)
-    );
-
-    m_sessions[fd] = std::make_shared<session_t>(std::move(ptr), dispatch);
-}
-
-void
-execution_unit_t::on_message(int fd, const io::message_t& message) {
-    auto it = m_sessions.find(fd);
-
-    BOOST_ASSERT(it != m_sessions.end());
+    // Copy the socket into the new reactor.
+    auto channel = std::make_unique<io::channel<tcp>>(std::make_unique<tcp::socket>(
+       *m_asio,
+        ptr->local_endpoint().protocol(),
+        fd
+    ));
 
     try {
-        it->second->invoke(message);
-    } catch(const std::exception& e) {
-        COCAINE_LOG_ERROR(m_log, "client has been forced to disconnect")(
-            "fd", fd,
-            "reason", e.what()
-        );
-
-        // NOTE: This destroys the connection but not necessarily the session itself, as it might be
-        // still in use by shared upstreams even in other threads. In other words, this doesn't guarantee
-        // that the session will be actually deleted, but it's fine, since the connection is closed.
-        it->second->detach();
-        m_sessions.erase(it);
+        m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
+    } catch(const boost::system::system_error& e) {
+        COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session");
+        return;
     }
+
+    // Bind the shutdown signals.
+    m_sessions[fd]->signals.shutdown.connect(std::bind(&execution_unit_t::on_shutdown,
+        this,
+        std::placeholders::_1,
+        fd
+    ));
+
+    COCAINE_LOG_DEBUG(m_log, "attached client to engine with %.2f%% utilization", utilization() * 100)(
+        "endpoint", m_sessions[fd]->remote_endpoint(),
+        "engine",   m_chamber->uuid(),
+        "service",  m_sessions[fd]->name()
+    );
+
+    // Start the message dispatching.
+    m_sessions[fd]->pull();
 }
 
 void
-execution_unit_t::on_failure(int fd, const std::error_code& error) {
-    if(!m_sessions.count(fd)) {
-        // TODO: COCAINE-75 fixes this via cancellation.
-        // Check whether the connection actually exists, in case multiple errors were queued up in
-        // the reactor and it was already dropped.
-        return;
-    } else if(error) {
-        COCAINE_LOG_ERROR(m_log, "client has disconnected")(
-            "fd", fd,
-            "errno", error.value(),
-            "reason", error.message()
-        );
-    } else {
-        COCAINE_LOG_DEBUG(m_log, "client has disconnected")("fd", fd);
-    }
-
+execution_unit_t::detach(int fd) {
     m_sessions[fd]->detach();
     m_sessions.erase(fd);
+}
+
+void
+execution_unit_t::on_shutdown(const boost::system::error_code& ec, int fd) {
+    auto it = m_sessions.find(fd);
+
+    BOOST_ASSERT(ec && it != m_sessions.end());
+
+    scoped_attributes_t attributes(*m_log, {
+        attribute::make("endpoint", boost::lexical_cast<std::string>(it->second->remote_endpoint())),
+        attribute::make("engine",   boost::lexical_cast<std::string>(m_chamber->uuid())),
+        attribute::make("service",  it->second->name())
+    });
+
+    if(ec != boost::asio::error::eof) {
+        COCAINE_LOG_ERROR(m_log, "client has disconnected: [%d] %s", ec.value(), ec.message());
+    } else {
+        COCAINE_LOG_DEBUG(m_log, "client has disconnected");
+    }
+
+    detach(fd);
 }

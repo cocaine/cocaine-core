@@ -35,23 +35,29 @@ struct streamed {
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
     streamed():
-        queue(std::make_shared<synchronized<queue_type>>())
+        queue(new synchronized<queue_type>())
     { }
 
     template<class U>
-    typename std::enable_if<std::is_convertible<typename pristine<U>::type, T>::value>::type
+    typename std::enable_if<
+        std::is_convertible<typename pristine<U>::type, T>::value,
+        streamed&
+    >::type
     write(U&& value) {
         (*queue)->template append<typename protocol::chunk>(std::forward<U>(value));
+        return *this;
     }
 
-    void
+    streamed&
     abort(int code, const std::string& reason) {
         (*queue)->template append<typename protocol::error>(code, reason);
+        return *this;
     }
 
-    void
+    streamed&
     close() {
         (*queue)->template append<typename protocol::choke>();
+        return *this;
     }
 
 private:

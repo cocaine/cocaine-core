@@ -27,10 +27,6 @@
 #include "cocaine/rpc/slot.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
-#include "cocaine/tuple.hpp"
-
-#include <deque>
-
 #include <boost/mpl/lambda.hpp>
 #include <boost/mpl/transform.hpp>
 
@@ -40,7 +36,7 @@
 
 namespace cocaine { namespace io {
 
-template<class Tag> class message_queue;
+template<class Tag, class Upstream = basic_upstream_t> class message_queue;
 
 namespace mpl = boost::mpl;
 
@@ -69,27 +65,33 @@ make_frozen(Args&&... args) {
     return frozen<Event>(Event(), std::forward<Args>(args)...);
 }
 
-struct frozen_visitor_t:
+template<class Upstream>
+struct frozen_visitor:
     public boost::static_visitor<void>
 {
-    frozen_visitor_t(const std::shared_ptr<basic_upstream_t>& u):
-        upstream_(u)
+    typedef Upstream upstream_type;
+
+    explicit
+    frozen_visitor(const std::shared_ptr<upstream_type>& upstream_):
+        upstream(upstream_)
     { }
 
     template<class Event>
     void
     operator()(const frozen<Event>& frozen) const {
-        upstream_->send<Event>(frozen.tuple);
+        upstream->template send<Event>(frozen.tuple);
     }
 
 private:
-    const std::shared_ptr<basic_upstream_t>& upstream_;
+    const std::shared_ptr<upstream_type>& upstream;
 };
 
 } // namespace aux
 
-template<class Tag>
+template<class Tag, class Upstream>
 class message_queue {
+    typedef Upstream upstream_type;
+
     typedef typename mpl::transform<
         typename protocol<Tag>::messages,
         typename mpl::lambda<aux::frozen<mpl::_1>>
@@ -98,11 +100,11 @@ class message_queue {
     typedef typename boost::make_variant_over<frozen_types>::type variant_type;
 
     // Operation log.
-    std::deque<variant_type> operations;
+    std::vector<variant_type> m_operations;
 
-    // The upstream might be attached during state method invocation, so it has to be synchronized
-    // for thread safety - the atomicicity guarantee of the shared_ptr<T> is not enough.
-    std::shared_ptr<basic_upstream_t> upstream_;
+    // The upstream might be attached during message invocation, so it has to be synchronized for
+    // thread safety - the atomicity guarantee of the shared_ptr<T> is not enough.
+    std::shared_ptr<upstream_type> m_upstream;
 
 public:
     template<class Event, typename... Args>
@@ -113,34 +115,37 @@ public:
             "message protocol is not compatible with this message queue"
         );
 
-        if(!upstream_) {
-            return operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
+        if(!m_upstream) {
+            return m_operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
         }
 
-        upstream_->send<Event>(std::forward<Args>(args)...);
+        m_upstream->template send<Event>(std::forward<Args>(args)...);
     }
 
     template<class OtherTag>
     void
-    attach(upstream<OtherTag>&& u) {
+    attach(upstream<OtherTag>&& upstream) {
         static_assert(
-            detail::is_compatible<Tag, OtherTag>::value,
+            details::is_compatible<Tag, OtherTag>::value,
             "upstream protocol is not compatible with this message queue"
         );
 
-        upstream_ = std::move(u.ptr);
+        attach(std::move(upstream.ptr));
+    }
 
-        if(operations.empty()) {
+    void
+    attach(std::shared_ptr<upstream_type> upstream) {
+        m_upstream = std::move(upstream);
+
+        if(m_operations.empty()) {
             return;
         }
 
-        aux::frozen_visitor_t visitor(upstream_);
+        aux::frozen_visitor<upstream_type> visitor(m_upstream);
 
-        for(auto it = operations.begin(); it != operations.end(); ++it) {
-            boost::apply_visitor(visitor, *it);
-        }
+        std::for_each(m_operations.begin(), m_operations.end(), boost::apply_visitor(visitor));
 
-        operations.clear();
+        m_operations.clear();
     }
 };
 

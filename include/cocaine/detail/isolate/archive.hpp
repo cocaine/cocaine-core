@@ -30,13 +30,13 @@ namespace cocaine {
 struct archive_error_t:
     public std::runtime_error
 {
+    explicit
     archive_error_t(archive* source);
 };
 
 class archive_t {
     const std::unique_ptr<logging::log_t> m_log;
 
-    // The source archive.
     archive* m_archive;
 
 public:

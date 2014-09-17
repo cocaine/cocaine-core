@@ -22,29 +22,28 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
 #include <array>
+#include <iostream>
+
 #include <cerrno>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
-#include <system_error>
 
 #include <boost/filesystem/operations.hpp>
+#include <boost/system/system_error.hpp>
 
 #ifdef COCAINE_ALLOW_CGROUPS
-#include <boost/lexical_cast.hpp>
+    #include <boost/lexical_cast.hpp>
 #endif
 
 #include <fcntl.h>
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #ifdef COCAINE_ALLOW_CGROUPS
-#include <libcgroup.h>
+    #include <libcgroup.h>
 #endif
 
 using namespace cocaine;
@@ -87,52 +86,68 @@ private:
 
 #ifdef COCAINE_ALLOW_CGROUPS
 struct cgroup_configurator_t:
-    public boost::static_visitor<>
+    public boost::static_visitor<void>
 {
-    cgroup_configurator_t(cgroup_controller* ctl, const char* name, const char* parameter, const std::unique_ptr<logging::log_t>& log):
-        m_ctl(ctl),
-        m_name(name),
-        m_parameter(parameter),
-        m_log(log)
+    cgroup_configurator_t(cgroup_controller* impl_, const char* parameter_):
+        impl(impl_),
+        parameter(parameter_)
     { }
 
     void
     operator()(const dynamic_t::bool_t& value) const {
-        cgroup_add_value_bool(m_ctl, m_parameter, value);
+        cgroup_add_value_bool(impl, parameter, value);
     }
 
     void
     operator()(const dynamic_t::int_t& value) const {
-        cgroup_add_value_int64(m_ctl, m_parameter, value);
+        cgroup_add_value_int64(impl, parameter, value);
     }
 
     void
     operator()(const dynamic_t::uint_t& value) const {
-        cgroup_add_value_uint64(m_ctl, m_parameter, value);
+        cgroup_add_value_uint64(impl, parameter, value);
     }
 
     void
     operator()(const dynamic_t::string_t& value) const {
-        cgroup_add_value_string(m_ctl, m_parameter, value.c_str());
+        cgroup_add_value_string(impl, parameter, value.c_str());
     }
 
     template<class T>
     void
     operator()(const T& /* value */) const {
-        COCAINE_LOG_WARNING(m_log, "cgroup controller '%s' parameter '%s' type is not supported", m_name, m_parameter);
+        throw cocaine::error_t("parameter type is not supported");
     }
 
 private:
-    cgroup_controller* m_ctl;
-
-    const char* m_name;
-    const char* m_parameter;
-
-    const std::unique_ptr<logging::log_t> &m_log;
+    cgroup_controller* impl;
+    const char* parameter;
 };
+
+struct cgroup_category_t:
+    public boost::system::error_category
+{
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.isolate.cgroups";
+    }
+
+    virtual
+    auto
+    message(int code) const -> std::string {
+        return cgroup_strerror(code);
+    }
+};
+
+auto
+cgroup_category() -> const boost::system::error_category& {
+    static cgroup_category_t instance;
+    return instance;
+}
 #endif
 
-}
+} // namespace
 
 process_t::process_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
@@ -145,37 +160,44 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     int rv = 0;
 
     if((rv = cgroup_init()) != 0) {
-        throw cocaine::error_t("unable to initialize the cgroups isolate - %s", cgroup_strerror(rv));
+        throw boost::system::system_error(rv, cgroup_category_t(),
+            "unable to initialize cgroups"
+        );
     }
 
-    m_cgroup = cgroup_new_cgroup(name.c_str());
+    m_cgroup = cgroup_new_cgroup(m_name.c_str());
 
     // TODO: Check if it changes anything.
     cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());
 
-    for(auto c = args.as_object().begin(); c != args.as_object().end(); ++c) {
-        if(!c->second.is_object() || c->second.as_object().empty()) {
+    for(auto type = args.as_object().begin(); type != args.as_object().end(); ++type) {
+        if(!type->second.is_object() || type->second.as_object().empty()) {
             continue;
         }
 
-        cgroup_controller* ctl = cgroup_add_controller(m_cgroup, c->first.c_str());
+        cgroup_controller* impl = cgroup_add_controller(m_cgroup, type->first.c_str());
 
-        for(auto p = c->second.as_object().begin(); p != c->second.as_object().end(); ++p) {
-            p->second.apply(cgroup_configurator_t(ctl, c->first.c_str(), p->first.c_str(), m_log));
-
-            COCAINE_LOG_DEBUG(
-                m_log,
-                "setting cgroup controller '%s' parameter '%s' to '%s'",
-                c->first,
-                p->first,
-                boost::lexical_cast<std::string>(p->second)
+        for(auto it = type->second.as_object().begin(); it != type->second.as_object().end(); ++it) {
+            COCAINE_LOG_INFO(m_log, "setting cgroup controller '%s' parameter '%s' to '%s'",
+                type->first, it->first, boost::lexical_cast<std::string>(it->second)
             );
+
+            try {
+                it->second.apply(cgroup_configurator_t(impl, it->first.c_str()));
+            } catch(const cocaine::error_t& e) {
+                COCAINE_LOG_ERROR(m_log, "unable to set cgroup controller '%s' parameter '%s' - %s",
+                    type->first, it->first, e.what()
+                );
+            }
         }
     }
 
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
         cgroup_free(&m_cgroup);
-        throw cocaine::error_t("unable to create the cgroup - %s", cgroup_strerror(rv));
+
+        throw boost::system::system_error(rv, cgroup_category_t(),
+            "unable to create cgroup"
+        );
     }
 #endif
 }
@@ -185,11 +207,7 @@ process_t::~process_t() {
     int rv = 0;
 
     if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
-        COCAINE_LOG_ERROR(
-            m_log,
-            "unable to delete the cgroup - %s",
-            cgroup_strerror(rv)
-        );
+        COCAINE_LOG_ERROR(m_log, "unable to delete cgroup - %s", cgroup_strerror(rv));
     }
 
     cgroup_free(&m_cgroup);
@@ -208,7 +226,9 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
     std::array<int, 2> pipes;
 
     if(::pipe(pipes.data()) != 0) {
-        throw std::system_error(errno, std::system_category(), "unable to create an output pipe");
+        throw boost::system::system_error(errno, boost::system::system_category(),
+            "unable to create an output pipe"
+        );
     }
 
     for(auto it = pipes.begin(); it != pipes.end(); ++it) {
@@ -219,7 +239,10 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
 
     if(pid < 0) {
         std::for_each(pipes.begin(), pipes.end(), ::close);
-        throw std::system_error(errno, std::system_category(), "unable to fork");
+
+        throw boost::system::system_error(errno, boost::system::system_category(),
+            "unable to fork"
+        );
     }
 
     ::close(pipes[pid > 0]);

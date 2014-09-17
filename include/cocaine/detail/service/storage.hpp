@@ -32,7 +32,7 @@ struct storage_t:
     public api::service_t,
     public dispatch<io::storage_tag>
 {
-    storage_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
+    storage_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
 
     virtual
     auto

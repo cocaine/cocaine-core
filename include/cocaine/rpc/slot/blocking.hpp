@@ -35,13 +35,12 @@ struct blocking_slot:
     typedef function_slot<Event, R> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
-
     typedef typename parent_type::dispatch_type dispatch_type;
     typedef typename parent_type::tuple_type tuple_type;
     typedef typename parent_type::upstream_type upstream_type;
-
     typedef typename parent_type::protocol protocol;
 
+    explicit
     blocking_slot(callable_type callable):
         parent_type(callable)
     { }
@@ -50,20 +49,23 @@ struct blocking_slot:
     boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
-            upstream.template send<typename protocol::chunk>(this->call(args));
+            upstream.template send<typename protocol::chunk>(this->call(std::move(args)));
             upstream.template send<typename protocol::choke>();
-        } catch(const std::system_error& e) {
-            upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
+        } catch(const boost::system::system_error& e) {
+            upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {
-            upstream.template send<typename protocol::error>(invocation_error, std::string(e.what()));
+            upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
         }
 
-        // Return a corresponding protocol dispatch.
-        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
+        if(is_recursive<Event>::value) {
+            return boost::none;
+        } else {
+            return boost::make_optional<std::shared_ptr<const dispatch_type>>(nullptr);
+        }
     }
 };
 
-// Blocking slot specialization for void functions
+// Blocking slot specialization for void functions (returning completion status)
 
 template<class Event>
 struct blocking_slot<Event, void>:
@@ -72,13 +74,12 @@ struct blocking_slot<Event, void>:
     typedef function_slot<Event, void> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
-
     typedef typename parent_type::dispatch_type dispatch_type;
     typedef typename parent_type::tuple_type tuple_type;
     typedef typename parent_type::upstream_type upstream_type;
-
     typedef typename parent_type::protocol protocol;
 
+    explicit
     blocking_slot(callable_type callable):
         parent_type(callable)
     { }
@@ -87,35 +88,39 @@ struct blocking_slot<Event, void>:
     boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
-            this->call(args);
+            this->call(std::move(args));
 
             // This is needed anyway so that service clients could detect operation completion.
             upstream.template send<typename protocol::choke>();
-        } catch(const std::system_error& e) {
-            upstream.template send<typename protocol::error>(e.code().value(), std::string(e.code().message()));
+        } catch(const boost::system::system_error& e) {
+            upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {
-            upstream.template send<typename protocol::error>(invocation_error, std::string(e.what()));
+            upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
         }
 
-        // Return a corresponding protocol dispatch.
-        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
+        if(is_recursive<Event>::value) {
+            return boost::none;
+        } else {
+            return boost::make_optional<std::shared_ptr<const dispatch_type>>(nullptr);
+        }
     }
 };
 
+// Blocking slot specialization for mute functions (returning nothing at all)
+
 template<class Event>
-struct blocking_slot<Event, terminal_slot_tag>:
+struct blocking_slot<Event, mute_slot_tag>:
     public function_slot<Event, void>
 {
     typedef function_slot<Event, void> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
-
     typedef typename parent_type::dispatch_type dispatch_type;
     typedef typename parent_type::tuple_type tuple_type;
     typedef typename parent_type::upstream_type upstream_type;
-
     typedef typename parent_type::protocol protocol;
 
+    explicit
     blocking_slot(callable_type callable):
         parent_type(callable)
     { }
@@ -124,13 +129,20 @@ struct blocking_slot<Event, terminal_slot_tag>:
     boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& /* upstream */) {
         try {
-            this->call(args);
-        } catch(const std::exception& e) {
-            throw cocaine::error_t("error while calling a terminal slot - %s", e.what());
+            this->call(std::move(args));
+        } catch(...) {
+#if defined(HAVE_GCC48)
+            std::throw_with_nested(cocaine::error_t("error while calling mute slot"));
+#else
+            throw cocaine::error_t("error while calling mute slot");
+#endif
         }
 
-        // Return a corresponding protocol dispatch.
-        return boost::make_optional(!parent_type::recursive::value, std::shared_ptr<const dispatch_type>());
+        if(is_recursive<Event>::value) {
+            return boost::none;
+        } else {
+            return boost::make_optional<std::shared_ptr<const dispatch_type>>(nullptr);
+        }
     }
 };
 

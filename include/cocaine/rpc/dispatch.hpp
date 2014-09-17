@@ -25,7 +25,6 @@
 #include "cocaine/locked_ptr.hpp"
 
 #include "cocaine/rpc/graph.hpp"
-#include "cocaine/rpc/message.hpp"
 
 #include "cocaine/rpc/slot/blocking.hpp"
 #include "cocaine/rpc/slot/deferred.hpp"
@@ -51,10 +50,10 @@ namespace io {
 class basic_dispatch_t {
     COCAINE_DECLARE_NONCOPYABLE(basic_dispatch_t)
 
-    // For actor's named threads feature.
     const std::string m_name;
 
 public:
+    explicit
     basic_dispatch_t(const std::string& name);
 
     virtual
@@ -65,19 +64,25 @@ public:
     name() const -> std::string;
 
 public:
-    typedef boost::optional<std::shared_ptr<const basic_dispatch_t>> transition_t;
+    typedef boost::optional<dispatch_ptr_t> transition_t;
 
     virtual
     transition_t
-    call(const message_t& message, const std::shared_ptr<basic_upstream_t>& upstream) const = 0;
+    process(const decoder_t::message_type& message, const upstream_ptr_t& upstream) const = 0;
+
+    virtual
+    void
+    discard(const boost::system::error_code& COCAINE_UNUSED_(ec)) const {
+        // Called on abnormal channel destruction.
+    }
 
     virtual
     auto
-    protocol() const -> const dispatch_graph_t& = 0;
+    graph() const -> const graph_basis_t& = 0;
 
     virtual
     int
-    versions() const = 0;
+    version() const = 0;
 };
 
 typedef basic_dispatch_t::transition_t transition_t;
@@ -90,7 +95,7 @@ template<class Tag>
 class dispatch:
     public io::basic_dispatch_t
 {
-    const io::dispatch_graph_t graph;
+    const io::graph_basis_t m_graph;
 
     // Slot construction
 
@@ -124,22 +129,19 @@ class dispatch:
     { };
 
 public:
+    explicit
     dispatch(const std::string& name):
         basic_dispatch_t(name),
-        graph(io::traverse<Tag>().get())
+        m_graph(io::traverse<Tag>().get())
     { }
 
     template<class Event, class F>
     dispatch&
-    on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type* = nullptr);
+    on(const F& callable, typename boost::disable_if<is_slot<F, Event>>::type* = nullptr);
 
     template<class Event>
     dispatch&
     on(const std::shared_ptr<io::basic_slot<Event>>& ptr);
-
-    template<class Visitor>
-    typename Visitor::result_type
-    invoke(int id, const Visitor& visitor) const;
 
     template<class Event>
     void
@@ -148,19 +150,24 @@ public:
 public:
     virtual
     io::transition_t
-    call(const io::message_t& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const;
+    process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const;
 
     virtual
     auto
-    protocol() const -> const io::dispatch_graph_t& {
-        return graph;
+    graph() const -> const io::graph_basis_t& {
+        return m_graph;
     }
 
     virtual
     int
-    versions() const {
+    version() const {
         return io::protocol<Tag>::version::value;
     }
+
+private:
+    template<class Visitor>
+    typename Visitor::result_type
+    visit(int id, const Visitor& visitor) const;
 };
 
 namespace aux {
@@ -187,7 +194,7 @@ struct select<streamed<R>, Event> {
 struct calling_visitor_t:
     public boost::static_visitor<io::transition_t>
 {
-    calling_visitor_t(const msgpack::object& unpacked_, const std::shared_ptr<io::basic_upstream_t>& upstream_):
+    calling_visitor_t(const msgpack::object& unpacked_, const io::upstream_ptr_t& upstream_):
         unpacked(unpacked_),
         upstream(upstream_)
     { }
@@ -200,9 +207,13 @@ struct calling_visitor_t:
         // Unpacked arguments storage.
         typename slot_type::tuple_type args;
 
-        // Unpacks the object into a tuple using the message typelist as opposed to using the plain
-        // tuple type traits, in order to support parameter tags, like optional<T>.
-        io::type_traits<typename io::event_traits<Event>::tuple_type>::unpack(unpacked, args);
+        try {
+            // Unpacks the object into a tuple using the argument typelist as opposed to using the
+            // plain tuple type traits, in order to support parameter tags, like optional<T>.
+            io::type_traits<typename io::event_traits<Event>::argument_type>::unpack(unpacked, args);
+        } catch(const msgpack::type_error& e) {
+            throw cocaine::error_t("unable to unpack message arguments");
+        }
 
         // Call the slot with the upstream constrained using the event's drain protocol type tag.
         return result_type((*slot)(std::move(args), typename slot_type::upstream_type(upstream)));
@@ -210,7 +221,7 @@ struct calling_visitor_t:
 
 private:
     const msgpack::object& unpacked;
-    const std::shared_ptr<io::basic_upstream_t>& upstream;
+    const io::upstream_ptr_t& upstream;
 };
 
 } // namespace aux
@@ -218,7 +229,7 @@ private:
 template<class Tag>
 template<class Event, class F>
 dispatch<Tag>&
-dispatch<Tag>::on(const F& callable, typename std::enable_if<!is_slot<F, Event>::value>::type*) {
+dispatch<Tag>::on(const F& callable, typename boost::disable_if<is_slot<F, Event>>::type*) {
     typedef typename aux::select<
         typename result_of<F>::type,
         Event
@@ -231,38 +242,13 @@ template<class Tag>
 template<class Event>
 dispatch<Tag>&
 dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
-    if(!m_slots->insert(std::make_pair(io::event_traits<Event>::id, ptr)).second) {
-        throw cocaine::error_t("duplicate type %d slot: %s", io::event_traits<Event>::id, ptr->name());
+    typedef io::event_traits<Event> traits;
+
+    if(!m_slots->insert(std::make_pair(traits::id, ptr)).second) {
+        throw cocaine::error_t("duplicate type %d slot: %s", traits::id, Event::alias());
     }
 
     return *this;
-}
-
-template<class Tag>
-template<class Visitor>
-typename Visitor::result_type
-dispatch<Tag>::invoke(int id, const Visitor& visitor) const {
-    typename slot_map_t::const_iterator lb, ub;
-
-    std::tie(lb, ub) = m_slots->equal_range(id);
-
-    if(lb == ub) {
-        // TODO: COCAINE-82 adds a 'client' error category.
-        throw cocaine::error_t("unbound type %d slot", id);
-    }
-
-    // NOTE: The slot pointer is copied here so that the handling code could unregister the slot via
-    // dispatch<T>::forget() without pulling the object from underneath itself.
-    typename slot_map_t::mapped_type slot = lb->second;
-
-    try {
-        return boost::apply_visitor(visitor, slot);
-    } catch(const std::exception& e) {
-        // TODO: COCAINE-82 adds a 'server' error category.
-        // This happens only when the underlying slot has miserably failed to manage its exceptions.
-        // In such case, the client is disconnected to prevent any further damage.
-        throw cocaine::error_t("unable to invoke type %d slot - %s", id, e.what());
-    }
 }
 
 template<class Tag>
@@ -276,8 +262,35 @@ dispatch<Tag>::forget() {
 
 template<class Tag>
 io::transition_t
-dispatch<Tag>::call(const io::message_t& message, const std::shared_ptr<io::basic_upstream_t>& upstream) const {
-    return invoke(message.id(), aux::calling_visitor_t(message.args(), upstream));
+dispatch<Tag>::process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const {
+    return visit(message.type(), aux::calling_visitor_t(message.args(), upstream));
+}
+
+template<class Tag>
+template<class Visitor>
+typename Visitor::result_type
+dispatch<Tag>::visit(int id, const Visitor& visitor) const {
+    typename slot_map_t::mapped_type slot;
+
+    {
+        auto ptr = m_slots.synchronize();
+
+        typename slot_map_t::const_iterator lb, ub;
+
+        // NOTE: Using equal_range() here instead of find() to check for slot existence and get the
+        // slot pointer in one call instead of two.
+        std::tie(lb, ub) = ptr->equal_range(id);
+
+        if(lb == ub) {
+            throw cocaine::error_t("unbound type %d slot", id);
+        }
+
+        // NOTE: The slot pointer is copied here so that the handling code could unregister the slot
+        // via dispatch<T>::forget() without pulling the object from underneath itself.
+        slot = lb->second;
+    }
+
+    return boost::apply_visitor(visitor, slot);
 }
 
 } // namespace cocaine

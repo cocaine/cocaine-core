@@ -23,7 +23,6 @@
 
 #include "cocaine/api/cluster.hpp"
 
-#include <boost/asio/io_service.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/udp.hpp>
@@ -39,8 +38,6 @@ public:
 class multicast_t:
     public api::cluster_t
 {
-    struct packet_t;
-
     context_t& m_context;
 
     typedef api::cluster_t::interface interface;
@@ -49,18 +46,15 @@ class multicast_t:
     interface& m_locator;
 
     const std::unique_ptr<logging::log_t> m_log;
-    const std::string m_uuid;
+    const multicast_config_t m_cfg;
 
-    const multicast_config_t m_config;
-
-    boost::asio::io_service m_reactor;
     boost::asio::ip::udp::socket m_socket;
     boost::asio::deadline_timer m_timer;
 
     // Announce expiration timeouts.
     std::map<std::string, std::unique_ptr<boost::asio::deadline_timer>> m_expirations;
 
-    std::unique_ptr<std::thread> m_thread;
+    struct announce_t;
 
 public:
     multicast_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args);
@@ -70,13 +64,14 @@ public:
 
 private:
     void
-    publish(const boost::system::error_code& ec);
+    on_publish(const boost::system::error_code& ec);
 
     void
-    receive(const boost::system::error_code& ec, size_t rcvd, const std::shared_ptr<packet_t>& ptr);
+    on_receive(const boost::system::error_code& ec, size_t bytes_received,
+               const std::shared_ptr<announce_t>& ptr);
 
     void
-    cleanup(const boost::system::error_code& ec, const std::string& uuid);
+    on_expired(const boost::system::error_code& ec, const std::string& uuid);
 };
 
 }} // namespace cocaine::cluster

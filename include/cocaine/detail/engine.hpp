@@ -23,40 +23,48 @@
 
 #include "cocaine/common.hpp"
 
-#include <system_error>
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 namespace cocaine {
 
 class session_t;
 
 class execution_unit_t {
+    COCAINE_DECLARE_NONCOPYABLE(execution_unit_t)
+
     const std::unique_ptr<logging::log_t> m_log;
 
     // Connections
 
     std::map<int, std::shared_ptr<session_t>> m_sessions;
 
-    // I/O Reactor
+    // I/O
 
-    std::shared_ptr<io::reactor_t> m_reactor;
+    std::shared_ptr<boost::asio::io_service> m_asio;
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:
-    execution_unit_t(context_t& context, const std::string& name);
+    explicit
+    execution_unit_t(context_t& context);
+
    ~execution_unit_t();
 
     void
-    attach(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
+    attach(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
+
+    double
+    utilization() const;
 
 private:
     void
-    on_connect(const std::shared_ptr<io::socket<io::tcp>>& ptr, const std::shared_ptr<const io::basic_dispatch_t>& dispatch);
+    attach_impl(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
     void
-    on_message(int fd, const io::message_t& message);
+    detach(int fd);
 
     void
-    on_failure(int fd, const std::error_code& error);
+    on_shutdown(const boost::system::error_code& ec, int fd);
 };
 
 } // namespace cocaine

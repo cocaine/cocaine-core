@@ -28,6 +28,9 @@
 
 namespace cocaine { namespace io {
 
+// Addresses are packed as strings in order for other languages like Python or JS to be able to use
+// them without figuring out the correct sockaddr structure formats.
+
 template<class InternetProtocol>
 struct type_traits<boost::asio::ip::basic_endpoint<InternetProtocol>> {
     typedef boost::asio::ip::basic_endpoint<InternetProtocol> endpoint_type;

@@ -203,7 +203,7 @@ class log_entry {
         >::type
         operator()(const io::aux::frozen<Event>& command) const {
             auto handler = boost::get<handler_wrapper<Event>>(&m_handler);
-            if (handler && handler->callback) {
+            if(handler && handler->callback) {
                 handler->callback(m_machine(command));
             } else {
                 m_machine(command);
@@ -217,7 +217,7 @@ class log_entry {
         operator()(const io::aux::frozen<Event>& command) const {
             m_machine(command);
             auto handler = boost::get<handler_wrapper<Event>>(&m_handler);
-            if (handler && handler->callback) {
+            if(handler && handler->callback) {
                 handler->callback(std::error_code());
             }
         }
@@ -238,7 +238,7 @@ class log_entry {
         template<class Event>
         void
         operator()(const handler_wrapper<Event>& handler) const {
-            if (handler.callback) {
+            if(handler.callback) {
                 handler.callback(m_ec);
             }
         }

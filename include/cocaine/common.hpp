@@ -49,8 +49,12 @@
     type&                                   \
     operator=(const type& other) = delete;
 
+#define COCAINE_UNUSED_(parameter)          \
+    parameter __attribute__((unused))
+
 #include "cocaine/config.hpp"
 #include "cocaine/exceptions.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/memory.hpp"
 
 #endif

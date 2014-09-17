@@ -26,27 +26,15 @@
 
 #include "cocaine/tuple.hpp"
 
-namespace cocaine { namespace io {
+#include <boost/asio/ip/tcp.hpp>
 
-// Service locator interface
+namespace cocaine { namespace io {
 
 struct locator_tag;
 
+// Service locator interface
+
 struct locator {
-
-typedef std::tuple<
- /* Fully-qualified domain name of the service node. */
-    std::string,
- /* Service port in host byte order. */
-    uint16_t
-> endpoint_tuple_type;
-
-typedef std::tuple<
- /* Node's UUID. */
-    std::string,
- /* Node's Locator endpoint. */
-    endpoint_tuple_type
-> remote_id_type;
 
 struct resolve {
     typedef locator_tag tag;
@@ -63,14 +51,14 @@ struct resolve {
     > tuple_type;
 
     typedef boost::mpl::list<
-     /* An endpoint for the client to connect to in order to use the the service. */
-        endpoint_tuple_type,
+     /* Endpoints for the client to connect to in order to use the the service. */
+        std::vector<boost::asio::ip::tcp::endpoint>,
      /* Service protocol version. If the client wishes to use the service, the protocol
         versions must match. */
         unsigned int,
-     /* A mapping between method slot numbers, method names and state protocol transitions for use
-        in dynamic languages like Python or Ruby. */
-        dispatch_graph_t
+     /* A mapping between slot id numbers, message names and state transitions for both the message
+        dispatch and upstream types to use in dynamic languages like Python, Ruby or JavaScript. */
+        graph_basis_t
     > value_type;
 
     typedef streaming_tag<value_type> upstream_type;
@@ -108,8 +96,22 @@ struct refresh {
 
     typedef boost::mpl::list<
      /* Name of the group to refresh. */
-        std::string
+        std::vector<std::string>
     > tuple_type;
+};
+
+struct cluster {
+    typedef locator_tag tag;
+
+    static
+    const char*
+    alias() {
+        return "cluster";
+    }
+
+    typedef stream_of<
+        std::map<std::string, boost::asio::ip::tcp::endpoint>
+    >::tag upstream_type;
 };
 
 }; // struct locator
@@ -123,12 +125,34 @@ struct protocol<locator_tag> {
     typedef boost::mpl::list<
         locator::resolve,
         locator::connect,
-        locator::refresh
+        locator::refresh,
+        locator::cluster
     > messages;
 
     typedef locator scope;
 };
 
 }} // namespace cocaine::io
+
+namespace cocaine { namespace error {
+
+enum locator_errors {
+    service_not_available = 1,
+    routing_storage_error
+};
+
+auto
+make_error_code(locator_errors code) -> boost::system::error_code;
+
+}} // namespace cocaine::error
+
+namespace boost { namespace system {
+
+template<>
+struct is_error_code_enum<cocaine::error::locator_errors>:
+    public true_type
+{ };
+
+}} // namespace boost::system
 
 #endif

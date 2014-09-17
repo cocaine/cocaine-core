@@ -43,6 +43,10 @@ struct unique_id_t {
     std::ostream&
     operator<<(std::ostream& stream, const unique_id_t& id);
 
+    static
+    bool
+    ensure(const std::string& uuid);
+
 public:
     // NOTE: Store 128-bit UUIDs as two 64-bit unsigned integers.
     std::array<uint64_t, 2> uuid;

@@ -181,9 +181,7 @@ struct dynamic_converter<std::vector<T>> {
     static inline
     bool
     convertible(const dynamic_t& from) {
-        return from.is_array() && std::all_of(
-            from.as_array().begin(),
-            from.as_array().end(), 
+        return from.is_array() && std::all_of(from.as_array().begin(), from.as_array().end(),
             std::bind(&dynamic_t::convertible_to<T>, std::placeholders::_1)
         );
     }
@@ -209,9 +207,7 @@ struct dynamic_converter<std::set<T>> {
     static inline
     bool
     convertible(const dynamic_t& from) {
-        return from.is_array() && std::all_of(
-            from.as_array().begin(),
-            from.as_array().end(),
+        return from.is_array() && std::all_of(from.as_array().begin(), from.as_array().end(),
             std::bind(&dynamic_t::convertible_to<T>, std::placeholders::_1)
         );
     }

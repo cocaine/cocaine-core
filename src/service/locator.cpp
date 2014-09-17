@@ -24,8 +24,6 @@
 #include "cocaine/api/gateway.hpp"
 #include "cocaine/api/storage.hpp"
 
-#include "cocaine/asio/reactor.hpp"
-
 #include "cocaine/context.hpp"
 
 #include "cocaine/detail/actor.hpp"
@@ -34,36 +32,240 @@
 #include "cocaine/idl/streaming.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/memory.hpp"
 
-#include "cocaine/rpc/channel.hpp"
-#include "cocaine/rpc/session.hpp"
-
+#include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"
+#include "cocaine/traits/map.hpp"
 #include "cocaine/traits/tuple.hpp"
+#include "cocaine/traits/vector.hpp"
 
-#define BOOST_BIND_NO_PLACEHOLDERS
-#include <boost/bind/bind.hpp>
+#include "cocaine/tuple.hpp"
 
-using namespace cocaine;
+#include <blackhole/scoped_attributes.hpp>
+
+#include <boost/asio/connect.hpp>
+
+using namespace blackhole;
+
+using namespace boost::asio;
+using namespace boost::asio::ip;
+
 using namespace cocaine::io;
 using namespace cocaine::service;
 
-using namespace std::placeholders;
-
 #include "locator/routing.inl"
 
-locator_t::locator_t(context_t& context, reactor_t& reactor, const std::string& name, const dynamic_t& root):
-    api::service_t(context, reactor, name, root),
-    dispatch<io::locator_tag>(name),
+// Locator internals
+
+class locator_t::remote_client_t:
+    public dispatch<event_traits<locator::connect>::upstream_type>,
+    public std::enable_shared_from_this<remote_client_t>
+{
+    locator_t* impl;
+    const std::string uuid;
+
+public:
+    remote_client_t(locator_t* impl_, const std::string& uuid_):
+        dispatch<event_traits<locator::connect>::upstream_type>(impl_->name()),
+        impl(impl_),
+        uuid(uuid_)
+    {
+        typedef io::protocol<event_traits<locator::connect>::upstream_type>::scope protocol;
+
+        on<protocol::chunk>(std::bind(&remote_client_t::on_announce, this, std::placeholders::_1));
+        on<protocol::choke>(std::bind(&remote_client_t::on_shutdown, this));
+    }
+
+    void
+    on_link(const boost::system::error_code& ec);
+
+    virtual
+    void
+    discard(const boost::system::error_code& ec) const;
+
+private:
+    void
+    on_announce(const results::connect& update);
+
+    void
+    on_shutdown();
+};
+
+void
+locator_t::remote_client_t::on_link(const boost::system::error_code& ec) {
+    scoped_attributes_t attributes(*impl->m_log, {
+        attribute::make("uuid", uuid)
+    });
+
+    if(ec) {
+        COCAINE_LOG_ERROR(impl->m_log, "unable to connect to remote node: [%d] %s",
+            ec.value(), ec.message()
+        );
+
+        // Safe to erase directly — client is detached.
+        impl->m_remotes.erase(uuid);
+
+        return;
+    }
+
+    if(!impl->m_remotes.count(uuid)) {
+        COCAINE_LOG_ERROR(impl->m_log, "client has been dropped while connecting to remote node");
+        return;
+    }
+
+    auto& client = impl->m_remotes.at(uuid);
+
+    COCAINE_LOG_DEBUG(impl->m_log, "connected to remote node via %s", client.session().remote_endpoint());
+
+    client.invoke<locator::connect>(shared_from_this(), impl->m_uuid);
+}
+
+void
+locator_t::remote_client_t::discard(const boost::system::error_code& ec) const {
+    COCAINE_LOG_ERROR(impl->m_log, "remote node has been unexpectedly detached: [%d] %s",
+        ec.value(), ec.message()
+    )("uuid", uuid);
+
+    impl->drop_node(uuid);
+}
+
+void
+locator_t::remote_client_t::on_announce(const results::connect& update) {
+    if(update.empty()) return;
+
+    std::ostringstream stream;
+    std::ostream_iterator<std::string> builder(stream, ", ");
+
+    std::transform(update.begin(), update.end(), builder, tuple::nth_element<0>());
+
+    COCAINE_LOG_INFO(impl->m_log, "remote node has updated the following services: %s", stream.str())(
+        "uuid", uuid
+    );
+
+    auto diff = impl->m_routing->update_remote(uuid, update);
+
+    for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
+        impl->m_gateway->cleanup(uuid, it->first);
+    }
+
+    for(auto it = diff.first.begin(); it != diff.first.end(); ++it) {
+        impl->m_gateway->consume(uuid, it->first, it->second);
+    }
+}
+
+void
+locator_t::remote_client_t::on_shutdown() {
+    COCAINE_LOG_INFO(impl->m_log, "remote node has closed synchronization stream")(
+        "uuid", uuid
+    );
+
+    impl->drop_node(uuid);
+}
+
+class locator_t::cleanup_action_t {
+    locator_t* impl;
+
+public:
+    cleanup_action_t(locator_t* impl_):
+        impl(impl_)
+    { }
+
+    void
+    operator()();
+};
+
+void
+locator_t::cleanup_action_t::operator()() {
+    if(!impl->m_remotes.empty()) {
+        COCAINE_LOG_DEBUG(impl->m_log, "cleaning up %d remote node client(s)", impl->m_remotes.size());
+
+        // Disconnect all the remote nodes.
+        impl->m_remotes.clear();
+    }
+
+    // Destroy the loopback locator connection.
+    impl->m_resolve = nullptr;
+
+    COCAINE_LOG_DEBUG(impl->m_log, "shutting down clustering components");
+
+    // Destroy the clustering stuff.
+    impl->m_gateway = nullptr;
+    impl->m_cluster = nullptr;
+}
+
+// Locator
+
+locator_t::locator_t(context_t& context, io_service& asio, const std::string& name, const dynamic_t& root):
+    category_type(context, asio, name, root),
+    dispatch<locator_tag>(name),
     m_context(context),
     m_log(context.log(name)),
-    m_reactor(reactor),
-    m_router(new router_t(*m_log.get()))
+    m_asio(asio),
+    m_uuid(unique_id_t().string()),
+    m_resolve(new api::resolve_t(context.log(name + ":resolve"), asio)),
+    m_routing(new router_t(*m_log.get()))
 {
-    on<io::locator::resolve>(std::bind(&locator_t::resolve, this, _1));
-    on<io::locator::connect>(std::bind(&locator_t::connect, this, _1));
-    on<io::locator::refresh>(std::bind(&locator_t::refresh, this, _1));
+    using namespace std::placeholders;
+
+    on<locator::resolve>(std::bind(&locator_t::on_resolve, this, _1));
+    on<locator::connect>(std::bind(&locator_t::on_connect, this, _1));
+    on<locator::refresh>(std::bind(&locator_t::on_refresh, this, _1));
+    on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
+
+    // Service restrictions
+
+    m_restricted = root.as_object().at("restrict", dynamic_t::array_t()).to<std::set<std::string>>();
+
+    if(!m_restricted.empty()) {
+        std::ostringstream stream;
+        std::ostream_iterator<std::string> builder(stream);
+
+        std::copy(m_restricted.begin(), m_restricted.end(), builder);
+
+        COCAINE_LOG_INFO(m_log, "restricting %d service(s): %s", m_restricted.size(), stream.str());
+    }
+
+    m_restricted.insert(name);
+
+    // Context shutdown signal is set to track 'm_routing' because its lifetime essentially matches
+    // that of the Locator service itself
+
+    context.signals.shutdown.connect(context_t::signals_t::context_signals_t::slot_type(
+        std::bind(&locator_t::on_context_shutdown, this)
+    ).track_foreign(m_routing));
+
+    // Initialize clustering components
+
+    if(root.as_object().count("cluster")) {
+        const auto conf = root.as_object().at("cluster").as_object();
+        const auto type = conf.at("type", "unspecified").as_string();
+        const auto args = conf.at("args", dynamic_t::object_t());
+
+        COCAINE_LOG_INFO(m_log, "using '%s' for cluster discovery", type);
+
+        m_cluster = m_context.get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
+
+        // Connect service signals. Signals are set to track 'm_cluster' because it is responsible
+        // of handling them, so no cluster object - no service lifecycle signal handling
+
+        context.signals.service.exposed.connect(context_t::signals_t::service_signals_t::slot_type(
+            std::bind(&locator_t::on_service, this, _1)
+        ).track_foreign(m_cluster));
+
+        context.signals.service.removed.connect(context_t::signals_t::service_signals_t::slot_type(
+            std::bind(&locator_t::on_service, this, _1)
+        ).track_foreign(m_cluster));
+    }
+
+    if(root.as_object().count("gateway")) {
+        const auto conf = root.as_object().at("gateway").as_object();
+        const auto type = conf.at("type", "unspecified").as_string();
+        const auto args = conf.at("args", dynamic_t::object_t());
+
+        COCAINE_LOG_INFO(m_log, "using '%s' as a cluster accessor", type);
+
+        m_gateway = m_context.get<api::gateway_t>(type, m_context, name + ":gateway", args);
+    }
 
     // It's here to keep the reference alive.
     const auto storage = api::storage(m_context, "core");
@@ -77,30 +279,14 @@ locator_t::locator_t(context_t& context, reactor_t& reactor, const std::string& 
         typedef std::map<std::string, unsigned int> group_t;
 
         for(auto it = groups.begin(); it != groups.end(); ++it) {
-            m_router->add_group(*it, storage->get<group_t>("groups", *it));
+            m_routing->add_group(*it, storage->get<group_t>("groups", *it));
         }
     } catch(const storage_error_t& e) {
-        throw cocaine::error_t("unable to initialize the routing groups - %s", e.what());
-    }
-
-    if(root.as_object().count("discovery")) {
-        const auto cluster_conf = root.as_object().at("discovery").as_object();
-        const auto cluster_type = cluster_conf.at("type", "unspecified").as_string();
-        const auto cluster_args = cluster_conf.at("args", dynamic_t::object_t());
-
-        COCAINE_LOG_INFO(m_log, "using '%s' for cluster discovery", cluster_type);
-
-        m_cluster = m_context.get<api::cluster_t>(cluster_type, m_context, *this, name, cluster_args);
-    }
-
-    if(root.as_object().count("gateway")) {
-        const auto gateway_conf = root.as_object().at("gateway").as_object();
-        const auto gateway_type = gateway_conf.at("type", "unspecified").as_string();
-        const auto gateway_args = gateway_conf.at("args", dynamic_t::object_t());
-
-        COCAINE_LOG_INFO(m_log, "using '%s' as a cluster accessor", gateway_type);
-
-        m_gateway = m_context.get<api::gateway_t>(gateway_type, m_context, name, gateway_args);
+#if defined(HAVE_GCC48)
+        std::throw_with_nested(cocaine::error_t("unable to initialize routing groups"));
+#else
+        throw cocaine::error_t("unable to initialize routing groups");
+#endif
     }
 }
 
@@ -113,259 +299,238 @@ locator_t::prototype() const -> const basic_dispatch_t& {
     return *this;
 }
 
-namespace {
-
-template<class Container>
-struct deferred_erase_action {
-    typedef Container container_type;
-    typedef typename container_type::key_type key_type;
-
-    void
-    operator()() {
-        container.erase(key);
-    }
-
-    container_type& container;
-    const key_type  key;
-};
-
-} // namespace
-
-class locator_t::remote_client_t:
-    public dispatch<io::event_traits<io::locator::connect>::upstream_type>
-{
-    locator_t& impl;
-    const std::string uuid;
-
-public:
-    remote_client_t(locator_t& impl_, const std::string& uuid_):
-        dispatch<io::event_traits<io::locator::connect>::upstream_type>(impl_.name()),
-        impl(impl_),
-        uuid(uuid_)
-    {
-        typedef io::protocol<
-            io::event_traits<io::locator::connect>::upstream_type
-        >::scope protocol;
-
-        on<protocol::chunk>(std::bind(&remote_client_t::announce, this, _1));
-        on<protocol::choke>(std::bind(&remote_client_t::shutdown, this));
-    }
-
-private:
-    void
-    announce(const result_of<io::locator::connect>::type& dump) {
-        COCAINE_LOG_INFO(impl.m_log, "remote node has been updated")(
-            "uuid", uuid
-        );
-
-        auto diff = impl.m_router->update_remote(uuid, dump);
-
-        for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
-            impl.m_gateway->cleanup(uuid, it->first);
-        }
-
-        for(auto it = diff.first.begin(); it != diff.first.end(); ++it) {
-            impl.m_gateway->consume(uuid, it->first, it->second);
-        }
-    }
-
-    void
-    shutdown() {
-        COCAINE_LOG_INFO(impl.m_log, "remote node has been shut down")(
-            "uuid", uuid
-        );
-
-        auto removed = impl.m_router->remove_remote(uuid);
-
-        for(auto it = removed.begin(); it != removed.end(); ++it) {
-            impl.m_gateway->cleanup(uuid, it->first);
-        }
-
-        // NOTE: It is dangerous to disconnect the remote while the message is still being
-        // processed, so we defer it via reactor_t::post().
-        impl.m_reactor.post(deferred_erase_action<decltype(impl.m_remotes)>{impl.m_remotes, uuid});
-    }
-};
+io_service&
+locator_t::asio() {
+    return m_asio;
+}
 
 void
-locator_t::link_node_impl(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints) {
-    std::unique_ptr<io::channel<io::socket<io::tcp>>> channel;
-
+locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& endpoints) {
     if(!m_gateway || m_remotes.find(uuid) != m_remotes.end()) {
         return;
     }
 
-    for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
-        try {
-            channel = std::make_unique<io::channel<io::socket<io::tcp>>>(
-                m_reactor,
-                std::make_shared<io::socket<io::tcp>>(*it)
-            );
-        } catch(const std::system_error& e) {
-            continue;
-        }
-
-        COCAINE_LOG_DEBUG(m_log, "starting synchronization with remote node via %s", *it)(
-            "uuid", uuid
-        );
-
-        break;
-    }
-
-    if(!channel) {
-        std::ostringstream stream;
-        std::ostream_iterator<boost::asio::ip::tcp::endpoint> builder(stream, ", ");
-
-        std::copy(endpoints.begin(), endpoints.end(), builder);
-
-        COCAINE_LOG_ERROR(m_log, "remote node is unreachable, tried: %s", endpoints.size(), stream.str())(
-            "uuid", uuid
-        );
-
-        return;
-    }
-
-    channel->rd->bind(
-        std::bind(&locator_t::on_message, this, uuid, std::placeholders::_1),
-        std::bind(&locator_t::on_failure, this, uuid, std::placeholders::_1)
+    COCAINE_LOG_INFO(m_log, "starting synchronization with remote node")(
+        "uuid", uuid
     );
 
-    channel->wr->bind(
-        std::bind(&locator_t::on_failure, this, uuid, std::placeholders::_1)
-    );
-
-    // Start the synchronization with a random UUID.
-
-    auto service = std::make_shared<remote_client_t>(*this, uuid);
-
-    m_remotes[uuid] = std::make_shared<session_t>(std::move(channel));
-    m_remotes[uuid]->invoke(service)->send<io::locator::connect>(unique_id_t().string());
+    m_resolve->connect(m_remotes[uuid], endpoints, std::bind(&remote_client_t::on_link,
+        std::make_shared<remote_client_t>(this, uuid),
+        std::placeholders::_1
+    ));
 }
 
 void
-locator_t::drop_node_impl(const std::string& uuid) {
+locator_t::drop_node(const std::string& uuid) {
     if(!m_gateway || m_remotes.find(uuid) == m_remotes.end()) {
         return;
     }
 
-    COCAINE_LOG_DEBUG(m_log, "stopping synchronization with remote node")(
+    COCAINE_LOG_INFO(m_log, "stopping synchronization with remote node")(
         "uuid", uuid
     );
 
-    auto removed = m_router->remove_remote(uuid);
+    auto removed = m_routing->remove_remote(uuid);
 
     for(auto it = removed.begin(); it != removed.end(); ++it) {
         m_gateway->cleanup(uuid, it->first);
     }
 
-    m_remotes[uuid]->detach();
     m_remotes.erase(uuid);
 }
 
-void
-locator_t::link_node(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints) {
-    m_reactor.post(std::bind(&locator_t::link_node_impl, this, uuid, endpoints));
-}
-
-void
-locator_t::drop_node(const std::string& uuid) {
-    m_reactor.post(std::bind(&locator_t::drop_node_impl, this, uuid));
+std::string
+locator_t::uuid() const {
+    return m_uuid;
 }
 
 auto
-locator_t::resolve(const std::string& name) const -> resolve_result_t {
-    auto basename = m_router->select_service(name);
+locator_t::on_resolve(const std::string& name) const -> results::resolve {
+    auto basename = m_routing->select_service(name);
     auto provided = m_context.locate(basename);
 
-    if(provided) {
+    if(provided && provided.get().is_active()) {
         COCAINE_LOG_DEBUG(m_log, "providing service using local node")(
             "service", name
         );
 
-        // TODO: Might be a good idea to return an endpoint suitable for the interface which the
-        // client used to connect to the Locator.
-        return provided.get().metadata();
+        return results::resolve {
+            provided.get().endpoints(),
+            provided.get().prototype().version(),
+            provided.get().prototype().graph()
+        };
     }
 
     if(m_gateway) {
         return m_gateway->resolve(basename);
     } else {
-        throw cocaine::error_t("service '%s' is not available", name);
+        throw boost::system::system_error(error::service_not_available);
     }
 }
 
 auto
-locator_t::connect(const std::string& uuid) -> streamed<connect_result_t> {
-    streamed<connect_result_t> stream;
+locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
+    streamed<results::connect> stream;
 
-    COCAINE_LOG_INFO(m_log, "connecting remote node into synchronization streams")(
-        "uuid", uuid
-    );
+    if(!m_cluster) {
+        // No cluster means there are no streams.
+        return stream.close();
+    }
 
-    if(!m_streams.insert({uuid, stream}).second) {
-        stream.close();
+    scoped_attributes_t attributes(*m_log, {
+        attribute::make("uuid", uuid)
+    });
+
+    auto ptr = m_locals.synchronize();
+
+    if(ptr->streams.erase(uuid)) {
+        COCAINE_LOG_WARNING(m_log, "replacing stale synchronization stream for remote node");
     } else {
-        stream.write(connect_result_t());
+        COCAINE_LOG_INFO(m_log, "creating synchronization stream for remote node");
     }
 
-    return stream;
+    ptr->streams.insert({uuid, stream});
+
+    return stream.write(ptr->snapshot);
 }
 
-auto
-locator_t::refresh(const std::string& name) -> refresh_result_t {
-    std::vector<std::string> groups;
+void
+locator_t::on_refresh(const std::vector<std::string>& groups) {
+    typedef std::map<std::string, unsigned int> group_t;
 
-    // It's here to keep the reference alive.
-    const auto storage = api::storage(m_context, "core");
+    std::map<std::string, group_t> values;
+    std::map<std::string, group_t>::iterator lb, ub;
 
     try {
-        groups = storage->find("groups", std::vector<std::string>({
-            "group",
-            "active"
-        }));
-    } catch(const storage_error_t& e) {
-        throw cocaine::error_t("unable to read the routing group list - %s", e.what());
-    }
+        const auto storage = api::storage(m_context, "core");
+        const auto updated = storage->find("groups", std::vector<std::string>({"group", "active"}));
 
-    if(std::find(groups.begin(), groups.end(), name) != groups.end()) {
-        typedef std::map<std::string, unsigned int> group_t;
+        for(auto it = groups.begin(); it != groups.end(); ++it) {
+            if(std::find(updated.begin(), updated.end(), *it) == updated.end()) {
+                continue;
+            }
 
-        try {
-            m_router->add_group(name, storage->get<group_t>("groups", name));
-        } catch(const storage_error_t& e) {
-            throw cocaine::error_t("unable to read routing group '%s' - %s", name, e.what());
+            values.insert({*it, storage->get<group_t>("groups", *it)});
         }
+    } catch(const storage_error_t& e) {
+        throw boost::system::system_error(error::routing_storage_error);
+    }
+
+    for(auto it = groups.begin(); it != groups.end(); ++it) {
+        std::tie(lb, ub) = values.equal_range(*it);
+
+        if(lb == ub) {
+            m_routing->remove_group(*it);
+        } else {
+            m_routing->add_group(*it, lb->second);
+        }
+    }
+}
+
+auto
+locator_t::on_cluster() const -> results::cluster {
+    results::cluster result;
+
+    for(auto it = m_remotes.begin(); it != m_remotes.end(); ++it) {
+        result[it->first] = it->second.session().remote_endpoint();
+    }
+
+    return result;
+}
+
+void
+locator_t::on_service(const actor_t& actor) {
+    if(m_restricted.count(actor.prototype().name())) {
+        return;
+    }
+
+    auto metadata = results::resolve {
+        actor.endpoints(),
+        actor.prototype().version(),
+        actor.prototype().graph()
+    };
+
+    auto ptr = m_locals.synchronize();
+
+    if(!ptr->streams.empty()) {
+        COCAINE_LOG_DEBUG(m_log, "synchronizing service state with %d remote node(s)", ptr->streams.size())(
+            "service", actor.prototype().name()
+        );
+
+        auto update = results::connect {
+            { actor.prototype().name(), metadata }
+        };
+
+        for(auto it = ptr->streams.begin(); it != ptr->streams.end(); ++it) {
+            it->second.write(update);
+        }
+    }
+
+    if(actor.is_active()) {
+        ptr->snapshot[actor.prototype().name()] = metadata;
     } else {
-        m_router->remove_group(name);
+        ptr->snapshot.erase(actor.prototype().name());
     }
 }
 
 void
-locator_t::on_message(const std::string& uuid, const message_t& message) {
-    auto it = m_remotes.find(uuid);
+locator_t::on_context_shutdown() {
+    auto ptr = m_locals.synchronize();
 
-    if(it == m_remotes.end()) {
-        return;
+    if(!ptr->streams.empty()) {
+        COCAINE_LOG_DEBUG(m_log, "closing %d remote node synchronization stream(s)", ptr->streams.size());
+
+        for(auto it = ptr->streams.begin(); it != ptr->streams.end(); ++it) {
+            it->second.close();
+        }
+
+        ptr->streams.clear();
     }
 
-    it->second->invoke(message);
+    // Schedule the rest of internal state cleanup inside the reactor's event loop.
+    m_asio.post(cleanup_action_t(this));
 }
 
-void
-locator_t::on_failure(const std::string& uuid, const std::error_code& ec) {
-    if(m_remotes.find(uuid) == m_remotes.end()) {
-        return;
+namespace {
+
+// Locator errors
+
+struct locator_category_t:
+    public boost::system::error_category
+{
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.service.locator";
     }
 
-    if(ec) {
-        COCAINE_LOG_WARNING(m_log, "remote node has unexpectedly disconnected: [%d] %s", ec.value(), ec.message())(
-            "uuid", uuid
-        );
-    } else {
-        COCAINE_LOG_WARNING(m_log, "remote node has unexpectedly disconnected")(
-            "uuid", uuid
-        );
-    }
+    virtual
+    auto
+    message(int code) const -> std::string {
+        switch(code) {
+          case cocaine::error::locator_errors::service_not_available:
+            return "service is not available";
+          case cocaine::error::locator_errors::routing_storage_error:
+            return "routing storage is unavailable";
+        }
 
-    drop_node_impl(uuid);
+        return "cocaine.service.locator error";
+    }
+};
+
+auto
+locator_category() -> const boost::system::error_category& {
+    static locator_category_t instance;
+    return instance;
 }
+
+} // namespace
+
+namespace cocaine { namespace error {
+
+auto
+make_error_code(locator_errors code) -> boost::system::error_code {
+    return boost::system::error_code(static_cast<int>(code), locator_category());
+}
+
+}} // namespace cocaine::error

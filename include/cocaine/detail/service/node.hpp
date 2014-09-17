@@ -32,6 +32,12 @@
 
 namespace cocaine { namespace service {
 
+class node_t;
+
+namespace results {
+    typedef result_of<io::node::list>::type list;
+}
+
 class node_t:
     public api::service_t,
     public dispatch<io::node_tag>
@@ -40,16 +46,10 @@ class node_t:
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    typedef std::map<
-        std::string,
-        std::shared_ptr<app_t>
-    > app_map_t;
-
-    // Apps.
-    synchronized<app_map_t> m_apps;
+    synchronized<std::map<std::string, std::shared_ptr<app_t>>> m_apps;
 
 public:
-    node_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
+    node_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
 
     virtual
    ~node_t();
@@ -59,14 +59,14 @@ public:
     prototype() const -> const io::basic_dispatch_t&;
 
 private:
-    dynamic_t
-    on_start_app(const std::map<std::string, std::string>& runlist);
+    void
+    on_start_app(const std::string& name, const std::string& profile);
 
-    dynamic_t
-    on_pause_app(const std::vector<std::string>& applist);
+    void
+    on_pause_app(const std::string& name);
 
-    dynamic_t
-    on_list() const;
+    auto
+    on_list() const -> results::list;
 };
 
 }} // namespace cocaine::service

@@ -25,9 +25,9 @@
 
 namespace cocaine { namespace io {
 
-// Storage service interface
-
 struct storage_tag;
+
+// Storage service interface
 
 struct storage {
 

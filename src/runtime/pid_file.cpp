@@ -37,12 +37,13 @@ pid_file_t::pid_file_t(const fs::path& filepath):
 {
     // If the pidfile exists, check if the process is still active.
     if(fs::exists(m_filepath)) {
-        pid_t pid;
         fs::ifstream stream(m_filepath);
 
         if(!stream) {
             throw cocaine::error_t("unable to read '%s'", m_filepath.string());
         }
+
+        pid_t pid;
 
         stream >> pid;
 
@@ -66,8 +67,8 @@ pid_file_t::pid_file_t(const fs::path& filepath):
 
 pid_file_t::~pid_file_t() {
     try {
-        remove();
-    } catch(...) {
+        fs::remove(m_filepath);
+    } catch(const fs::filesystem_error& e) {
         // Do nothing.
     }
 }

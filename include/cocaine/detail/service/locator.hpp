@@ -22,22 +22,30 @@
 #ifndef COCAINE_SERVICE_LOCATOR_HPP
 #define COCAINE_SERVICE_LOCATOR_HPP
 
-#include "cocaine/common.hpp"
-
 #include "cocaine/api/cluster.hpp"
+#include "cocaine/api/resolve.hpp"
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/idl/locator.hpp"
 #include "cocaine/rpc/dispatch.hpp"
-#include "cocaine/rpc/result_of.hpp"
+
+#include "cocaine/locked_ptr.hpp"
 
 namespace cocaine {
 
-class session_t;
+class actor_t;
 
-}
+} // namespace cocaine
 
 namespace cocaine { namespace service {
+
+class locator_t;
+
+namespace results {
+    typedef result_of<io::locator::resolve>::type resolve;
+    typedef result_of<io::locator::connect>::type connect;
+    typedef result_of<io::locator::cluster>::type cluster;
+}
 
 class locator_t:
     public api::service_t,
@@ -47,40 +55,63 @@ class locator_t:
     class remote_client_t;
     class router_t;
 
+    class cleanup_action_t;
+
     context_t& m_context;
 
     const std::unique_ptr<logging::log_t> m_log;
 
     // Cluster interconnections.
-    io::reactor_t& m_reactor;
+    boost::asio::io_service& m_asio;
 
-    typedef result_of<io::locator::resolve>::type resolve_result_t;
-    typedef result_of<io::locator::connect>::type connect_result_t;
-    typedef result_of<io::locator::refresh>::type refresh_result_t;
+    // Node UUID.
+    const std::string m_uuid;
 
-    // These are remote sessions indexed by uuid. The uuid is required to easily disambiguate between
-    // different runtime instances on the same host.
-    std::map<std::string, std::shared_ptr<session_t>> m_remotes;
-    std::map<std::string, streamed<connect_result_t>> m_streams;
+    // Remote sessions are created using this resolve.
+    std::unique_ptr<api::resolve_t> m_resolve;
 
-    // Remoting.
+    // Remote sessions indexed by uuid. The uuid is required to disambiguate between different
+    // instances on the same host, even if the instance was restarted on the same port.
+    std::map<std::string, api::client<io::locator_tag>> m_remotes;
+
+    struct locals_t {
+        results::connect snapshot;
+
+        // Outgoing synchronization streams.
+        std::map<std::string, streamed<results::connect>> streams;
+    };
+
+    // Local services state.
+    synchronized<locals_t> m_locals;
+
+    // A list of local-only services, i.e. restricted from being announced to remote nodes.
+    std::set<std::string> m_restricted;
+
+    // Clustering components.
     std::unique_ptr<api::gateway_t> m_gateway;
-    std::unique_ptr<api::cluster_t> m_cluster;
+    std::shared_ptr<api::cluster_t> m_cluster;
 
     // Used to resolve service names against service groups based on weights and other metrics.
-    std::unique_ptr<router_t> m_router;
+    // TODO: Make it a part of this class itself.
+    std::shared_ptr<router_t> m_routing;
 
 public:
-    locator_t(context_t& context, io::reactor_t& reactor, const std::string& name, const dynamic_t& args);
+    locator_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
 
     virtual
    ~locator_t();
+
+    // Service API
 
     virtual
     auto
     prototype() const -> const io::basic_dispatch_t&;
 
-    // Cartel API
+    // Cluster API
+
+    virtual
+    boost::asio::io_service&
+    asio();
 
     virtual
     void
@@ -90,29 +121,30 @@ public:
     void
     drop_node(const std::string& uuid);
 
+    virtual
+    std::string
+    uuid() const;
+
 private:
-    void
-    link_node_impl(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints);
-
-    void
-    drop_node_impl(const std::string& uuid);
+    auto
+    on_resolve(const std::string& name) const -> results::resolve;
 
     auto
-    resolve(const std::string& name) const -> resolve_result_t;
-
-    auto
-    connect(const std::string& node) -> streamed<connect_result_t>;
-
-    auto
-    refresh(const std::string& name) -> refresh_result_t;
-
-    // Synchronization
+    on_connect(const std::string& uuid) -> streamed<results::connect>;
 
     void
-    on_message(const std::string& node, const io::message_t& message);
+    on_refresh(const std::vector<std::string>& groups);
+
+    auto
+    on_cluster() const -> results::cluster;
+
+    // Context signals
 
     void
-    on_failure(const std::string& node, const std::error_code& ec);
+    on_service(const actor_t& actor);
+
+    void
+    on_context_shutdown();
 };
 
 }} // namespace cocaine::service

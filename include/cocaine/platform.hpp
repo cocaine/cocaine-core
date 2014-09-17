@@ -30,8 +30,8 @@
         #define HAVE_GCC46
     #endif
 
-    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 7
-        #define HAVE_GCC47
+    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 8
+        #define HAVE_GCC48
     #endif
 #endif
 

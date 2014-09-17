@@ -21,13 +21,15 @@
 #ifndef COCAINE_NODE_SERVICE_INTERFACE_HPP
 #define COCAINE_NODE_SERVICE_INTERFACE_HPP
 
+#include "cocaine/dynamic.hpp"
+
 #include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
 
-// App invocation service interface
-
 struct app_tag;
+
+// App invocation service interface
 
 struct app {
 
@@ -104,15 +106,9 @@ struct start_app {
     }
 
     typedef boost::mpl::list<
-     /* Runlist. A mapping between app names and profile names. Errors are reported on a
-        per-app basis. */
-        std::map<std::string, std::string>
+        std::string,
+        std::string
     > tuple_type;
-
-    typedef stream_of<
-     /* Operation outcome. */
-        dynamic_t
-    >::tag upstream_type;
 };
 
 struct pause_app {
@@ -125,14 +121,9 @@ struct pause_app {
     }
 
     typedef boost::mpl::list<
-     /* A list of app names to suspend. Errors are reported on a per-app basis, as well. */
-        std::vector<std::string>
+     /* Name of the app to susped. */
+        std::string
     > tuple_type;
-
-    typedef stream_of<
-     /* Operation outcome. */
-        dynamic_t
-    >::tag upstream_type;
 };
 
 struct list {

@@ -20,110 +20,303 @@
 
 #include "cocaine/rpc/session.hpp"
 
+#include "cocaine/rpc/asio/channel.hpp"
+
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
+
+using namespace boost::asio;
+using namespace boost::asio::ip;
 
 using namespace cocaine;
 using namespace cocaine::io;
 
+// Session internals
+
 class session_t::channel_t {
-    std::shared_ptr<const basic_dispatch_t> dispatch;
-    std::shared_ptr<basic_upstream_t> upstream;
+    friend class session_t;
+
+    dispatch_ptr_t dispatch;
+    upstream_ptr_t upstream;
 
 public:
-    channel_t(const std::shared_ptr<const basic_dispatch_t>& dispatch_, const std::shared_ptr<basic_upstream_t>& upstream_):
+    channel_t(const dispatch_ptr_t& dispatch_, const upstream_ptr_t& upstream_):
         dispatch(dispatch_),
         upstream(upstream_)
     { }
 
     void
-    invoke(const message_t& message) {
-        if(!dispatch) {
-            // TODO: COCAINE-82 adds a 'client' error category.
-            throw cocaine::error_t("no dispatch has been assigned");
-        }
-
-        if((dispatch = dispatch->call(message, upstream).get_value_or(dispatch)) == nullptr) {
-            // NOTE: If the client has sent us the last message according to the dispatch graph, then
-            // revoke the channel.
-            upstream->revoke();
-        }
-    }
+    process(const decoder_t::message_type& message);
 };
 
-session_t::session_t(std::unique_ptr<io::channel<io::socket<io::tcp>>>&& ptr_, const std::shared_ptr<const io::basic_dispatch_t>& prototype_):
-    ptr(std::move(ptr_)),
-    prototype(prototype_),
-    max_channel(0)
-{ }
+void
+session_t::channel_t::process(const decoder_t::message_type& message) {
+    if(!dispatch) {
+        throw cocaine::error_t("no dispatch has been assigned");
+    }
+
+    if((dispatch = dispatch->process(message, upstream).get_value_or(dispatch)) == nullptr) {
+        // NOTE: If the client has sent us the last message according to our dispatch graph, then
+        // revoke the channel.
+        upstream->drop();
+    }
+}
+
+class session_t::pull_action_t:
+    public std::enable_shared_from_this<pull_action_t>
+{
+    decoder_t::message_type message;
+
+    // Keeps the session alive until all the operations are complete.
+    const std::shared_ptr<session_t> session;
+
+public:
+    pull_action_t(const std::shared_ptr<session_t>& session_):
+        session(session_)
+    { }
+
+    void
+    operator()();
+
+private:
+    void
+    finalize(const boost::system::error_code& ec);
+};
 
 void
-session_t::invoke(const message_t& message) {
+session_t::pull_action_t::operator()() {
+    // TODO: Locking.
+    if(!session->ptr) {
+        return;
+    }
+
+    session->ptr->reader->read(message, std::bind(&pull_action_t::finalize,
+        shared_from_this(),
+        std::placeholders::_1
+    ));
+}
+
+void
+session_t::pull_action_t::finalize(const boost::system::error_code& ec) {
+    if(ec) {
+        return session->signals.shutdown(ec);
+    }
+
+    // TODO: Locking.
+    if(!session->ptr) {
+        return;
+    }
+
+    try {
+        session->invoke(message);
+    } catch(...) {
+        // TODO: Show the actual error message.
+        // This happens only when the underlying slot has miserably failed to manage its exceptions.
+        // In such case, the client is disconnected to prevent any further damage.
+        return session->signals.shutdown(error::uncaught_error);
+    }
+
+    operator()();
+}
+
+class session_t::push_action_t:
+    public enable_shared_from_this<push_action_t>
+{
+    encoder_t::message_type message;
+
+    // Keeps the session alive until all the operations are complete.
+    const std::shared_ptr<session_t> session;
+
+public:
+    push_action_t(encoder_t::message_type&& message, const std::shared_ptr<session_t>& session_):
+        message(std::move(message)),
+        session(session_)
+    { }
+
+    void
+    operator()();
+
+private:
+    void
+    finalize(const boost::system::error_code& ec);
+};
+
+void
+session_t::push_action_t::operator()() {
+    // TODO: Locking.
+    if(!session->ptr) {
+        return;
+    }
+
+    session->ptr->writer->write(message, std::bind(&push_action_t::finalize,
+        shared_from_this(),
+        std::placeholders::_1
+    ));
+}
+
+void
+session_t::push_action_t::finalize(const boost::system::error_code& ec) {
+    if(ec) {
+        return session->signals.shutdown(ec);
+    }
+}
+
+class session_t::discard_action_t {
+    synchronized<channel_map_t>& channels;
+
+public:
+    discard_action_t(synchronized<channel_map_t>& channels_):
+        channels(channels_)
+    { }
+
+    void
+    operator()(const boost::system::error_code& ec);
+};
+
+void
+session_t::discard_action_t::operator()(const boost::system::error_code& ec) {
+    auto ptr = channels.synchronize();
+
+    for(auto it = ptr->begin(); it != ptr->end(); ++it) {
+        if(it->second->dispatch) it->second->dispatch->discard(ec);
+    }
+
+    ptr->clear();
+}
+
+// Session
+
+session_t::session_t(std::unique_ptr<channel<tcp>> ptr_, const dispatch_ptr_t& prototype_):
+    ptr(std::move(ptr_)),
+    endpoint(ptr->socket->remote_endpoint()),
+    prototype(prototype_),
+    max_channel_id(0)
+{
+    signals.shutdown.connect(0, discard_action_t(channels));
+}
+
+// Operations
+
+void
+session_t::invoke(const decoder_t::message_type& message) {
     channel_map_t::const_iterator lb, ub;
-    channel_map_t::key_type index = message.band();
+    const channel_map_t::key_type channel_id = message.span();
 
     std::shared_ptr<channel_t> channel;
 
     {
-        auto locked = channels.synchronize();
+        auto ptr = channels.synchronize();
 
-        std::tie(lb, ub) = locked->equal_range(index);
+        std::tie(lb, ub) = ptr->equal_range(channel_id);
 
         if(lb == ub) {
-            if(!prototype || index <= max_channel) {
+            if(channel_id <= max_channel_id) {
+                // NOTE: Checking whether channel number is always higher than the previous channel
+                // number is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be
+                // not the best approach, but since we have 2^64 possible channels, and it is a lot
+                // more than 2^16 ports for sockets, it is fit to avoid stray messages.
                 return;
             }
 
-            // NOTE: Checking whether channel number is always higher than the previous channel number
-            // is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be not the best
-            // aproach, but since we have 2^64 possible channels, unlike 2^16 ports for sockets, it is
-            // fit to avoid stray messages.
+            max_channel_id = channel_id;
 
-            max_channel = index;
-
-            std::tie(lb, std::ignore) = locked->insert({index, std::make_shared<channel_t>(
+            std::tie(lb, std::ignore) = ptr->insert({channel_id, std::make_shared<channel_t>(
                 prototype,
-                std::make_shared<basic_upstream_t>(shared_from_this(), index)
+                std::make_shared<basic_upstream_t>(shared_from_this(), channel_id)
             )});
         }
 
         // NOTE: The virtual channel pointer is copied here so that if the slot decides to close the
-        // virtual channel, it won't destroy it inside the channel_t::invoke(). Instead, it will be
+        // virtual channel, it won't destroy it inside the channel_t::process(). Instead, it will be
         // destroyed when this function scope is exited, liberating us from thinking of some voodoo
-        // magic to handle it.
-
+        // workaround magic.
         channel = lb->second;
     }
 
-    channel->invoke(message);
+    channel->process(message);
 }
 
-std::shared_ptr<basic_upstream_t>
-session_t::invoke(const std::shared_ptr<const io::basic_dispatch_t>& dispatch) {
-    auto locked = channels.synchronize();
+auto
+session_t::inject(const dispatch_ptr_t& dispatch) -> upstream_ptr_t {
+    auto ptr = channels.synchronize();
 
-    auto index = ++max_channel;
-    auto upstream = std::make_shared<basic_upstream_t>(shared_from_this(), index);
+    const auto channel_id = ++max_channel_id;
+    const auto upstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
     // TODO: Think about skipping dispatch registration in case of fire-and-forget service events.
-    locked->insert({index, std::make_shared<channel_t>(dispatch, upstream)});
+    ptr->insert({channel_id, std::make_shared<channel_t>(dispatch, upstream)});
 
     return upstream;
 }
 
 void
-session_t::detach() {
-    std::lock_guard<std::mutex> guard(mutex);
-
-    // NOTE: This invalidates and closes the internal connection pointer and destroys the protocol
-    // dispatches, but the session itself might still be accessible via upstreams in other threads.
-    // And that's okay, since it has no resources associated with it anymore.
-
-    channels->clear();
-    ptr.reset();
+session_t::revoke(uint64_t channel_id) {
+    channels->erase(channel_id);
 }
 
 void
-session_t::revoke(uint64_t index) {
-    channels->erase(index);
+session_t::detach() {
+    {
+        std::lock_guard<std::mutex> guard(mutex);
+        ptr = nullptr;
+    }
+
+    // Detach all the signal handlers, because the session will be in detached state and triggering
+    // more signals will result in an undefined behavior.
+    signals.shutdown.disconnect_all_slots();
+}
+
+// Channel I/O
+
+void
+session_t::pull() {
+    std::lock_guard<std::mutex> guard(mutex);
+
+    if(!ptr) return;
+
+    // Use dispatch() instead of a direct call for thread safety.
+    ptr->socket->get_io_service().dispatch(std::bind(&pull_action_t::operator(),
+        std::make_shared<pull_action_t>(shared_from_this())
+    ));
+}
+
+void
+session_t::push(encoder_t::message_type&& message) {
+    std::lock_guard<std::mutex> guard(mutex);
+
+    if(!ptr) return;
+
+    // Use dispatch() instead of a direct call for thread safety.
+    ptr->socket->get_io_service().dispatch(std::bind(&push_action_t::operator(),
+        std::make_shared<push_action_t>(std::move(message), shared_from_this())
+    ));
+}
+
+// Information
+
+tcp::endpoint
+session_t::remote_endpoint() const {
+    return endpoint;
+}
+
+std::string
+session_t::name() const {
+    if(prototype) {
+        return prototype->name();
+    } else {
+        return "<unassigned>";
+    }
+}
+
+std::map<uint64_t, std::string>
+session_t::active_channels() const {
+    std::map<uint64_t, std::string> result;
+
+    auto ptr = channels.synchronize();
+
+    for(auto it = ptr->begin(); it != ptr->end(); ++it) {
+        result[it->first] = it->second->dispatch ? it->second->dispatch->name() : "<unassigned>";
+    }
+
+    return result;
 }

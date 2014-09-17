@@ -29,20 +29,21 @@
 #include "cocaine/detail/service/node/forwards.hpp"
 #include "cocaine/detail/service/node/queue.hpp"
 
+#include "cocaine/rpc/asio/channel.hpp"
+#include "cocaine/rpc/asio/decoder.hpp"
+
 #include <chrono>
 
-#include <boost/circular_buffer.hpp>
-
-namespace ev {
-    struct timer;
-}
+#include <boost/asio.hpp>
 
 namespace cocaine { namespace engine {
 
 struct session_t;
 
-class slave_t {
+class slave_t : public std::enable_shared_from_this<slave_t> {
     COCAINE_DECLARE_NONCOPYABLE(slave_t)
+
+    typedef boost::asio::local::stream_protocol protocol_type;
 
     enum class states {
         unknown,
@@ -54,90 +55,72 @@ class slave_t {
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    // I/O Reactor
-
-    io::reactor_t& m_reactor;
+    // IO.
+    boost::asio::io_service& m_asio;
 
     // Configuration
 
     const manifest_t& m_manifest;
     const profile_t& m_profile;
 
-    // Slave ID
-
+    // Slave ID.
     const std::string m_id;
 
-    // Controlling engine
+    // Self engine-control.
+    typedef std::function<void()> rebalance_type;
+    typedef std::function<void(const std::string&, int, const std::string&)> suicide_type;
+    rebalance_type m_rebalance;
+    suicide_type m_suicide;
 
-    engine_t& m_engine;
-
-    // Health
-
+    // Health.
     states m_state;
 
-#if defined(__clang__) || defined(HAVE_GCC47)
+#if defined(__clang__) || defined(HAVE_GCC48)
     const std::chrono::steady_clock::time_point m_birthstamp;
 #else
     const std::chrono::monotonic_clock::time_point m_birthstamp;
 #endif
 
-    std::unique_ptr<ev::timer> m_heartbeat_timer;
-    std::unique_ptr<ev::timer> m_idle_timer;
+    boost::asio::deadline_timer m_heartbeat_timer;
+    boost::asio::deadline_timer m_idle_timer;
 
-    // Native handle
+    // IO communication with worker.
+    io::decoder_t::message_type m_message;
+    std::shared_ptr<io::channel<protocol_type>> m_channel;
 
-    std::unique_ptr<api::handle_t> m_handle;
-
-    // Output capture
-
-    struct pipe_t;
-
-    std::unique_ptr<io::readable_stream<pipe_t>> m_output_pipe;
-    boost::circular_buffer<std::string> m_output_ring;
-
-    // I/O channel
-
-    std::shared_ptr<io::channel<io::socket<io::local>>> m_channel;
-
-    // Active sessions
-
+    // Active sessions (or channels now?).
     typedef std::map<
         uint64_t,
         std::shared_ptr<session_t>
     > session_map_t;
-
     session_map_t m_sessions;
 
-    // Tagged session queue
-
+    // Tagged session queue.
     session_queue_t m_queue;
 
-    // Slave interlocking
-
-    std::mutex m_mutex;
+    // Output capture.
+    struct output_t;
+    std::unique_ptr<output_t> m_output;
 
 public:
-    slave_t(context_t& context,
-            io::reactor_t& reactor,
+    slave_t(const std::string& id,
             const manifest_t& manifest,
             const profile_t& profile,
-            const std::string& id,
-            engine_t& engine);
-
+            context_t& context,
+            rebalance_type rebalance,
+            suicide_type suicide,
+            boost::asio::io_service& asio);
    ~slave_t();
 
-    // I/O
-
+    // Bind IO channel. Single shot.
     void
-    bind(const std::shared_ptr<io::channel<io::socket<io::local>>>& channel);
+    bind(const std::shared_ptr<io::channel<protocol_type>>& channel);
 
-    // Session scheduling
-
+    // Session scheduling.
     void
     assign(const std::shared_ptr<session_t>& session);
 
-    // Termination
-
+    // Terminate the slave by sending terminate message to the worker instance.
     void
     stop();
 
@@ -154,41 +137,64 @@ public:
 
 private:
     void
-    on_message(const io::message_t& message);
+    do_assign(std::shared_ptr<session_t> session);
 
     void
-    on_failure(const std::error_code& ec);
+    do_stop();
 
-    // Streaming RPC
+    // Prepare all timers and spawn a worker instance.
+    void
+    activate();
 
+    // Called on any read event from the worker.
+    void
+    on_read(const boost::system::error_code& ec);
+
+    // Called on any write event to the worker.
+    void
+    on_write(const boost::system::error_code& ec);
+
+    // Called on any read event from worker's outputs.
+    void
+    on_output(const boost::system::error_code& ec, std::size_t size, std::string left);
+
+    // Called by read callback on every successful message received from a worker.
+    void
+    on_message(const io::decoder_t::message_type& m_message);
+
+    // On any socket error associated with worker.
+    void
+    on_failure(const boost::system::error_code& ec);
+
+    // Heartbeat handler.
     void
     on_ping();
 
+    // Terminate handler.
     void
     on_death(int code, const std::string& reason);
 
+    // Chunk handler.
     void
     on_chunk(uint64_t session_id, const std::string& chunk);
 
+    // Error handler.
     void
     on_error(uint64_t session_id, int code, const std::string& reason);
 
+    // Choke handler.
     void
     on_choke(uint64_t session_id);
 
-    // Health
-
+    // Called on heartbeat timeout.
     void
-    on_timeout(ev::timer&, int);
+    on_timeout(const boost::system::error_code& ec);
 
+    // Called on idle timeout.
     void
-    on_idle(ev::timer&, int);
+    on_idle(const boost::system::error_code& ec);
 
-    size_t
-    on_output(const char* data, size_t size);
-
-    // Housekeeping
-
+    // Housekeeping.
     void
     pump();
 

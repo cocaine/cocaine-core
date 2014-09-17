@@ -27,9 +27,9 @@
 
 namespace cocaine { namespace io {
 
-// Logging service interface
-
 struct log_tag;
+
+// Logging service interface
 
 struct log {
 
@@ -55,6 +55,8 @@ struct emit {
      /* Log event attached attributes. */
         optional<blackhole::log::attributes_t>
     > tuple_type;
+
+    typedef void upstream_type;
 };
 
 struct verbosity {

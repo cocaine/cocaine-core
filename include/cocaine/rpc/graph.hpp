@@ -29,37 +29,28 @@
 
 namespace cocaine { namespace io {
 
-struct dispatch_graph_t;
+struct graph_point_t;
 
 namespace aux {
 
-// Protocol transitions are implemented as an optional<dispatch_graph_t>. Transition could be a new
-// dispatch graph, an empty graph (terminal leaf) or none, which means recurrent transition.
-
-typedef boost::optional<dispatch_graph_t> transition_t;
+// Protocol transitions are implemented as an optional<graph_point_t>. Transition could be a new
+// graph point, an empty graph point (terminal message) or none, which means recurrent transition.
 
 typedef std::map<
     int,
-    std::tuple<std::string, transition_t, transition_t>
+    std::tuple<std::string, boost::optional<graph_point_t>>
 > recursion_base_t;
 
 } // namespace aux
 
-struct dispatch_graph_t: public aux::recursion_base_t {
+struct graph_point_t: public aux::recursion_base_t {
     typedef aux::recursion_base_t base_type;
-
-    dispatch_graph_t() { }
-    dispatch_graph_t(const dispatch_graph_t& o): base_type(o) { }
-    dispatch_graph_t(dispatch_graph_t&& o): base_type(std::move(o)) { }
-
-    dispatch_graph_t& operator=(const dispatch_graph_t& rhs) {
-        static_cast<base_type&>(*this) = rhs; return *this;
-    }
-
-    dispatch_graph_t& operator=(dispatch_graph_t&& rhs) {
-        static_cast<base_type&>(*this) = std::move(rhs); return *this;
-    }
 };
+
+typedef std::map<
+    int,
+    std::tuple<std::string, boost::optional<graph_point_t>, boost::optional<graph_point_t>>
+> graph_basis_t;
 
 }} // namespace cocaine::io
 

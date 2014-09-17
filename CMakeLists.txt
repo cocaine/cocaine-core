@@ -14,7 +14,7 @@ ELSE()
     OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" OFF)
 ENDIF()
 
-OPTION(COCAINE_ALLOW_RAFT "Build Raft support for Runtime" ON)
+OPTION(COCAINE_ALLOW_RAFT "Build Raft support for Runtime" OFF)
 
 INCLUDE(cmake/locate_library.cmake)
 
@@ -37,7 +37,6 @@ IF(COCAINE_ALLOW_CGROUPS)
     SET(LIBCGROUP_LIBRARY "cgroup")
 ENDIF()
 
-LOCATE_LIBRARY(LIBEV "ev++.h" "ev" "libev")
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
 LOCATE_LIBRARY(LIBMHASH "mhash.h" "mhash")
@@ -55,7 +54,6 @@ INCLUDE_DIRECTORIES(
     ${Boost_INCLUDE_DIRS}
     ${LIBCGROUP_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
-    ${LIBEV_INCLUDE_DIRS}
     ${LIBMHASH_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
     ${LIBARCHIVE_INCLUDE_DIRS}
@@ -70,7 +68,6 @@ INCLUDE_DIRECTORIES(BEFORE
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
     ${LIBCGROUP_LIBRARY_DIRS}
-    ${LIBEV_LIBRARY_DIRS}
     ${LIBMHASH_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
     ${LIBARCHIVE_LIBRARY_DIRS}
@@ -125,14 +122,13 @@ TARGET_LINK_LIBRARIES(cocaine-core
     ${Boost_LIBRARIES}
     ${LIBCGROUP_LIBRARY}
     ${LIBCOCAINE_RAFT}
-    ev
     ltdl
     mhash
     msgpack
     ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
-    VERSION 2)
+    VERSION 3)
 
 ADD_EXECUTABLE(cocaine-runtime
     src/runtime/pid_file.cpp

@@ -18,81 +18,100 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/api/storage.hpp"
-
 #include "cocaine/detail/service/node.hpp"
 #include "cocaine/detail/service/node/app.hpp"
+
+#include "cocaine/api/storage.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/traits/dynamic.hpp"
 
-#include <tuple>
+#include "cocaine/tuple.hpp"
 
-using namespace cocaine;
+#include <blackhole/scoped_attributes.hpp>
+
 using namespace cocaine::io;
 using namespace cocaine::service;
 
-namespace {
-
-typedef std::map<std::string, std::string> runlist_t;
-
-} // namespace
-
-node_t::node_t(context_t& context, reactor_t& reactor, const std::string& name, const dynamic_t& args):
-    api::service_t(context, reactor, name, args),
-    dispatch<io::node_tag>(name),
+node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args):
+    category_type(context, asio, name, args),
+    dispatch<node_tag>(name),
     m_context(context),
     m_log(context.log(name))
 {
-    using namespace std::placeholders;
+    namespace ph = std::placeholders;
+    on<node::start_app>(std::bind(&node_t::on_start_app, this, ph::_1, ph::_2));
+    on<node::pause_app>(std::bind(&node_t::on_pause_app, this, ph::_1));
+    on<node::list>(std::bind(&node_t::on_list, this));
 
-    on<io::node::start_app>(std::bind(&node_t::on_start_app, this, _1));
-    on<io::node::pause_app>(std::bind(&node_t::on_pause_app, this, _1));
-    on<io::node::list>(std::bind(&node_t::on_list, this));
-
+    typedef std::map<std::string, std::string> runlist_type;
+    runlist_type runlist;
     const auto runlist_id = args.as_object().at("runlist", "default").as_string();
 
     // It's here to keep the reference alive.
     const auto storage = api::storage(m_context, "core");
 
-    runlist_t runlist;
-
-    COCAINE_LOG_INFO(m_log, "reading the runlist")("name", runlist_id);
-
     try {
-        runlist = storage->get<runlist_t>("runlists", runlist_id);
+        COCAINE_LOG_INFO(m_log, "reading runlist")(
+            "runlist", runlist_id
+        );
+        runlist = storage->get<runlist_type>("runlists", runlist_id);
     } catch(const storage_error_t& e) {
-        COCAINE_LOG_WARNING(m_log, "unable to read the runlist")(
-            "name", runlist_id,
-            "reason", e.what()
+        COCAINE_LOG_WARNING(m_log, "unable to read runlist: %s", e.what())(
+            "runlist", runlist_id
         );
     }
 
-    if(!runlist.empty()) {
-        COCAINE_LOG_INFO(m_log, "starting %d %s", runlist.size(), runlist.size() == 1 ? "app" : "apps");
+    if(runlist.empty()) {
+        return;
+    }
 
-        // NOTE: Ignore the return value here, as there's nowhere to return it. It might be nice to
-        // parse and log it in case of errors or simply die.
-        on_start_app(runlist);
+    COCAINE_LOG_INFO(m_log, "starting %d app(s)", runlist.size());
+
+    std::vector<std::string> errored;
+
+    for(auto it = runlist.begin(); it != runlist.end(); ++it) {
+        blackhole::scoped_attributes_t attributes(*m_log, {
+            blackhole::attribute::make("app", it->first)
+        });
+
+        try {
+            on_start_app(it->first, it->second);
+        } catch(const std::exception& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to initialize app: %s", e.what());
+            errored.push_back(it->first);
+        } catch(...) {
+            COCAINE_LOG_ERROR(m_log, "unable to initialize app");
+            errored.push_back(it->first);
+        }
+    }
+
+    if(!errored.empty()) {
+        std::ostringstream stream;
+        std::ostream_iterator<std::string> builder(stream, ", ");
+
+        std::copy(errored.begin(), errored.end(), builder);
+
+        COCAINE_LOG_ERROR(m_log, "couldn't start %d app(s): %s", errored.size(), stream.str());
     }
 }
 
 node_t::~node_t() {
-    auto& unlocked = m_apps.value();
+    auto ptr = m_apps.synchronize();
 
-    if(unlocked.empty()) {
+    if(ptr->empty()) {
         return;
     }
 
-    COCAINE_LOG_INFO(m_log, "stopping the apps");
-
-    for(auto it = unlocked.begin(); it != unlocked.end(); ++it) {
-        it->second->stop();
+    COCAINE_LOG_INFO(m_log, "stopping %d apps", ptr->size());
+    for(auto it = ptr->begin(); it != ptr->end(); ++it) {
+        COCAINE_LOG_INFO(m_log, "trying to stop '%s' app", it->first);
+        it->second->pause();
     }
 
-    unlocked.clear();
+    ptr->clear();
 }
 
 auto
@@ -100,86 +119,47 @@ node_t::prototype() const -> const basic_dispatch_t& {
     return *this;
 }
 
-dynamic_t
-node_t::on_start_app(const runlist_t& runlist) {
-    dynamic_t::object_t result;
+void
+node_t::on_start_app(const std::string& name, const std::string& profile) {
+    auto ptr = m_apps.synchronize();
+    auto it = ptr->find(name);
 
-    for(auto it = runlist.begin(); it != runlist.end(); ++it) {
-        if(m_apps->count(it->first)) {
-            result[it->first] = "the app is already running";
-            continue;
-        }
-
-        COCAINE_LOG_INFO(m_log, "starting the app")("name", it->first);
-
-        auto locked = m_apps.synchronize();
-        auto app    = locked->end();
-
-        try {
-            std::tie(app, std::ignore) = locked->insert({
-                it->first,
-                std::make_shared<app_t>(m_context, it->first, it->second)
-            });
-        } catch(const cocaine::error_t& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize the app")(
-                "app", it->first,
-                "reason", e.what()
-            );
-            result[it->first] = std::string(e.what());
-            continue;
-        }
-
-        try {
-            app->second->start();
-        } catch(const cocaine::error_t& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to start the app")(
-                "app", it->first,
-                "reason", e.what()
-            );
-            locked->erase(app);
-            result[it->first] = std::string(e.what());
-            continue;
-        }
-
-        result[it->first] = "the app has been started";
+    COCAINE_LOG_INFO(m_log, "trying to start '%s' app", name);
+    if(it != ptr->end()) {
+        throw cocaine::error_t("app '%s' is already running", name);
     }
 
-    return result;
+
+    std::tie(it, std::ignore) = ptr->insert({
+        name,
+        std::make_shared<app_t>(m_context, name, profile)
+    });
+
+    it->second->start();
 }
 
-dynamic_t
-node_t::on_pause_app(const std::vector<std::string>& applist) {
-    dynamic_t::object_t result;
+void
+node_t::on_pause_app(const std::string& name) {
+    auto ptr = m_apps.synchronize();
+    auto it = ptr->find(name);
 
-    for(auto it = applist.begin(); it != applist.end(); ++it) {
-        if(!m_apps->count(*it)) {
-            result[*it] = "the app is not running";
-            continue;
-        }
-
-        COCAINE_LOG_INFO(m_log, "stopping the app")("name", *it);
-
-        auto locked = m_apps.synchronize();
-        auto app    = locked->find(*it);
-
-        app->second->stop();
-        locked->erase(app);
-
-        result[*it] = "the app has been stopped";
+    COCAINE_LOG_INFO(m_log, "trying to stop '%s' app", name);
+    if(it == ptr->end()) {
+        throw cocaine::error_t("app '%s' is not running", name);
     }
 
-    return result;
+    it->second->pause();
+    ptr->erase(it);
 }
 
-dynamic_t
-node_t::on_list() const {
+auto
+node_t::on_list() const -> results::list {
     dynamic_t::array_t result;
 
-    auto locked = m_apps.synchronize();
+    auto ptr = m_apps.synchronize();
+    auto builder = std::back_inserter(result);
 
-    for(auto it = locked->begin(); it != locked->end(); ++it) {
-        result.push_back(it->first);
-    }
+    std::transform(ptr->begin(), ptr->end(), builder, tuple::nth_element<0>());
 
     return result;
 }

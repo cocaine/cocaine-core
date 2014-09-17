@@ -27,14 +27,12 @@
 
 namespace cocaine {
 
-struct sources {
-    enum values { cache, storage };
-};
-
 template<class T>
 struct cached:
     protected T
 {
+    enum class sources { cache, storage };
+
     cached(context_t& context, const std::string& collection, const std::string& name);
 
     T&
@@ -48,7 +46,7 @@ struct cached:
     }
 
     auto
-    source() const -> sources::values {
+    source() const -> sources {
         return m_source;
     }
 
@@ -57,7 +55,7 @@ private:
     download(context_t& context, const std::string& collection, const std::string& name);
 
 private:
-    sources::values m_source;
+    sources m_source;
 };
 
 template<class T>
@@ -79,7 +77,7 @@ cached<T>::cached(context_t& context, const std::string& collection, const std::
         try {
             cache->put(collection, name, object(), std::vector<std::string>());
         } catch(const storage_error_t& e) {
-            throw storage_error_t("unable to cache object '%s' in '%s' - %s", name, collection, e.what());
+            // Ignore.
         }
 
         return;
