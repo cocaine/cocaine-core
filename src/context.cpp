@@ -711,6 +711,6 @@ context_t::bootstrap() {
 
         std::copy(errored.begin(), errored.end(), builder);
 
-        COCAINE_LOG_ERROR(m_logger, "coudn't start %d service(s): %s", errored.size(), stream.str());
+        COCAINE_LOG_ERROR(m_logger, "coudn't start %d service(s) - %s", errored.size(), stream.str());
     }
 }

@@ -39,6 +39,7 @@
 #include "cocaine/logging.hpp"
 
 #include "cocaine/rpc/asio/channel.hpp"
+
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
@@ -46,6 +47,7 @@
 #include "cocaine/traits/literal.hpp"
 
 #include <boost/asio/local/stream_protocol.hpp>
+
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
@@ -207,7 +209,7 @@ app_t::~app_t() {
 
 void
 app_t::start() {
-    COCAINE_LOG_INFO(m_log, "creating '%s' engine", m_manifest->name);
+    COCAINE_LOG_INFO(m_log, "creating engine '%s'", m_manifest->name);
 
     // Start the engine thread.
     try {
