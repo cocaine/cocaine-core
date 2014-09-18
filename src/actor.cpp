@@ -149,11 +149,17 @@ void
 actor_t::terminate() {
     BOOST_ASSERT(m_chamber);
 
+    // Do not wait for the service to finish all its stuff (like timers, etc). Graceful termination
+    // happens only in engine chambers, because that's where client connections are being handled.
+    m_asio->stop();
+
     for(auto it = m_acceptors.begin(); it != m_acceptors.end(); ++it) {
         it->close();
     }
 
     m_acceptors.clear();
+
+    // Does not block.
     m_chamber = nullptr;
 }
 
