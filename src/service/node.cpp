@@ -64,7 +64,7 @@ node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::str
         try {
             runlist = storage->get<runlist_t>("runlists", runlist_id);
         } catch(const storage_error_t& e) {
-            COCAINE_LOG_WARNING(m_log, "unable to read runlist - %s", e.what());
+            COCAINE_LOG_WARNING(m_log, "unable to read runlist: %s", e.what());
         }
     }
 
@@ -98,7 +98,7 @@ node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::str
 
         std::copy(errored.begin(), errored.end(), builder);
 
-        COCAINE_LOG_ERROR(m_log, "couldn't start %d app(s) - %s", errored.size(), stream.str());
+        COCAINE_LOG_ERROR(m_log, "couldn't start %d app(s): %s", errored.size(), stream.str());
     }
 }
 

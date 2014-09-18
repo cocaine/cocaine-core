@@ -207,7 +207,7 @@ process_t::~process_t() {
     int rv = 0;
 
     if((rv = cgroup_delete_cgroup(m_cgroup, false)) != 0) {
-        COCAINE_LOG_ERROR(m_log, "unable to delete cgroup - %s", cgroup_strerror(rv));
+        COCAINE_LOG_ERROR(m_log, "unable to delete cgroup: %s", cgroup_strerror(rv));
     }
 
     cgroup_free(&m_cgroup);

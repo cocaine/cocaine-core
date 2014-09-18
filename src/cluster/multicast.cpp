@@ -214,7 +214,7 @@ multicast_t::on_receive(const boost::system::error_code& ec, size_t bytes_receiv
     try {
         msgpack::unpack(&unpacked, ptr->buffer.data(), bytes_received);
     } catch(const msgpack::unpack_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to unpack announce - %s", e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to unpack announce: %s", e.what());
         return;
     }
 
@@ -224,12 +224,12 @@ multicast_t::on_receive(const boost::system::error_code& ec, size_t bytes_receiv
     try {
         io::type_traits<announce_t::tuple_type>::unpack(unpacked.get(), std::tie(uuid, endpoints));
     } catch(const msgpack::type_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to decode announce - %s", e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to decode announce: %s", e.what());
         return;
     }
 
     if(!unique_id_t::ensure(uuid)) {
-        COCAINE_LOG_ERROR(m_log, "unable to verify announce - '%s' is not an uuid", uuid);
+        COCAINE_LOG_ERROR(m_log, "unable to verify announce: '%s' is not an uuid", uuid);
         return;
     }
 

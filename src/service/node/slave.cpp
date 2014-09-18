@@ -312,7 +312,7 @@ slave_t::on_failure(const boost::system::error_code& ec) {
         switch(m_state) {
         case states::unknown:
         case states::active:
-            COCAINE_LOG_ERROR(m_log, "slave %s has unexpectedly disconnected - [%d] %s", m_id, ec.value(), ec.message());
+            COCAINE_LOG_ERROR(m_log, "slave %s has unexpectedly disconnected: [%d] %s", m_id, ec.value(), ec.message());
             dump();
             terminate(rpc::terminate::code::normal, "slave has unexpectedly disconnected");
             break;
