@@ -30,39 +30,20 @@ namespace cocaine { namespace io {
 template<class T>
 struct streaming {
 
+static_assert(
+    boost::mpl::is_sequence<T>::value,
+    "streaming protocol template argument must be a type sequence"
+);
+
 struct chunk {
     typedef streaming_tag<T> tag;
     typedef streaming_tag<T> dispatch_type;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "write";
     }
 
-    template<class U, class = void>
-    struct tuple_type_impl {
-        typedef boost::mpl::list<U> type;
-    };
-
-    template<class U>
-    struct tuple_type_impl<U, typename std::enable_if<std::is_same<U, void>::value>::type> {
-        typedef boost::mpl::list<> type;
-    };
-
-    template<class U>
-    struct tuple_type_impl<U, typename std::enable_if<boost::mpl::is_sequence<U>::value>::type> {
-        typedef U type;
-    };
-
-    template<typename... Args>
-    struct tuple_type_impl<std::tuple<Args...>> {
-        typedef typename itemize<Args...>::type type;
-    };
-
-    // Automatically expand tuple to a typelist, so that it won't look like a tuple with a single
-    // embedded tuple element, i.e. (0, 0, ((42, 3.14, "Death to all humans!"),)).
-    typedef typename tuple_type_impl<T>::type tuple_type;
+    typedef T tuple_type;
 
     // Terminal message.
     typedef void upstream_type;
@@ -71,9 +52,7 @@ struct chunk {
 struct error {
     typedef streaming_tag<T> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "error";
     }
 
@@ -91,9 +70,7 @@ struct error {
 struct choke {
     typedef streaming_tag<T> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "close";
     }
 

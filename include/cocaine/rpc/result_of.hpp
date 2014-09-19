@@ -57,7 +57,7 @@ struct result_of_impl<streaming_tag<T>> {
 };
 
 template<>
-struct result_of_impl<streaming_tag<void>> {
+struct result_of_impl<streaming_tag<mpl::list<>>> {
     typedef void type;
 };
 

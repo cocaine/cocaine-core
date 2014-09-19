@@ -39,9 +39,7 @@ struct locator {
 struct resolve {
     typedef locator_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "resolve";
     }
 
@@ -67,9 +65,7 @@ struct resolve {
 struct connect {
     typedef locator_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "connect";
     }
 
@@ -88,9 +84,7 @@ struct connect {
 struct refresh {
     typedef locator_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "refresh";
     }
 
@@ -103,9 +97,7 @@ struct refresh {
 struct cluster {
     typedef locator_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "cluster";
     }
 

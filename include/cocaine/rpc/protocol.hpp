@@ -102,7 +102,7 @@ struct dispatch_type<Event, typename depend<typename Event::dispatch_type>::type
 
 template<class Event, class = void>
 struct upstream_type {
-    typedef streaming_tag<void> type;
+    typedef streaming_tag<mpl::list<>> type;
 };
 
 template<class Event>

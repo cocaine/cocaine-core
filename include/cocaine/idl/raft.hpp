@@ -37,9 +37,7 @@ struct raft_node {
 struct append {
     typedef raft_node_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "append";
     }
 
@@ -71,9 +69,7 @@ struct append {
 struct apply {
     typedef raft_node_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "apply";
     }
 
@@ -103,9 +99,7 @@ struct apply {
 struct request_vote {
     typedef raft_node_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "request_vote";
     }
 
@@ -131,9 +125,7 @@ struct request_vote {
 struct insert {
     typedef raft_node_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "insert";
     }
 
@@ -152,9 +144,7 @@ struct insert {
 struct erase {
     typedef raft_node_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "erase";
     }
 
@@ -199,9 +189,7 @@ struct raft_control {
 struct insert {
     typedef raft_control_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "insert";
     }
 
@@ -220,9 +208,7 @@ struct insert {
 struct erase {
     typedef raft_control_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "erase";
     }
 
@@ -241,9 +227,7 @@ struct erase {
 struct lock {
     typedef raft_control_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "lock";
     }
 
@@ -260,9 +244,7 @@ struct lock {
 struct reset {
     typedef raft_control_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "reset";
     }
 
@@ -281,9 +263,7 @@ struct reset {
 struct dump {
     typedef raft_control_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "dump";
     }
 
@@ -295,9 +275,7 @@ struct dump {
 struct status {
     typedef raft_control_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "status";
     }
 
@@ -314,9 +292,7 @@ struct status {
 struct leader {
     typedef raft_control_tag<Entry, Snapshot> tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "leader";
     }
 

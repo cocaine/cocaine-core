@@ -39,9 +39,7 @@ struct enqueue {
     // Allow clients to stream data into the apps.
     typedef stream_of<std::string>::tag dispatch_type;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "enqueue";
     }
 
@@ -62,9 +60,7 @@ struct enqueue {
 struct info {
     typedef app_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "info";
     }
 
@@ -99,9 +95,7 @@ struct node {
 struct start_app {
     typedef node_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "start_app";
     }
 
@@ -114,9 +108,7 @@ struct start_app {
 struct pause_app {
     typedef node_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "pause_app";
     }
 
@@ -129,9 +121,7 @@ struct pause_app {
 struct list {
     typedef node_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "list";
     }
 

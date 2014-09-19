@@ -27,14 +27,14 @@ namespace cocaine { namespace io {
 
 struct counter_tag;
 
+// Atomic counter service interface
+
 struct counter {
 
 struct inc {
     typedef counter_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "inc";
     }
 
@@ -48,9 +48,7 @@ struct inc {
 struct dec {
     typedef counter_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "dec";
     }
 
@@ -64,9 +62,7 @@ struct dec {
 struct cas {
     typedef counter_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "cas";
     }
 

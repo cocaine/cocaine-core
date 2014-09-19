@@ -34,9 +34,7 @@ struct storage {
 struct read {
     typedef storage_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "read";
     }
 
@@ -58,9 +56,7 @@ struct read {
 struct write {
     typedef storage_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "write";
     }
 
@@ -80,9 +76,7 @@ struct write {
 struct remove {
     typedef storage_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "remove";
     }
 
@@ -98,9 +92,7 @@ struct remove {
 struct find {
     typedef storage_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "find";
     }
 

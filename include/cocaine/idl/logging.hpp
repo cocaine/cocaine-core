@@ -36,9 +36,7 @@ struct log {
 struct emit {
     typedef log_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "emit";
     }
 
@@ -62,9 +60,7 @@ struct emit {
 struct verbosity {
     typedef log_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "verbosity";
     }
 
@@ -77,9 +73,7 @@ struct verbosity {
 struct set_verbosity {
     typedef log_tag tag;
 
-    static
-    const char*
-    alias() {
+    static const char* alias() {
         return "set_verbosity";
     }
 
