@@ -41,8 +41,18 @@ class basic_client_t {
 public:
     template<typename> friend class api::client;
 
-    void
-    connect(std::unique_ptr<boost::asio::ip::tcp::socket> socket);
+    // User-defined copy constructors in order to reconnect session signals.
+
+    basic_client_t() = default;
+    basic_client_t(const basic_client_t& other);
+
+    virtual
+   ~basic_client_t();
+
+    basic_client_t&
+    operator=(const basic_client_t& rhs);
+
+    // Observers
 
     bool
     is_connected() const;
@@ -54,16 +64,10 @@ public:
     int
     version() const = 0;
 
-    // User-defined copy constructors in order to reconnect session signals.
+    // Modifiers
 
-    basic_client_t() = default;
-    basic_client_t(const basic_client_t& other);
-
-    virtual
-   ~basic_client_t();
-
-    basic_client_t&
-    operator=(const basic_client_t& rhs);
+    void
+    connect(std::unique_ptr<boost::asio::ip::tcp::socket> socket);
 
 private:
     void

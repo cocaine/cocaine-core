@@ -40,6 +40,50 @@ using namespace boost::asio::ip;
 
 namespace cocaine { namespace api { namespace details {
 
+basic_client_t::basic_client_t(const basic_client_t& other) {
+    *this = other;
+}
+
+basic_client_t::~basic_client_t() {
+    if(is_connected()) {
+        m_session->detach();
+    }
+}
+
+basic_client_t&
+basic_client_t::operator=(const basic_client_t& rhs) {
+    if((m_session = rhs.m_session) == nullptr) {
+        return *this;
+    }
+
+    m_session->signals.shutdown.connect(std::bind(&basic_client_t::on_interrupt,
+        this,
+        std::placeholders::_1
+    ));
+
+    return *this;
+}
+
+bool
+basic_client_t::is_connected() const {
+    return static_cast<bool>(m_session);
+}
+
+const session_t&
+basic_client_t::session() const {
+    if(!is_connected()) {
+        throw cocaine::error_t("client is not connected");
+    }
+
+    return *m_session;
+}
+
+void
+basic_client_t::on_interrupt(const boost::system::error_code& COCAINE_UNUSED_(ec)) {
+    m_session->detach();
+    m_session = nullptr;
+}
+
 void
 basic_client_t::connect(std::unique_ptr<tcp::socket> socket) {
     if(m_session) {
@@ -57,52 +101,6 @@ basic_client_t::connect(std::unique_ptr<tcp::socket> socket) {
     ));
 
     m_session->pull();
-}
-
-bool
-basic_client_t::is_connected() const {
-    return static_cast<bool>(m_session);
-}
-
-const session_t&
-basic_client_t::session() const {
-    if(!is_connected()) {
-        throw cocaine::error_t("client is not connected");
-    }
-
-    return *m_session;
-}
-
-basic_client_t::basic_client_t(const basic_client_t& other) {
-    *this = other;
-}
-
-basic_client_t::~basic_client_t() {
-    if(is_connected()) {
-        m_session->detach();
-    }
-}
-
-basic_client_t&
-basic_client_t::operator=(const basic_client_t& rhs) {
-    m_session = rhs.m_session;
-
-    if(!m_session) {
-        return *this;
-    }
-
-    m_session->signals.shutdown.connect(std::bind(&basic_client_t::on_interrupt,
-        this,
-        std::placeholders::_1
-    ));
-
-    return *this;
-}
-
-void
-basic_client_t::on_interrupt(const boost::system::error_code& COCAINE_UNUSED_(ec)) {
-    m_session->detach();
-    m_session = nullptr;
 }
 
 }}} // namespace cocaine::api::details
