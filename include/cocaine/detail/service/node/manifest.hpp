@@ -44,9 +44,6 @@ struct manifest_t:
 
     // What to execute.
     std::string executable;
-
-    // Disables the publication of this app via the Locator.
-    bool local;
 };
 
 }} // namespace cocaine::engine

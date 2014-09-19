@@ -39,8 +39,5 @@ manifest_t::manifest_t(context_t& context, const std::string& name_):
     } else {
         throw cocaine::error_t("runnable object has not been specified");
     }
-
-    // TODO: Ability to choose app bindpoint.
-    local = as_object().at("local", false).as_bool();
 }
 

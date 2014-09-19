@@ -236,11 +236,7 @@ void
 app_t::pause() {
     COCAINE_LOG_DEBUG(m_log, "stopping app '%s'", m_manifest->name);
 
-    if(!m_manifest->local) {
-        // Destroy the app service.
-        m_context.remove(m_manifest->name);
-    }
-
+    m_context.remove(m_manifest->name);
     m_engine.reset();
 
     COCAINE_LOG_DEBUG(m_log, "app '%s' has been stopped", m_manifest->name);
