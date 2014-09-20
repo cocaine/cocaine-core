@@ -310,14 +310,14 @@ session_t::active_channels() const {
     return result;
 }
 
-std::tuple<size_t, size_t>
+size_t
 session_t::memory_pressure() const {
     std::lock_guard<std::mutex> guard(mutex);
 
     if(ptr) {
-        return { ptr->reader->pressure(), ptr->writer->pressure() };
+        return ptr->reader->pressure() + ptr->writer->pressure();
     } else {
-        return { 0, 0 };
+        return 0;
     }
 }
 
