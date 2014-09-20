@@ -144,7 +144,7 @@ TARGET_LINK_LIBRARIES(cocaine-runtime
 SET_TARGET_PROPERTIES(cocaine-core cocaine-runtime PROPERTIES
     COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
 
-IF(COCAINE_BUILD_BENCHMARKS)
+IF(COCAINE_ALLOW_BENCHMARKS)
     ADD_SUBDIRECTORY(tests)
 ENDIF()
 
