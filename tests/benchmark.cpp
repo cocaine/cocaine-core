@@ -38,7 +38,7 @@ struct test {
 
         typedef boost::mpl::list<
             std::string
-        > tuple_type;
+        > argument_type;
 
         typedef void upstream_type;
     };
@@ -52,7 +52,7 @@ struct test {
 
         typedef boost::mpl::list<
             std::string
-        > tuple_type;
+        > argument_type;
     };
 
     struct echo_slot {
@@ -64,7 +64,7 @@ struct test {
 
         typedef boost::mpl::list<
             std::string
-        > tuple_type;
+        > argument_type;
 
         typedef stream_of<
             std::string
