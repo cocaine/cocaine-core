@@ -96,7 +96,7 @@ class locator_t::router_t {
         has(const std::string& name) const;
 
         void
-        add_group(const std::string& name, const std::map<std::string, unsigned int>& group);
+        update_group(const std::string& name, const std::map<std::string, unsigned int>& group);
 
         void
         remove_group(const std::string& name);
@@ -402,8 +402,9 @@ locator_t::router_t::has(const std::string& name) const {
 }
 
 void
-locator_t::router_t::add_group(const std::string& name, const std::map<std::string, unsigned int>& group) {
+locator_t::router_t::update_group(const std::string& name, const std::map<std::string, unsigned int>& group) {
     std::lock_guard<std::mutex> guard(m_mutex);
+    m_groups.remove_group(name);
     m_groups.add_group(name, group);
 }
 

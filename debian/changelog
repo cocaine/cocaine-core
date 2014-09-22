@@ -1,3 +1,9 @@
+cocaine-core (0.11.2.10) unstable; urgency=low
+
+  * Bugfix: properly update the inverted index on a routing group refresh.
+
+ -- Andrey Goryachev <bugsbunny@yandex-team.ru>  Mon, 22 Sep 2014 15:08:00 +0400
+
 cocaine-core (0.11.2.9) unstable; urgency=low
 
   * Bugfix: cleanup stale conflicting engine endpoints on launch.
