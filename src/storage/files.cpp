@@ -143,17 +143,19 @@ files_t::remove(const std::string& collection, const std::string& key) {
     const auto store_path(m_storage_path / collection);
     const auto file_path(store_path / key);
 
-    if(fs::exists(file_path)) {
-        COCAINE_LOG_DEBUG(m_log, "removing object '%s'", key)(
-            "collection", collection,
-            "path", file_path
-        );
+    if(!fs::exists(file_path)) {
+        return;
+    }
 
-        try {
-            fs::remove(file_path);
-        } catch(const fs::filesystem_error& e) {
-            throw storage_error_t("unable to remove object '%s' from '%s'", key, collection);
-        }
+    COCAINE_LOG_DEBUG(m_log, "removing object '%s'", key)(
+        "collection", collection,
+        "path", file_path
+    );
+
+    try {
+        fs::remove(file_path);
+    } catch(const fs::filesystem_error& e) {
+        throw storage_error_t("unable to remove object '%s' from '%s'", key, collection);
     }
 }
 
