@@ -148,9 +148,6 @@ class context_t {
     // A pool of execution units - threads responsible for doing all the service invocations.
     std::vector<std::unique_ptr<execution_unit_t>> m_pool;
 
-    // Service port mapping and pinning.
-    port_mapping_t m_port_mapping;
-
     // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
     // because services are allowed to start and stop other services during their lifetime.
     synchronized<service_list_t> m_services;
@@ -162,7 +159,8 @@ class context_t {
 public:
     const config_t config;
 
-    // Service lifecycle management signals
+    // Service port mapping and pinning.
+    port_mapping_t mapper;
 
     struct signals_t {
         typedef boost::signals2::signal<void()> context_signals_t;
@@ -183,6 +181,7 @@ public:
         } service;
     };
 
+    // Lifecycle management signals.
     signals_t signals;
 
 public:
@@ -212,11 +211,6 @@ public:
 
     auto
     engine() -> execution_unit_t&;
-
-    auto
-    mapper() -> port_mapping_t& {
-        return m_port_mapping;
-    }
 
     // Raft
 

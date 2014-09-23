@@ -405,7 +405,7 @@ port_mapping_t::assign(const std::string& name) {
         throw cocaine::error_t("no ports left for allocation");
     }
 
-    auto port = ptr->top(); ptr->pop();
+    const auto port = ptr->top(); ptr->pop();
 
     return port;
 }
@@ -422,8 +422,8 @@ port_mapping_t::retain(const std::string& name, port_t port) {
 // Context
 
 context_t::context_t(config_t config_, const std::string& logger_backend):
-    m_port_mapping(config_),
-    config(config_)
+    config(config_),
+    mapper(config_)
 {
     auto& repository = blackhole::repository_t::instance();
 
@@ -482,8 +482,8 @@ context_t::context_t(config_t config_, const std::string& logger_backend):
 }
 
 context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger):
-    m_port_mapping(config_),
-    config(config_)
+    config(config_),
+    mapper(config_)
 {
     m_logger = std::move(logger);
 
@@ -567,8 +567,8 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
             throw cocaine::error_t("service '%s' already exists", name);
         }
 
-        // Assign a port to this service. The port might be pinned.
-        const auto port = m_port_mapping.assign(name);
+        // TODO: Fix pinned ports retention.
+        const auto port = mapper.assign(name);
 
         const std::vector<boost::asio::ip::tcp::endpoint> endpoints = {{
             boost::asio::ip::address::from_string(config.network.endpoint),
@@ -606,7 +606,8 @@ context_t::remove(const std::string& name) {
 
         service = std::move(it->second);
 
-        m_port_mapping.retain(name, service->endpoints().front().port());
+        // TODO: Fix pinned ports retention.
+        mapper.retain(name, service->endpoints().front().port());
 
         service->terminate();
 
