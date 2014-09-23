@@ -132,15 +132,13 @@ struct synchronized {
     template<class F>
     auto
     apply(const F& functor) -> typename result_of<F>::type {
-        std::lock_guard<std::mutex> guard(m_mutex);
-        return functor(m_value);
+        return functor(*synchronize());
     }
 
     template<class F>
     auto
     apply(const F& functor) const -> typename result_of<F>::type {
-        std::lock_guard<std::mutex> guard(m_mutex);
-        return functor(m_value);
+        return functor(*synchronize());
     }
 
 private:
