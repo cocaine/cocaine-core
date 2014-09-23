@@ -33,8 +33,8 @@ struct graph_point_t;
 
 namespace aux {
 
-// Protocol transitions are implemented as an optional<graph_point_t>. Transition could be a new
-// graph point, an empty graph point (terminal message) or none, which means recurrent transition.
+// Protocol transitions are described by an optional<graph_point_t>. Transition could be a new graph
+// point, an empty graph point (terminal message) or none, which means recurrent transition.
 
 typedef std::map<
     int,
