@@ -127,9 +127,7 @@ struct runtime_t {
             std::cerr << "ERROR: Unable to deactivate an alternative signal stack" << std::endl;
         }
 
-        auto ptr = static_cast<char*>(m_alt_stack.ss_sp);
-
-        delete[] ptr;
+        delete[] static_cast<char*>(m_alt_stack.ss_sp);
     }
 
     int
