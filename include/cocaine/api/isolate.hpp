@@ -22,6 +22,8 @@
 #define COCAINE_ISOLATE_API_HPP
 
 #include "cocaine/common.hpp"
+
+#include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
 #include <mutex>
@@ -82,32 +84,21 @@ struct category_traits<isolate_t> {
         virtual
         ptr_type
         get(context_t& context, const std::string& name, const dynamic_t& args) {
-            std::lock_guard<std::mutex> guard(m_mutex);
-
-            typename instance_map_t::iterator it(m_instances.find(name));
-
             ptr_type instance;
 
-            if(it != m_instances.end()) {
-                instance = it->second.lock();
-            }
+            auto lock_ptr = instances.synchronize();
+            auto weak_ptr = (*lock_ptr)[name];
 
-            if(!instance) {
+            if((instance = weak_ptr.lock()) == nullptr) {
                 instance = std::make_shared<T>(context, name, args);
-                m_instances[name] = instance;
+                lock_ptr->insert({name, instance});
             }
 
             return instance;
         }
 
     private:
-        typedef std::map<
-            std::string,
-            std::weak_ptr<isolate_t>
-        > instance_map_t;
-
-        instance_map_t m_instances;
-        std::mutex m_mutex;
+        synchronized<std::map<std::string, std::weak_ptr<isolate_t>>> instances;
     };
 };
 
