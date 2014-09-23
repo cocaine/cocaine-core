@@ -712,5 +712,16 @@ context_t::bootstrap() {
         std::copy(errored.begin(), errored.end(), builder);
 
         COCAINE_LOG_ERROR(m_logger, "coudn't start %d service(s): %s", errored.size(), stream.str());
+
+        signals.shutdown();
+
+        while(!m_services->empty()) {
+            m_services->front().second->terminate();
+            m_services->pop_front();
+        }
+
+        COCAINE_LOG_ERROR(m_logger, "emergency core shutdown");
+
+        throw cocaine::error_t("couldn't start %d service(s)", errored.size());
     }
 }
