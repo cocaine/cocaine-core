@@ -68,13 +68,17 @@ detach_action_t::operator()() {
 } // namespace
 
 execution_unit_t::~execution_unit_t() {
-    COCAINE_LOG_DEBUG(m_log, "engine waiting for outstanding operations to complete")(
-        "engine", m_chamber->uuid()
-    );
+    if(!m_sessions.empty()) {
+        COCAINE_LOG_DEBUG(m_log, "engine waiting for outstanding operations to complete")(
+            "engine", m_chamber->uuid()
+        );
 
-    m_asio->post(detach_action_t{m_sessions});
+        m_asio->post(detach_action_t{m_sessions});
+    }
 
-    // This will block until all the outstanding operations are complete.
+    // TODO: Fix a race condition where sessions being disconnected after this pointer is reset are
+    // firing shutdown events, and engines crash the runtime in detach() trying to log those events.
+    // NOTE: This will block until all the outstanding operations are complete.
     m_chamber = nullptr;
 }
 
