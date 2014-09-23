@@ -94,7 +94,7 @@ execution_unit_t::utilization() const {
 
 void
 execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
-    auto fd = ::dup(ptr->native_handle());
+    const auto fd = ::dup(ptr->native_handle());
 
     // Make sure that the fd wasn't reused before it was actually processed for disconnection.
     BOOST_ASSERT(!m_sessions.count(fd));

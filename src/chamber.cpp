@@ -65,7 +65,7 @@ class chamber_t::stats_periodic_action_t:
     public std::enable_shared_from_this<stats_periodic_action_t>
 {
     chamber_t* impl;
-    boost::posix_time::seconds interval;
+    const boost::posix_time::seconds interval;
 
     // Snapshot of the last getrusage(2) report to be able to calculate the difference.
     struct rusage last_tick;
@@ -152,7 +152,7 @@ chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<boost::asio
 }
 
 chamber_t::~chamber_t() {
-    cron = nullptr;
+    cron->cancel();
 
     // NOTE: This might hang forever if io_service users have failed to abort their async operations
     // upon context.signals.shutdown signal (or haven't connected to it at all).

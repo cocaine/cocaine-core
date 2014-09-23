@@ -335,7 +335,7 @@ namespace cocaine { namespace api {
 
 category_traits<storage_t>::ptr_type
 storage(context_t& context, const std::string& name) {
-    const auto it = context.config.storages.find(name);
+    auto it = context.config.storages.find(name);
 
     if(it == context.config.storages.end()) {
         throw repository_error_t("the '%s' storage is not configured", name);

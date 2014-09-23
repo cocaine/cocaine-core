@@ -37,7 +37,7 @@ class session_t::channel_t {
     friend class session_t;
 
     dispatch_ptr_t dispatch;
-    upstream_ptr_t upstream;
+    const upstream_ptr_t upstream;
 
 public:
     channel_t(const dispatch_ptr_t& dispatch_, const upstream_ptr_t& upstream_):
@@ -110,9 +110,10 @@ session_t::pull_action_t::finalize(const boost::system::error_code& ec) {
     try {
         session->invoke(message);
     } catch(...) {
-        // TODO: Show the actual error message.
-        // This happens only when the underlying slot has miserably failed to manage its exceptions.
-        // In such case, the client is disconnected to prevent any further damage.
+        // TODO: Show the actual error message. The best sink would probably be the prototype's log,
+        // but for client sessions it's not available, so think about it a bit more.
+        // NOTE: This happens only when the underlying slot has miserably failed to handle service's
+        // exceptions. In such case, the client is disconnected to prevent any further damage.
         return session->signals.shutdown(error::uncaught_error);
     }
 
@@ -122,7 +123,7 @@ session_t::pull_action_t::finalize(const boost::system::error_code& ec) {
 class session_t::push_action_t:
     public enable_shared_from_this<push_action_t>
 {
-    encoder_t::message_type message;
+    const encoder_t::message_type message;
 
     // Keeps the session alive until all the operations are complete.
     const std::shared_ptr<session_t> session;

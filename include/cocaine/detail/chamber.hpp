@@ -47,7 +47,7 @@ class chamber_t {
     const std::shared_ptr<boost::asio::io_service> asio;
 
     // Takes resource usage snapshots every kCollectInterval seconds.
-    std::unique_ptr<boost::asio::deadline_timer> cron;
+    const std::unique_ptr<boost::asio::deadline_timer> cron;
 
     // This thread will run the reactor's event loop until terminated.
     std::unique_ptr<boost::thread> thread;

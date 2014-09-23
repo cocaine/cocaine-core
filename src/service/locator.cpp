@@ -142,7 +142,7 @@ locator_t::remote_client_t::on_announce(const results::connect& update) {
         "uuid", uuid
     );
 
-    auto diff = impl->m_routing->update_remote(uuid, update);
+    const auto diff = impl->m_routing->update_remote(uuid, update);
 
     for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
         impl->m_gateway->cleanup(uuid, it->first);
@@ -271,7 +271,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     const auto storage = api::storage(m_context, "core");
 
     try {
-        auto groups = storage->find("groups", std::vector<std::string>({
+        const auto groups = storage->find("groups", std::vector<std::string>({
             "group",
             "active"
         }));
@@ -330,7 +330,7 @@ locator_t::drop_node(const std::string& uuid) {
         "uuid", uuid
     );
 
-    auto removed = m_routing->remove_remote(uuid);
+    const auto removed = m_routing->remove_remote(uuid);
 
     for(auto it = removed.begin(); it != removed.end(); ++it) {
         m_gateway->cleanup(uuid, it->first);
@@ -346,8 +346,8 @@ locator_t::uuid() const {
 
 auto
 locator_t::on_resolve(const std::string& name) const -> results::resolve {
-    auto basename = m_routing->select_service(name);
-    auto provided = m_context.locate(basename);
+    const auto basename = m_routing->select_service(name);
+    const auto provided = m_context.locate(basename);
 
     if(provided && provided.get().is_active()) {
         COCAINE_LOG_DEBUG(m_log, "providing service using local node")(
@@ -444,7 +444,7 @@ locator_t::on_service(const actor_t& actor) {
         return;
     }
 
-    auto metadata = results::resolve {
+    const auto metadata = results::resolve {
         actor.endpoints(),
         actor.prototype().version(),
         actor.prototype().graph()
@@ -457,7 +457,7 @@ locator_t::on_service(const actor_t& actor) {
             "service", actor.prototype().name()
         );
 
-        auto update = results::connect {
+        const auto update = results::connect {
             { actor.prototype().name(), metadata }
         };
 

@@ -233,8 +233,8 @@ struct dynamic_converter<config_t::logging_t> {
         for(auto it = logging.begin(); it != logging.end(); ++it) {
             using namespace blackhole::repository;
 
-            auto object = it->second.as_object();
-            auto loggers = object.at("loggers", dynamic_t::array_t());
+            const auto object = it->second.as_object();
+            const auto loggers = object.at("loggers", dynamic_t::array_t());
 
             config_t::logging_t::logger_t log {
                 logmask(object.at("verbosity", defaults::log_verbosity).as_string()),
