@@ -2,7 +2,7 @@
 
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core2
-Version:	0.11.2.8
+Version:	0.11.3.1
 Release:	1%{?dist}
 
 
@@ -134,6 +134,9 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
+* Mon Sep 22 2014 Evgeny Safronov <division494@gmail.com> 0.11.3.1-1
+- Feature: reopenable file logging service.
+
 * Fri Sep 05 2014 Evgeny Safronov <division494@gmail.com> 0.11.2.8-1
 - Bugfix: properly check platform macro definition.
 

@@ -20,6 +20,10 @@
 
 #include "cocaine/detail/loggers/files.hpp"
 
+#include "cocaine/context.hpp"
+#include "cocaine/messages.hpp"
+#include "cocaine/traits/enum.hpp"
+
 #include <cerrno>
 #include <cstring>
 #include <ctime>
@@ -28,17 +32,19 @@
 #include <sys/uio.h>
 
 using namespace cocaine::logger;
+using namespace cocaine::service;
+
+using namespace std::placeholders;
 
 files_t::files_t(const config_t& config, const Json::Value& args):
     category_type(config, args),
+    m_path(args["path"].asString()),
     m_file(nullptr)
 {
-    const std::string path = args["path"].asString();
-
-    m_file = std::fopen(path.c_str(), "a");
+    m_file = std::fopen(m_path.c_str(), "a");
 
     if(m_file == nullptr) {
-        throw std::system_error(errno, std::system_category(), cocaine::format("unable to open '%s'", path));
+        throw std::system_error(errno, std::system_category(), cocaine::format("unable to open '%s'", m_path));
     }
 }
 
@@ -101,4 +107,51 @@ files_t::emit(logging::priorities priority, const std::string& source, const std
     }
 
     delete[] buffer;
+}
+
+void
+files_t::reopen() {
+    FILE* oldfile = m_file;
+    FILE* newfile = std::fopen(m_path.c_str(), "a");
+    if (!newfile) {
+        throw std::ios_base::failure(
+            cocaine::format("failed to open log file '%s': %s", m_path, ::strerror(errno))
+        );
+    }
+    m_file = newfile;
+
+    if (oldfile) {
+        std::fclose(oldfile);
+    }
+}
+
+using namespace cocaine;
+
+namespace cocaine { namespace api {
+
+category_traits<logger_t>::ptr_type
+logger(context_t& context, const std::string& name) {
+    const auto it = context.config.loggers.find(name);
+
+    if(it == context.config.loggers.end()) {
+        throw repository_error_t("the '%s' logger is not configured", name);
+    }
+
+    return context.get<logger_t>(it->second.type, context.config, it->second.args);
+}
+
+}} // namespace cocaine::api
+
+file_logger_t::file_logger_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args) :
+    api::service_t(context, reactor, name, args),
+    m_underlying(api::logger(context, args.get("source", args["name"].asString()).asString())),
+    m_logger(dynamic_cast<logger::files_t*>(m_underlying.get()))
+{
+    if (!m_logger) {
+        throw error_t("underlying logger must be a file logger");
+    }
+
+    on<io::logging::emit>("emit", std::bind(&files_t::emit, m_logger, _1, _2, _3));
+    on<io::logging::verbosity>("verbosity", std::bind(&files_t::verbosity, m_logger));
+    on<io::logging::reopen>("reopen", std::bind(&files_t::reopen, m_logger));
 }

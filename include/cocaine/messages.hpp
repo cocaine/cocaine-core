@@ -269,6 +269,25 @@ struct protocol<logging_tag> {
     > type;
 };
 
+struct filelogger_tag;
+
+namespace logging {
+    struct reopen {
+        typedef filelogger_tag tag;
+    };
+}
+
+template<>
+struct protocol<filelogger_tag> : public extends<logging_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        logging::reopen
+    > type;
+};
+
 // Storage service interface
 
 struct storage_tag;

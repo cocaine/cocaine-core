@@ -38,10 +38,31 @@ class files_t:
         void
         emit(logging::priorities level, const std::string& source, const std::string& message);
 
+        void
+        reopen();
+
     private:
+        std::string m_path;
         FILE* m_file;
 };
 
 }} // namespace cocaine::logger
+
+#include "cocaine/api/service.hpp"
+
+namespace cocaine { namespace service {
+
+class file_logger_t:
+    public api::service_t
+{
+    public:
+        file_logger_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
+
+    private:
+        api::category_traits<api::logger_t>::ptr_type m_underlying;
+        logger::files_t* m_logger;
+};
+
+}}
 
 #endif
