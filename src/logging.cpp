@@ -91,8 +91,7 @@ void
 map_severity(blackhole::aux::attachable_ostringstream& stream, const logging::priorities& level) {
     typedef blackhole::aux::underlying_type<logging::priorities>::type underlying_type;
 
-    static
-    const char* describe[] = {
+    static const char* describe[] = {
         "DEBUG",
         "INFO",
         "WARNING",

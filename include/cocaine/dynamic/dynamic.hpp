@@ -228,8 +228,9 @@ private:
 template<class T>
 dynamic_t::dynamic_t(
     T&& from,
-    typename std::enable_if<dynamic_constructor<typename pristine<T>::type>::enable>::type*
-): m_value(null_t())
+    typename std::enable_if<dynamic_constructor<typename pristine<T>::type>::enable>::type*)
+:
+    m_value(null_t())
 {
     dynamic_constructor<typename pristine<T>::type>::convert(std::forward<T>(from), m_value);
 }

@@ -33,22 +33,27 @@ struct type_traits<blackhole::log::attribute_value_t> {
     void
     unpack(const msgpack::object& source, blackhole::log::attribute_value_t& target) {
         switch(source.type) {
-        case msgpack::type::RAW:
+          case msgpack::type::RAW:
             target = source.as<std::string>();
             break;
-        case msgpack::type::DOUBLE:
+
+          case msgpack::type::DOUBLE:
             target = source.as<double>();
             break;
-        case msgpack::type::POSITIVE_INTEGER:
+
+          case msgpack::type::POSITIVE_INTEGER:
             target = source.as<uint64_t>();
             break;
-        case msgpack::type::NEGATIVE_INTEGER:
+
+          case msgpack::type::NEGATIVE_INTEGER:
             target = source.as<int64_t>();
             break;
-        case msgpack::type::BOOLEAN:
+
+          case msgpack::type::BOOLEAN:
             target = source.as<bool>();
             break;
-        default:
+
+          default:
             throw msgpack::type_error();
         }
     }
@@ -63,8 +68,8 @@ struct type_traits<blackhole::log::attributes_t> {
             throw msgpack::type_error();
         }
 
-        msgpack::object_kv *ptr = source.via.map.ptr;
-        msgpack::object_kv *const end = ptr + source.via.map.size;
+        msgpack::object_kv *ptr = source.via.map.ptr,
+                           *end = ptr + source.via.map.size;
 
         for(; ptr < end; ++ptr) {
             if(ptr->key.type != msgpack::type::RAW) {

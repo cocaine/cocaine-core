@@ -27,8 +27,8 @@
 
 namespace cocaine { namespace io {
 
-// Dynamic objects essentially have the same structure as msgpack objects, so this serialization traits
-// are pretty much straightforward.
+// Dynamic objects essentially have the same structure as msgpack objects, so these serialization
+// traits are pretty much straightforward.
 
 namespace aux {
 
@@ -108,11 +108,11 @@ struct type_traits<dynamic_t> {
     void
     unpack(const msgpack::object& source, dynamic_t& target) {
         switch(source.type) {
-        case msgpack::type::MAP: {
+          case msgpack::type::MAP: {
             dynamic_t::object_t container;
 
             msgpack::object_kv *ptr = source.via.map.ptr,
-                               *const end = ptr + source.via.map.size;
+                               *end = ptr + source.via.map.size;
 
             for(; ptr < end; ++ptr) {
                 if(ptr->key.type != msgpack::type::RAW) {
@@ -124,46 +124,47 @@ struct type_traits<dynamic_t> {
             }
 
             target = std::move(container);
-        } break;
+          } break;
 
-        case msgpack::type::ARRAY: {
+          case msgpack::type::ARRAY: {
             dynamic_t::array_t container;
             container.reserve(source.via.array.size);
 
             msgpack::object *ptr = source.via.array.ptr,
-                            *const end = ptr + source.via.array.size;
+                            *end = ptr + source.via.array.size;
 
-            for(unsigned int index = 0; ptr < end; ++ptr, ++index) {
+            for(; ptr < end; ++ptr) {
                 container.push_back(dynamic_t());
                 unpack(*ptr, container.back());
             }
 
             target = std::move(container);
-        } break;
+          } break;
 
-        case msgpack::type::RAW: {
+          case msgpack::type::RAW:
             target = source.as<std::string>();
-        } break;
+            break;
 
-        case msgpack::type::DOUBLE: {
+          case msgpack::type::DOUBLE:
             target = source.as<double>();
-        } break;
+            break;
 
-        case msgpack::type::POSITIVE_INTEGER: {
+          case msgpack::type::POSITIVE_INTEGER:
             target = source.as<dynamic_t::uint_t>();
-        } break;
+            break;
 
-        case msgpack::type::NEGATIVE_INTEGER: {
+          case msgpack::type::NEGATIVE_INTEGER:
             target = source.as<dynamic_t::int_t>();
-        } break;
+            break;
 
-        case msgpack::type::BOOLEAN: {
+          case msgpack::type::BOOLEAN:
             target = source.as<bool>();
-        } break;
+            break;
 
-        case msgpack::type::NIL: {
+          case msgpack::type::NIL:
             target = dynamic_t::null_t();
-        }}
+            break;
+        }
     }
 };
 

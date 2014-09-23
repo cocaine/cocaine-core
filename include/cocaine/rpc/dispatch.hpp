@@ -208,7 +208,8 @@ struct calling_visitor_t:
         typename slot_type::tuple_type args;
 
         try {
-            // Unpacks the object into a tuple using the argument typelist as opposed to using the
+            // TODO: Throw a system_error with some meaningfull error code.
+            // NOTE: Unpacks the object into a tuple using the argument typelist as opposed to using
             // plain tuple type traits, in order to support parameter tags, like optional<T>.
             io::type_traits<typename io::event_traits<Event>::argument_type>::unpack(unpacked, args);
         } catch(const msgpack::type_error& e) {
