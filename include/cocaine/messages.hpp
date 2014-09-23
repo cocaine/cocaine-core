@@ -274,10 +274,6 @@ struct filelogger_tag;
 namespace logging {
     struct reopen {
         typedef filelogger_tag tag;
-
-        typedef boost::mpl::list<> tuple_type;
-
-        typedef void result_type;
     };
 }
 

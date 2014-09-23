@@ -142,13 +142,13 @@ logger(context_t& context, const std::string& name) {
 
 }} // namespace cocaine::api
 
-filelogger_t::filelogger_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args) :
+file_logger_t::file_logger_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args) :
     api::service_t(context, reactor, name, args),
     m_underlying(api::logger(context, args.get("source", args["name"].asString()).asString())),
     m_logger(dynamic_cast<logger::files_t*>(m_underlying.get()))
 {
     if (!m_logger) {
-        throw error_t("underlying logger must be the file logger");
+        throw error_t("underlying logger must be a file logger");
     }
 
     on<io::logging::emit>("emit", std::bind(&files_t::emit, m_logger, _1, _2, _3));

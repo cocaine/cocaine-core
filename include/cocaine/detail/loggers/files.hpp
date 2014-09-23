@@ -52,11 +52,11 @@ class files_t:
 
 namespace cocaine { namespace service {
 
-class filelogger_t:
+class file_logger_t:
     public api::service_t
 {
     public:
-        filelogger_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
+        file_logger_t(context_t& context, io::reactor_t& reactor, const std::string& name, const Json::Value& args);
 
     private:
         api::category_traits<api::logger_t>::ptr_type m_underlying;
