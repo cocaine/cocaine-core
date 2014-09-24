@@ -32,6 +32,17 @@ namespace cocaine { namespace logging {
 
 DECLARE_KEYWORD(source, std::string)
 
+// C++ typename demangling
+
+auto
+demangle(const std::string& mangled) -> std::string;
+
+template<class T>
+auto
+demangle() -> std::string {
+    return demangle(typeid(T).name());
+}
+
 }} // namespace cocaine::logging
 
 #define COCAINE_LOG(_log_, _level_, ...) \

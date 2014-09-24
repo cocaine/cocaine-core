@@ -20,6 +20,8 @@
 
 #include "cocaine/detail/bootstrap/logging.hpp"
 
+#include <cxxabi.h>
+
 namespace blackhole { namespace repository { namespace config {
 
 // Converter adapter specializations for dynamic value
@@ -84,6 +86,21 @@ priority_traits<cocaine::logging::priorities>::map(cocaine::logging::priorities 
 }} // namespace blackhole::sink
 
 namespace cocaine { namespace logging {
+
+std::string
+demangle(const std::string& mangled) {
+    auto custom_deleter = std::bind(&::free, std::placeholders::_1);
+    auto demangled_size = 0ul;
+
+    std::unique_ptr<char[], decltype(custom_deleter)> buffer(
+        abi::__cxa_demangle(mangled.c_str(), nullptr, &demangled_size, nullptr),
+        custom_deleter
+    );
+
+    BOOST_ASSERT(buffer != nullptr);
+
+    return { buffer.get(), demangled_size };
+}
 
 // Severity attribute converter from enumeration underlying type into string
 

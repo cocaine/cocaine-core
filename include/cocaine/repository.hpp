@@ -155,8 +155,9 @@ repository_t::insert(const std::string& name) {
 
     m_categories[id][name] = std::make_unique<factory_type>();
 
-    COCAINE_LOG_DEBUG(m_log, "component has been registered")(
-        "component", name
+    COCAINE_LOG_DEBUG(m_log, "component '%s' has been registered in category '%s'",
+        name,
+        logging::demangle<category_type>()
     );
 }
 
