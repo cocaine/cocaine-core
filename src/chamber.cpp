@@ -161,6 +161,7 @@ struct cancel_action_t {
     boost::asio::deadline_timer& cron;
 };
 
+void
 cancel_action_t::operator()() {
     cron.cancel();
 }
