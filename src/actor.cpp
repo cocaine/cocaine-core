@@ -165,29 +165,38 @@ actor_t::terminate() {
 
 std::vector<tcp::endpoint>
 actor_t::endpoints() const {
-    if(!is_active()) {
-        return std::vector<tcp::endpoint>();
-    }
+    std::vector<tcp::endpoint> endpoints;
 
-    tcp::resolver::query::flags flags =
-        tcp::resolver::query::numeric_service
-      | tcp::resolver::query::address_configured;
+    for(auto it = m_acceptors.begin(); it != m_acceptors.end(); ++it) {
+        if(!it->local_endpoint().address().is_unspecified()) {
+            endpoints.push_back(it->local_endpoint());
+            continue;
+        }
 
-    tcp::resolver::iterator begin, end;
+        tcp::resolver::query::flags flags =
+            tcp::resolver::query::numeric_service
+          | tcp::resolver::query::address_configured;
 
-    try {
-        begin = tcp::resolver(*m_asio).resolve(tcp::resolver::query(
-            m_context.config.network.hostname,
-            std::to_string(m_acceptors.front().local_endpoint().port()),
-            flags
+        tcp::resolver::iterator begin, end;
+
+        try {
+            begin = tcp::resolver(*m_asio).resolve(tcp::resolver::query(
+                m_context.config.network.hostname, std::to_string(it->local_endpoint().port()),
+                flags
+            ));
+        } catch(const boost::system::system_error& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to determine local endpoints: [%d] %s",
+                e.code().value(), e.code().message()
+            )("service", m_prototype->name());
+        }
+
+        std::transform(begin, end, std::back_inserter(endpoints), std::bind(
+           &tcp::resolver::iterator::value_type::endpoint,
+            std::placeholders::_1
         ));
-    } catch(const boost::system::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: [%d] %s",
-            e.code().value(), e.code().message()
-        )("service", m_prototype->name());
     }
 
-    return std::vector<tcp::endpoint>(begin, end);
+    return endpoints;
 }
 
 bool
