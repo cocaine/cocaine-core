@@ -202,7 +202,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     m_log(context.log(name)),
     m_asio(asio),
     m_uuid(unique_id_t().string()),
-    m_resolve(new api::resolve_t(context.log(name + ":resolve"), asio)),
+    m_resolve(new api::resolve_t(context.log(name + ":resolve"), asio, {})),
     m_routing(new router_t(*m_log.get()))
 {
     using namespace std::placeholders;

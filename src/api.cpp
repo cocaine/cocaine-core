@@ -229,6 +229,10 @@ resolve_t::resolve_t(std::unique_ptr<logging::log_t> log, io_service& asio,
     m_log(std::move(log)),
     m_asio(asio)
 {
+    if(endpoints.empty()) {
+        return;
+    }
+
     std::ostringstream stream;
     std::ostream_iterator<endpoint_type> builder(stream, ", ");
 
