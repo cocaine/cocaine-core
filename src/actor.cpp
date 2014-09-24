@@ -129,11 +129,11 @@ actor_t::run(const std::vector<tcp::endpoint>& endpoints) {
     BOOST_ASSERT(!m_chamber);
 
     for(auto it = endpoints.begin(); it != endpoints.end(); ++it) {
-        COCAINE_LOG_DEBUG(m_log, "exposing service on [%s]", it->address())(
+        m_acceptors.emplace_back(*m_asio, *it);
+
+        COCAINE_LOG_INFO(m_log, "exposed service on %s", m_acceptors.front().local_endpoint())(
             "service", m_prototype->name()
         );
-
-        m_acceptors.emplace_back(*m_asio, *it);
     }
 
     for(auto it = m_acceptors.begin(); it != m_acceptors.end(); ++it) {
@@ -153,11 +153,10 @@ actor_t::terminate() {
     // happens only in engine chambers, because that's where client connections are being handled.
     m_asio->stop();
 
-    for(auto it = m_acceptors.begin(); it != m_acceptors.end(); ++it) {
-        it->close();
+    while(!m_acceptors.empty()) {
+        m_acceptors.front().close();
+        m_acceptors.pop_front();
     }
-
-    m_acceptors.clear();
 
     // Does not block.
     m_chamber = nullptr;
