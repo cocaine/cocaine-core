@@ -190,7 +190,7 @@ actor_t::run() {
     // The post() above won't be executed until this thread is started.
     m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_asio);
 
-    COCAINE_LOG_INFO(m_log, "service has been exposed on %s", m_acceptor->local_endpoint())(
+    COCAINE_LOG_DEBUG(m_log, "service has been exposed on %s", m_acceptor->local_endpoint())(
         "service", m_prototype->name()
     );
 }
@@ -215,7 +215,7 @@ actor_t::terminate() {
     m_chamber  = nullptr;
     m_acceptor = nullptr;
 
-    COCAINE_LOG_INFO(m_log, "service has been removed from %s", endpoint)(
+    COCAINE_LOG_DEBUG(m_log, "service has been removed from %s", endpoint)(
         "service", m_prototype->name()
     );
 }
