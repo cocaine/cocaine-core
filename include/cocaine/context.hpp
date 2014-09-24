@@ -28,7 +28,7 @@
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
-#include <queue>
+#include <boost/asio/ip/address.hpp>
 
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/optional.hpp>
@@ -54,16 +54,16 @@ public:
     } path;
 
     struct {
-        // I/O thread pool size.
-        size_t pool;
-
-        // Local hostname, in case it can't be automatically detected by resolving a CNAME for the
-        // contents of /etc/hostname via the default system resolver.
-        std::string hostname;
-
         // An endpoint where all the services will be bound. Note that binding on [::] will bind on
         // 0.0.0.0 too as long as the "net.ipv6.bindv6only" sysctl is set to 0 (default).
-        std::string endpoint;
+        boost::asio::ip::address endpoint;
+
+        // Local hostname. In case it can't be automatically detected by resolving a CNAME for the
+        // contents of /etc/hostname via the default system resolver, it can be configured manually.
+        std::string hostname;
+
+        // I/O thread pool size.
+        size_t pool;
 
         struct {
             // Pinned ports for static service port allocation.
@@ -102,11 +102,7 @@ public:
 // Dynamic port mapper
 
 class port_mapping_t {
-    typedef std::priority_queue<
-        port_t,
-        std::vector<port_t>,
-        std::greater<port_t>
-    > queue_type;
+    typedef std::deque<port_t> queue_type;
 
     // Pinned service ports.
     const std::map<std::string, port_t> m_pinned;

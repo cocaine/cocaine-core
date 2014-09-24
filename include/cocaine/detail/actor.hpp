@@ -33,21 +33,21 @@ namespace cocaine {
 class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
 
+    class accept_action_t;
+
     context_t& m_context;
 
     const std::unique_ptr<logging::log_t> m_log;
     const std::shared_ptr<boost::asio::io_service> m_asio;
 
-    // I/O acceptors. Actors have a separate thread to accept new connections. After a connection
-    // is accepted, it is assigned to a random thread from the main thread pool.
-    std::list<boost::asio::ip::tcp::acceptor> m_acceptors;
-
-    class accept_action_t;
-
     // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
     // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
     // after the authentication process completes successfully.
     io::dispatch_ptr_t m_prototype;
+
+    // I/O acceptor. Actors have a separate thread to accept new connections. After a connection is
+    // is accepted, it is assigned to a carefully choosen thread from the main thread pool.
+    std::unique_ptr<boost::asio::ip::tcp::acceptor> m_acceptor;
 
     // I/O authentication & processing.
     std::unique_ptr<io::chamber_t> m_chamber;
@@ -61,13 +61,8 @@ public:
 
    ~actor_t();
 
-    void
-    run(const std::vector<boost::asio::ip::tcp::endpoint>& endpoints);
+    // Observers
 
-    void
-    terminate();
-
-public:
     auto
     endpoints() const -> std::vector<boost::asio::ip::tcp::endpoint>;
 
@@ -76,6 +71,14 @@ public:
 
     auto
     prototype() const -> const io::basic_dispatch_t&;
+
+    // Modifiers
+
+    void
+    run();
+
+    void
+    terminate();
 };
 
 } // namespace cocaine

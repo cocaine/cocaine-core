@@ -37,6 +37,7 @@
 #include "cocaine/logging.hpp"
 
 #include <numeric>
+#include <random>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/host_name.hpp>
@@ -318,11 +319,9 @@ config_t::config_t(const std::string& source) {
 
     // Network configuration
 
-    network.pool = network_config.at("pool", boost::thread::hardware_concurrency() * 2).as_uint();
-
-    if(network.pool <= 0) {
-        throw cocaine::error_t("network I/O pool size must be positive");
-    }
+    network.endpoint = boost::asio::ip::address::from_string(
+        network_config.at("endpoint", defaults::endpoint).as_string()
+    );
 
     boost::asio::io_service asio;
     boost::asio::ip::tcp::resolver resolver(asio);
@@ -342,7 +341,11 @@ config_t::config_t(const std::string& source) {
     }
 
     network.hostname = network_config.at("hostname", it->host_name()).as_string();
-    network.endpoint = network_config.at("endpoint", defaults::endpoint).as_string();
+    network.pool     = network_config.at("pool", boost::thread::hardware_concurrency() * 2).as_uint();
+
+    if(network.pool <= 0) {
+        throw cocaine::error_t("network I/O pool size must be positive");
+    }
 
     if(network_config.count("pinned")) {
         network.ports.pinned = network_config.at("pinned").to<decltype(network.ports.pinned)>();
@@ -388,6 +391,9 @@ port_mapping_t::port_mapping_t(const config_t& config):
         std::iota(seed.begin(), seed.end(), minimum);
     }
 
+    std::random_device device;
+    std::shuffle(seed.begin(), seed.end(), std::default_random_engine(device()));
+
     // Safe until fully constructed.
     m_shared.unsafe() = queue_type(seed.begin(), seed.end());
 }
@@ -404,7 +410,7 @@ port_mapping_t::assign(const std::string& name) {
         throw cocaine::error_t("no ports left for allocation");
     }
 
-    const auto port = ptr->top(); ptr->pop();
+    const auto port = ptr->front(); ptr->pop_front();
 
     return port;
 }
@@ -412,10 +418,11 @@ port_mapping_t::assign(const std::string& name) {
 void
 port_mapping_t::retain(const std::string& name, port_t port) {
     if(m_pinned.count(name)) {
+        // TODO: Fix pinned ports retention.
         return;
     }
 
-    return m_shared->push(port);
+    return m_shared->push_back(port);
 }
 
 // Context
@@ -566,17 +573,9 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
             throw cocaine::error_t("service '%s' already exists", name);
         }
 
-        // TODO: Fix pinned ports retention.
-        const auto port = mapper.assign(name);
+        service->run();
 
-        const std::vector<boost::asio::ip::tcp::endpoint> endpoints = {{
-            boost::asio::ip::address::from_string(config.network.endpoint),
-            port
-        }};
-
-        service->run(endpoints);
-
-        COCAINE_LOG_INFO(m_logger, "service has been published")(
+        COCAINE_LOG_INFO(m_logger, "service has been started")(
             "service", name
         );
 
@@ -604,13 +603,9 @@ context_t::remove(const std::string& name) {
         }
 
         service = std::move(it->second);
-
-        // TODO: Fix pinned ports retention.
-        mapper.retain(name, service->endpoints().front().port());
-
         service->terminate();
 
-        COCAINE_LOG_INFO(m_logger, "service has been terminated")(
+        COCAINE_LOG_INFO(m_logger, "service has been stopped")(
             "service", name
         );
 
