@@ -538,10 +538,10 @@ context_t::~context_t() {
 }
 
 std::unique_ptr<logging::log_t>
-context_t::log(const std::string& source) {
-    return std::make_unique<logging::log_t>(*m_logger, blackhole::log::attributes_t({
+context_t::log(const std::string& source, blackhole::log::attributes_t attributes) {
+    return std::make_unique<logging::log_t>(*m_logger, blackhole::merge({std::move(attributes), {
         logging::keyword::source() = source
-    }));
+    }}));
 }
 
 namespace {
