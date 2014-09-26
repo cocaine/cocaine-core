@@ -202,7 +202,7 @@ session_t::session_t(std::unique_ptr<channel<tcp>> ptr_, const dispatch_ptr_t& p
 void
 session_t::invoke(const decoder_t::message_type& message) {
     channel_map_t::const_iterator lb, ub;
-    const channel_map_t::key_type channel_id = message.span();
+    channel_map_t::key_type channel_id = message.span();
 
     std::shared_ptr<channel_t> channel;
 
