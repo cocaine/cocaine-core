@@ -62,16 +62,17 @@ logging_t::prototype() const -> const basic_dispatch_t& {
 }
 
 void
-logging_t::on_emit(logging::priorities level, const std::string& source, const std::string& message,
-                   const blackhole::log::attributes_t& attributes)
+logging_t::on_emit(logging::priorities level, std::string&& source, std::string&& message,
+                   blackhole::log::attributes_t&& attributes)
 {
-    auto record = m_logger->open_record(level);
+    auto record = m_logger->open_record(level, std::move(attributes));
 
-    if(record.valid()) {
-        record.attributes.insert(attributes.begin(), attributes.end());
-        record.attributes.insert(cocaine::logging::keyword::source() = source);
-        record.attributes.insert(blackhole::keyword::message() = message);
-
-        m_logger->push(std::move(record));
+    if(!record.valid()) {
+        return;
     }
+
+    record.attributes.insert(cocaine::logging::keyword::source() = std::move(source));
+    record.attributes.insert(blackhole::keyword::message() = std::move(message));
+
+    m_logger->push(std::move(record));
 }

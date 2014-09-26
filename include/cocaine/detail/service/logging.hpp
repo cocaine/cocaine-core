@@ -43,8 +43,8 @@ public:
 
 private:
     void
-    on_emit(logging::priorities level, const std::string& source, const std::string& message,
-            const blackhole::log::attributes_t& attributes);
+    on_emit(logging::priorities level, std::string&& source, std::string&& message,
+            blackhole::log::attributes_t&& attributes);
 };
 
 }} // namespace cocaine::service
