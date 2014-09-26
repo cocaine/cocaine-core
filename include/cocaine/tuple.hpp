@@ -66,7 +66,7 @@ struct invoke_impl<index_sequence<Indices...>> {
     template<class F, typename... Args>
     static inline
     typename result_of<F>::type
-    apply(const F& callable, const std::tuple<Args...>& args) {
+    apply(const F& callable, std::tuple<Args...>&& args) {
         return callable(std::get<Indices>(args)...);
     }
 };
@@ -86,10 +86,10 @@ struct fold {
 template<class F, typename... Args>
 inline
 typename result_of<F>::type
-invoke(const F& callable, const std::tuple<Args...>& args) {
+invoke(const F& callable, std::tuple<Args...>&& args) {
     return aux::invoke_impl<
         typename make_index_sequence<sizeof...(Args)>::type
-    >::apply(callable, args);
+    >::apply(callable, std::move(args));
 }
 
 }} // namespace cocaine::tuple
