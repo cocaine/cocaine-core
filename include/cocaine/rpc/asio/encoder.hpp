@@ -30,6 +30,9 @@
 
 namespace cocaine { namespace io {
 
+template<class Event>
+struct encoded;
+
 struct encoder_t;
 
 namespace aux {
@@ -73,6 +76,9 @@ private:
 struct encoded_message_t {
     friend struct io::encoder_t;
 
+    template<class>
+    friend struct io::encoded;
+
     auto
     data() const -> const char* {
         return buffer.vector.data();
@@ -83,7 +89,7 @@ struct encoded_message_t {
         return buffer.offset;
     }
 
-protected:
+private:
     encoded_buffers_t buffer;
 };
 
