@@ -33,7 +33,7 @@ class session_t;
 class execution_unit_t {
     COCAINE_DECLARE_NONCOPYABLE(execution_unit_t)
 
-    const std::unique_ptr<logging::log_t> m_log;
+    std::unique_ptr<logging::log_t> m_log;
 
     // Connections
 

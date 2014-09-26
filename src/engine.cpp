@@ -38,13 +38,14 @@ using namespace boost::asio::ip;
 using namespace cocaine;
 
 execution_unit_t::execution_unit_t(context_t& context):
-    m_log(context.log("core:asio")),
     m_asio(new io_service()),
     m_chamber(new io::chamber_t("core:asio", m_asio))
 {
-    COCAINE_LOG_DEBUG(m_log, "engine started")(
-        "engine", m_chamber->uuid()
-    );
+    m_log = context.log("core:asio", {
+        attribute::make("engine", boost::lexical_cast<std::string>(m_chamber->uuid()))
+    });
+
+    COCAINE_LOG_DEBUG(m_log, "engine started");
 }
 
 namespace {
@@ -60,7 +61,6 @@ struct detach_action_t {
 void
 detach_action_t::operator()() {
     for(auto it = sessions.begin(); it != sessions.end(); ++it) {
-        // Synchronously close the connections.
         it->second->detach();
     }
 }
@@ -69,15 +69,12 @@ detach_action_t::operator()() {
 
 execution_unit_t::~execution_unit_t() {
     if(!m_sessions.empty()) {
-        COCAINE_LOG_DEBUG(m_log, "engine waiting for outstanding operations to complete")(
-            "engine", m_chamber->uuid()
-        );
+        COCAINE_LOG_DEBUG(m_log, "engine waiting for outstanding operations to complete");
 
+        // Asynchronously close the connections.
         m_asio->post(detach_action_t{m_sessions});
     }
 
-    // TODO: Fix a race condition where sessions being disconnected after this pointer is reset are
-    // firing shutdown events, and engines crash the runtime in detach() trying to log those events.
     // NOTE: This will block until all the outstanding operations are complete.
     m_chamber = nullptr;
 }
@@ -122,7 +119,6 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
 
     COCAINE_LOG_DEBUG(m_log, "attached client to engine with %.2f%% utilization", utilization() * 100)(
         "endpoint", m_sessions[fd]->remote_endpoint(),
-        "engine",   m_chamber->uuid(),
         "service",  m_sessions[fd]->name()
     );
 
@@ -144,7 +140,6 @@ execution_unit_t::on_shutdown(const boost::system::error_code& ec, int fd) {
 
     scoped_attributes_t attributes(*m_log, {
         attribute::make("endpoint", boost::lexical_cast<std::string>(it->second->remote_endpoint())),
-        attribute::make("engine",   boost::lexical_cast<std::string>(m_chamber->uuid())),
         attribute::make("service",  it->second->name())
     });
 
