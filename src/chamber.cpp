@@ -89,9 +89,9 @@ private:
 
 void
 chamber_t::stats_periodic_action_t::operator()() {
-    impl->cron->expires_from_now(interval);
+    impl->cron.expires_from_now(interval);
 
-    impl->cron->async_wait(std::bind(&stats_periodic_action_t::finalize,
+    impl->cron.async_wait(std::bind(&stats_periodic_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -138,8 +138,8 @@ namespace bpt = boost::posix_time;
 chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<boost::asio::io_service>& asio_):
     name(name_),
     asio(asio_),
-    cron(new boost::asio::deadline_timer(*asio)),
-    load_average(baf::rolling_window_size = 60 / kCollectionInterval)
+    cron(*asio_),
+    load_average(boost::accumulators::rolling_window_size = 60 / kCollectionInterval)
 {
     asio->post(std::bind(&stats_periodic_action_t::operator(),
         std::make_shared<stats_periodic_action_t>(this, bpt::seconds(kCollectionInterval))
@@ -169,7 +169,7 @@ cancel_action_t::operator()() {
 } // namespace
 
 chamber_t::~chamber_t() {
-    asio->post(cancel_action_t{*cron});
+    asio->post(cancel_action_t{cron});
 
     // NOTE: This might hang forever if io_service users have failed to abort their async operations
     // upon context.signals.shutdown signal (or haven't connected to it at all).
