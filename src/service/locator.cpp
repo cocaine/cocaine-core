@@ -279,7 +279,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         typedef std::map<std::string, unsigned int> group_t;
 
         for(auto it = groups.begin(); it != groups.end(); ++it) {
-            m_routing->add_group(*it, storage->get<group_t>("groups", *it));
+            m_routing->update_group(*it, storage->get<group_t>("groups", *it));
         }
     } catch(const storage_error_t& e) {
 #if defined(HAVE_GCC48)
@@ -422,7 +422,7 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
         if(lb == ub) {
             m_routing->remove_group(*it);
         } else {
-            m_routing->add_group(*it, lb->second);
+            m_routing->update_group(*it, lb->second);
         }
     }
 }
