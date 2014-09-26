@@ -46,7 +46,8 @@ class actor_t::accept_action_t:
 {
     actor_t* impl;
 
-    tcp::socket peer;
+    // Holds new connection information, populated by Boost ASIO.
+    tcp::socket   peer;
     tcp::endpoint endpoint;
 
 public:

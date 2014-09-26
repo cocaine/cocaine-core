@@ -212,20 +212,20 @@ struct calling_visitor_t:
         typename slot_type::tuple_type args;
 
         try {
-            // TODO: Throw a system_error with some meaningfull error code.
             // NOTE: Unpacks the object into a tuple using the argument typelist as opposed to using
             // plain tuple type traits, in order to support parameter tags, like optional<T>.
             io::type_traits<typename io::event_traits<Event>::argument_type>::unpack(unpacked, args);
         } catch(const msgpack::type_error& e) {
+            // TODO: Throw a system_error with some meaningful error code.
             throw cocaine::error_t("unable to unpack message arguments");
         }
 
-        // Call the slot with the upstream constrained using the event's drain protocol type tag.
+        // Call the slot with the upstream constrained using the event's upstream protocol type tag.
         return result_type((*slot)(std::move(args), typename slot_type::upstream_type(upstream)));
     }
 
 private:
-    const msgpack::object& unpacked;
+    const msgpack::object&    unpacked;
     const io::upstream_ptr_t& upstream;
 };
 
