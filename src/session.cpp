@@ -37,7 +37,7 @@ class session_t::channel_t {
     friend class session_t;
 
     dispatch_ptr_t dispatch;
-    const upstream_ptr_t upstream;
+    upstream_ptr_t upstream;
 
 public:
     channel_t(const dispatch_ptr_t& dispatch_, const upstream_ptr_t& upstream_):
@@ -59,6 +59,7 @@ session_t::channel_t::process(const decoder_t::message_type& message) {
         // NOTE: If the client has sent us the last message according to our dispatch graph, then
         // revoke the channel.
         upstream->drop();
+        upstream = nullptr;
     }
 }
 
