@@ -186,7 +186,7 @@ public:
    ~context_t();
 
     std::unique_ptr<logging::log_t>
-    log(const std::string& source, blackhole::log::attributes_t attributes = {});
+    log(const std::string& source, blackhole::log::attributes_t = blackhole::log::attributes_t());
 
     template<class Category, typename... Args>
     typename api::category_traits<Category>::ptr_type
