@@ -34,18 +34,18 @@ namespace aux {
 struct decoded_message_t {
     friend struct io::decoder_t;
 
-    uint64_t
-    span() const {
+    auto
+    span() const -> uint64_t {
         return object.via.array.ptr[0].as<uint64_t>();
     }
 
-    uint32_t
-    type() const {
-        return object.via.array.ptr[1].as<uint32_t>();
+    auto
+    type() const -> uint64_t {
+        return object.via.array.ptr[1].as<uint64_t>();
     }
 
-    const msgpack::object&
-    args() const {
+    auto
+    args() const -> const msgpack::object& {
         return object.via.array.ptr[2];
     }
 
