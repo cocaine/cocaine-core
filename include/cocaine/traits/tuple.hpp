@@ -137,7 +137,7 @@ struct sequence_size_error:
     }
 
     virtual
-   ~sequence_size_error() noexcept {
+   ~sequence_size_error() throw() {
         // Empty.
     }
 
@@ -224,13 +224,12 @@ public:
             #pragma GCC diagnostic pop
         #endif
 
-        std::vector<msgpack::object> objects(
+        // Recursively unpack every tuple element.
+        unpack_sequence<typename boost::mpl::begin<T>::type>(
             source.via.array.ptr,
-            source.via.array.ptr + source.via.array.size
+            source.via.array.ptr + source.via.array.size,
+            targets...
         );
-
-        // Recursively unpack every tuple element while validating the types.
-        unpack_sequence<typename boost::mpl::begin<T>::type>(objects.begin(), objects.end(), targets...);
     }
 
     template<typename... Args>
