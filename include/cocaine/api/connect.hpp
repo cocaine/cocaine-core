@@ -36,7 +36,12 @@ template<class Tag> class client;
 namespace details {
 
 class basic_client_t {
-    std::shared_ptr<session_t> m_session;
+    // Even though it's a shared pointer, clients do not share session ownership. The reason behind
+    // this is to avoid multiple clients being notified on session shutdown and trying to detach it.
+    std::shared_ptr<session_t>  m_session;
+
+    // Used to unsubscribe this client from session signals on destruction or move.
+    boost::signals2::connection m_session_signals;
 
 public:
     template<typename> friend class api::client;
