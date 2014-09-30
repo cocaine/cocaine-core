@@ -14,7 +14,8 @@ ELSE()
     OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" OFF)
 ENDIF()
 
-OPTION(COCAINE_ALLOW_RAFT "Build Raft support for Runtime" OFF)
+OPTION(COCAINE_ALLOW_RAFT "Build Raft support" OFF)
+OPTION(COCAINE_ALLOW_BENCHMARKS "Build benchmarking tools" OFF)
 
 INCLUDE(cmake/locate_library.cmake)
 
@@ -142,6 +143,10 @@ TARGET_LINK_LIBRARIES(cocaine-runtime
 
 SET_TARGET_PROPERTIES(cocaine-core cocaine-runtime PROPERTIES
     COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
+
+IF(COCAINE_BUILD_BENCHMARKS)
+    ADD_SUBDIRECTORY(tests)
+ENDIF()
 
 IF(NOT COCAINE_LIBDIR)
     SET(COCAINE_LIBDIR lib)

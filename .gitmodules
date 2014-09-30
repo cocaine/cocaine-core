@@ -10,3 +10,6 @@
 [submodule "foreign/celero"]
 	path = foreign/celero
 	url = https://github.com/DigitalInBlue/Celero
+[submodule "tests/foreign/celero"]
+	path = tests/foreign/celero
+	url = https://github.com/DigitalInBlue/Celero
