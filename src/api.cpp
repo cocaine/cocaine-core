@@ -40,48 +40,22 @@ using namespace boost::asio::ip;
 
 namespace cocaine { namespace api { namespace details {
 
-basic_client_t::basic_client_t(const basic_client_t& other) {
-    *this = other;
-}
-
 basic_client_t::~basic_client_t() {
-    if(is_connected()) {
+    if(m_session) {
         m_session->detach();
     }
 }
 
-basic_client_t&
-basic_client_t::operator=(const basic_client_t& rhs) {
-    if((m_session = rhs.m_session) == nullptr) {
-        return *this;
-    }
-
-    m_session->signals.shutdown.connect(std::bind(&basic_client_t::on_interrupt,
-        this,
-        std::placeholders::_1
-    ));
-
-    return *this;
-}
-
-bool
-basic_client_t::is_connected() const {
-    return static_cast<bool>(m_session);
-}
-
-const session_t&
+boost::optional<const session_t&>
 basic_client_t::session() const {
-    if(!is_connected()) {
-        throw cocaine::error_t("client is not connected");
-    }
-
-    return *m_session;
+    return boost::optional<const session_t&>(m_session != nullptr, *m_session);
 }
 
 void
-basic_client_t::on_interrupt(const boost::system::error_code& COCAINE_UNUSED_(ec)) {
-    m_session->detach();
-    m_session = nullptr;
+basic_client_t::cleanup(const boost::system::error_code& COCAINE_UNUSED_(ec)) {
+    if(m_session) {
+        m_session->detach();
+    }
 }
 
 void
@@ -95,7 +69,7 @@ basic_client_t::connect(std::unique_ptr<tcp::socket> socket) {
         nullptr
     );
 
-    m_session->signals.shutdown.connect(std::bind(&basic_client_t::on_interrupt,
+    m_session->signals.shutdown.connect(std::bind(&basic_client_t::cleanup,
         this,
         std::placeholders::_1
     ));
@@ -250,7 +224,7 @@ void
 resolve_t::resolve(details::basic_client_t& client, const std::string& name, handler_type handle) {
     auto dispatch = std::make_shared<resolve_action_t>(this, client, handle);
 
-    if(!m_locator.is_connected()) {
+    if(!m_locator.session()) {
         m_pending.push_back({dispatch, name});
     } else {
         m_locator.invoke<io::locator::resolve>(dispatch, name);

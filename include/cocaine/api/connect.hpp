@@ -41,24 +41,19 @@ class basic_client_t {
 public:
     template<typename> friend class api::client;
 
-    // User-defined copy constructors in order to reconnect session signals.
-
     basic_client_t() = default;
-    basic_client_t(const basic_client_t& other);
+    basic_client_t(const basic_client_t& other) = delete;
 
     virtual
    ~basic_client_t();
 
     basic_client_t&
-    operator=(const basic_client_t& rhs);
+    operator=(const basic_client_t& rhs) = delete;
 
     // Observers
 
-    bool
-    is_connected() const;
-
     auto
-    session() const -> const session_t&;
+    session() const -> boost::optional<const session_t&>;
 
     virtual
     int
@@ -71,7 +66,7 @@ public:
 
 private:
     void
-    on_interrupt(const boost::system::error_code&);
+    cleanup(const boost::system::error_code& ec);
 };
 
 } // namespace details
@@ -90,15 +85,21 @@ public:
     template<class Event, typename... Args>
     typename traits<Event>::upstream_type
     invoke(const std::shared_ptr<typename traits<Event>::dispatch_type>& dispatch, Args&&... args) {
-        if(!is_connected()) {
+        static_assert(
+            std::is_same<typename Event::tag, Tag>::value,
+            "the message isn't compatible with the client"
+        );
+
+        if(!m_session) {
             throw cocaine::error_t("client is not connected");
         }
 
-        auto ptr = m_session->inject(dispatch);
+        // Get an untagged upstream. The message will be send directly using this upstream avoiding
+        // duplicate static validations in upstream<Tag>, because it's a little bit faster this way.
+        const io::upstream_ptr_t ptr = m_session->inject(dispatch);
 
         // TODO: Locking?
-        // Check for message protocol compatibility.
-        upstream<Tag>(ptr).template send<Event>(std::forward<Args>(args)...);
+        ptr->template send<Event>(std::forward<Args>(args)...);
 
         return ptr;
     }

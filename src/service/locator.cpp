@@ -113,9 +113,10 @@ locator_t::remote_client_t::on_link(const boost::system::error_code& ec) {
         return;
     }
 
-    auto& client = impl->m_remotes.at(uuid);
+    auto& client  = impl->m_remotes.at(uuid);
+    auto& session = client.session().get();
 
-    COCAINE_LOG_DEBUG(impl->m_log, "connected to remote node via %s", client.session().remote_endpoint());
+    COCAINE_LOG_DEBUG(impl->m_log, "connected to remote node via %s", session.remote_endpoint());
 
     client.invoke<locator::connect>(shared_from_this(), impl->m_uuid);
 }
@@ -432,7 +433,7 @@ locator_t::on_cluster() const -> results::cluster {
     results::cluster result;
 
     for(auto it = m_remotes.begin(); it != m_remotes.end(); ++it) {
-        result[it->first] = it->second.session().remote_endpoint();
+        result[it->first] = it->second.session().get().remote_endpoint();
     }
 
     return result;
