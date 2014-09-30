@@ -40,7 +40,7 @@ namespace aux {
 struct encoded_buffers_t {
     friend struct encoded_message_t;
 
-    static const size_t kInitialBufferSize = 4096;
+    static const size_t kInitialBufferSize = 2048;
 
     encoded_buffers_t():
         offset(0)
@@ -69,8 +69,8 @@ struct encoded_buffers_t {
     COCAINE_DECLARE_NONCOPYABLE(encoded_buffers_t)
 
 private:
-    std::vector<char> vector;
-    std::vector<char>::difference_type offset;
+    std::vector<char, uninitialized<char>> vector;
+    std::vector<char, uninitialized<char>>::difference_type offset;
 };
 
 struct encoded_message_t {

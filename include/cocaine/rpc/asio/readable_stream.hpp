@@ -51,8 +51,8 @@ class readable_stream:
 
     typedef std::function<void(const boost::system::error_code&)> handler_type;
 
-    std::vector<char> m_ring;
-    std::vector<char>::difference_type m_rd_offset;
+    std::vector<char, uninitialized<char>> m_ring;
+    std::vector<char, uninitialized<char>>::difference_type m_rd_offset;
 
     decoder_type m_decoder;
 
