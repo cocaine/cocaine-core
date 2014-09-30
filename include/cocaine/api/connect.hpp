@@ -42,13 +42,13 @@ public:
     template<typename> friend class api::client;
 
     basic_client_t() = default;
-    basic_client_t(const basic_client_t& other) = delete;
+    basic_client_t(basic_client_t&& other);
 
     virtual
    ~basic_client_t();
 
     basic_client_t&
-    operator=(const basic_client_t& rhs) = delete;
+    operator=(basic_client_t&& rhs);
 
     // Observers
 

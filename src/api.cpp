@@ -40,10 +40,35 @@ using namespace boost::asio::ip;
 
 namespace cocaine { namespace api { namespace details {
 
+basic_client_t::basic_client_t(basic_client_t&& other) {
+    *this = std::move(other);
+}
+
 basic_client_t::~basic_client_t() {
     if(m_session) {
         m_session->detach();
     }
+}
+
+basic_client_t&
+basic_client_t::operator=(basic_client_t&& rhs) {
+    if(m_session && m_session != rhs.m_session) {
+        m_session->detach();
+    }
+
+    if((m_session = std::move(rhs.m_session)) == nullptr) {
+        return *this;
+    }
+
+    // Clean up the new session of all other signal handlers, if any.
+    m_session->signals.shutdown.disconnect_all_slots();
+
+    m_session->signals.shutdown.connect(std::bind(&basic_client_t::cleanup,
+        this,
+        std::placeholders::_1
+    ));
+
+    return *this;
 }
 
 boost::optional<const session_t&>
