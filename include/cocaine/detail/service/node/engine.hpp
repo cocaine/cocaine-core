@@ -27,7 +27,6 @@
 
 #include "cocaine/dynamic.hpp"
 
-#include "cocaine/detail/atomic.hpp"
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/forwards.hpp"
 #include "cocaine/detail/service/node/queue.hpp"
@@ -35,6 +34,7 @@
 #include "cocaine/rpc/asio/encoder.hpp"
 #include "cocaine/rpc/asio/decoder.hpp"
 
+#include <atomic>
 #include <mutex>
 
 #include <boost/asio/deadline_timer.hpp>
@@ -98,7 +98,7 @@ class engine_t {
     pool_map_t m_pool;
 
     // Spawning mutex.
-    mutable std::mutex m_pool_mutex;
+    std::mutex m_pool_mutex;
 
     // NOTE: A strong isolate reference, keeping it here
     // avoids isolate destruction, as the factory stores

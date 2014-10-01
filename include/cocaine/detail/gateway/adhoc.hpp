@@ -32,11 +32,8 @@ class adhoc_t:
 {
     const std::unique_ptr<logging::log_t> m_log;
 
-#if defined(__clang__) || defined(HAVE_GCC46)
-    mutable std::default_random_engine m_random_generator;
-#else
-    mutable std::minstd_rand0 m_random_generator;
-#endif
+    // Used in resolve() method, which is const.
+    std::default_random_engine mutable m_random_generator;
 
     struct remote_service_t {
         std::string uuid;

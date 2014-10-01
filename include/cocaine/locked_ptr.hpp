@@ -143,7 +143,7 @@ struct synchronized {
 
 private:
     value_type m_value;
-    mutable mutex_type m_mutex;
+    mutex_type mutable m_mutex;
 };
 
 } // namespace cocaine

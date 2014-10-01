@@ -25,13 +25,13 @@
 
 #include "cocaine/api/isolate.hpp"
 
-#include "cocaine/detail/atomic.hpp"
 #include "cocaine/detail/service/node/forwards.hpp"
 #include "cocaine/detail/service/node/queue.hpp"
 
 #include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/asio/decoder.hpp"
 
+#include <atomic>
 #include <chrono>
 
 #include <boost/asio.hpp>

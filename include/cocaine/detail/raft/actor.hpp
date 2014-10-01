@@ -142,16 +142,8 @@ public:
     {
         COCAINE_LOG_INFO(m_logger, "initializing raft actor");
 
-#if defined(__clang__) || defined(HAVE_GCC46)
         std::random_device device;
         m_random_generator.seed(device());
-#else
-        // Initialize the generator with value, which is unique for current node id and time.
-        unsigned long random_init = static_cast<unsigned long>(::time(nullptr))
-                                  + std::hash<std::string>()(this->context().raft().id().first)
-                                  + this->context().raft().id().second;
-        m_random_generator.seed(random_init);
-#endif
 
         m_election_timer.set<actor, &actor::on_disown>(this);
         m_rejoin_timer.set<actor, &actor::on_rejoin>(this);
@@ -807,11 +799,7 @@ private:
                       m_state == actor_state::leader;
 
         if(booted) {
-#if defined(__clang__) || defined(HAVE_GCC46)
             typedef std::uniform_int_distribution<unsigned int> uniform_uint;
-#else
-            typedef std::uniform_int<unsigned int> uniform_uint;
-#endif
 
             uniform_uint distribution(options().election_timeout, 2 * options().election_timeout);
 
@@ -902,11 +890,7 @@ private:
     // When the timer fires, the follower will switch to the candidate state.
     ev::timer m_election_timer;
 
-#if defined(__clang__) || defined(HAVE_GCC46)
     std::default_random_engine m_random_generator;
-#else
-    std::minstd_rand0 m_random_generator;
-#endif
 };
 
 }} // namespace cocaine::raft

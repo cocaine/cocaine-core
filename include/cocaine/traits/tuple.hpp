@@ -195,10 +195,6 @@ public:
         traits_type::template pack<T>(target, source);
     }
 
-    #if defined(__GNUC__) && !defined(HAVE_GCC46)
-        #pragma GCC diagnostic ignored "-Wtype-limits"
-    #endif
-
     template<typename... Args>
     static inline
     void

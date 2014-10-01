@@ -26,7 +26,7 @@
 
 #include "cocaine/locked_ptr.hpp"
 
-#include "cocaine/detail/atomic.hpp"
+#include <atomic>
 
 namespace cocaine { namespace raft {
 

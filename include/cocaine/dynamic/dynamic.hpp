@@ -222,7 +222,7 @@ private:
 
 private:
     // boost::apply_visitor takes non-constant reference to a variant object.
-    mutable value_t m_value;
+    value_t mutable m_value;
 };
 
 template<class T>

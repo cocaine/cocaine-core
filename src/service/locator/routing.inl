@@ -22,14 +22,6 @@
 
 namespace routing {
 
-#if defined(__clang__) || defined(HAVE_GCC46)
-typedef std::default_random_engine random_generator_t;
-typedef std::uniform_int_distribution<unsigned int> uniform_uint;
-#else
-typedef std::minstd_rand0 random_generator_t;
-typedef std::uniform_int<unsigned int> uniform_uint;
-#endif
-
 struct group_index_t {
     group_index_t();
     group_index_t(const std::map<std::string, unsigned int>& group);
@@ -156,13 +148,13 @@ class locator_t::router_t {
             logging::log_t& m_log;
             const locator_t::router_t& m_router;
 
-            mutable random_generator_t m_generator;
+            std::default_random_engine mutable m_generator;
         };
 
         groups_t m_groups;
 
         // Router interlocking.
-        mutable std::mutex m_mutex;
+        std::mutex mutable m_mutex;
 };
 
 group_index_t::group_index_t() :
@@ -195,12 +187,8 @@ locator_t::router_t::groups_t::groups_t(logging::log_t& log, const router_t& rou
     m_log(log),
     m_router(router)
 {
-#if defined(__clang__) || defined(HAVE_GCC46)
     std::random_device device;
     m_generator.seed(device());
-#else
-    m_generator.seed(static_cast<unsigned long>(::time(nullptr)));
-#endif
 }
 
 void
@@ -279,7 +267,7 @@ locator_t::router_t::groups_t::select_service(const std::string& group_name) con
         return group_name;
     }
 
-    uniform_uint distribution(1, group_it->second.sum());
+    std::uniform_int_distribution<unsigned int> distribution(1, group_it->second.sum());
     unsigned int max = distribution(m_generator);
 
     for(size_t i = 0; i < group_it->second.services().size(); ++i) {

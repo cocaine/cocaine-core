@@ -29,12 +29,8 @@ adhoc_t::adhoc_t(context_t& context, const std::string& name, const dynamic_t& a
     category_type(context, name, args),
     m_log(context.log(name))
 {
-#if defined(__clang__) || defined(HAVE_GCC46)
     std::random_device device;
     m_random_generator.seed(device());
-#else
-    m_random_generator.seed(static_cast<unsigned long>(::time(nullptr)));
-#endif
 }
 
 adhoc_t::~adhoc_t() {
@@ -51,12 +47,7 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
 
     std::tie(lb, ub) = m_remote_services.equal_range(name);
 
-#if defined(__clang__) || defined(HAVE_GCC46)
     std::uniform_int_distribution<int> distribution(0, std::distance(lb, ub) - 1);
-#else
-    std::uniform_int<int> distribution(0, std::distance(lb, ub) - 1);
-#endif
-
     std::advance(lb, distribution(m_random_generator));
 
     COCAINE_LOG_DEBUG(m_log, "providing service using remote node")(
