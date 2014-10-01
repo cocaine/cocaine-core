@@ -45,14 +45,15 @@ basic_client_t::basic_client_t(basic_client_t&& other) {
 }
 
 basic_client_t::~basic_client_t() {
-    if(m_session) m_session->detach();
+    if(m_session) {
+        m_session->detach();
+    }
 }
 
 basic_client_t&
 basic_client_t::operator=(basic_client_t&& rhs) {
     if(m_session && m_session != rhs.m_session) {
         m_session->detach();
-        m_session = nullptr;
     }
 
     if((m_session = std::move(rhs.m_session)) == nullptr) {
@@ -96,7 +97,10 @@ basic_client_t::connect(std::unique_ptr<tcp::socket> socket) {
 
 void
 basic_client_t::cleanup(const boost::system::error_code& COCAINE_UNUSED_(ec)) {
-    if(m_session) m_session->detach();
+    if(m_session) {
+        m_session->detach();
+        m_session = nullptr;
+    }
 }
 
 }}} // namespace cocaine::api::details

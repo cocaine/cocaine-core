@@ -103,6 +103,9 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
         fd
     ));
 
+    // Set the NO_DELAY TCP option to speed up small message passing.
+    channel->socket->set_option(tcp::no_delay(true));
+
     try {
         m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
     } catch(const boost::system::system_error& e) {

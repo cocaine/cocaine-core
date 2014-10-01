@@ -95,6 +95,11 @@ public:
         );
     }
 
+    auto
+    pressure() const -> size_t {
+        return m_ring.size();
+    }
+
 private:
     void
     fill(message_type& message, handler_type handle, const boost::system::error_code& ec, size_t bytes_read) {

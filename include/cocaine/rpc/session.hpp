@@ -52,7 +52,7 @@ class session_t:
     // NOTE: The underlying connection and session mutex. Upstreams use this mutex to synchronize
     // their state when sending messages, however it does not seem to be under contention.
     std::unique_ptr<io::channel<boost::asio::ip::tcp>> ptr;
-    std::mutex mutex;
+    mutable std::mutex mutex;
 
     // Keep the remote endpoint in case the socket is closed abruptly and we need to report it.
     const boost::asio::ip::tcp::endpoint endpoint;
@@ -103,13 +103,16 @@ public:
     // Information
 
     auto
-    remote_endpoint() const -> boost::asio::ip::tcp::endpoint;
+    active_channels() const -> std::map<uint64_t, std::string>;
+
+    auto
+    memory_pressure() const -> std::tuple<size_t, size_t>;
 
     auto
     name() const -> std::string;
 
     auto
-    active_channels() const -> std::map<uint64_t, std::string>;
+    remote_endpoint() const -> boost::asio::ip::tcp::endpoint;
 
 private:
     void

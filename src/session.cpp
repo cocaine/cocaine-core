@@ -297,20 +297,6 @@ session_t::push(encoder_t::message_type&& message) {
 
 // Information
 
-tcp::endpoint
-session_t::remote_endpoint() const {
-    return endpoint;
-}
-
-std::string
-session_t::name() const {
-    if(prototype) {
-        return prototype->name();
-    } else {
-        return "<unassigned>";
-    }
-}
-
 std::map<uint64_t, std::string>
 session_t::active_channels() const {
     std::map<uint64_t, std::string> result;
@@ -322,4 +308,25 @@ session_t::active_channels() const {
     }
 
     return result;
+}
+
+std::tuple<size_t, size_t>
+session_t::memory_pressure() const {
+    std::lock_guard<std::mutex> guard(mutex);
+
+    if(ptr) {
+        return { ptr->reader->pressure(), ptr->writer->pressure() };
+    } else {
+        return { 0, 0 };
+    }
+}
+
+std::string
+session_t::name() const {
+    return prototype ? prototype->name() : "<unassigned>";
+}
+
+tcp::endpoint
+session_t::remote_endpoint() const {
+    return endpoint;
 }

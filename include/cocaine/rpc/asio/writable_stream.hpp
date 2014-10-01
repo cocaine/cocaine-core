@@ -95,6 +95,11 @@ public:
         );
     }
 
+    auto
+    pressure() const -> size_t {
+        return boost::asio::buffer_size(m_messages);
+    }
+
 private:
     void
     flush(const boost::system::error_code& ec, size_t bytes_written) {
