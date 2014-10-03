@@ -62,7 +62,7 @@ struct node_commands {
 
         typedef boost::mpl::list<
             node_id_t
-        > tuple_type;
+        > argument_type;
 
         typedef void result_type;
     };
@@ -80,7 +80,7 @@ struct node_commands {
 
         typedef boost::mpl::list<
             node_id_t
-        > tuple_type;
+        > argument_type;
 
         typedef void result_type;
     };

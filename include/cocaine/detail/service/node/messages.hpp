@@ -34,7 +34,7 @@ struct handshake {
 
     typedef boost::mpl::list<
         /* peer id */ std::string
-    > tuple_type;
+    > argument_type;
 };
 
 struct heartbeat {
@@ -52,7 +52,7 @@ struct terminate {
     typedef boost::mpl::list<
         /* code */   code,
         /* reason */ std::string
-    > tuple_type;
+    > argument_type;
 };
 
 struct invoke {
@@ -60,7 +60,7 @@ struct invoke {
 
     typedef boost::mpl::list<
         /* event */ std::string
-    > tuple_type;
+    > argument_type;
 };
 
 struct chunk {
@@ -68,7 +68,7 @@ struct chunk {
 
     typedef boost::mpl::list<
         /* chunk */ std::string
-    > tuple_type;
+    > argument_type;
 };
 
 struct error {
@@ -77,7 +77,7 @@ struct error {
     typedef boost::mpl::list<
         /* code */   int,
         /* reason */ std::string
-    > tuple_type;
+    > argument_type;
 };
 
 struct choke {
@@ -118,7 +118,7 @@ struct info {
 
     typedef boost::mpl::list<
         /* info */ dynamic_t
-    > tuple_type;
+    > argument_type;
 };
 
 struct terminate {

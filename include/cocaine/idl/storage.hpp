@@ -44,7 +44,7 @@ struct read {
         std::string,
      /* Key. */
         std::string
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
      /* The stored value. Typically it will be serialized with msgpack, but it's not a strict
@@ -70,7 +70,7 @@ struct write {
         std::string,
      /* Tag list. Imagine these are your indexes. */
         optional<std::vector<std::string>>
-    > tuple_type;
+    > argument_type;
 };
 
 struct remove {
@@ -86,7 +86,7 @@ struct remove {
         std::string,
      /* Key. */
         std::string
-    > tuple_type;
+    > argument_type;
 };
 
 struct find {
@@ -102,7 +102,7 @@ struct find {
         std::string,
      /* Tag list. This is actually your query. */
         std::vector<std::string>
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
      /* A list of all the keys in the given key namespace. */

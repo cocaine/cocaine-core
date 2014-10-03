@@ -49,7 +49,7 @@ struct enqueue {
         std::string,
      /* Tag. Event can be enqueued to a specific worker with some user-defined name. */
         optional<std::string>
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
      /* Some other arbitrary sequence of bytes, streamed back to the client in chunks. */
@@ -102,7 +102,7 @@ struct start_app {
     typedef boost::mpl::list<
         std::string,
         std::string
-    > tuple_type;
+    > argument_type;
 };
 
 struct pause_app {
@@ -115,7 +115,7 @@ struct pause_app {
     typedef boost::mpl::list<
      /* Name of the app to susped. */
         std::string
-    > tuple_type;
+    > argument_type;
 };
 
 struct list {

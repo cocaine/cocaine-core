@@ -46,7 +46,7 @@ struct configuration_machine {
             uint64_t,
             std::string,
             raft::node_id_t
-        > tuple_type;
+        > argument_type;
 
         typedef void result_type;
     };
@@ -59,7 +59,7 @@ struct configuration_machine {
             uint64_t,
             std::string,
             raft::node_id_t
-        > tuple_type;
+        > argument_type;
 
         typedef void result_type;
     };
@@ -71,7 +71,7 @@ struct configuration_machine {
 
         typedef boost::mpl::list<
             std::string
-        > tuple_type;
+        > argument_type;
 
         typedef void result_type;
     };
@@ -87,7 +87,7 @@ struct configuration_machine {
 
         typedef boost::mpl::list<
             std::string
-        > tuple_type;
+        > argument_type;
 
         typedef void result_type;
     };
@@ -98,7 +98,7 @@ struct configuration_machine {
         typedef boost::mpl::list<
             std::string,
             cluster_config_t
-        > tuple_type;
+        > argument_type;
 
         typedef void result_type;
     };

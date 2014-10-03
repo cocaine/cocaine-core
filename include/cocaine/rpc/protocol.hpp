@@ -86,8 +86,8 @@ struct argument_type {
 };
 
 template<class Event>
-struct argument_type<Event, typename depend<typename Event::tuple_type>::type> {
-    typedef typename Event::tuple_type type;
+struct argument_type<Event, typename depend<typename Event::argument_type>::type> {
+    typedef typename Event::argument_type type;
 };
 
 template<class Event, class = void>

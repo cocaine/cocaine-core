@@ -46,7 +46,7 @@ struct resolve {
     typedef boost::mpl::list<
      /* An alias of the service to resolve. */
         std::string
-    > tuple_type;
+    > argument_type;
 
     typedef boost::mpl::list<
      /* Endpoints for the client to connect to in order to use the the service. */
@@ -72,7 +72,7 @@ struct connect {
     typedef boost::mpl::list<
      /* Node ID. */
         std::string
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
      /* A full dump of all available services on this node. Used by metalocator to aggregate
@@ -91,7 +91,7 @@ struct refresh {
     typedef boost::mpl::list<
      /* Name of the group to refresh. */
         std::vector<std::string>
-    > tuple_type;
+    > argument_type;
 };
 
 struct cluster {

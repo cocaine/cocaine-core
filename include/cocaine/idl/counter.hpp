@@ -40,7 +40,7 @@ struct inc {
 
     typedef boost::mpl::list<
         int
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<raft::command_result<int>>::tag upstream_type;
 };
@@ -54,7 +54,7 @@ struct dec {
 
     typedef boost::mpl::list<
         int
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<raft::command_result<int>>::tag upstream_type;
 };
@@ -69,7 +69,7 @@ struct cas {
     typedef boost::mpl::list<
         int,
         int
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<raft::command_result<bool>>::tag upstream_type;
 };

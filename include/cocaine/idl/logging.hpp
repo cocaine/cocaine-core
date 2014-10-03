@@ -52,7 +52,7 @@ struct emit {
         std::string,
      /* Log event attached attributes. */
         optional<blackhole::log::attributes_t>
-    > tuple_type;
+    > argument_type;
 
     typedef void upstream_type;
 };
@@ -80,7 +80,7 @@ struct set_verbosity {
     typedef boost::mpl::list<
      /* Proposed verbosity level. */
         logging::priorities
-    > tuple_type;
+    > argument_type;
 };
 
 }; // struct log

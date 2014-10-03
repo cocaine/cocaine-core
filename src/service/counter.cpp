@@ -39,7 +39,7 @@ struct inc {
 
     typedef boost::mpl::list<
         int
-    > tuple_type;
+    > argument_type;
 
     typedef int result_type;
 };
@@ -49,7 +49,7 @@ struct dec {
 
     typedef boost::mpl::list<
         int
-    > tuple_type;
+    > argument_type;
 
     typedef int result_type;
 };
@@ -60,7 +60,7 @@ struct cas {
     typedef boost::mpl::list<
         int,
         int
-    > tuple_type;
+    > argument_type;
 
     typedef bool result_type;
 };

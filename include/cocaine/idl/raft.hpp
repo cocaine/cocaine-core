@@ -54,7 +54,7 @@ struct append {
         std::vector<Entry>,
      /* Leader's commit_index. */
         uint64_t
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
      /* Term of the follower. */
@@ -86,7 +86,7 @@ struct apply {
         Snapshot,
      /* Leader's commit_index. */
         uint64_t
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
      /* Term of the follower. */
@@ -112,7 +112,7 @@ struct request_vote {
         cocaine::raft::node_id_t,
      /* Index and term of candidate's last log entry. */
         std::tuple<uint64_t, uint64_t>
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
      /* Term of the follower. */
@@ -134,7 +134,7 @@ struct insert {
         std::string,
      /* Node. */
         cocaine::raft::node_id_t
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
         cocaine::raft::command_result<void>
@@ -153,7 +153,7 @@ struct erase {
         std::string,
      /* Node. */
         cocaine::raft::node_id_t
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
         cocaine::raft::command_result<void>
@@ -198,7 +198,7 @@ struct insert {
         std::string,
      /* Node. */
         cocaine::raft::node_id_t
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
         cocaine::raft::command_result<cocaine::raft::cluster_change_result>
@@ -217,7 +217,7 @@ struct erase {
         std::string,
      /* Node. */
         cocaine::raft::node_id_t
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
         cocaine::raft::command_result<cocaine::raft::cluster_change_result>
@@ -234,7 +234,7 @@ struct lock {
     typedef boost::mpl::list<
      /* Name of state machine. */
         std::string
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
         cocaine::raft::command_result<void>
@@ -253,7 +253,7 @@ struct reset {
         std::string,
      /* New value of the configuration. */
         cocaine::raft::cluster_config_t
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
         cocaine::raft::command_result<void>
@@ -282,7 +282,7 @@ struct status {
     typedef boost::mpl::list<
     /* Name of state machine. */
         std::string
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
         cocaine::raft::actor_state
@@ -299,7 +299,7 @@ struct leader {
     typedef boost::mpl::list<
      /* Name of state machine. */
         std::string
-    > tuple_type;
+    > argument_type;
 
     typedef stream_of<
         cocaine::raft::node_id_t

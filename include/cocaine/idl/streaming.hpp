@@ -43,7 +43,7 @@ struct chunk {
         return "write";
     }
 
-    typedef T tuple_type;
+    typedef T argument_type;
 
     // Terminal message.
     typedef void upstream_type;
@@ -61,7 +61,7 @@ struct error {
         int,
      /* Human-readable error description. */
         std::string
-    > tuple_type;
+    > argument_type;
 
     // Terminal message.
     typedef void upstream_type;
