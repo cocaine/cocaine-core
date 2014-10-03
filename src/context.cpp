@@ -394,35 +394,44 @@ port_mapping_t::port_mapping_t(const config_t& config):
     std::random_device device;
     std::shuffle(seed.begin(), seed.end(), std::default_random_engine(device()));
 
-    // Safe until fully constructed.
-    m_shared.unsafe() = queue_type(seed.begin(), seed.end());
+    // Populate the shared port queue.
+    m_shared = std::deque<port_t>(seed.begin(), seed.end());
 }
 
 port_t
 port_mapping_t::assign(const std::string& name) {
-    if(m_pinned.count(name)) {
-        return m_pinned.at(name);
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if(m_in_use.count(name)) {
+        throw cocaine::error_t("named port is already in use");
     }
 
-    auto ptr = m_shared.synchronize();
+    if(m_pinned.count(name)) {
+        return m_in_use.insert({name, m_pinned.at(name)}).first->second;
+    }
 
-    if(ptr->empty()) {
+    if(m_shared.empty()) {
         throw cocaine::error_t("no ports left for allocation");
     }
 
-    const auto port = ptr->front(); ptr->pop_front();
+    auto port = m_shared.front(); m_shared.pop_front();
 
-    return port;
+    return m_in_use.insert({name, port}).first->second;
 }
 
 void
 port_mapping_t::retain(const std::string& name, port_t port) {
-    if(m_pinned.count(name)) {
-        // TODO: Fix pinned ports retention.
-        return;
+    std::lock_guard<std::mutex> guard(m_mutex);
+
+    if(!m_in_use.count(name)) {
+        throw cocaine::error_t("named port was never assigned");
     }
 
-    return m_shared->push_back(port);
+    if(!m_pinned.count(name)) {
+        m_shared.push_back(port);
+    }
+
+    m_in_use.erase(name);
 }
 
 // Context

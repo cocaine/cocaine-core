@@ -102,13 +102,15 @@ public:
 // Dynamic port mapper
 
 class port_mapping_t {
-    typedef std::deque<port_t> queue_type;
-
     // Pinned service ports.
-    const std::map<std::string, port_t> m_pinned;
+    std::map<std::string, port_t> const m_pinned;
 
     // Ports available for dynamic allocation.
-    synchronized<queue_type> m_shared;
+    std::deque<port_t> m_shared;
+    std::mutex m_mutex;
+
+    // Ports currently in use.
+    std::map<std::string, port_t> m_in_use;
 
 public:
     explicit
