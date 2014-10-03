@@ -77,7 +77,7 @@ public:
     { }
 
     void
-    operator()();
+    operator()(std::shared_ptr<channel<tcp>> ptr);
 
 private:
     void
@@ -85,13 +85,8 @@ private:
 };
 
 void
-session_t::pull_action_t::operator()() {
-    // TODO: Locking.
-    if(!session->ptr) {
-        return;
-    }
-
-    session->ptr->reader->read(message, std::bind(&pull_action_t::finalize,
+session_t::pull_action_t::operator()(std::shared_ptr<channel<tcp>> ptr) {
+    ptr->reader->read(message, std::bind(&pull_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -100,25 +95,24 @@ session_t::pull_action_t::operator()() {
 void
 session_t::pull_action_t::finalize(const boost::system::error_code& ec) {
     if(ec) {
-        return session->signals.shutdown(ec);
-    }
-
-    // TODO: Locking.
-    if(!session->ptr) {
+        session->signals.shutdown(ec);
         return;
     }
 
-    try {
-        session->invoke(message);
-    } catch(...) {
-        // TODO: Show the actual error message. The best sink would probably be the prototype's log,
-        // but for client sessions it's not available, so think about it a bit more.
-        // NOTE: This happens only when the underlying slot has miserably failed to handle service's
-        // exceptions. In such case, the client is disconnected to prevent any further damage.
-        return session->signals.shutdown(error::uncaught_error);
-    }
+    if(auto ptr = session->transport) {
+        try {
+            session->invoke(message);
+        } catch(...) {
+            // TODO: Show the actual error message. The best sink would probably be the prototype's
+            // log, but for client sessions it's not available, so think about it a bit more.
+            // NOTE: This happens only when the underlying slot has miserably failed to handle its
+            // exceptions. In such case, the client is disconnected to prevent any further damage.
+            session->signals.shutdown(error::uncaught_error);
+            return;
+        }
 
-    operator()();
+        operator()(std::move(ptr));
+    }
 }
 
 class session_t::push_action_t:
@@ -136,7 +130,7 @@ public:
     { }
 
     void
-    operator()();
+    operator()(std::shared_ptr<channel<tcp>> ptr);
 
 private:
     void
@@ -144,13 +138,8 @@ private:
 };
 
 void
-session_t::push_action_t::operator()() {
-    // TODO: Locking.
-    if(!session->ptr) {
-        return;
-    }
-
-    session->ptr->writer->write(message, std::bind(&push_action_t::finalize,
+session_t::push_action_t::operator()(std::shared_ptr<channel<tcp>> ptr) {
+    ptr->writer->write(message, std::bind(&push_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -159,7 +148,7 @@ session_t::push_action_t::operator()() {
 void
 session_t::push_action_t::finalize(const boost::system::error_code& ec) {
     if(ec) {
-        return session->signals.shutdown(ec);
+        session->signals.shutdown(ec);
     }
 }
 
@@ -188,9 +177,9 @@ session_t::discard_action_t::operator()(const boost::system::error_code& ec) {
 
 // Session
 
-session_t::session_t(std::unique_ptr<channel<tcp>> ptr_, const dispatch_ptr_t& prototype_):
-    ptr(std::move(ptr_)),
-    endpoint(ptr->socket->remote_endpoint()),
+session_t::session_t(std::unique_ptr<channel<tcp>> transport_, const dispatch_ptr_t& prototype_):
+    transport(std::move(transport_)),
+    endpoint(transport->socket->remote_endpoint()),
     prototype(prototype_),
     max_channel_id(0)
 {
@@ -259,10 +248,7 @@ session_t::revoke(uint64_t channel_id) {
 
 void
 session_t::detach() {
-    {
-        std::lock_guard<std::mutex> guard(mutex);
-        ptr = nullptr;
-    }
+    transport = nullptr;
 
     // Detach all the signal handlers, because the session will be in detached state and triggering
     // more signals will result in an undefined behavior.
@@ -273,26 +259,28 @@ session_t::detach() {
 
 void
 session_t::pull() {
-    std::lock_guard<std::mutex> guard(mutex);
-
-    if(!ptr) return;
-
-    // Use dispatch() instead of a direct call for thread safety.
-    ptr->socket->get_io_service().dispatch(std::bind(&pull_action_t::operator(),
-        std::make_shared<pull_action_t>(shared_from_this())
-    ));
+    if(auto ptr = transport) {
+        // Use dispatch() instead of a direct call for thread safety.
+        ptr->socket->get_io_service().dispatch(std::bind(&pull_action_t::operator(),
+            std::make_shared<pull_action_t>(shared_from_this()),
+            ptr
+        ));
+    } else {
+        throw cocaine::error_t("session is not connected");
+    }
 }
 
 void
 session_t::push(encoder_t::message_type&& message) {
-    std::lock_guard<std::mutex> guard(mutex);
-
-    if(!ptr) return;
-
-    // Use dispatch() instead of a direct call for thread safety.
-    ptr->socket->get_io_service().dispatch(std::bind(&push_action_t::operator(),
-        std::make_shared<push_action_t>(std::move(message), shared_from_this())
-    ));
+    if(auto ptr = transport) {
+        // Use dispatch() instead of a direct call for thread safety.
+        ptr->socket->get_io_service().dispatch(std::bind(&push_action_t::operator(),
+            std::make_shared<push_action_t>(std::move(message), shared_from_this()),
+            ptr
+        ));
+    } else {
+        throw cocaine::error_t("session is not connected");
+    }
 }
 
 // Information
@@ -312,9 +300,7 @@ session_t::active_channels() const {
 
 size_t
 session_t::memory_pressure() const {
-    std::lock_guard<std::mutex> guard(mutex);
-
-    if(ptr) {
+    if(auto ptr = transport) {
         return ptr->reader->pressure() + ptr->writer->pressure();
     } else {
         return 0;

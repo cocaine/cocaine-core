@@ -47,14 +47,8 @@ class session_t:
     class pull_action_t;
     class push_action_t;
 
-    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
-
-    // NOTE: The underlying connection and session mutex. Upstreams use this mutex to synchronize
-    // their state when sending messages, however it does not seem to be under contention.
-    std::unique_ptr<io::channel<boost::asio::ip::tcp>> ptr;
-
-    // TODO: Convert to synchronized<T> above.
-    std::mutex mutable mutex;
+    // The underlying connection.
+    std::shared_ptr<io::channel<boost::asio::ip::tcp>> transport;
 
     // Keep the remote endpoint in case the socket is closed abruptly and we need to report it.
     const boost::asio::ip::tcp::endpoint endpoint;
@@ -67,6 +61,8 @@ class session_t:
     // with old channel ids.
     uint64_t max_channel_id;
 
+    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
+
     // Virtual channels. Separate synchronization to decouple invocation and messaging.
     synchronized<channel_map_t> channels;
 
@@ -76,7 +72,7 @@ public:
     } signals;
 
 public:
-    session_t(std::unique_ptr<io::channel<boost::asio::ip::tcp>> ptr, const io::dispatch_ptr_t& prototype);
+    session_t(std::unique_ptr<io::channel<boost::asio::ip::tcp>> transport, const io::dispatch_ptr_t& prototype);
 
     // Operations
 
