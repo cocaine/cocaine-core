@@ -69,17 +69,19 @@ struct decoder_t {
 
         msgpack::unpack_return rv = msgpack::unpack(data, size, &offset, &zone, &message.object);
 
-        if(rv == msgpack::UNPACK_CONTINUE) {
+        if(rv == msgpack::UNPACK_SUCCESS || rv == msgpack::UNPACK_EXTRA_BYTES) {
+            if(message.object.type != msgpack::type::ARRAY || message.object.via.array.size < 3) {
+                ec = error::frame_format_error;
+            } else if(message.object.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER ||
+                      message.object.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER ||
+                      message.object.via.array.ptr[2].type != msgpack::type::ARRAY)
+            {
+                ec = error::frame_format_error;
+            }
+        } else if(rv == msgpack::UNPACK_CONTINUE) {
             ec = error::insufficient_bytes;
         } else if(rv == msgpack::UNPACK_PARSE_ERROR) {
             ec = error::parse_error;
-        } else if(message.object.type != msgpack::type::ARRAY || message.object.via.array.size < 3) {
-            ec = error::frame_format_error;
-        } else if(message.object.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER ||
-                  message.object.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER ||
-                  message.object.via.array.ptr[2].type != msgpack::type::ARRAY)
-        {
-            ec = error::frame_format_error;
         }
 
         return offset;
