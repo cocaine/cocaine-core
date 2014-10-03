@@ -107,8 +107,8 @@ public:
     auto
     active_channels() const -> std::map<uint64_t, std::string>;
 
-    auto
-    memory_pressure() const -> size_t;
+    size_t
+    memory_pressure() const;
 
     auto
     name() const -> std::string;

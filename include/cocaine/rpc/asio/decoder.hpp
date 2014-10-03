@@ -73,7 +73,7 @@ struct decoder_t {
             ec = error::insufficient_bytes;
         } else if(rv == msgpack::UNPACK_PARSE_ERROR) {
             ec = error::parse_error;
-        } else if(message.object.type != msgpack::type::ARRAY || message.object.via.array.size != 3) {
+        } else if(message.object.type != msgpack::type::ARRAY || message.object.via.array.size < 3) {
             ec = error::frame_format_error;
         } else if(message.object.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER ||
                   message.object.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER ||
