@@ -473,8 +473,13 @@ locator_t::on_service(const actor_t& actor) {
             { actor.prototype().name(), metadata }
         };
 
-        for(auto it = ptr->streams.begin(); it != ptr->streams.end(); ++it) {
-            it->second.write(update);
+        for(auto it = ptr->streams.begin(); it != ptr->streams.end();) {
+            try {
+                it->second.write(update);
+                it++;
+            } catch(...) {
+                it = ptr->streams.erase(it);
+            }
         }
     }
 
@@ -493,7 +498,11 @@ locator_t::on_context_shutdown() {
         COCAINE_LOG_DEBUG(m_log, "closing %d remote node synchronization stream(s)", ptr->streams.size());
 
         for(auto it = ptr->streams.begin(); it != ptr->streams.end(); ++it) {
-            it->second.close();
+            try {
+                it->second.close();
+            } catch(...) {
+                // Ignore all exceptions. The runtime is being destroyed anyway.
+            }
         }
 
         ptr->streams.clear();
