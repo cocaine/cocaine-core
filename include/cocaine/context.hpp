@@ -28,13 +28,13 @@
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
+#include <blackhole/blackhole.hpp>
+
 #include <boost/asio/ip/address.hpp>
 
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/optional.hpp>
 #include <boost/signals2/signal.hpp>
-
-#include <blackhole/blackhole.hpp>
 
 namespace cocaine {
 

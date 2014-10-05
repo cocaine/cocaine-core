@@ -32,6 +32,11 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
+#include <boost/spirit/include/karma_generate.hpp>
+#include <boost/spirit/include/karma_list.hpp>
+#include <boost/spirit/include/karma_stream.hpp>
+#include <boost/spirit/include/karma_string.hpp>
+
 using namespace cocaine::io;
 using namespace cocaine::service;
 
@@ -94,9 +99,9 @@ node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::str
 
     if(!errored.empty()) {
         std::ostringstream stream;
-        std::ostream_iterator<std::string> builder(stream, ", ");
+        std::ostream_iterator<char> builder(stream);
 
-        std::copy(errored.begin(), errored.end(), builder);
+        boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", errored);
 
         COCAINE_LOG_ERROR(m_log, "couldn't start %d app(s): %s", errored.size(), stream.str());
     }

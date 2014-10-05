@@ -33,6 +33,11 @@
 
 #include <boost/asio/connect.hpp>
 
+#include <boost/spirit/include/karma_generate.hpp>
+#include <boost/spirit/include/karma_list.hpp>
+#include <boost/spirit/include/karma_stream.hpp>
+#include <boost/spirit/include/karma_string.hpp>
+
 using namespace boost::asio;
 using namespace boost::asio::ip;
 
@@ -234,9 +239,9 @@ resolve_t::resolve_t(std::unique_ptr<logging::log_t> log, io_service& asio,
     }
 
     std::ostringstream stream;
-    std::ostream_iterator<endpoint_type> builder(stream, ", ");
+    std::ostream_iterator<char> builder(stream);
 
-    std::copy(endpoints.begin(), endpoints.end(), builder);
+    boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", endpoints);
 
     COCAINE_LOG_DEBUG(m_log, "connecting to remote locator, trying: %s", stream.str());
 
