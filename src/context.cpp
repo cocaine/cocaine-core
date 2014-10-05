@@ -39,6 +39,12 @@
 #include <numeric>
 #include <random>
 
+#include <blackhole/formatter/json.hpp>
+#include <blackhole/frontend/files.hpp>
+#include <blackhole/frontend/syslog.hpp>
+#include <blackhole/scoped_attributes.hpp>
+#include <blackhole/sink/socket.hpp>
+
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -47,13 +53,12 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 
-#include "rapidjson/reader.h"
+#include <boost/spirit/include/karma_generate.hpp>
+#include <boost/spirit/include/karma_list.hpp>
+#include <boost/spirit/include/karma_stream.hpp>
+#include <boost/spirit/include/karma_string.hpp>
 
-#include <blackhole/formatter/json.hpp>
-#include <blackhole/frontend/files.hpp>
-#include <blackhole/frontend/syslog.hpp>
-#include <blackhole/scoped_attributes.hpp>
-#include <blackhole/sink/socket.hpp>
+#include "rapidjson/reader.h"
 
 using namespace cocaine;
 
@@ -711,9 +716,9 @@ context_t::bootstrap() {
 
     if(!errored.empty()) {
         std::ostringstream stream;
-        std::ostream_iterator<std::string> builder(stream, ", ");
+        std::ostream_iterator<char> builder(stream);
 
-        std::copy(errored.begin(), errored.end(), builder);
+        boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", errored);
 
         COCAINE_LOG_ERROR(m_logger, "coudn't start %d service(s): %s", errored.size(), stream.str());
 

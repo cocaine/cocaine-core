@@ -45,6 +45,13 @@
 
 #include <boost/asio/connect.hpp>
 
+#include <boost/range/adaptor/map.hpp>
+
+#include <boost/spirit/include/karma_generate.hpp>
+#include <boost/spirit/include/karma_list.hpp>
+#include <boost/spirit/include/karma_stream.hpp>
+#include <boost/spirit/include/karma_string.hpp>
+
 using namespace blackhole;
 
 using namespace boost::asio;
@@ -135,9 +142,13 @@ locator_t::remote_client_t::on_announce(const results::connect& update) {
     if(update.empty()) return;
 
     std::ostringstream stream;
-    std::ostream_iterator<std::string> builder(stream, ", ");
+    std::ostream_iterator<char> builder(stream);
 
-    std::transform(update.begin(), update.end(), builder, tuple::nth_element<0>());
+    boost::spirit::karma::generate(
+        builder,
+        boost::spirit::karma::stream % ", ",
+        update | boost::adaptors::map_keys
+    );
 
     COCAINE_LOG_INFO(impl->m_log, "remote node has updated the following services: %s", stream.str())(
         "uuid", uuid
@@ -219,9 +230,9 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
     if(!m_restricted.empty()) {
         std::ostringstream stream;
-        std::ostream_iterator<std::string> builder(stream);
+        std::ostream_iterator<char> builder(stream);
 
-        std::copy(m_restricted.begin(), m_restricted.end(), builder);
+        boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", m_restricted);
 
         COCAINE_LOG_INFO(m_log, "restricting %d service(s): %s", m_restricted.size(), stream.str());
     }
