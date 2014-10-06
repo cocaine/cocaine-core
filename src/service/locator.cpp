@@ -465,26 +465,26 @@ locator_t::on_service(const actor_t& actor) {
         actor.prototype().graph()
     };
 
+    const auto response = results::connect {
+        { actor.prototype().name(), metadata }
+    };
+
     std::lock_guard<std::mutex> guard(m_mutex);
 
     COCAINE_LOG_DEBUG(m_log, "synchronizing service state with %d remote node(s)", m_streams.size())(
         "service", actor.prototype().name()
     );
 
-    const auto update = results::connect {
-        { actor.prototype().name(), metadata }
-    };
-
     for(auto it = m_streams.begin(); it != m_streams.end();) {
         try {
-            it->second.write(update); ++it;
+            it->second.write(response); ++it;
         } catch(...) {
             COCAINE_LOG_INFO(m_log, "removing synchronization stream for remote node")(
                 "uuid", it->first
             );
 
-            // The remote node has crashed, was stopped or something else happened which renders
-            // it impossible to continue delivering synchronization diffs to it.
+            // The remote node has crashed, was stopped or something else happened which renders it
+            // impossible to continue delivering synchronization diffs to it.
             it = m_streams.erase(it);
         }
     }
