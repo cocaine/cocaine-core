@@ -88,29 +88,29 @@ private:
 struct cgroup_configurator_t:
     public boost::static_visitor<void>
 {
-    cgroup_configurator_t(cgroup_controller* impl_, const char* parameter_):
-        impl(impl_),
+    cgroup_configurator_t(cgroup_controller* ptr_, const char* parameter_):
+        ptr(ptr_),
         parameter(parameter_)
     { }
 
     void
     operator()(const dynamic_t::bool_t& value) const {
-        cgroup_add_value_bool(impl, parameter, value);
+        cgroup_add_value_bool(ptr, parameter, value);
     }
 
     void
     operator()(const dynamic_t::int_t& value) const {
-        cgroup_add_value_int64(impl, parameter, value);
+        cgroup_add_value_int64(ptr, parameter, value);
     }
 
     void
     operator()(const dynamic_t::uint_t& value) const {
-        cgroup_add_value_uint64(impl, parameter, value);
+        cgroup_add_value_uint64(ptr, parameter, value);
     }
 
     void
     operator()(const dynamic_t::string_t& value) const {
-        cgroup_add_value_string(impl, parameter, value.c_str());
+        cgroup_add_value_string(ptr, parameter, value.c_str());
     }
 
     template<class T>
@@ -120,7 +120,10 @@ struct cgroup_configurator_t:
     }
 
 private:
-    cgroup_controller* impl;
+    cgroup_controller *const ptr;
+
+    // Parameter name is something like "cpu.shares" or "blkio.weight", i.e. it includes the name of
+    // the actual controller it corresponds to.
     const char* parameter;
 };
 
@@ -175,7 +178,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
             continue;
         }
 
-        cgroup_controller* impl = cgroup_add_controller(m_cgroup, type->first.c_str());
+        cgroup_controller* ptr = cgroup_add_controller(m_cgroup, type->first.c_str());
 
         for(auto it = type->second.as_object().begin(); it != type->second.as_object().end(); ++it) {
             COCAINE_LOG_INFO(m_log, "setting cgroup controller '%s' parameter '%s' to '%s'",
@@ -183,7 +186,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
             );
 
             try {
-                it->second.apply(cgroup_configurator_t(impl, it->first.c_str()));
+                it->second.apply(cgroup_configurator_t(ptr, it->first.c_str()));
             } catch(const cocaine::error_t& e) {
                 COCAINE_LOG_ERROR(m_log, "unable to set cgroup controller '%s' parameter '%s' - %s",
                     type->first, it->first, e.what()

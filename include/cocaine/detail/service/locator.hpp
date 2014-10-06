@@ -42,10 +42,21 @@ namespace cocaine { namespace service {
 class locator_t;
 
 namespace results {
-    typedef result_of<io::locator::resolve>::type resolve;
-    typedef result_of<io::locator::connect>::type connect;
-    typedef result_of<io::locator::cluster>::type cluster;
-}
+
+typedef result_of<io::locator::resolve>::type resolve;
+typedef result_of<io::locator::connect>::type connect;
+typedef result_of<io::locator::cluster>::type cluster;
+
+} // namespace results
+
+class locator_cfg_t
+{
+public:
+    locator_cfg_t(const std::string& name, const dynamic_t& args);
+
+    std::string uuid;
+    std::set<std::string> restricted;
+};
 
 class locator_t:
     public api::service_t,
@@ -55,37 +66,29 @@ class locator_t:
     class remote_client_t;
     class router_t;
 
+    // Used to gracefully shutdown clustering components on context shutdown signal.
     class cleanup_action_t;
 
     context_t& m_context;
 
     const std::unique_ptr<logging::log_t> m_log;
+    const locator_cfg_t m_cfg;
 
     // Cluster interconnections.
     boost::asio::io_service& m_asio;
 
-    // Node UUID.
-    const std::string m_uuid;
-
     // Remote sessions are created using this resolve.
     std::unique_ptr<api::resolve_t> m_resolve;
 
-    // Remote sessions indexed by uuid. The uuid is required to disambiguate between different
+    // Incoming sessions indexed by uuid. The uuid is required to disambiguate between different two
     // instances on the same host, even if the instance was restarted on the same port.
     std::map<std::string, api::client<io::locator_tag>> m_remotes;
 
-    struct locals_t {
-        results::connect snapshot;
+    // Outgoing sessions indexed by uuid and the most recent snapshot of the local service info.
+    std::map<std::string, streamed<results::connect>> m_streams;
+    std::mutex m_mutex;
 
-        // Outgoing synchronization streams.
-        std::map<std::string, streamed<results::connect>> streams;
-    };
-
-    // Local services state.
-    synchronized<locals_t> m_locals;
-
-    // A list of local-only services, i.e. restricted from being announced to remote nodes.
-    std::set<std::string> m_restricted;
+    results::connect m_snapshot;
 
     // Clustering components.
     std::unique_ptr<api::gateway_t> m_gateway;

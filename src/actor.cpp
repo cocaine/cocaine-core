@@ -44,16 +44,16 @@ using namespace cocaine;
 class actor_t::accept_action_t:
     public std::enable_shared_from_this<accept_action_t>
 {
-    actor_t* impl;
+    actor_t *const parent;
 
     // Holds new connection information, populated by Boost ASIO.
-    tcp::socket   peer;
+    tcp::socket socket;
     tcp::endpoint endpoint;
 
 public:
-    accept_action_t(actor_t* impl_):
-        impl(impl_),
-        peer(*impl_->m_asio)
+    accept_action_t(actor_t* parent_):
+        parent(parent_),
+        socket(*parent->m_asio)
     { }
 
     void
@@ -66,7 +66,7 @@ private:
 
 void
 actor_t::accept_action_t::operator()() {
-    impl->m_acceptor->async_accept(peer, endpoint, std::bind(&accept_action_t::finalize,
+    parent->m_acceptor->async_accept(socket, endpoint, std::bind(&accept_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -74,8 +74,8 @@ actor_t::accept_action_t::operator()() {
 
 void
 actor_t::accept_action_t::finalize(const boost::system::error_code& ec) {
-    scoped_attributes_t attributes(*impl->m_log, {
-        attribute::make("service", impl->m_prototype->name())
+    scoped_attributes_t attributes(*parent->m_log, {
+        attribute::make("service", parent->m_prototype->name())
     });
 
     if(ec) {
@@ -83,15 +83,15 @@ actor_t::accept_action_t::finalize(const boost::system::error_code& ec) {
             return;
         }
 
-        COCAINE_LOG_ERROR(impl->m_log, "unable to accept client connection: [%d] %s",
+        COCAINE_LOG_ERROR(parent->m_log, "unable to accept client connection: [%d] %s",
             ec.value(), ec.message()
         );
     } else {
-        execution_unit_t& engine = impl->m_context.engine();
+        execution_unit_t& engine = parent->m_context.engine();
 
         // This won't attach the socket immediately, instead it will post a new action to the
         // designated unit's event loop queue.
-        engine.attach(std::make_shared<tcp::socket>(std::move(peer)), impl->m_prototype);
+        engine.attach(std::make_shared<tcp::socket>(std::move(socket)), parent->m_prototype);
     }
 
     operator()();

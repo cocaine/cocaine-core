@@ -64,7 +64,7 @@ chamber_t::named_runnable_t::operator()() const {
 class chamber_t::stats_periodic_action_t:
     public std::enable_shared_from_this<stats_periodic_action_t>
 {
-    chamber_t* impl;
+    chamber_t *const parent;
     const boost::posix_time::seconds interval;
 
     // Snapshot of the last getrusage(2) report to be able to calculate the difference.
@@ -72,8 +72,8 @@ class chamber_t::stats_periodic_action_t:
 
 public:
     template<class Interval>
-    stats_periodic_action_t(chamber_t* impl_, Interval interval_):
-        impl(impl_),
+    stats_periodic_action_t(chamber_t* parent_, Interval interval_):
+        parent(parent_),
         interval(interval_)
     {
         std::memset(&last_tick, 0, sizeof(last_tick));
@@ -89,9 +89,9 @@ private:
 
 void
 chamber_t::stats_periodic_action_t::operator()() {
-    impl->cron.expires_from_now(interval);
+    parent->cron.expires_from_now(interval);
 
-    impl->cron.async_wait(std::bind(&stats_periodic_action_t::finalize,
+    parent->cron.async_wait(std::bind(&stats_periodic_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -124,7 +124,7 @@ chamber_t::stats_periodic_action_t::finalize(const boost::system::error_code& ec
     // Sum up the user and system running time.
     timeradd(&tick_diff.ru_utime, &tick_diff.ru_stime, &real_time);
 
-    (*impl->load_average.synchronize())(
+    (*parent->load_average.synchronize())(
         (real_time.tv_sec * 1e6 + real_time.tv_usec) / interval.total_microseconds()
     );
 

@@ -100,14 +100,14 @@ private:
 class app_service_t:
     public dispatch<app_tag>
 {
-    app_t* impl;
+    app_t *const parent;
 
 private:
     struct enqueue_slot_t:
         public basic_slot<app::enqueue>
     {
-        enqueue_slot_t(app_service_t* impl_):
-            impl(impl_)
+        enqueue_slot_t(app_service_t* parent_):
+            parent(parent_)
         { }
 
         typedef basic_slot<app::enqueue>::dispatch_type dispatch_type;
@@ -118,13 +118,13 @@ private:
         boost::optional<std::shared_ptr<const dispatch_type>>
         operator()(tuple_type&& args, upstream_type&& upstream) {
             return tuple::invoke(
-                std::bind(&app_service_t::enqueue, impl, std::ref(upstream), ph::_1, ph::_2),
+                std::bind(&app_service_t::enqueue, parent, std::ref(upstream), ph::_1, ph::_2),
                 std::move(args)
             );
         }
 
     private:
-        app_service_t* impl;
+        app_service_t *const parent;
     };
 
     struct engine_stream_adapter_t:
@@ -163,21 +163,21 @@ private:
         api::stream_ptr_t downstream;
 
         if(tag.empty()) {
-            downstream = impl->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream));
+            downstream = parent->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream));
         } else {
-            downstream = impl->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
+            downstream = parent->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
         }
 
         return std::make_shared<const streaming_service_t>(name(), downstream);
     }
 
 public:
-    app_service_t(const std::string& name_, app_t* impl_):
+    app_service_t(const std::string& name_, app_t* parent_):
         dispatch<app_tag>(name_),
-        impl(impl_)
+        parent(parent_)
     {
         on<app::enqueue>(std::make_shared<enqueue_slot_t>(this));
-        on<app::info>(std::bind(&app_t::info, impl));
+        on<app::info>(std::bind(&app_t::info, parent));
     }
 };
 

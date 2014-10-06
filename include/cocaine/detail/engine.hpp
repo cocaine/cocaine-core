@@ -61,9 +61,6 @@ private:
     attach_impl(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
     void
-    detach(int fd);
-
-    void
     on_shutdown(const boost::system::error_code& ec, int fd);
 };
 

@@ -30,7 +30,7 @@ class context_t;
 template<class> class dispatch;
 template<class> class upstream;
 
-struct dynamic_t;
+class dynamic_t;
 
 typedef unsigned short port_t;
 

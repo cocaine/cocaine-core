@@ -29,7 +29,7 @@
 
 namespace cocaine { namespace cluster {
 
-class multicast_config_t {
+class multicast_cfg_t {
 public:
     boost::asio::ip::udp::endpoint endpoint;
     boost::asio::deadline_timer::duration_type interval;
@@ -46,7 +46,7 @@ class multicast_t:
     interface& m_locator;
 
     const std::unique_ptr<logging::log_t> m_log;
-    const multicast_config_t m_cfg;
+    const multicast_cfg_t m_cfg;
 
     boost::asio::ip::udp::socket m_socket;
     boost::asio::deadline_timer m_timer;

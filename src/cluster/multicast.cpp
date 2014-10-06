@@ -54,8 +54,8 @@ struct dynamic_converter<address> {
 };
 
 template<>
-struct dynamic_converter<multicast_config_t> {
-    typedef multicast_config_t result_type;
+struct dynamic_converter<multicast_cfg_t> {
+    typedef multicast_cfg_t result_type;
 
     static
     result_type
@@ -98,7 +98,7 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
     m_context(context),
     m_locator(locator),
     m_log(context.log(name)),
-    m_cfg(args.to<multicast_config_t>()),
+    m_cfg(args.to<multicast_cfg_t>()),
     m_socket(locator.asio()),
     m_timer(locator.asio())
 {

@@ -130,12 +130,6 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
 }
 
 void
-execution_unit_t::detach(int fd) {
-    m_sessions[fd]->detach();
-    m_sessions.erase(fd);
-}
-
-void
 execution_unit_t::on_shutdown(const boost::system::error_code& ec, int fd) {
     auto it = m_sessions.find(fd);
 
@@ -152,5 +146,6 @@ execution_unit_t::on_shutdown(const boost::system::error_code& ec, int fd) {
         COCAINE_LOG_DEBUG(m_log, "client has disconnected");
     }
 
-    detach(fd);
+    it->second->detach();
+    m_sessions.erase(it);
 }

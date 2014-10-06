@@ -26,7 +26,7 @@
 
 namespace cocaine {
 
-struct dynamic_t;
+class dynamic_t;
 
 namespace detail { namespace dynamic {
 

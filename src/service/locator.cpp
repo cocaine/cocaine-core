@@ -68,13 +68,13 @@ class locator_t::remote_client_t:
     public dispatch<event_traits<locator::connect>::upstream_type>,
     public std::enable_shared_from_this<remote_client_t>
 {
-    locator_t* impl;
+    locator_t *const parent;
     const std::string uuid;
 
 public:
-    remote_client_t(locator_t* impl_, const std::string& uuid_):
-        dispatch<event_traits<locator::connect>::upstream_type>(impl_->name()),
-        impl(impl_),
+    remote_client_t(locator_t* parent_, const std::string& uuid_):
+        dispatch<event_traits<locator::connect>::upstream_type>(parent_->name()),
+        parent(parent_),
         uuid(uuid_)
     {
         typedef io::protocol<event_traits<locator::connect>::upstream_type>::scope protocol;
@@ -100,41 +100,41 @@ private:
 
 void
 locator_t::remote_client_t::on_link(const boost::system::error_code& ec) {
-    scoped_attributes_t attributes(*impl->m_log, {
+    scoped_attributes_t attributes(*parent->m_log, {
         attribute::make("uuid", uuid)
     });
 
     if(ec) {
-        COCAINE_LOG_ERROR(impl->m_log, "unable to connect to remote node: [%d] %s",
+        COCAINE_LOG_ERROR(parent->m_log, "unable to connect to remote node: [%d] %s",
             ec.value(), ec.message()
         );
 
         // Safe to erase directly — client is detached.
-        impl->m_remotes.erase(uuid);
+        parent->m_remotes.erase(uuid);
 
         return;
     }
 
-    if(!impl->m_remotes.count(uuid)) {
-        COCAINE_LOG_ERROR(impl->m_log, "client has been dropped while connecting to remote node");
+    if(!parent->m_remotes.count(uuid)) {
+        COCAINE_LOG_ERROR(parent->m_log, "client has been dropped while connecting to remote node");
         return;
     }
 
-    auto& client  = impl->m_remotes.at(uuid);
+    auto& client  = parent->m_remotes.at(uuid);
     auto& session = client.session().get();
 
-    COCAINE_LOG_DEBUG(impl->m_log, "connected to remote node via %s", session.remote_endpoint());
+    COCAINE_LOG_DEBUG(parent->m_log, "connected to remote node via %s", session.remote_endpoint());
 
-    client.invoke<locator::connect>(shared_from_this(), impl->m_uuid);
+    client.invoke<locator::connect>(shared_from_this(), parent->m_cfg.uuid);
 }
 
 void
 locator_t::remote_client_t::discard(const boost::system::error_code& ec) const {
-    COCAINE_LOG_ERROR(impl->m_log, "remote node has been unexpectedly detached: [%d] %s",
+    COCAINE_LOG_ERROR(parent->m_log, "remote node has been unexpectedly detached: [%d] %s",
         ec.value(), ec.message()
     )("uuid", uuid);
 
-    impl->drop_node(uuid);
+    parent->drop_node(uuid);
 }
 
 void
@@ -150,36 +150,36 @@ locator_t::remote_client_t::on_announce(const results::connect& update) {
         update | boost::adaptors::map_keys
     );
 
-    COCAINE_LOG_INFO(impl->m_log, "remote node has updated the following services: %s", stream.str())(
+    COCAINE_LOG_INFO(parent->m_log, "remote node has updated the following services: %s", stream.str())(
         "uuid", uuid
     );
 
-    const auto diff = impl->m_routing->update_remote(uuid, update);
+    const auto diff = parent->m_routing->update_remote(uuid, update);
 
     for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
-        impl->m_gateway->cleanup(uuid, it->first);
+        parent->m_gateway->cleanup(uuid, it->first);
     }
 
     for(auto it = diff.first.begin(); it != diff.first.end(); ++it) {
-        impl->m_gateway->consume(uuid, it->first, it->second);
+        parent->m_gateway->consume(uuid, it->first, it->second);
     }
 }
 
 void
 locator_t::remote_client_t::on_shutdown() {
-    COCAINE_LOG_INFO(impl->m_log, "remote node has closed synchronization stream")(
+    COCAINE_LOG_INFO(parent->m_log, "remote node has closed synchronization stream")(
         "uuid", uuid
     );
 
-    impl->drop_node(uuid);
+    parent->drop_node(uuid);
 }
 
 class locator_t::cleanup_action_t {
-    locator_t* impl;
+    locator_t *const parent;
 
 public:
-    cleanup_action_t(locator_t* impl_):
-        impl(impl_)
+    cleanup_action_t(locator_t* parent_):
+        parent(parent_)
     { }
 
     void
@@ -188,32 +188,39 @@ public:
 
 void
 locator_t::cleanup_action_t::operator()() {
-    if(!impl->m_remotes.empty()) {
-        COCAINE_LOG_DEBUG(impl->m_log, "cleaning up %d remote node client(s)", impl->m_remotes.size());
+    if(!parent->m_remotes.empty()) {
+        COCAINE_LOG_DEBUG(parent->m_log, "cleaning up %d remote node client(s)", parent->m_remotes.size());
 
         // Disconnect all the remote nodes.
-        impl->m_remotes.clear();
+        parent->m_remotes.clear();
     }
 
-    // Destroy the loopback locator connection.
-    impl->m_resolve = nullptr;
-
-    COCAINE_LOG_DEBUG(impl->m_log, "shutting down clustering components");
+    COCAINE_LOG_DEBUG(parent->m_log, "shutting down clustering components");
 
     // Destroy the clustering stuff.
-    impl->m_gateway = nullptr;
-    impl->m_cluster = nullptr;
+    parent->m_gateway = nullptr;
+    parent->m_cluster = nullptr;
+
+    // Destroy the loopback locator connection.
+    parent->m_resolve = nullptr;
 }
 
 // Locator
+
+locator_cfg_t::locator_cfg_t(const std::string& name, const dynamic_t& root):
+    uuid(unique_id_t().string())
+{
+    restricted = root.as_object().at("restrict", dynamic_t::array_t()).to<std::set<std::string>>();
+    restricted.insert(name);
+}
 
 locator_t::locator_t(context_t& context, io_service& asio, const std::string& name, const dynamic_t& root):
     category_type(context, asio, name, root),
     dispatch<locator_tag>(name),
     m_context(context),
     m_log(context.log(name)),
+    m_cfg(name, root),
     m_asio(asio),
-    m_uuid(unique_id_t().string()),
     m_resolve(new api::resolve_t(context.log(name + ":resolve"), asio, {})),
     m_routing(new router_t(*m_log.get()))
 {
@@ -226,18 +233,14 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
     // Service restrictions
 
-    m_restricted = root.as_object().at("restrict", dynamic_t::array_t()).to<std::set<std::string>>();
-
-    if(!m_restricted.empty()) {
+    if(!m_cfg.restricted.empty()) {
         std::ostringstream stream;
         std::ostream_iterator<char> builder(stream);
 
-        boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", m_restricted);
+        boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", m_cfg.restricted);
 
-        COCAINE_LOG_INFO(m_log, "restricting %d service(s): %s", m_restricted.size(), stream.str());
+        COCAINE_LOG_INFO(m_log, "restricting %d service(s): %s", m_cfg.restricted.size(), stream.str());
     }
-
-    m_restricted.insert(name);
 
     // Context shutdown signal is set to track 'm_routing' because its lifetime essentially matches
     // that of the Locator service itself
@@ -353,7 +356,7 @@ locator_t::drop_node(const std::string& uuid) {
 
 std::string
 locator_t::uuid() const {
-    return m_uuid;
+    return m_cfg.uuid;
 }
 
 auto
@@ -393,17 +396,17 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
         attribute::make("uuid", uuid)
     });
 
-    auto ptr = m_locals.synchronize();
+    std::lock_guard<std::mutex> guard(m_mutex);
 
-    if(ptr->streams.erase(uuid)) {
+    if(m_streams.erase(uuid)) {
         COCAINE_LOG_WARNING(m_log, "replacing stale synchronization stream for remote node");
     } else {
         COCAINE_LOG_INFO(m_log, "creating synchronization stream for remote node");
     }
 
-    ptr->streams.insert({uuid, stream});
+    m_streams.insert({uuid, stream});
 
-    return stream.write(ptr->snapshot);
+    return stream.write(m_snapshot);
 }
 
 void
@@ -452,7 +455,7 @@ locator_t::on_cluster() const -> results::cluster {
 
 void
 locator_t::on_service(const actor_t& actor) {
-    if(m_restricted.count(actor.prototype().name())) {
+    if(m_cfg.restricted.count(actor.prototype().name())) {
         return;
     }
 
@@ -462,50 +465,51 @@ locator_t::on_service(const actor_t& actor) {
         actor.prototype().graph()
     };
 
-    auto ptr = m_locals.synchronize();
+    std::lock_guard<std::mutex> guard(m_mutex);
 
-    if(!ptr->streams.empty()) {
-        COCAINE_LOG_DEBUG(m_log, "synchronizing service state with %d remote node(s)", ptr->streams.size())(
-            "service", actor.prototype().name()
-        );
+    COCAINE_LOG_DEBUG(m_log, "synchronizing service state with %d remote node(s)", m_streams.size())(
+        "service", actor.prototype().name()
+    );
 
-        const auto update = results::connect {
-            { actor.prototype().name(), metadata }
-        };
+    const auto update = results::connect {
+        { actor.prototype().name(), metadata }
+    };
 
-        for(auto it = ptr->streams.begin(); it != ptr->streams.end();) {
-            try {
-                it->second.write(update);
-                it++;
-            } catch(...) {
-                it = ptr->streams.erase(it);
-            }
+    for(auto it = m_streams.begin(); it != m_streams.end();) {
+        try {
+            it->second.write(update); ++it;
+        } catch(...) {
+            COCAINE_LOG_INFO(m_log, "removing synchronization stream for remote node")(
+                "uuid", it->first
+            );
+
+            // The remote node has crashed, was stopped or something else happened which renders
+            // it impossible to continue delivering synchronization diffs to it.
+            it = m_streams.erase(it);
         }
     }
 
     if(actor.is_active()) {
-        ptr->snapshot[actor.prototype().name()] = metadata;
+        m_snapshot[actor.prototype().name()] = metadata;
     } else {
-        ptr->snapshot.erase(actor.prototype().name());
+        m_snapshot.erase(actor.prototype().name());
     }
 }
 
 void
 locator_t::on_context_shutdown() {
-    auto ptr = m_locals.synchronize();
+    std::lock_guard<std::mutex> guard(m_mutex);
 
-    if(!ptr->streams.empty()) {
-        COCAINE_LOG_DEBUG(m_log, "closing %d remote node synchronization stream(s)", ptr->streams.size());
+    COCAINE_LOG_DEBUG(m_log, "closing %d remote node synchronization stream(s)", m_streams.size());
 
-        for(auto it = ptr->streams.begin(); it != ptr->streams.end(); ++it) {
-            try {
-                it->second.close();
-            } catch(...) {
-                // Ignore all exceptions. The runtime is being destroyed anyway.
-            }
+    for(auto it = m_streams.begin(); it != m_streams.end();) {
+        try {
+            it->second.close();
+        } catch(...) {
+            // Ignore all exceptions. The runtime is being destroyed anyway.
         }
 
-        ptr->streams.clear();
+        it = m_streams.erase(it);
     }
 
     // Schedule the rest of internal state cleanup inside the reactor's event loop.
