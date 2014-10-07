@@ -440,6 +440,8 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
             m_routing->update_group(*it, lb->second);
         }
     }
+
+    COCAINE_LOG_INFO(m_log, "updated %d active group(s)", values.size());
 }
 
 auto
