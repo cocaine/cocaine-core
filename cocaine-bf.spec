@@ -1,9 +1,9 @@
-%define cocaine_runtime_name      cocaine-runtime
+%define cocaine_runtime_name cocaine-runtime
 
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core2
-Version:	0.11.2.0
-Release:	2%{?dist}
+Version:	0.12.0.1
+Release:	1%{?dist}
 
 
 License:	GPLv2+
@@ -12,12 +12,8 @@ URL:		http://www.github.com/cocaine
 Source0:	%{name}-%{version}.tar.bz2
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-%if %{defined rhel} && 0%{?rhel} < 6
-BuildRequires: gcc44 gcc44-c++
-%endif
-
 BuildRequires: boost-devel, boost-iostreams, boost-thread, boost-system
-BuildRequires: libev-devel, openssl-devel, libtool-ltdl-devel, libuuid-devel, libcgroup-devel
+BuildRequires: libmhash-devel, libtool-ltdl-devel, libuuid-devel, libcgroup-devel
 BuildRequires: msgpack-devel, libarchive-devel, binutils-devel
 
 %if %{defined rhel} && 0%{?rhel} < 7
@@ -35,6 +31,7 @@ Cocaine is an open application cloud platform.
 Summary: Development files for %{name}
 Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
+Requires: boost-devel, libtool-ltdl-devel, msgpack-devel
 
 %description devel
 Cocaine development headers package.
@@ -48,17 +45,9 @@ Cocaine runtime components package.
 
 %prep
 %setup -q
-%if 0%{?fedora} >= 19
-patch -p1 < fedora/libcocaine-boost-mt.patch
-%endif
 
 %build
 %if %{defined rhel}
-%if 0%{?rhel} < 6
-export CC=gcc44
-export CXX=g++44
-CXXFLAGS="-pthread -I/usr/include/boost141" LDFLAGS="-L/usr/lib64/boost141" %{cmake28} -DBoost_DIR=/usr/lib64/boost141 -DBOOST_INCLUDEDIR=/usr/include/boost141 -DCMAKE_CXX_COMPILER=g++44 -DCMAKE_C_COMPILER=gcc44 -DCOCAINE_LIBDIR=%{_libdir} .
-%endif
 %if 0%{?rhel} == 6
 %{cmake28} -DCOCAINE_LIBDIR=%{_libdir} .
 %endif
@@ -121,7 +110,6 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_includedir}/*
 %{_libdir}/libcocaine-core.so
-%{_libdir}/libjson.so
 
 %files -n %{cocaine_runtime_name}
 %defattr(-,root,root,-)
@@ -137,6 +125,18 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
+* Tue Oct 07 2014 Andrey Sibirev <me@kobology.ru> 0.12.0.1-1
+- Release 0.12.
+
+* Mon Sep 22 2014 Evgeny Safronov <division494@gmail.com> 0.11.3.1-1
+- Feature: reopenable file logging service.
+
+* Fri Sep 05 2014 Evgeny Safronov <division494@gmail.com> 0.11.2.8-1
+- Bugfix: properly check platform macro definition.
+
+* Wed Jun 11 2014 Evgeniy Polyakov <zbr@ioremap.net> 0.11.2.3-1
+- Updated spec to the latest version to date.
+
 * Fri Jan 17 2014 Oleg Cherniy <oleg.cherniy@gmail.com> 0.11.2.0-2
-- Added support for Fedora 19, 20
+- Added support for Fedora 19, 20.
 

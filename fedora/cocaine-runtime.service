@@ -1,0 +1,12 @@
+[Unit]
+Description=Cocaine runtime components
+After=syslog.target network.target
+
+[Service]
+PIDFile=/var/run/cocaine-runtime.pid
+ExecStart=/usr/bin/cocaine-runtime -c /etc/cocaine/cocaine-default.conf
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
