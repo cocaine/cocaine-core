@@ -52,7 +52,7 @@ class readable_stream:
     typedef std::function<void(const boost::system::error_code&)> handler_type;
 
     std::vector<char, uninitialized<char>> m_ring;
-    std::vector<char, uninitialized<char>>::difference_type m_rd_offset;
+    std::vector<char, uninitialized<char>>::size_type m_rd_offset, m_rx_offset;
 
     decoder_type m_decoder;
 
@@ -62,7 +62,7 @@ public:
         m_channel(channel)
     {
         m_ring.resize(kInitialBufferSize);
-        m_rd_offset = 0;
+        m_rd_offset = m_rx_offset = 0;
     }
 
     void
@@ -70,17 +70,23 @@ public:
         boost::system::error_code ec;
 
         const size_t
-            bytes_parsed  = m_decoder.decode(m_ring.data(), m_rd_offset, message, ec),
-            bytes_pending = m_rd_offset - bytes_parsed;
+            bytes_pending = m_rd_offset - m_rx_offset,
+            bytes_decoded = m_decoder.decode(m_ring.data() + m_rx_offset, bytes_pending, message, ec);
 
         if(ec != error::insufficient_bytes) {
-            if(bytes_parsed) {
-                // Compactify the ring.
-                std::memmove(m_ring.data(), m_ring.data() + bytes_parsed, bytes_pending);
-                m_rd_offset = bytes_pending;
+            if(!ec) {
+                m_rx_offset += bytes_decoded;
             }
 
             return m_channel->get_io_service().post(std::bind(handle, ec));
+        }
+
+        if(m_rx_offset) {
+            // Compactify the ring before the asynchronous read operation.
+            std::memmove(m_ring.data(), m_ring.data() + m_rx_offset, bytes_pending);
+
+            m_rd_offset = bytes_pending;
+            m_rx_offset = 0;
         }
 
         if(bytes_pending > m_ring.size() / 2) {

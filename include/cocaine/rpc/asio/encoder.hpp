@@ -70,7 +70,7 @@ struct encoded_buffers_t {
 
 private:
     std::vector<char, uninitialized<char>> vector;
-    std::vector<char, uninitialized<char>>::difference_type offset;
+    std::vector<char, uninitialized<char>>::size_type offset;
 };
 
 struct encoded_message_t {
