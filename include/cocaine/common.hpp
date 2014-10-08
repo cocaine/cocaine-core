@@ -21,6 +21,7 @@
 #ifndef COCAINE_COMMON_HPP
 #define COCAINE_COMMON_HPP
 
+#include "cocaine/config.hpp"
 #include "cocaine/platform.hpp"
 
 #include <cstdint>
@@ -48,7 +49,6 @@
 #define COCAINE_UNUSED_(parameter)          \
     parameter __attribute__((unused))
 
-#include "cocaine/config.hpp"
 #include "cocaine/exceptions.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/memory.hpp"
