@@ -76,8 +76,11 @@ void
 archive_t::deploy(const std::string& prefix_) {
     const fs::path prefix = prefix_;
 
-    for(fs::directory_iterator it(prefix), end; it != end; ++it) {
-        fs::remove_all(it->path());
+    if(fs::exists(prefix)) {
+        COCAINE_LOG_DEBUG(m_log, "cleaning %s up", prefix);
+        for(fs::directory_iterator it(prefix), end; it != end; ++it) {
+            fs::remove_all(it->path());
+        }
     }
 
     archive* target = archive_write_disk_new();
