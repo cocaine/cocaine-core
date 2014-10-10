@@ -47,6 +47,8 @@ class session_t:
     class pull_action_t;
     class push_action_t;
 
+    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
+
     // The underlying connection.
     std::shared_ptr<io::channel<boost::asio::ip::tcp>> transport;
 
@@ -56,14 +58,11 @@ class session_t:
     // Initial dispatch.
     const io::dispatch_ptr_t prototype;
 
-    // Incoming channels counter. It stores the maximum channel id processed by the session. The
-    // session assumes that ids of incoming channels are strongly increasing and discards messages
-    // with old channel ids.
+    // The maximum channel id processed by the session. The session assumes that ids of incoming
+    // channels are strongly increasing and discards messages with old channel ids.
     uint64_t max_channel_id;
 
-    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
-
-    // Virtual channels. Separate synchronization to decouple invocation and messaging.
+    // Virtual channels.
     synchronized<channel_map_t> channels;
 
 public:

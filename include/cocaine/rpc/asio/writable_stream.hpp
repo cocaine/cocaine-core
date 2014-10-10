@@ -104,8 +104,6 @@ private:
     void
     flush(const boost::system::error_code& ec, size_t bytes_written) {
         if(ec) {
-            BOOST_ASSERT(!bytes_written);
-
             if(ec == boost::asio::error::operation_aborted) {
                 return;
             }
@@ -113,8 +111,8 @@ private:
             while(!m_handlers.empty()) {
                 m_channel->get_io_service().post(std::bind(m_handlers.front(), ec));
 
-                m_handlers.pop_front();
                 m_messages.pop_front();
+                m_handlers.pop_front();
             }
 
             return;

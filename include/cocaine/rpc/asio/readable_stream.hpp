@@ -89,7 +89,7 @@ public:
             m_rx_offset = 0;
         }
 
-        if(bytes_pending > m_ring.size() / 2) {
+        if(bytes_pending * 2 >= m_ring.size()) {
             // The total size of unprocessed data in larger than half the size of the ring, so grow
             // the ring in order to accomodate more data.
             m_ring.resize(m_ring.size() * 2);
@@ -110,8 +110,6 @@ private:
     void
     fill(message_type& message, handler_type handle, const boost::system::error_code& ec, size_t bytes_read) {
         if(ec) {
-            BOOST_ASSERT(!bytes_read);
-
             if(ec == boost::asio::error::operation_aborted) {
                 return;
             }
