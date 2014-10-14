@@ -35,7 +35,9 @@
 
 namespace cocaine { namespace engine {
 
-struct session_t {
+struct session_t:
+    public std::enable_shared_from_this<session_t>
+{
     COCAINE_DECLARE_NONCOPYABLE(session_t)
 
     typedef boost::asio::local::stream_protocol protocol_type;
@@ -95,8 +97,9 @@ private:
     send(std::lock_guard<std::mutex>&, Args&&... args);
 
 private:
+    class push_action_t;
     class stream_adapter_t;
-    std::shared_ptr<io::message_queue<io::rpc_tag, stream_adapter_t>> m_writer;
+    std::shared_ptr<synchronized<io::message_queue<io::rpc_tag, stream_adapter_t>>> m_writer;
 
     // Session interlocking.
     std::mutex m_mutex;
@@ -122,7 +125,7 @@ session_t::send(std::lock_guard<std::mutex>&, Args&&... args) {
     BOOST_ASSERT(m_writer);
 
     if(m_state == state::open) {
-        m_writer->append<Event>(std::forward<Args>(args)...);
+        m_writer->synchronize()->append<Event>(std::forward<Args>(args)...);
     } else {
         throw cocaine::error_t("the session is no longer valid");
     }

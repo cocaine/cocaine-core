@@ -30,28 +30,25 @@
 using namespace cocaine::engine;
 using namespace cocaine::io;
 
-// Temporary adapter to join together `writable_stream` and `io::message_queue`.
-// Guaranteed to live longer than the parent session.
-class session_t::stream_adapter_t:
-    public std::enable_shared_from_this<stream_adapter_t>
+class session_t::push_action_t:
+    public std::enable_shared_from_this<push_action_t>
 {
-    session_t* m_session;
-    std::shared_ptr<writable_stream<protocol_type, encoder_t>> m_downstream;
+    const encoder_t::message_type message;
+
+    // Keeps the session alive until all the operations are complete.
+    const std::shared_ptr<session_t> session;
 
 public:
-    stream_adapter_t() = default;
-    stream_adapter_t(session_t* session,
-                     std::shared_ptr<writable_stream<protocol_type, encoder_t>> downstream):
-        m_session(session),
-        m_downstream(downstream)
-    {}
+    push_action_t(encoder_t::message_type&& message, const std::shared_ptr<session_t>& session_):
+        message(std::move(message)),
+        session(session_)
+    { }
 
-    template<class Event, typename... Args>
     void
-    send(Args&&... args) {
-        m_downstream->write(
-            io::encoded<Event>(m_session->id, std::forward<Args>(args)...),
-            std::bind(&stream_adapter_t::on_write, shared_from_this(), ph::_1)
+    operator()(const std::shared_ptr<writable_stream<protocol_type, encoder_t>>& stream) {
+        stream->write(
+            message,
+            std::bind(&push_action_t::on_write, shared_from_this(), ph::_1)
         );
     }
 
@@ -63,8 +60,35 @@ private:
                 return;
             }
 
-            m_session->close();
+            session->close();
         }
+    }
+};
+
+// Temporary adapter to join together `writable_stream` and `io::message_queue`.
+// Guaranteed to live longer than the parent session.
+class session_t::stream_adapter_t:
+    public std::enable_shared_from_this<stream_adapter_t>
+{
+    std::shared_ptr<session_t> m_session;
+    std::shared_ptr<writable_stream<protocol_type, encoder_t>> m_downstream;
+
+public:
+    stream_adapter_t() = default;
+    stream_adapter_t(const std::shared_ptr<session_t>& session,
+                     const std::shared_ptr<writable_stream<protocol_type, encoder_t>>& downstream):
+        m_session(session),
+        m_downstream(downstream)
+    { }
+
+    template<class Event, typename... Args>
+    void
+    send(Args&&... args) {
+        auto push = std::make_shared<push_action_t>(
+            io::encoded<Event>(m_session->id, std::forward<Args>(args)...),
+            m_session
+        );
+        (*push)(m_downstream);
     }
 };
 
@@ -72,7 +96,7 @@ session_t::session_t(uint64_t id_, const api::event_t& event_, const api::stream
     id(id_),
     event(event_),
     upstream(upstream_),
-    m_writer(new message_queue<io::rpc_tag, stream_adapter_t>),
+    m_writer(new synchronized<message_queue<io::rpc_tag, stream_adapter_t>>),
     m_state(state::open)
 {
     // Cache the invocation command right away.
@@ -81,7 +105,7 @@ session_t::session_t(uint64_t id_, const api::event_t& event_, const api::stream
 
 void
 session_t::attach(const std::shared_ptr<writable_stream<protocol_type, encoder_t>>& downstream) {
-    m_writer->attach(std::make_shared<stream_adapter_t>(this, downstream));
+    m_writer->synchronize()->attach(std::make_shared<stream_adapter_t>(shared_from_this(), downstream));
 }
 
 void
