@@ -71,8 +71,8 @@ logging_t::on_emit(logging::priorities level, std::string&& source, std::string&
         return;
     }
 
-    record.attributes.insert(cocaine::logging::keyword::source() = std::move(source));
-    record.attributes.insert(blackhole::keyword::message() = std::move(message));
+    record.insert(cocaine::logging::keyword::source() = std::move(source));
+    record.message(std::move(message));
 
     m_logger->push(std::move(record));
 }
