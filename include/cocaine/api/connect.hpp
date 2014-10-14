@@ -92,7 +92,7 @@ public:
     invoke(const std::shared_ptr<typename traits<Event>::dispatch_type>& dispatch, Args&&... args) {
         static_assert(
             std::is_same<typename Event::tag, Tag>::value,
-            "the message isn't compatible with the client"
+            "message protocol is not compatible with this client"
         );
 
         if(!m_session) {

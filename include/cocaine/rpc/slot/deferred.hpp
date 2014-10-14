@@ -56,7 +56,7 @@ struct deferred_slot:
 
             // Upstream is attached in a critical section, because the internal message queue might
             // be already in use in some other processing thread of the service.
-            (*result.queue)->attach(std::move(upstream));
+            result.outbox->synchronize()->attach(std::move(upstream));
         } catch(const boost::system::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {
@@ -109,7 +109,7 @@ struct deferred {
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
     deferred():
-        queue(new synchronized<queue_type>())
+        outbox(new synchronized<queue_type>())
     { }
 
     template<class U>
@@ -118,20 +118,24 @@ struct deferred {
         deferred&
     >::type
     write(U&& value) {
-        auto ptr = queue->synchronize();
-        ptr->template append<typename protocol::chunk>(std::forward<U>(value));
-        ptr->template append<typename protocol::choke>();
+        {
+            auto ptr = outbox->synchronize();
+
+            ptr->template append<typename protocol::chunk>(std::forward<U>(value));
+            ptr->template append<typename protocol::choke>();
+        }
+
         return *this;
     }
 
     deferred&
     abort(int code, const std::string& reason) {
-        (*queue)->template append<typename protocol::error>(code, reason);
+        outbox->synchronize()->template append<typename protocol::error>(code, reason);
         return *this;
     }
 
 private:
-    const std::shared_ptr<synchronized<queue_type>> queue;
+    const std::shared_ptr<synchronized<queue_type>> outbox;
 };
 
 template<>
@@ -144,23 +148,23 @@ struct deferred<void> {
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
     deferred():
-        queue(new synchronized<queue_type>())
+        outbox(new synchronized<queue_type>())
     { }
 
     deferred&
     abort(int code, const std::string& reason) {
-        (*queue)->append<protocol::error>(code, reason);
+        outbox->synchronize()->append<protocol::error>(code, reason);
         return *this;
     }
 
     deferred&
     close() {
-        (*queue)->append<protocol::choke>();
+        outbox->synchronize()->append<protocol::choke>();
         return *this;
     }
 
 private:
-    const std::shared_ptr<synchronized<queue_type>> queue;
+    const std::shared_ptr<synchronized<queue_type>> outbox;
 };
 
 } // namespace cocaine

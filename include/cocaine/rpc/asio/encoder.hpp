@@ -105,8 +105,8 @@ struct encoded:
 
         packer.pack_array(3);
 
-        packer.pack_uint64(span);
-        packer.pack_uint64(event_traits<Event>::id);
+        packer.pack(span);
+        packer.pack(static_cast<uint64_t>(event_traits<Event>::id));
 
         typedef typename event_traits<Event>::argument_type argument_type;
 

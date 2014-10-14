@@ -88,7 +88,7 @@ struct enumerate {
 
     typedef typename mpl::distance<
         typename mpl::begin<hierarchy_type>::type,
-        typename mpl::find<hierarchy_type, Event>::type
+        typename mpl::find <hierarchy_type, Event>::type
     >::type type;
 };
 

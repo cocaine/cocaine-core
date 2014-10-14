@@ -43,11 +43,9 @@ public:
         typename mpl::lambda<io::details::unwrap_type<mpl::_1>>
     >::type sequence_type;
 
-    // Expected parameter types, stripped of any tags.
-    typedef typename tuple::fold<sequence_type>::type tuple_type;
-
-    // Expected dispatch and upstream types.
+    // Expected dispatch, parameter and upstream types.
     typedef dispatch<typename traits_type::dispatch_type> dispatch_type;
+    typedef typename tuple::fold<sequence_type>::type tuple_type;
     typedef upstream<typename traits_type::upstream_type> upstream_type;
 
     virtual
