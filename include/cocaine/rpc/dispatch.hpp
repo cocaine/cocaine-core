@@ -109,7 +109,7 @@ class dispatch:
     };
 
     typedef typename mpl::transform<
-        typename io::protocol<Tag>::messages,
+        typename io::messages<Tag>::type,
         typename mpl::lambda<make_slot_over<mpl::_1>>::type
     >::type slot_types;
 

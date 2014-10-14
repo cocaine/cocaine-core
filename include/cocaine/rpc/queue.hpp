@@ -93,7 +93,7 @@ class message_queue {
     typedef Upstream upstream_type;
 
     typedef typename mpl::transform<
-        typename protocol<Tag>::messages,
+        typename messages<Tag>::type,
         typename mpl::lambda<aux::frozen<mpl::_1>>
     >::type frozen_types;
 

@@ -26,9 +26,9 @@
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>
 #include <boost/mpl/distance.hpp>
+#include <boost/mpl/end.hpp>
 #include <boost/mpl/find.hpp>
-#include <boost/mpl/is_sequence.hpp>
-#include <boost/mpl/joint_view.hpp>
+#include <boost/mpl/insert_range.hpp>
 #include <boost/mpl/list.hpp>
 
 namespace cocaine { namespace io {
@@ -52,22 +52,34 @@ struct extends {
 namespace aux {
 
 template<class Protocol, class = void>
-struct flatten {
+struct flatten_impl {
     typedef typename Protocol::messages type;
 };
 
 template<class Protocol>
-struct flatten<Protocol, typename depend<typename Protocol::parent_type>::type> {
-    typedef typename mpl::joint_view<
-        typename flatten<typename Protocol::parent_type>::type,
+struct flatten_impl<Protocol, typename depend<typename Protocol::parent_type>::type> {
+    // Recursively merge all message typelists from the protocol ancestry.
+    typedef typename flatten_impl<typename Protocol::parent_type>::type ancestry_type;
+
+    typedef typename mpl::insert_range<
+        ancestry_type,
+        typename mpl::end<ancestry_type>::type,
         typename Protocol::messages
     >::type type;
 };
 
+} // namespace aux
+
+template<class Tag>
+struct messages {
+    typedef typename aux::flatten_impl<protocol<Tag>>::type type;
+};
+
+namespace aux {
+
 template<class Event>
 struct enumerate {
-    typedef protocol<typename Event::tag> protocol_type;
-    typedef typename flatten<protocol_type>::type hierarchy_type;
+    typedef typename messages<typename Event::tag>::type hierarchy_type;
 
     static_assert(
         mpl::contains<hierarchy_type, Event>::value,

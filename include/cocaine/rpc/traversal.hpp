@@ -94,8 +94,8 @@ traverse() -> boost::optional<Vertex> {
     Vertex vertex;
 
     aux::traverse_impl<
-        typename mpl::begin<typename protocol<Tag>::messages>::type,
-        typename mpl::end  <typename protocol<Tag>::messages>::type
+        typename mpl::begin<typename messages<Tag>::type>::type,
+        typename mpl::end  <typename messages<Tag>::type>::type
     >::apply(vertex);
 
     return vertex;

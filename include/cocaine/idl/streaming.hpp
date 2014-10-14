@@ -23,6 +23,8 @@
 
 #include "cocaine/rpc/protocol.hpp"
 
+#include <boost/mpl/is_sequence.hpp>
+
 namespace cocaine { namespace io {
 
 // Streaming service interface
