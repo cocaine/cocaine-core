@@ -44,7 +44,7 @@ public:
 private:
     void
     on_emit(logging::priorities level, std::string&& source, std::string&& message,
-            blackhole::log::attributes_t&& attributes);
+            blackhole::attribute::set_t&& attributes);
 };
 
 }} // namespace cocaine::service

@@ -463,7 +463,7 @@ context_t::context_t(config_t config_, const std::string& logger_backend):
     > formatters_t;
 
     // Register frontends with all combinations of formatters and sinks with the logging repository.
-    repository.configure<sinks_t, formatters_t>();
+    repository.registrate<sinks_t, formatters_t>();
 
     try {
         using blackhole::keyword::tag::timestamp_t;
@@ -492,7 +492,11 @@ context_t::context_t(config_t config_, const std::string& logger_backend):
 
         // Try to initialize the logger. If it fails, there's no way to report the failure, except
         // printing it to the standart output.
-        m_logger = std::make_unique<logger_type>(repository.create<logging::priorities>(logger_backend));
+        m_logger = std::make_unique<logger_type>(
+            repository.create<
+                blackhole::verbose_logger_t<logging::priorities>
+            >(logger_backend)
+        );
         m_logger->verbosity(logger.verbosity);
     } catch(const std::out_of_range&) {
         throw cocaine::error_t("logger '%s' is not configured", logger_backend);
@@ -513,7 +517,7 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger
 context_t::~context_t() {
     blackhole::scoped_attributes_t guard(
        *m_logger,
-        blackhole::log::attributes_t({logging::keyword::source() = "core"})
+        blackhole::attribute::set_t({logging::keyword::source() = "core"})
     );
 
     COCAINE_LOG_INFO(m_logger, "stopping %d service(s)", m_services->size());
@@ -552,7 +556,7 @@ context_t::~context_t() {
 }
 
 std::unique_ptr<logging::log_t>
-context_t::log(const std::string& source, blackhole::log::attributes_t attributes) {
+context_t::log(const std::string& source, blackhole::attribute::set_t attributes) {
     attributes.insert(logging::keyword::source() = source);
     return std::make_unique<logging::log_t>(*m_logger, std::move(attributes));
 }
@@ -573,7 +577,7 @@ struct match {
 
 void
 context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
-    blackhole::scoped_attributes_t guard(*m_logger, blackhole::log::attributes_t({
+    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
         logging::keyword::source() = "core"
     }));
 
@@ -601,7 +605,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
 std::unique_ptr<actor_t>
 context_t::remove(const std::string& name) {
-    blackhole::scoped_attributes_t guard(*m_logger, blackhole::log::attributes_t({
+    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
         logging::keyword::source() = "core"
     }));
 
@@ -662,7 +666,7 @@ context_t::engine() {
 
 void
 context_t::bootstrap() {
-    blackhole::scoped_attributes_t guard(*m_logger, blackhole::log::attributes_t({
+    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
         logging::keyword::source() = "core"
     }));
 

@@ -51,7 +51,7 @@ struct emit {
         underlying loggers might silently truncate it. */
         std::string,
      /* Log event attached attributes. */
-        optional<blackhole::log::attributes_t>
+        optional<blackhole::attribute::set_t>
     > argument_type;
 
     typedef void upstream_type;
