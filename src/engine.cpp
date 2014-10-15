@@ -91,47 +91,53 @@ execution_unit_t::utilization() const {
 
 void
 execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
-    const auto fd = ::dup(ptr->native_handle());
+    int socket;
+
+    if((socket = ::dup(ptr->native_handle())) == -1) {
+        boost::system::error_code ec(errno, boost::system::system_category());
+        COCAINE_LOG_ERROR(m_log, "unable to clone client's socket - [%d] %s", ec.value(), ec.message());
+        return;
+    }
 
     // Make sure that the fd wasn't reused before it was actually processed for disconnection.
-    BOOST_ASSERT(!m_sessions.count(fd));
+    BOOST_ASSERT(!m_sessions.count(socket));
 
     // Copy the socket into the new reactor.
     auto channel = std::make_unique<io::channel<tcp>>(std::make_unique<tcp::socket>(
        *m_asio,
         ptr->local_endpoint().protocol(),
-        fd
+        socket
     ));
 
     // Set the NO_DELAY TCP option to speed up small message passing.
     channel->socket->set_option(tcp::no_delay(true));
 
     try {
-        m_sessions[fd] = std::make_shared<session_t>(std::move(channel), dispatch);
+        m_sessions[socket] = std::make_shared<session_t>(std::move(channel), dispatch);
     } catch(const boost::system::system_error& e) {
         COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session");
         return;
     }
 
     // Bind the shutdown signals.
-    m_sessions[fd]->signals.shutdown.connect(std::bind(&execution_unit_t::on_shutdown,
+    m_sessions.at(socket)->signals.shutdown.connect(std::bind(&execution_unit_t::on_shutdown,
         this,
         std::placeholders::_1,
-        fd
+        socket
     ));
 
     COCAINE_LOG_DEBUG(m_log, "attached client to engine with %.2f%% utilization", utilization() * 100)(
-        "endpoint", m_sessions[fd]->remote_endpoint(),
-        "service",  m_sessions[fd]->name()
+        "endpoint", m_sessions.at(socket)->remote_endpoint(),
+        "service",  m_sessions.at(socket)->name()
     );
 
     // Start the message dispatching.
-    m_sessions[fd]->pull();
+    m_sessions.at(socket)->pull();
 }
 
 void
-execution_unit_t::on_shutdown(const boost::system::error_code& ec, int fd) {
-    auto it = m_sessions.find(fd);
+execution_unit_t::on_shutdown(const boost::system::error_code& ec, int socket) {
+    auto it = m_sessions.find(socket);
 
     BOOST_ASSERT(ec && it != m_sessions.end());
 
