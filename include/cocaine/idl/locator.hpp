@@ -48,7 +48,7 @@ struct resolve {
         std::string
     > argument_type;
 
-    typedef boost::mpl::list<
+    typedef option_of<
      /* Endpoints for the client to connect to in order to use the the service. */
         std::vector<boost::asio::ip::tcp::endpoint>,
      /* Service protocol version. If the client wishes to use the service, the protocol
@@ -57,9 +57,7 @@ struct resolve {
      /* A mapping between slot id numbers, message names and state transitions for both the message
         dispatch and upstream types to use in dynamic languages like Python, Ruby or JavaScript. */
         graph_basis_t
-    > value_type;
-
-    typedef streaming_tag<value_type> upstream_type;
+    >::tag upstream_type;
 };
 
 struct connect {
@@ -77,7 +75,7 @@ struct connect {
     typedef stream_of<
      /* A full dump of all available services on this node. Used by metalocator to aggregate
         node information from the cluster. */
-        std::map<std::string, tuple::fold<resolve::value_type>::type>
+        std::map<std::string, tuple::fold<resolve::upstream_type::sequence_type>::type>
     >::tag upstream_type;
 };
 
@@ -101,7 +99,7 @@ struct cluster {
         return "cluster";
     }
 
-    typedef stream_of<
+    typedef option_of<
         std::map<std::string, boost::asio::ip::tcp::endpoint>
     >::tag upstream_type;
 };

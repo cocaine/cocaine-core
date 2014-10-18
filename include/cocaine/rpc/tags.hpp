@@ -40,7 +40,19 @@ struct optional_with_default;
 // Forward common protocol tags
 
 template<class T>
-struct streaming_tag;
+struct primitive_tag {
+    typedef T sequence_type;
+};
+
+template<typename... Types>
+struct option_of {
+    typedef primitive_tag<typename itemize<Types...>::type> tag;
+};
+
+template<class T>
+struct streaming_tag {
+    typedef T sequence_type;
+};
 
 template<typename... Types>
 struct stream_of {
@@ -84,6 +96,11 @@ struct unwrap_type<optional_with_default<T, Default>> {
 template<class T, class U>
 struct is_compatible:
     public std::false_type
+{ };
+
+template<class T, class U>
+struct is_compatible<primitive_tag<T>, primitive_tag<U>>:
+    public boost::mpl::equal<T, U>::type
 { };
 
 template<class T, class U>

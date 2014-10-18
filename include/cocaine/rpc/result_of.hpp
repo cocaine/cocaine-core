@@ -40,26 +40,32 @@ template<class T>
 struct result_of_impl;
 
 template<class T>
-struct result_of_impl<streaming_tag<T>> {
+struct result_of_impl<primitive_tag<T>> {
     template<class U, size_t = mpl::size<U>::value>
-    struct stream_element_type {
+    struct fold_type_list {
         typedef typename tuple::fold<U>::type type;
     };
 
     template<class U>
-    struct stream_element_type<U, 1> {
+    struct fold_type_list<U, 1> {
         typedef typename mpl::front<U>::type type;
     };
 
     // In case there's only one type in the typelist, leave it as it is. Otherwise form a tuple out
     // of all the types in the typelist.
-    typedef typename stream_element_type<T>::type type;
+    typedef typename fold_type_list<T>::type type;
 };
 
 template<>
-struct result_of_impl<streaming_tag<mpl::list<>>> {
+struct result_of_impl<primitive_tag<mpl::list<>>> {
+    // Special case for void streams, i.e. streams which can only return end-of-stream or error.
     typedef void type;
 };
+
+template<class T>
+struct result_of_impl<streaming_tag<T>>:
+    public result_of_impl<primitive_tag<T>>
+{ };
 
 template<>
 struct result_of_impl<void> {

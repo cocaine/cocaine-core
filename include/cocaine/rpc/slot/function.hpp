@@ -21,6 +21,7 @@
 #ifndef COCAINE_IO_FUNCTION_SLOT_HPP
 #define COCAINE_IO_FUNCTION_SLOT_HPP
 
+#include "cocaine/idl/primitive.hpp"
 #include "cocaine/idl/streaming.hpp"
 
 #include "cocaine/rpc/protocol.hpp"
@@ -47,6 +48,11 @@ namespace aux {
 
 template<class Tag>
 struct protocol_impl;
+
+template<class T>
+struct protocol_impl<primitive_tag<T>> {
+    typedef typename protocol<primitive_tag<T>>::scope type;
+};
 
 template<class T>
 struct protocol_impl<streaming_tag<T>> {

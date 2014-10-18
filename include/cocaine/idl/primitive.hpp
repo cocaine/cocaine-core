@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_STREAMING_SERVICE_INTERFACE_HPP
-#define COCAINE_STREAMING_SERVICE_INTERFACE_HPP
+#ifndef COCAINE_PRIMITIVE_SERVICE_INTERFACE_HPP
+#define COCAINE_PRIMITIVE_SERVICE_INTERFACE_HPP
 
 #include "cocaine/rpc/protocol.hpp"
 
@@ -30,19 +30,18 @@ namespace cocaine { namespace io {
 // Streaming service interface
 
 template<class T>
-struct streaming {
+struct primitive {
 
 static_assert(
     boost::mpl::is_sequence<T>::value,
-    "streaming protocol template argument must be a type sequence"
+    "primitive protocol template argument must be a type sequence"
 );
 
-struct chunk {
-    typedef streaming_tag<T> tag;
-    typedef streaming_tag<T> dispatch_type;
+struct value {
+    typedef primitive_tag<T> tag;
 
     static const char* alias() {
-        return "write";
+        return "value";
     }
 
     typedef T    argument_type;
@@ -50,7 +49,7 @@ struct chunk {
 };
 
 struct error {
-    typedef streaming_tag<T> tag;
+    typedef primitive_tag<T> tag;
 
     static const char* alias() {
         return "error";
@@ -67,32 +66,20 @@ struct error {
     typedef void upstream_type;
 };
 
-struct choke {
-    typedef streaming_tag<T> tag;
-
-    static const char* alias() {
-        return "close";
-    }
-
-    // Terminal message.
-    typedef void upstream_type;
-};
-
-}; // struct streaming
+}; // struct primitive
 
 template<class T>
-struct protocol<streaming_tag<T>> {
+struct protocol<primitive_tag<T>> {
     typedef boost::mpl::int_<
         1
     >::type version;
 
     typedef typename boost::mpl::list<
-        typename streaming<T>::chunk,
-        typename streaming<T>::error,
-        typename streaming<T>::choke
+        typename primitive<T>::value,
+        typename primitive<T>::error
     > messages;
 
-    typedef streaming<T> scope;
+    typedef primitive<T> scope;
 };
 
 }} // namespace cocaine::io

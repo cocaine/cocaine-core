@@ -114,7 +114,7 @@ struct dispatch_type<Event, typename depend<typename Event::dispatch_type>::type
 
 template<class Event, class = void>
 struct upstream_type {
-    typedef streaming_tag<mpl::list<>> type;
+    typedef primitive_tag<mpl::list<>> type;
 };
 
 template<class Event>
@@ -142,7 +142,7 @@ struct event_traits {
     // Upstream is a protocol tag type of all the possible messages that a service might send back
     // in response to the given message, i.e. it's a protocol tag type of the client dispatch after
     // the given message is sent.
-    // By default, all messages use the void streaming protocol to send back the invocation errors
+    // By default, all messages use the void primitive protocol to send back the invocation errors
     // and signal message processing completion.
     typedef typename aux::upstream_type<Event>::type upstream_type;
 };
