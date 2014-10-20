@@ -21,6 +21,8 @@
 #ifndef COCAINE_SERVICE_LOCATOR_INTERFACE_HPP
 #define COCAINE_SERVICE_LOCATOR_INTERFACE_HPP
 
+#include "cocaine/idl/primitive.hpp"
+
 #include "cocaine/rpc/graph.hpp"
 #include "cocaine/rpc/protocol.hpp"
 
@@ -77,7 +79,7 @@ struct connect {
     typedef stream_of<
      /* A full dump of all available services on this node. Used by metalocator to aggregate
         node information from the cluster. */
-        std::map<std::string, tuple::fold<resolve::upstream_type::sequence_type>::type>
+        std::map<std::string, tuple::fold<protocol<resolve::upstream_type>::sequence_type>::type>
     >::tag upstream_type;
 };
 

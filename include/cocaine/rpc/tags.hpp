@@ -40,9 +40,7 @@ struct optional_with_default;
 // Forward common protocol tags
 
 template<class T>
-struct primitive_tag {
-    typedef T sequence_type;
-};
+struct primitive_tag;
 
 template<typename... Types>
 struct option_of {
@@ -50,9 +48,7 @@ struct option_of {
 };
 
 template<class T>
-struct streaming_tag {
-    typedef T sequence_type;
-};
+struct streaming_tag;
 
 template<typename... Types>
 struct stream_of {

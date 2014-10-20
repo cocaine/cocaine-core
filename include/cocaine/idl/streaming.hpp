@@ -82,6 +82,8 @@ struct choke {
 
 template<class T>
 struct protocol<streaming_tag<T>> {
+    typedef T sequence_type;
+
     typedef boost::mpl::int_<
         1
     >::type version;

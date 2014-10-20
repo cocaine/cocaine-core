@@ -70,6 +70,8 @@ struct error {
 
 template<class T>
 struct protocol<primitive_tag<T>> {
+    typedef T sequence_type;
+
     typedef boost::mpl::int_<
         1
     >::type version;
