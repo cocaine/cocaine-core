@@ -103,8 +103,8 @@ template<class T>
 struct deferred {
     typedef typename aux::reconstruct<T>::type type;
 
-    typedef io::message_queue<io::streaming_tag<type>> queue_type;
-    typedef io::streaming<type> protocol;
+    typedef io::message_queue<io::primitive_tag<type>> queue_type;
+    typedef io::primitive<type> protocol;
 
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
@@ -118,13 +118,7 @@ struct deferred {
         deferred&
     >::type
     write(U&& value) {
-        {
-            auto ptr = outbox->synchronize();
-
-            ptr->template append<typename protocol::chunk>(std::forward<U>(value));
-            ptr->template append<typename protocol::choke>();
-        }
-
+        outbox->synchronize()->template append<typename protocol::value>(std::forward<U>(value));
         return *this;
     }
 
@@ -142,8 +136,8 @@ template<>
 struct deferred<void> {
     typedef aux::reconstruct<void>::type type;
 
-    typedef io::message_queue<io::streaming_tag<type>> queue_type;
-    typedef io::streaming<type> protocol;
+    typedef io::message_queue<io::primitive_tag<type>> queue_type;
+    typedef io::primitive<type> protocol;
 
     template<template<class> class, class, class> friend struct io::deferred_slot;
 
@@ -159,7 +153,7 @@ struct deferred<void> {
 
     deferred&
     close() {
-        outbox->synchronize()->append<protocol::choke>();
+        outbox->synchronize()->append<protocol::value>();
         return *this;
     }
 

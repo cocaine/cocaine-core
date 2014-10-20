@@ -135,9 +135,8 @@ public:
 
         using namespace std::placeholders;
 
-        on<protocol::chunk>(std::bind(&resolve_action_t::on_chunk, this, _1, _2, _3));
+        on<protocol::value>(std::bind(&resolve_action_t::on_value, this, _1, _2, _3));
         on<protocol::error>(std::bind(&resolve_action_t::on_error, this, _1, _2));
-        on<protocol::choke>(std::bind(&resolve_action_t::on_choke, this));
     }
 
     virtual
@@ -148,7 +147,7 @@ public:
 
 private:
     void
-    on_chunk(const std::vector<endpoint_type>& endpoints, int version, const io::graph_basis_t&) {
+    on_value(const std::vector<endpoint_type>& endpoints, int version, const io::graph_basis_t&) {
         if(version != client.version()) {
             parent->m_asio.post(std::bind(handle, error::version_mismatch));
             return;
@@ -160,11 +159,6 @@ private:
     void
     on_error(int code, const std::string& COCAINE_UNUSED_(reason)) {
         parent->m_asio.post(std::bind(handle, static_cast<error::locator_errors>(code)));
-    }
-
-    void
-    on_choke() {
-        // Do nothing.
     }
 };
 

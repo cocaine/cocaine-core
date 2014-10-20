@@ -49,8 +49,7 @@ struct blocking_slot:
     boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
-            upstream.template send<typename protocol::chunk>(this->call(std::move(args)));
-            upstream.template send<typename protocol::choke>();
+            upstream.template send<typename protocol::value>(this->call(std::move(args)));
         } catch(const boost::system::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {
@@ -91,7 +90,7 @@ struct blocking_slot<Event, void>:
             this->call(std::move(args));
 
             // This is needed anyway so that service clients could detect operation completion.
-            upstream.template send<typename protocol::choke>();
+            upstream.template send<typename protocol::value>();
         } catch(const boost::system::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {

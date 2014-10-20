@@ -36,8 +36,10 @@ struct app {
 struct enqueue {
     typedef app_tag tag;
 
-    // Allow clients to stream data into the apps.
-    typedef stream_of<std::string>::tag dispatch_type;
+    typedef stream_of<
+     /* Allow clients to stream data into the apps. */
+        std::string
+    >::tag dispatch_type;
 
     static const char* alias() {
         return "enqueue";
@@ -64,7 +66,7 @@ struct info {
         return "info";
     }
 
-    typedef stream_of<
+    typedef option_of<
      /* Various runtime information about the running app. */
         dynamic_t
     >::tag upstream_type;
@@ -125,7 +127,7 @@ struct list {
         return "list";
     }
 
-    typedef stream_of<
+    typedef option_of<
      /* A list of running app names. */
         dynamic_t
     >::tag upstream_type;

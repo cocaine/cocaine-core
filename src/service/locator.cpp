@@ -227,7 +227,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     using namespace std::placeholders;
 
     on<locator::resolve>(std::bind(&locator_t::on_resolve, this, _1));
-    on<locator::connect>(std::bind(&locator_t::on_connect, this, _1));
+    on<locator::connect>(std::bind(&locator_t::on_connect, this, _1, _2));
     on<locator::refresh>(std::bind(&locator_t::on_refresh, this, _1));
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
 
@@ -384,7 +384,7 @@ locator_t::on_resolve(const std::string& name) const -> results::resolve {
 }
 
 auto
-locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
+locator_t::on_connect(const std::string& uuid, uint64_t COCAINE_UNUSED_(ssid)) -> streamed<results::connect> {
     streamed<results::connect> stream;
 
     if(!m_cluster) {

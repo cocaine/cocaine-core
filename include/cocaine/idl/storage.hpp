@@ -46,7 +46,7 @@ struct read {
         std::string
     > argument_type;
 
-    typedef stream_of<
+    typedef option_of<
      /* The stored value. Typically it will be serialized with msgpack, but it's not a strict
         requirement. But as there's no way to know the format, try to unpack it anyway. */
         std::string
@@ -104,7 +104,7 @@ struct find {
         std::vector<std::string>
     > argument_type;
 
-    typedef stream_of<
+    typedef option_of<
      /* A list of all the keys in the given key namespace. */
         std::vector<std::string>
     >::tag upstream_type;

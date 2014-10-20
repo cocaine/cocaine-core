@@ -64,7 +64,7 @@ struct verbosity {
         return "verbosity";
     }
 
-    typedef stream_of<
+    typedef option_of<
      /* The current verbosity level of the core logging sink. */
         logging::priorities
     >::tag upstream_type;
