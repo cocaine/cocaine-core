@@ -11,11 +11,9 @@ __Your personal app engine.__ Technically speaking, it's an open-source cloud pl
 
 Notable features:
 
-* You are not restricted by a language or a framework. Similar to Heroku model, Cocaine simply spawns whatever you tell it to spawn. The only requirement is that these newly spawned apps must connect to their app controller for request load balancing. But we plan to get rid of this last requirement as well.
-* Your apps are driven by events, which is fancy. There are two sources of events for every app, and we got lots of predefined plugins providing those sources, so unless you need to handle clients via a PS/2 port, you're good.
-  * First, there are services: this concept is similar to Google App Engine's services. Simply speaking, services are other apps running in the same cloud. These apps can be anything ranging from a distributed storage access service or a publish-subscribe notification service to specially-crafted service for your own personal needs.
-  * Second, there are event drivers: these are simple statically configurable objects attached to your app generating events from some predefined source, for example a recurring timer or a watched file on the filesystem.
-* We got dynamic self-managing worker pools for each app with a rich but simple configuration and resource usage control to scale with the app needs. Yeah, it's scales automatically, you don't need to think about it. As of now, we got support for CGroups and LXC containerization via [Docker](http://docker.io).
+* You are not restricted by a language or a framework. Similiar to Heroku model, Cocaine simply spawns whatever you tell it to spawn. The only requirement is that these newly spawned apps must connect to their app controller for request load balancing. But we plan to get rid of this last requirement as well.
+* We got services: this concept is similiar to Google App Engine's services. Simply speaking, services are privileged apps running in the same cloud. These apps can be anything ranging from a distributed storage access service or a publish-subscribe notification service to specially-crafted service for your own personal needs. Your app can seamlessly use those services however it wants.
+* We got dynamic self-managing worker pools for each app with a rich but simple configuration and resource usage control to scale with the app needs. Yeah, it's scales automatically, you don't need to think about it. As of now, we got support for pure CGroups and [Docker](http://docker.io) for isolation.
 * Even more, it scales automatically across your server cluser via automatic node discovery and smart peer-to-peer balancing. You can use a simple adhoc round-robin balancing for simple setups or a hardcore IPVS-based realtime balancer.
 * If your startup idea is about processing terabytes of pirated video, we got data streaming and pipelining for you as well, enjoy.
 
@@ -41,12 +39,6 @@ We have the following services:
 * Jabber
 * [In development] Notifications
 * [In development] Distributed time service
-
-And the following event drivers built-in:
-
-* Simple timer
-* Filesystem monitor
-* ZeroMQ
 
 A motivating example
 ====================
