@@ -14,7 +14,7 @@ RUN cd building/cocaine-core && \
 
 # Build and install
 RUN cd building/cocaine-core && \
-    debuild -e CC -e CXX -uc -us && \
+    debuild -e CC -e CXX -uc -us -j$(cat /proc/cpuinfo | fgrep -c processor) && \
     debi
 
 # Cleanup
@@ -22,6 +22,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -qq purge cocaine-core-build-deps && 
     DEBIAN_FRONTEND=noninteractive apt-get -qq purge build-essential devscripts equivs git-core && \
     DEBIAN_FRONTEND=noninteractive apt-get -qq autoremove --purge && \
     rm -rf building
+
+# Setup runtime environment
+RUN mkdir -p /var/run/cocaine
 
 EXPOSE 10053
 
