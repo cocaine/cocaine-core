@@ -41,8 +41,8 @@ struct factory_concept_t {
     }
 
     virtual
-    const std::type_info&
-    id() const = 0;
+    auto
+    type_id() const -> const std::type_info& = 0;
 };
 
 template<class Category>
@@ -50,8 +50,8 @@ struct basic_factory:
     public factory_concept_t
 {
     virtual
-    const std::type_info&
-    id() const {
+    auto
+    type_id() const -> const std::type_info& {
         return typeid(Category);
     }
 };
@@ -60,9 +60,11 @@ struct basic_factory:
 
 template<class T>
 struct plugin_traits {
-    typedef typename category_traits<
-        typename T::category_type
-    >::template default_factory<T> factory_type;
+    typedef category_traits<typename T::category_type> traits_type;
+
+    // By default, all plugins are instantiated by the default factory for their category. This can
+    // be customized by specializing this template.
+    typedef typename traits_type::template default_factory<T> factory_type;
 };
 
 // Component repository
@@ -81,8 +83,8 @@ class repository_t {
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    // NOTE: Used to unload all the plugins on shutdown.
-    // Cannot use a forward declaration here due to the implementation details.
+    // NOTE: Used to unload all the plugins on shutdown. Cannot use a forward declaration here due
+    // to the implementation details.
     std::vector<lt_dlhandle> m_plugins;
 
     typedef std::map<std::string, std::unique_ptr<factory_concept_t>> factory_map_t;
@@ -115,16 +117,16 @@ private:
 template<class Category, typename... Args>
 typename category_traits<Category>::ptr_type
 repository_t::get(const std::string& name, Args&&... args) const {
-    const std::string id = typeid(Category).name();
+    const auto id = typeid(Category).name();
 
     if(!m_categories.count(id) || !m_categories.at(id).count(name)) {
         throw repository_error_t("component '%s' is not available", name);
     }
 
-    factory_map_t::const_iterator it = m_categories.at(id).find(name);
+    const auto it = m_categories.at(id).find(name);
 
     // TEST: Ensure that the plugin is of the actually specified category.
-    BOOST_ASSERT(it->second->id() == typeid(Category));
+    BOOST_ASSERT(it->second->type_id() == typeid(Category));
 
     return dynamic_cast<typename category_traits<Category>::factory_type&>(
         *it->second
@@ -147,18 +149,18 @@ repository_t::insert(const std::string& name) {
         "component factory is not derived from its category"
     );
 
-    const std::string id = typeid(category_type).name();
+    const auto id = typeid(category_type).name();
 
     if(m_categories.count(id) && m_categories.at(id).count(name)) {
         throw repository_error_t("component '%s' is a duplicate", name);
     }
 
-    m_categories[id][name] = std::make_unique<factory_type>();
-
-    COCAINE_LOG_DEBUG(m_log, "component '%s' has been registered in category '%s'",
+    COCAINE_LOG_DEBUG(m_log, "registering component '%s' in category '%s'",
         name,
         logging::demangle<category_type>()
     );
+
+    m_categories[id][name] = std::make_unique<factory_type>();
 }
 
 struct preconditions_t {

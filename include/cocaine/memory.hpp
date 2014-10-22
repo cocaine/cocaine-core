@@ -31,7 +31,7 @@ make_unique(Args&&... args) {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
-}
+} // namespace std
 
 namespace cocaine { namespace io {
 

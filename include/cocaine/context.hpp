@@ -164,10 +164,6 @@ public:
         typedef boost::signals2::signal<void()> context_signals_t;
         typedef boost::signals2::signal<void(const actor_t& service)> service_signals_t;
 
-        // Fired first thing on context shutdown. This is a very good time to cleanup persistent
-        // connections, synchronize disk state and so on.
-        context_signals_t shutdown;
-
         struct {
             // Fired on service creation, after service's thread is launched and is ready to accept
             // and process new incoming connections.
@@ -177,6 +173,10 @@ public:
             // before the service object is actually destroyed.
             service_signals_t removed;
         } service;
+
+        // Fired first thing on context shutdown. This is a very good time to cleanup persistent
+        // connections, synchronize disk state and so on.
+        context_signals_t shutdown;
     };
 
     // Lifecycle management signals.
