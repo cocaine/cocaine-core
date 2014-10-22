@@ -1,6 +1,8 @@
 cocaine-core (0.12.0.0) unstable; urgency=low
 
-  * Dropped libev in favor of Boost.ASIO.
+  * Release 12.0.
+  * Multithreaded Actor I/O. All incoming messages are now dispatched on a
+    shared thread pool, which greatly speeds the things up.
   * Protocol transitions. Service protocols can now specify state transitions
     to support dispatch hierarchies. For example, storage protocol can
     implement a write_stream() method, which switches to stream protocol on
@@ -9,216 +11,36 @@ cocaine-core (0.12.0.0) unstable; urgency=low
   * App streaming interface. Clients can stream data chunks into the app now,
     as opposed to sending a single request chunk along with the enqueue()
     method invocation.
+  * Built-in Raft. Services can now inject their state machines into the Raft
+    engine to achieve cluster-level consistency.
+  * Dropped libev in favor of Boost.ASIO.
+  * Logging in now handled via the Blackhole logging library.
   * Locator is now a proper service, without any special treatment. Local
     service management is a responsibility of the Context.
-  * Multithreaded Actor I/O. All incoming messages are now dispatched on a
-    shared thread pool, which greatly speeds the things up.
-  * Logging in now handled via the Blackhole logging library.
-  * Bugfix: the hostname can now be configured manually, in case something is
-    broken with the local resolver.
+  * Configurable cluster discovery mechanics, including multicast and predefine
+    cluster discovery plugins.
 
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 12 Nov 2013 17:40:29 +0400
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 23 Oct 2014 17:49:29 -0500
 
 cocaine-core (0.11.0.0) unstable; urgency=low
 
+  * Release 11.0.
   * Docker (http://docker.io) containerization support.
   * Routing groups. An ability to route requests to multiple versions of the
     same app based on weights and other metrics.
   * Memory usage reports available from the Locator via the 'reports' method.
   * Break Native Framework binary dependency on Core libraries.
-  * Bugfix: use proper size for Boost ASIO endpoints, so that IPv6 addresses
-    won't be cut off anymore.
-  * Bugfix: do not stop adding tags to a new object in the File Storage if one
-    of the tags already exists.
-  * Bugfix: stop processing messages in dead channels.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 16 Oct 2013 18:40:58 +0400
 
-cocaine-core (0.10.6.4) unstable; urgency=low
-
-  * Bugfix: do not try to destroy already destroyed channels, for example if
-    both read() and write() queued a socket failure.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Sat, 03 Aug 2013 19:19:57 +0400
-
-cocaine-core (0.10.6.3) unstable; urgency=low
-
-  * Core version can be obtained in runtime now via config_t::version().
-  * Bugfix: do not crash on out-of-protocol messages from slaves.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 02 Aug 2013 17:30:30 +0400
-
-cocaine-core (0.10.6.2) unstable; urgency=low
-
-  * Bugfix: close the client channels on actor's destruction, even though
-    their wrapping objects might still be accessible from dispatches in other
-    threads.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 31 Jul 2013 20:17:55 +0400
-
-cocaine-core (0.10.6.1) unstable; urgency=low
-
-  * Bugfix: process outstanding stream errors inside the event loop queue
-    reactor instead of dispatching them right away, so that stream memory can
-    be manipulated from the handler.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 29 Jul 2013 18:07:50 +0400
-
 cocaine-core (0.10.6.0) unstable; urgency=low
 
+  * Release 10.6.
   * IPv6 support. Now it is possible to specify an endpoint to bind services
     and the service locator to. This endpoint can be an IPv6 endpoint as well.
   * Bugfix: properly destroy shared channels in actors.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 25 Jul 2013 18:49:30 +0400
-
-cocaine-core (0.10.5.18) unstable; urgency=low
-
-  * Bugfix: properly handle response chunks larger than the output ring buffer
-    capacity by expanding it instead of endlessly moving chunks around.
-  * Bugfix: fixed adding POLLOUT to existing socket watchers being ignored
-    because libev is not thread-safe or epoll is broken or whatever.
-  * Bugfix: fixed intense decoder loops when there's no complete message in
-    the buffer, but still some bytes are not yet parsed.
-  * Bugfix: gracefully close sockets when their respective initialization,
-    like connect(2) or bind(2), cannot be completed.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 23 Jul 2013 20:56:56 +0400
-
-cocaine-core (0.10.5.17) unstable; urgency=low
-
-  * App Service now exposes the app_t::info() method.
-  * Bugfix: properly close sessions in case a slave managed to close its half
-    of the channel before the client.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 08 Jul 2013 23:32:50 +0400
-
-cocaine-core (0.10.5.16) unstable; urgency=low
-
-  * App authors can now specify custom environment for their app executables
-    via the 'environment' parameter in the manifest.
-  * App endpoints are randomized using runtime's pid to ensure correct restart
-    behaviour if stopped gracelessly.
-  * On Linux, use prctl(2) to set thread names for service threads.
-  * Bugfix: close actor's channel on close(), eliminating outstanding messages
-    in the client frameworks.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 03 Jul 2013 17:50:53 +0400
-
-cocaine-core (0.10.5.15) unstable; urgency=low
-
-  * File storage find() method now uses tag intersections instead of unions.
-  * Bugfix: do not stop the engine if a slave disconnects unexpectedly.
-  * Bugfix: do not complain about dropping zero sessions on successful stop.
-  * Bugfix: use quick exit path in runtime signal handler.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 02 Jul 2013 15:59:56 +0400
-
-cocaine-core (0.10.5.14) unstable; urgency=low
-
-  * Plugin preconditions support. Now plugins should specify their minimum
-    required runtime version during compilation, so that plugins with
-    different ABI requirements won't be loaded at all.
-  * Bugfix: break an infinite loop in slave_t::pump() with named queues.
-  * Bugfix: updated to a recent backward-cpp version to fix building on i386.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 28 Jun 2013 14:46:38 +0400
-
-cocaine-core (0.10.5.13) unstable; urgency=low
-
-  * Bugfix: do not die on emergency Locator shutdown.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 26 Jun 2013 20:37:43 +0400
-
-cocaine-core (0.10.5.12) unstable; urgency=low
-
-  * Bugfix: do not die if failed to accept a connection.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 26 Jun 2013 19:23:07 +0400
-
-cocaine-core (0.10.5.11) unstable; urgency=low
-
-  * Bugfix: update to the latest backward-cpp version to fix building issues
-    on i386 architectures.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 26 Jun 2013 01:06:09 +0400
-
-cocaine-core (0.10.5.10) unstable; urgency=low
-
-  * Bugfix: do not crash on node pruning in Locator.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 25 Jun 2013 23:01:26 +0400
-
-cocaine-core (0.10.5.9) unstable; urgency=low
-
-  * Updated configuration format for network stuff.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 25 Jun 2013 19:13:04 +0400
-
-cocaine-core (0.10.5.8) unstable; urgency=low
-
-  * Pluggable gateway support.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 25 Jun 2013 18:55:48 +0400
-
-cocaine-core (0.10.5.7) unstable; urgency=low
-
-  * Raw result type.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 24 Jun 2013 19:53:01 +0400
-
-cocaine-core (0.10.5.6) unstable; urgency=low
-
-  * Bugfix: invoke event loop jobs unlocked.
-  * Bugfix: missing build dependencies in tuple traits.
-  * Bugfix: do not pack trailing zeroes in string literals.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 24 Jun 2013 18:58:28 +0400
-
-cocaine-core (0.10.5.5) unstable; urgency=low
-
-  * Port ranges. Instead of binding on random ports, services can now bind on
-    a preconfigured list of available ports.
-  * An ability to pick a storage backend for the simple storage service.
-  * App service support for tagged enqueue.
-  * Bugfix: better interlocking in the Locator implementation, no more crashes
-    in synchronize_slot_t::dump() method.
-  * Bugfix: use wall clock for crashlog timestamps to avoid strange timestamps
-    on MacOS and probably some other OSes.
-  * Bugfix: do not die when an invalid message is received by an actor.
-  * Bugfix: make use of timeouts in app_t::info() method.
-  * Bugfix: don't spam remote peers about service withdrawal on shutdown.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 19 Jun 2013 23:16:21 +0400
-
-cocaine-core (0.10.5.4) unstable; urgency=low
-
-  * Performance improvements.
-  * Bugfix: idle the slaves out even if there's no named queue use.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 05 Jun 2013 13:01:03 +0400
-
-cocaine-core (0.10.5.3) unstable; urgency=low
-
-  * Bugfix: generate default event names in the builtin drivers to be equal to
-    the given driver names.
-  * Bugfix: properly handle resource errors in app invocation service.
-  * Bugfix: catch all exceptions during the initialization.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 04 Jun 2013 12:34:24 +0400
-
-cocaine-core (0.10.5.2) unstable; urgency=low
-
-  * Bugfix: dispose of orphan services when bootstrap fails.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 04 Jun 2013 00:16:22 +0400
-
-cocaine-core (0.10.5.1) unstable; urgency=low
-
-  * Bugfix: keep the storage reference alive during the node startup to avoid
-    connecting to the Elliptics every time we need to read something.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 04 Jun 2013 00:00:01 +0400
 
 cocaine-core (0.10.5.0) unstable; urgency=low
 
@@ -232,36 +54,10 @@ cocaine-core (0.10.5.0) unstable; urgency=low
   * Named queues. Drivers can now enqueue their sessions to a specific worker
     with some human-readable name. The sessions in named queues will be pumped
     before any anonymous sessions in the engine's shared queue.
-  * A pair of new profile options: crashlog-limit and log-output. The first
-    one limits the number of lines of captured stdout and stderr of a dead
-    to save, the second one enables the copying of the output to the log.
   * The Locator can now be bound to a configurable port, allowing users to get
     multiple Runtimes on a single host.
-  * Engines will now display the reason for app stop in the log.
-  * Bugfix: engines will now try to rebalance when the last slave dies and
-    there're still sessions in the queue.
-  * Bugfix: unblock all signals before slave execve(), allowing slaves to be
-    killed with SIGTERM on termination.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 29 May 2013 16:30:05 +0400
-
-cocaine-core (0.10.4.3) unstable; urgency=low
-
-  * Cocaine Tools rewritten and moved to the Cocaine Framework.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 29 May 2013 16:30:05 +0400
-
-cocaine-core (0.10.4.2) unstable; urgency=low
-
-  * Set the non-blocking socket flag on the right sockets.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 21 May 2013 16:49:32 +0400
-
-cocaine-core (0.10.4.1) unstable; urgency=low
-
-  * Cocaine Tool now supports crashlog operations.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 20 May 2013 16:03:51 +0400
 
 cocaine-core (0.10.4.0) unstable; urgency=low
 
@@ -271,8 +67,6 @@ cocaine-core (0.10.4.0) unstable; urgency=low
   * Storage API v2. The list() method was superseded by the find() method,
     which supports tags and indexing. New blobs can be tagged via a new
     parameter to write().
-  * Bugfix: if a slave decide to die (because of an unrecoverable error, for
-    example), then detach every session assigned to it before death.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 17 May 2013 11:52:15 +0400
 
@@ -282,9 +76,6 @@ cocaine-core (0.10.3.0) unstable; urgency=low
   * Deferred void functions. Allow services to signal asynchronous method
     completion even if the method does not return anything.
   * Optional method parameters.
-  * Bugfix: quick exit is used under all circumstances in the process isolate.
-  * Bugfix: lock encoder early, render output buffer corruption impossible.
-  * Bugfix: cocaine-tool can handle uploads larger than 640KB.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 08 May 2013 19:33:07 +0400
 
@@ -292,144 +83,25 @@ cocaine-core (0.10.2.0) unstable; urgency=low
 
   * Release 10.2.
   * Service-based tools, rewritten in Python.
-  * Slave's working directory is set to its parent directory instead of root.
   * Chrono and Filesystem drivers are merged into the core.
   * An ability to disable the caching subsystem. Useful for development when
     applications are often re-uploaded.
-  * Bugfix: do not die if the application cannot be initialized because the
-    engine's listening socket binding has failed.
-  * Bugfix: properly handle situations when the specified worker binary cannot
-    be executed.
-  * Bugfix: explicitly request the signalfd support in libev.
-  * Bugfix: gently handle dying workers with sessions.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Thu, 25 Apr 2013 19:46:52 +0400
 
 cocaine-core (0.10.1.0) unstable; urgency=low
 
   * Release 10.1.
-  * Service protocol inheritance.
-  * Void service slots now respond with a single 'choke' message.
-  * Fixed a bug with disconnecting clients and async services.
-  * No runtime paths are created by the server now, now it only complains if
-    these paths are absent.
-  * SO_REUSEADDR now set for all listening sockets.
-  * Implementation detail headers are no longer installed.
-  * Support for libarchive 3.0+.
-  * More service protocol descriptions.
-  * Fixed a couple of bugs.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 08 Apr 2013 19:46:26 +0400
-
-cocaine-core (0.10.0.10) unstable; urgency=low
-
-  * Release candidate 10.
-  * Enum serialization fixes.
-  * Logging macro namespace fixes.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 03 Apr 2013 21:53:57 +0400
-
-cocaine-core (0.10.0.9) unstable; urgency=low
-
-  * Release candidate 9.
-  * Major pre-release code cleanup.
-  * Serialization traits are now includable for client code.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 03 Apr 2013 20:06:34 +0400
-
-cocaine-core (0.10.0.8) unstable; urgency=low
-
-  * Release candidate 8.
+  * Fully rewritten the I/O system using good old sockets.
+  * Fully asynchronous engines.
+  * Pluggable isolations (processes, cgroups, lxc, ...).
+  * Pluggable loggers (stdio, files, syslog, ...).
+  * Services and service discovery.
   * Storage service is now available! Provides synchronous uncached access to
     the system core storage.
-  * Logging service now supports verbosity() method which reports the current
-    server's log level.
-  * Fixed a bug with extracting of hardlinks from tar archives (for example,
-    when tar deduplicates multiple occurences of the same file in the tree).
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 02 Apr 2013 16:35:26 +0400
-
-cocaine-core (0.10.0.7) unstable; urgency=low
-
-  * Release candiate 7.
-  * Merged essentials module into the core.
-  * Stacktrace printer.
-  * Tuple support for services.
-  * Bugfixes.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 01 Apr 2013 17:52:50 +0400
-
-cocaine-core (0.10.0.6) unstable; urgency=low
-
-  * Release candidate 6.
-  * Services and service discovery.
-  * Service autorun.
-  * Separation of private headers.
-  * Much less dependencies.
-  * No warnings with -pedantic.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 27 Mar 2013 22:46:47 +0400
-
-cocaine-core (0.10.0.5) unstable; urgency=low
-
-  * Release candidate 5.
-  * Fixed a bug with overlapping memory regions in buffered streams leading to
-    SIGSEGVs under high load.
-  * Profile operations added to the toolset.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 15 Mar 2013 21:48:16 +0400
-
-cocaine-core (0.10.0.4) unstable; urgency=low
-
-  * Release candidate 4.
-  * Properly handle unexpectedly died slaves.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 01 Mar 2013 23:26:58 +0400
-
-cocaine-core (0.10.0.3) unstable; urgency=low
-
-  * Release candidate 3.
-  * Remove the engine's unix socket file on shutdown.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Sat, 23 Feb 2013 01:29:03 +0400
-
-cocaine-core (0.10.0.2) unstable; urgency=low
-
-  * Release candidate 2.
-  * Debugging symbols are properly generated and packaged now.
-  * Dropped rpc::suicide message, effectively rendering the protocol
-    symmetric for both clients and servers (engines, slaves, services).
-  * Messages without bodies are now packed with an empty array instead of nil
-    object, which makes writing new slaves a little bit easier.
-  * Engines are now bound to local endpoints, while services are bound to TCP
-    endpoints, making them available for networking.
-  * The runtime no longer crashes when an unknown slave tries to establish a
-    connection with an engine.
-  * Fixed even more warnings (on Clang 4.2, there are no warnings at all with
-    -Wall -pedantic).
-  * Whitespace nazism mode on.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 22 Feb 2013 23:17:28 +0400
-
-cocaine-core (0.10.0.1) unstable; urgency=low
-
-  * Release candidate 1.
-  * Fully rewritten the I/O system using good old sockets.
-  * Motsly got rid of Boost.
-  * Fixed a lot of warnings and bugs.
-
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 15 Feb 2013 01:33:23 +0400
-
-cocaine-core (0.10.0.0) unstable; urgency=low
-
-  * Release candidate 0.
+  * Logging service is now available! Provides remote logging capabilities.
   * Streaming API.
-  * Sessions.
-  * Fully reworked storage subsystem.
-  * Asynchronous engines.
-  * Pluggable isolations (processes, cgroups, lxc, ...).
-  * Much faster I/O subsystem.
-  * Pluggable loggers (stdio, files, syslog, ...).
-  * Services.
+  * Service protocol inheritance.
+  * Stacktrace printer.
 
- -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 29 Jan 2013 19:28:49 +0400
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Mon, 08 Apr 2013 19:46:26 +0400
