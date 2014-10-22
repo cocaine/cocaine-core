@@ -122,7 +122,7 @@ public:
     assign(const std::string& name);
 
     void
-    retain(const std::string& name, port_t port);
+    retain(const std::string& name);
 };
 
 // Context

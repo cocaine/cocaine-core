@@ -30,8 +30,6 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
-#include <blackhole/scoped_attributes.hpp>
-
 using namespace blackhole;
 
 using namespace boost::asio;
@@ -45,10 +43,7 @@ class actor_t::accept_action_t:
     public std::enable_shared_from_this<accept_action_t>
 {
     actor_t *const parent;
-
-    // Holds new connection information, populated by Boost ASIO.
-    tcp::socket socket;
-    tcp::endpoint endpoint;
+    tcp::socket    socket;
 
 public:
     accept_action_t(actor_t* parent_):
@@ -66,7 +61,7 @@ private:
 
 void
 actor_t::accept_action_t::operator()() {
-    parent->m_acceptor->async_accept(socket, endpoint, std::bind(&accept_action_t::finalize,
+    parent->m_acceptor->async_accept(socket, std::bind(&accept_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -74,26 +69,24 @@ actor_t::accept_action_t::operator()() {
 
 void
 actor_t::accept_action_t::finalize(const boost::system::error_code& ec) {
-    scoped_attributes_t attributes(*parent->m_log, {
-        attribute::make("service", parent->m_prototype->name())
-    });
+    // Prepare the internal socket object for consequential operations by moving its contents to a
+    // heap-allocated object, which in turn might be attached to an engine.
+    auto ptr = std::make_shared<tcp::socket>(std::move(socket));
 
     if(ec) {
         if(ec == boost::asio::error::operation_aborted) {
             return;
         }
 
-        COCAINE_LOG_ERROR(parent->m_log, "unable to accept client connection: [%d] %s",
-            ec.value(), ec.message()
+        COCAINE_LOG_ERROR(parent->m_log, "unable to accept a connection: [%d] %s", ec.value(), ec.message())(
+            "service", parent->m_prototype->name()
         );
     } else {
-        execution_unit_t& engine = parent->m_context.engine();
-
-        // This won't attach the socket immediately, instead it will post a new action to the
-        // designated unit's event loop queue.
-        engine.attach(std::make_shared<tcp::socket>(std::move(socket)), parent->m_prototype);
+        parent->m_context.engine().attach(ptr, parent->m_prototype);
     }
 
+    // TODO: Find out if it's always a good idea to continue accepting connections no matter what.
+    // For example, destroying a socket from outside this thread will trigger weird stuff on Linux.
     operator()();
 }
 
@@ -141,8 +134,11 @@ actor_t::endpoints() const {
     tcp::resolver::query::flags flags =
         tcp::resolver::query::numeric_service
       | tcp::resolver::query::address_configured;
-
     tcp::resolver::iterator begin, end;
+
+    // For unspecified bind addresses, actual address set has to be resolved first. In other words,
+    // unspecified means every available and reachable address for the host.
+    std::vector<tcp::endpoint> endpoints;
 
     try {
         begin = tcp::resolver(*m_asio).resolve(tcp::resolver::query(
@@ -151,11 +147,10 @@ actor_t::endpoints() const {
         ));
     } catch(const boost::system::system_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to determine local endpoints: [%d] %s",
-            e.code().value(), e.code().message()
+            e.code().value(),
+            e.code().message()
         )("service", m_prototype->name());
     }
-
-    std::vector<tcp::endpoint> endpoints;
 
     std::transform(begin, end, std::back_inserter(endpoints), std::bind(
        &tcp::resolver::iterator::value_type::endpoint,
@@ -184,16 +179,16 @@ actor_t::run() {
         m_context.mapper.assign(m_prototype->name())
     });
 
+    COCAINE_LOG_DEBUG(m_log, "exposing service on %s", m_acceptor->local_endpoint())(
+        "service", m_prototype->name()
+    );
+
     m_asio->post(std::bind(&accept_action_t::operator(),
         std::make_shared<accept_action_t>(this)
     ));
 
     // The post() above won't be executed until this thread is started.
     m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_asio);
-
-    COCAINE_LOG_DEBUG(m_log, "service has been exposed on %s", m_acceptor->local_endpoint())(
-        "service", m_prototype->name()
-    );
 }
 
 void
@@ -204,19 +199,17 @@ actor_t::terminate() {
     // happens only in engine chambers, because that's where client connections are being handled.
     m_asio->stop();
 
-    // Save the endpoint, as it won't be available after close().
-    const auto endpoint = m_acceptor->local_endpoint();
-
-    // To avoid remote clients hanging there waiting for accept(), while the service is actually on
-    // its way to termination, close the socket.
-    m_acceptor->close();
-    m_context.mapper.retain(m_prototype->name(), endpoint.port());
+    COCAINE_LOG_DEBUG(m_log, "removing service from %s", m_acceptor->local_endpoint())(
+        "service", m_prototype->name()
+    );
 
     // Does not block, unlike the one in execution_unit_t's destructors.
     m_chamber  = nullptr;
     m_acceptor = nullptr;
 
-    COCAINE_LOG_DEBUG(m_log, "service has been removed from %s", endpoint)(
-        "service", m_prototype->name()
-    );
+    // Be ready to restart the actor.
+    m_asio->reset();
+
+    // Mark this service's port as free.
+    m_context.mapper.retain(m_prototype->name());
 }

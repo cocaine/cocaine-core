@@ -425,7 +425,7 @@ port_mapping_t::assign(const std::string& name) {
 }
 
 void
-port_mapping_t::retain(const std::string& name, port_t port) {
+port_mapping_t::retain(const std::string& name) {
     std::lock_guard<std::mutex> guard(m_mutex);
 
     if(!m_in_use.count(name)) {
@@ -433,7 +433,7 @@ port_mapping_t::retain(const std::string& name, port_t port) {
     }
 
     if(!m_pinned.count(name)) {
-        m_shared.push_back(port);
+        m_shared.push_back(m_in_use.at(name));
     }
 
     m_in_use.erase(name);
