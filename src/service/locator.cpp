@@ -139,8 +139,6 @@ locator_t::remote_client_t::discard(const boost::system::error_code& ec) const {
 
 void
 locator_t::remote_client_t::on_announce(const results::connect& update) {
-    if(update.empty()) return;
-
     std::ostringstream stream;
     std::ostream_iterator<char> builder(stream);
 
@@ -406,7 +404,11 @@ locator_t::on_connect(const std::string& uuid, uint64_t COCAINE_UNUSED_(ssid)) -
 
     m_streams.insert({uuid, stream});
 
-    return stream.write(m_snapshot);
+    if(m_snapshot.empty()) {
+        return stream;
+    } else {
+        return stream.write(m_snapshot);
+    }
 }
 
 void
