@@ -30,7 +30,10 @@ namespace cocaine { namespace cluster {
 
 class predefine_cfg_t {
 public:
+    // Maps randomly generated UUIDs to predefined host endpoints.
     std::map<std::string, std::vector<boost::asio::ip::tcp::endpoint>> endpoints;
+
+    // Will try to reconnect to the hosts specified above every `interval` seconds.
     boost::asio::deadline_timer::duration_type interval;
 };
 

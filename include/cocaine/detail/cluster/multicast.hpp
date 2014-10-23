@@ -30,7 +30,10 @@ namespace cocaine { namespace cluster {
 
 class multicast_cfg_t {
 public:
+    // An UDP endpoint to bind for multicast node announces. Not a multicast group.
     boost::asio::ip::udp::endpoint endpoint;
+
+    // Will announce local endpoints to the specified multicast group every `interval` seconds.
     boost::asio::deadline_timer::duration_type interval;
 };
 
