@@ -27,6 +27,11 @@
 
 #include <boost/asio/io_service.hpp>
 
+#include <boost/spirit/include/karma_generate.hpp>
+#include <boost/spirit/include/karma_list.hpp>
+#include <boost/spirit/include/karma_stream.hpp>
+#include <boost/spirit/include/karma_string.hpp>
+
 using namespace boost::asio;
 using namespace boost::asio::ip;
 
@@ -90,7 +95,18 @@ predefine_t::predefine_t(context_t& context, interface& locator, const std::stri
     m_cfg(args.to<predefine_cfg_t>()),
     m_timer(locator.asio())
 {
-    COCAINE_LOG_INFO(m_log, "using %d predefined nodes for cluster", m_cfg.endpoints.size());
+    COCAINE_LOG_INFO(m_log, "using %d predefined nodes", m_cfg.endpoints.size());
+
+    for(auto it = m_cfg.endpoints.begin(); it != m_cfg.endpoints.end(); ++it) {
+        std::ostringstream stream;
+        std::ostream_iterator<char> builder(stream);
+
+        boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", it->second);
+
+        COCAINE_LOG_INFO(m_log, "determined endpoints for node: %s", stream.str())(
+            "uuid", it->first
+        );
+    }
 
     m_timer.expires_from_now(boost::posix_time::seconds(5));
     m_timer.async_wait(std::bind(&predefine_t::on_announce, this, ph::_1));
