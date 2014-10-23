@@ -21,6 +21,7 @@
 #include "cocaine/detail/essentials.hpp"
 
 #include "cocaine/detail/cluster/multicast.hpp"
+#include "cocaine/detail/cluster/predefine.hpp"
 #include "cocaine/detail/gateway/adhoc.hpp"
 #include "cocaine/detail/isolate/process.hpp"
 #include "cocaine/detail/service/locator.hpp"
@@ -37,6 +38,7 @@
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<cluster::multicast_t>("multicast");
+    repository.insert<cluster::predefine_t>("predefine");
     repository.insert<gateway::adhoc_t>("adhoc");
     repository.insert<isolate::process_t>("process");
     repository.insert<service::locator_t>("locator");

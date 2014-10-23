@@ -32,6 +32,7 @@
 
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/multicast.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 using namespace boost::asio;
 using namespace boost::asio::ip;
@@ -96,8 +97,8 @@ struct multicast_t::announce_t {
 multicast_t::multicast_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args):
     category_type(context, locator, name, args),
     m_context(context),
-    m_locator(locator),
     m_log(context.log(name)),
+    m_locator(locator),
     m_cfg(args.to<multicast_cfg_t>()),
     m_socket(locator.asio()),
     m_timer(locator.asio())
