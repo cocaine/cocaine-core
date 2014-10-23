@@ -40,6 +40,8 @@ public:
 class multicast_t:
     public api::cluster_t
 {
+    struct announce_t;
+
     typedef api::cluster_t::interface interface;
 
     context_t& m_context;
@@ -57,8 +59,6 @@ class multicast_t:
 
     // Announce expiration timeouts.
     std::map<std::string, std::unique_ptr<boost::asio::deadline_timer>> m_expirations;
-
-    struct announce_t;
 
 public:
     multicast_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args);
