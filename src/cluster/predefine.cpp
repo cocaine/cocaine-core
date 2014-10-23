@@ -108,7 +108,7 @@ predefine_t::predefine_t(context_t& context, interface& locator, const std::stri
         );
     }
 
-    m_timer.expires_from_now(boost::posix_time::seconds(5));
+    m_timer.expires_from_now(m_cfg.interval);
     m_timer.async_wait(std::bind(&predefine_t::on_announce, this, ph::_1));
 }
 
@@ -126,6 +126,6 @@ predefine_t::on_announce(const boost::system::error_code& ec) {
         m_locator.link_node(it->first, it->second);
     }
 
-    m_timer.expires_from_now(boost::posix_time::seconds(5));
+    m_timer.expires_from_now(m_cfg.interval);
     m_timer.async_wait(std::bind(&predefine_t::on_announce, this, ph::_1));
 }
