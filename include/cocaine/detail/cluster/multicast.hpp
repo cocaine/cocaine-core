@@ -24,6 +24,8 @@
 #include "cocaine/api/cluster.hpp"
 
 #include <boost/asio/deadline_timer.hpp>
+
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ip/udp.hpp>
 
 namespace cocaine { namespace cluster {
@@ -41,8 +43,6 @@ class multicast_t:
     public api::cluster_t
 {
     struct announce_t;
-
-    typedef api::cluster_t::interface interface;
 
     context_t& m_context;
 

@@ -32,7 +32,6 @@
 
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/multicast.hpp>
-#include <boost/asio/ip/tcp.hpp>
 
 using namespace boost::asio;
 using namespace boost::asio::ip;
@@ -82,13 +81,10 @@ struct dynamic_converter<multicast_cfg_t> {
 
 } // namespace cocaine
 
-struct multicast_t::announce_t {
-    typedef std::tuple<
-     /* Node ID. */
-        std::string,
-     /* A list of node endpoints, sorted according to RFC3484. */
-        std::vector<tcp::endpoint>
-    > tuple_type;
+struct
+multicast_t::announce_t {
+    // Maps node UUID to a list of node endpoints.
+    typedef std::tuple<std::string, std::vector<tcp::endpoint>> tuple_type;
 
     std::array<char, 65536> buffer;
     udp::endpoint endpoint;
