@@ -127,7 +127,7 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
 
     m_socket.set_option(multicast::join_group(m_cfg.endpoint.address()));
 
-    auto announce = std::make_shared<announce_t>();
+    const auto announce = std::make_shared<announce_t>();
 
     m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()),
         announce->endpoint,
@@ -248,7 +248,7 @@ multicast_t::on_receive(const boost::system::error_code& ec, size_t bytes_receiv
         expiration->async_wait(std::bind(&multicast_t::on_expired, this, ph::_1, uuid));
     }
 
-    auto announce = std::make_shared<announce_t>();
+    const auto announce = std::make_shared<announce_t>();
 
     m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()),
         announce->endpoint,

@@ -60,16 +60,17 @@ using namespace boost::asio::ip;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
-#include "locator/routing.inl"
-
 // Locator internals
 
 class locator_t::remote_client_t:
     public dispatch<event_traits<locator::connect>::upstream_type>,
     public std::enable_shared_from_this<remote_client_t>
 {
-    locator_t *const parent;
-    const std::string uuid;
+    locator_t      *const parent;
+    std::string     const uuid;
+
+    // Currently announced services.
+    std::set<std::string> active;
 
 public:
     remote_client_t(locator_t* parent_, const std::string& uuid_):
@@ -81,6 +82,13 @@ public:
 
         on<protocol::chunk>(std::bind(&remote_client_t::on_announce, this, std::placeholders::_1));
         on<protocol::choke>(std::bind(&remote_client_t::on_shutdown, this));
+    }
+
+    virtual
+   ~remote_client_t() {
+        for(auto it = active.begin(); it != active.end(); ++it) {
+            parent->m_gateway->cleanup(uuid, *it);
+        }
     }
 
     void
@@ -130,9 +138,9 @@ locator_t::remote_client_t::on_link(const boost::system::error_code& ec) {
 
 void
 locator_t::remote_client_t::discard(const boost::system::error_code& ec) const {
-    COCAINE_LOG_ERROR(parent->m_log, "remote node has been unexpectedly detached: [%d] %s",
-        ec.value(), ec.message()
-    )("uuid", uuid);
+    COCAINE_LOG_ERROR(parent->m_log, "remote node has been discarded: [%d] %s", ec.value(), ec.message())(
+        "uuid", uuid
+    );
 
     parent->drop_node(uuid);
 }
@@ -148,18 +156,23 @@ locator_t::remote_client_t::on_announce(const results::connect& update) {
         update | boost::adaptors::map_keys
     );
 
-    COCAINE_LOG_INFO(parent->m_log, "remote node has updated the following services: %s", stream.str())(
+    COCAINE_LOG_INFO(parent->m_log, "remote node has updated %d service(s): %s", update.size(), stream.str())(
         "uuid", uuid
     );
 
-    const auto diff = parent->m_routing->update_remote(uuid, update);
+    for(auto it = update.begin(); it != update.end(); ++it) {
+        std::vector<tcp::endpoint> endpoints;
 
-    for(auto it = diff.second.begin(); it != diff.second.end(); ++it) {
-        parent->m_gateway->cleanup(uuid, it->first);
-    }
+        // Deactivated services are announced with no endpoints.
+        std::tie(endpoints, std::ignore, std::ignore) = it->second;
 
-    for(auto it = diff.first.begin(); it != diff.first.end(); ++it) {
-        parent->m_gateway->consume(uuid, it->first, it->second);
+        if(endpoints.empty()) {
+            parent->m_gateway->cleanup(uuid, it->first);
+            active.erase(it->first);
+        } else {
+            parent->m_gateway->consume(uuid, it->first, it->second);
+            active.insert(it->first);
+        }
     }
 }
 
@@ -205,7 +218,8 @@ locator_t::cleanup_action_t::operator()() {
 
 // Locator
 
-locator_cfg_t::locator_cfg_t(const std::string& name, const dynamic_t& root):
+locator_cfg_t::locator_cfg_t(const std::string& name_, const dynamic_t& root):
+    name(name_),
     uuid(unique_id_t().string())
 {
     restricted = root.as_object().at("restrict", dynamic_t::array_t()).to<std::set<std::string>>();
@@ -219,12 +233,11 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     m_log(context.log(name)),
     m_cfg(name, root),
     m_asio(asio),
-    m_resolve(new api::resolve_t(context.log(name + ":resolve"), asio, {})),
-    m_routing(new router_t(*m_log.get()))
+    m_resolve(new api::resolve_t(context.log(name + ":resolve"), asio, {}))
 {
     using namespace std::placeholders;
 
-    on<locator::resolve>(std::bind(&locator_t::on_resolve, this, _1));
+    on<locator::resolve>(std::bind(&locator_t::on_resolve, this, _1, _2));
     on<locator::connect>(std::bind(&locator_t::on_connect, this, _1, _2));
     on<locator::refresh>(std::bind(&locator_t::on_refresh, this, _1));
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
@@ -240,12 +253,12 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         COCAINE_LOG_INFO(m_log, "restricting %d service(s): %s", m_cfg.restricted.size(), stream.str());
     }
 
-    // Context shutdown signal is set to track 'm_routing' because its lifetime essentially matches
+    // Context shutdown signal is set to track 'm_resolve' because its lifetime essentially matches
     // that of the Locator service itself
 
     context.signals.shutdown.connect(context_t::signals_t::context_signals_t::slot_type(
         std::bind(&locator_t::on_context_shutdown, this)
-    ).track_foreign(m_routing));
+    ).track_foreign(m_resolve));
 
     // Initialize clustering components
 
@@ -289,10 +302,22 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
             "active"
         }));
 
-        typedef std::map<std::string, unsigned int> group_t;
+        std::ostringstream stream;
+        std::ostream_iterator<char> builder(stream);
+
+        boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", groups);
+
+        COCAINE_LOG_INFO(m_log, "populating %d routing group(s): %s", groups.size(), stream.str());
 
         for(auto it = groups.begin(); it != groups.end(); ++it) {
-            m_routing->update_group(*it, storage->get<group_t>("groups", *it));
+            std::unique_ptr<logging::log_t> log = context.log(name, {
+                attribute::make("rg", *it)
+            });
+
+            m_groups.insert({
+                *it,
+                continuum_t(std::move(log), storage->get<continuum_t::stored_type>("groups", *it))
+            });
         }
     } catch(const storage_error_t& e) {
 #if defined(HAVE_GCC48)
@@ -343,12 +368,6 @@ locator_t::drop_node(const std::string& uuid) {
         "uuid", uuid
     );
 
-    const auto removed = m_routing->remove_remote(uuid);
-
-    for(auto it = removed.begin(); it != removed.end(); ++it) {
-        m_gateway->cleanup(uuid, it->first);
-    }
-
     m_remotes.erase(uuid);
 }
 
@@ -358,13 +377,22 @@ locator_t::uuid() const {
 }
 
 auto
-locator_t::on_resolve(const std::string& name) const -> results::resolve {
-    const auto basename = m_routing->select_service(name);
-    const auto provided = m_context.locate(basename);
+locator_t::on_resolve(const std::string& name, const std::string& seed) const -> results::resolve {
+    std::string remapped;
 
-    if(provided && provided.get().is_active()) {
-        COCAINE_LOG_DEBUG(m_log, "providing service using local node")(
-            "service", name
+    if(m_groups.count(name)) {
+        remapped = seed.empty() ? m_groups.at(name).get() : m_groups.at(name).get(seed);
+
+        COCAINE_LOG_DEBUG(m_log, "remapped service group '%s' to '%s'", name, remapped)(
+            "service", remapped
+        );
+    } else {
+        remapped = name;
+    }
+
+    if(auto provided = m_context.locate(remapped)) {
+        COCAINE_LOG_DEBUG(m_log, "providing service using local actor")(
+            "service", remapped
         );
 
         return results::resolve {
@@ -375,7 +403,7 @@ locator_t::on_resolve(const std::string& name) const -> results::resolve {
     }
 
     if(m_gateway) {
-        return m_gateway->resolve(basename);
+        return m_gateway->resolve(remapped);
     } else {
         throw boost::system::system_error(error::service_not_available);
     }
@@ -413,10 +441,8 @@ locator_t::on_connect(const std::string& uuid, uint64_t COCAINE_UNUSED_(ssid)) -
 
 void
 locator_t::on_refresh(const std::vector<std::string>& groups) {
-    typedef std::map<std::string, unsigned int> group_t;
-
-    std::map<std::string, group_t> values;
-    std::map<std::string, group_t>::iterator lb, ub;
+    std::map<std::string, continuum_t::stored_type> values;
+    std::map<std::string, continuum_t::stored_type>::iterator lb, ub;
 
     try {
         const auto storage = api::storage(m_context, "core");
@@ -427,19 +453,26 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
                 continue;
             }
 
-            values.insert({*it, storage->get<group_t>("groups", *it)});
+            values.insert({*it, storage->get<continuum_t::stored_type>("groups", *it)});
         }
     } catch(const storage_error_t& e) {
         throw boost::system::system_error(error::routing_storage_error);
     }
 
     for(auto it = groups.begin(); it != groups.end(); ++it) {
+        // Group continuums can't be updated, only erased and constructed again. This simplifies the
+        // logic greatly and doesn't impose any performance penalty.
+        m_groups.erase(*it);
+
+        // An extremely obscure way to save one function call!
         std::tie(lb, ub) = values.equal_range(*it);
 
-        if(lb == ub) {
-            m_routing->remove_group(*it);
-        } else {
-            m_routing->update_group(*it, lb->second);
+        if(lb != ub) {
+            std::unique_ptr<logging::log_t> log = m_context.log(m_cfg.name, {
+                attribute::make("rg", *it)
+            });
+
+            m_groups.insert({*it, continuum_t(std::move(log), lb->second)});
         }
     }
 
@@ -487,8 +520,6 @@ locator_t::on_service(const actor_t& actor) {
                 "uuid", it->first
             );
 
-            // The remote node has crashed, was stopped or something else happened which renders it
-            // impossible to continue delivering synchronization diffs to it.
             it = m_streams.erase(it);
         }
     }

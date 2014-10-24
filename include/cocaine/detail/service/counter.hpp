@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_SERVICE_COUNTER_HPP
-#define COCAINE_SERVICE_COUNTER_HPP
+#ifndef COCAINE_COUNTER_SERVICE_HPP
+#define COCAINE_COUNTER_SERVICE_HPP
 
 #include "cocaine/raft.hpp"
 

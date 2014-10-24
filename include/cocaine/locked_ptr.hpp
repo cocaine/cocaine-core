@@ -41,7 +41,7 @@ struct locked_ptr {
     }
 
     T&
-    operator*() {
+    operator* () {
         return value;
     }
 
@@ -64,7 +64,7 @@ struct locked_ptr<const T, Lockable> {
     }
 
     const T&
-    operator*() const {
+    operator* () const {
         return value;
     }
 

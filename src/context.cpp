@@ -419,7 +419,7 @@ port_mapping_t::assign(const std::string& name) {
         throw cocaine::error_t("no ports left for allocation");
     }
 
-    auto port = m_shared.front(); m_shared.pop_front();
+    const auto port = m_shared.front(); m_shared.pop_front();
 
     return m_in_use.insert({name, port}).first->second;
 }
@@ -635,9 +635,12 @@ context_t::remove(const std::string& name) {
 boost::optional<const actor_t&>
 context_t::locate(const std::string& name) const {
     auto ptr = m_services.synchronize();
-    auto it = std::find_if(ptr->begin(), ptr->end(), match{name});
+    auto it  = std::find_if(ptr->begin(), ptr->end(), match{name});
 
-    return boost::optional<const actor_t&>(it != ptr->end(), *it->second);
+    return boost::optional<const actor_t&>(
+        it != ptr->end() && it->second->is_active(),
+       *it->second
+    );
 }
 
 namespace {
@@ -693,7 +696,7 @@ context_t::bootstrap() {
             blackhole::attribute::make("service", it->first)
         });
 
-        auto asio = std::make_shared<boost::asio::io_service>();
+        const auto asio = std::make_shared<boost::asio::io_service>();
 
         COCAINE_LOG_INFO(m_logger, "starting service");
 

@@ -47,7 +47,9 @@ struct resolve {
 
     typedef boost::mpl::list<
      /* An alias of the service to resolve. */
-        std::string
+        std::string,
+     /* Routing seed. Can be used to consistently map users to service versions. */
+        optional<std::string>
     > argument_type;
 
     typedef option_of<

@@ -123,7 +123,7 @@ repository_t::get(const std::string& name, Args&&... args) const {
         throw repository_error_t("component '%s' is not available", name);
     }
 
-    const auto it = m_categories.at(id).find(name);
+    auto it = m_categories.at(id).find(name);
 
     // TEST: Ensure that the plugin is of the actually specified category.
     BOOST_ASSERT(it->second->type_id() == typeid(Category));

@@ -29,8 +29,7 @@ adhoc_t::adhoc_t(context_t& context, const std::string& name, const dynamic_t& a
     category_type(context, name, args),
     m_log(context.log(name))
 {
-    std::random_device device;
-    m_random_generator.seed(device());
+    std::random_device rd; m_random_generator.seed(rd());
 }
 
 adhoc_t::~adhoc_t() {
@@ -52,7 +51,7 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
 
     COCAINE_LOG_DEBUG(m_log, "providing service using remote node")(
         "service", name,
-        "uuid", lb->second.uuid
+        "uuid",    lb->second.uuid
     );
 
     return lb->second.info;
@@ -62,21 +61,26 @@ void
 adhoc_t::consume(const std::string& uuid, const std::string& name, const metadata_t& info) {
     m_remote_services.insert({
         name,
-        remote_service_t { uuid, info }
+        remote_service_t{uuid, info}
     });
+
+    COCAINE_LOG_DEBUG(m_log, "adding '%s' backend %s", name, uuid);
 }
 
 void
 adhoc_t::cleanup(const std::string& uuid, const std::string& name) {
     remote_service_map_t::iterator it, end;
 
+    // Only one remote will match the specified arguments.
     std::tie(it, end) = m_remote_services.equal_range(name);
 
     while(it != end) {
-        if(it->second.uuid == uuid) {
-            m_remote_services.erase(it++);
+        if(it->second.uuid != uuid) {
+            it++;
         } else {
-            ++it;
+            it = m_remote_services.erase(it);
         }
     }
+
+    COCAINE_LOG_DEBUG(m_log, "erased '%s' backend %s", name, uuid);
 }

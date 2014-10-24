@@ -95,15 +95,13 @@ predefine_t::predefine_t(context_t& context, interface& locator, const std::stri
     m_cfg(args.to<predefine_cfg_t>()),
     m_timer(locator.asio())
 {
-    COCAINE_LOG_INFO(m_log, "using %d predefined nodes", m_cfg.endpoints.size());
-
     for(auto it = m_cfg.endpoints.begin(); it != m_cfg.endpoints.end(); ++it) {
         std::ostringstream stream;
         std::ostream_iterator<char> builder(stream);
 
         boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", it->second);
 
-        COCAINE_LOG_INFO(m_log, "determined endpoints for node: %s", stream.str())(
+        COCAINE_LOG_INFO(m_log, "resolved node endpoints: %s", stream.str())(
             "uuid", it->first
         );
     }
