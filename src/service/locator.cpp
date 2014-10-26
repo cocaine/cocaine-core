@@ -238,7 +238,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     using namespace std::placeholders;
 
     on<locator::resolve>(std::bind(&locator_t::on_resolve, this, _1, _2));
-    on<locator::connect>(std::bind(&locator_t::on_connect, this, _1, _2));
+    on<locator::connect>(std::bind(&locator_t::on_connect, this, _1));
     on<locator::refresh>(std::bind(&locator_t::on_refresh, this, _1));
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
 
@@ -410,7 +410,7 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const ->
 }
 
 auto
-locator_t::on_connect(const std::string& uuid, uint64_t COCAINE_UNUSED_(ssid)) -> streamed<results::connect> {
+locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
     streamed<results::connect> stream;
 
     if(!m_cluster) {
@@ -430,6 +430,8 @@ locator_t::on_connect(const std::string& uuid, uint64_t COCAINE_UNUSED_(ssid)) -
         COCAINE_LOG_INFO(m_log, "creating synchronization stream for remote node");
     }
 
+    // Store the stream to synchronize future service updates with the remote node. Updates are sent
+    // out on context service signals, and, eventually, propagate to all nodes in the cluster.
     m_streams.insert({uuid, stream});
 
     if(m_snapshot.empty()) {

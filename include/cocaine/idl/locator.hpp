@@ -73,9 +73,7 @@ struct connect {
 
     typedef boost::mpl::list<
      /* Node ID. */
-        std::string,
-     /* Snapshot generation ID. */
-        optional<uint64_t>
+        std::string
     > argument_type;
 
     typedef stream_of<

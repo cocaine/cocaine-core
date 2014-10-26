@@ -49,7 +49,7 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
     std::uniform_int_distribution<int> distribution(0, std::distance(lb, ub) - 1);
     std::advance(lb, distribution(m_random_generator));
 
-    COCAINE_LOG_DEBUG(m_log, "providing service using remote node")(
+    COCAINE_LOG_DEBUG(m_log, "providing service using remote actor")(
         "service", name,
         "uuid",    lb->second.uuid
     );

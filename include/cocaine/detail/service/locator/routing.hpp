@@ -34,10 +34,10 @@ class continuum_t {
 
     const std::shared_ptr<logging::log_t> m_log;
 
-    struct element_t {
+    typedef struct {
         point_type  point;
         std::string value;
-    };
+    } element_t;
 
     friend
     bool

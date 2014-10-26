@@ -137,7 +137,7 @@ private:
     on_resolve(const std::string& name, const std::string& seed) const -> results::resolve;
 
     auto
-    on_connect(const std::string& uuid, uint64_t ssid) -> streamed<results::connect>;
+    on_connect(const std::string& uuid) -> streamed<results::connect>;
 
     void
     on_refresh(const std::vector<std::string>& groups);

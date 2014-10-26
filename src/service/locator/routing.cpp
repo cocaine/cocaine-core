@@ -45,7 +45,7 @@ continuum_t::continuum_t(std::unique_ptr<logging::log_t> log, const stored_type&
         weight
     );
 
-    char digest[16];
+    unsigned char digest[16];
 
     for(auto it = group.begin(); it != group.end(); ++it) {
         const double slice = it->second / weight;
