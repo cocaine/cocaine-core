@@ -99,6 +99,10 @@ public:
             throw cocaine::error_t("client is not connected");
         }
 
+        if(std::is_same<typename result_of<Event>::type, io::mute_slot_tag>::value && dispatch) {
+            throw cocaine::error_t("callee has no upstreams specified");
+        }
+
         // Get an untagged upstream. The message will be send directly using this upstream avoiding
         // duplicate static validations in upstream<Tag>, because it's a little bit faster this way.
         const io::upstream_ptr_t ptr = m_session->inject(dispatch);
