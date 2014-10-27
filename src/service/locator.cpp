@@ -80,7 +80,9 @@ public:
     {
         typedef io::protocol<event_traits<locator::connect>::upstream_type>::scope protocol;
 
-        on<protocol::chunk>(std::bind(&remote_client_t::on_announce, this, std::placeholders::_1));
+        using namespace std::placeholders;
+
+        on<protocol::chunk>(std::bind(&remote_client_t::on_announce, this, _1, _2));
         on<protocol::choke>(std::bind(&remote_client_t::on_shutdown, this));
     }
 
@@ -100,7 +102,7 @@ public:
 
 private:
     void
-    on_announce(const results::connect& update);
+    on_announce(const std::string& node, const std::map<std::string, results::resolve>& update);
 
     void
     on_shutdown();
@@ -146,7 +148,13 @@ locator_t::remote_client_t::discard(const boost::system::error_code& ec) const {
 }
 
 void
-locator_t::remote_client_t::on_announce(const results::connect& update) {
+locator_t::remote_client_t::on_announce(const std::string& node, const std::map<std::string, results::resolve>& update) {
+    if(node != uuid) {
+        COCAINE_LOG_ERROR(parent->m_log, "remote node id mismatch: expected '%s', received '%s'", uuid, node);
+        parent->drop_node(uuid);
+        return;
+    }
+
     std::ostringstream stream;
     std::ostream_iterator<char> builder(stream);
 
@@ -220,7 +228,7 @@ locator_t::cleanup_action_t::operator()() {
 
 locator_cfg_t::locator_cfg_t(const std::string& name_, const dynamic_t& root):
     name(name_),
-    uuid(unique_id_t().string())
+    uuid(root.as_object().at("uuid", unique_id_t().string()).as_string())
 {
     restricted = root.as_object().at("restrict", dynamic_t::array_t()).to<std::set<std::string>>();
     restricted.insert(name);
@@ -437,7 +445,7 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
     if(m_snapshot.empty()) {
         return stream;
     } else {
-        return stream.write(m_snapshot);
+        return stream.write(results::connect{m_cfg.uuid, m_snapshot});
     }
 }
 
@@ -505,7 +513,10 @@ locator_t::on_service(const actor_t& actor) {
     };
 
     const auto response = results::connect {
-        { actor.prototype().name(), metadata }
+        m_cfg.uuid, {{
+            actor.prototype().name(),
+            metadata
+        }}
     };
 
     std::lock_guard<std::mutex> guard(m_mutex);

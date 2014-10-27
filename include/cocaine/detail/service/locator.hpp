@@ -93,7 +93,8 @@ class locator_t:
     std::map<std::string, streamed<results::connect>> m_streams;
     std::mutex m_mutex;
 
-    results::connect m_snapshot;
+    // Snapshot of the local service disposition.
+    std::map<std::string, results::resolve> m_snapshot;
 
     // Clustering components.
     std::unique_ptr<api::gateway_t> m_gateway;

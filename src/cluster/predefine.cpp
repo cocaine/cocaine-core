@@ -23,8 +23,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/detail/unique_id.hpp"
-
 #include <boost/asio/io_service.hpp>
 
 #include <boost/spirit/include/karma_generate.hpp>
@@ -62,20 +60,22 @@ struct dynamic_converter<predefine_cfg_t> {
         tcp::resolver::iterator it, end;
 
         for(auto node = nodes.as_object().begin(); node != nodes.as_object().end(); ++node) {
+            auto addr = node->second.as_string();
+
             try {
                 it = resolver.resolve(tcp::resolver::query(
-                    node->first, std::to_string(node->second.as_uint())
+                    // TODO: A better way to parse this.
+                    addr.substr(0, addr.rfind(":")), addr.substr(addr.rfind(":") + 1)
                 ));
             } catch(const boost::system::system_error& e) {
 #if defined(HAVE_GCC48)
-                std::throw_with_nested(cocaine::error_t("unable to determine predefined host endpoints"));
+                std::throw_with_nested(cocaine::error_t("unable to determine predefined node endpoints"));
 #else
-                throw cocaine::error_t("unable to determine predefined host endpoints");
+                throw cocaine::error_t("unable to determine predefined node endpoints");
 #endif
             }
 
-            // Generate a random UUID for each predefined node.
-            result.endpoints[unique_id_t().string()] = std::vector<tcp::endpoint>(it, end);
+            result.endpoints[node->first] = std::vector<tcp::endpoint>(it, end);
         }
 
         result.interval = boost::posix_time::seconds(
