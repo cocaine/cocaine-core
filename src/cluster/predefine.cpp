@@ -23,8 +23,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/detail/unique_id.hpp"
-
 #include <boost/asio/io_service.hpp>
 
 #include <boost/spirit/include/karma_generate.hpp>
@@ -62,20 +60,22 @@ struct dynamic_converter<predefine_cfg_t> {
         tcp::resolver::iterator it, end;
 
         for(auto node = nodes.as_object().begin(); node != nodes.as_object().end(); ++node) {
+            auto addr = node->second.as_string();
+
             try {
                 it = resolver.resolve(tcp::resolver::query(
-                    node->first, std::to_string(node->second.as_uint())
+                    // TODO: A better way to parse this.
+                    addr.substr(0, addr.rfind(":")), addr.substr(addr.rfind(":") + 1)
                 ));
             } catch(const boost::system::system_error& e) {
 #if defined(HAVE_GCC48)
-                std::throw_with_nested(cocaine::error_t("unable to determine predefined host endpoints"));
+                std::throw_with_nested(cocaine::error_t("unable to determine predefined node endpoints"));
 #else
-                throw cocaine::error_t("unable to determine predefined host endpoints");
+                throw cocaine::error_t("unable to determine predefined node endpoints");
 #endif
             }
 
-            // Generate a random UUID for each predefined node.
-            result.endpoints[unique_id_t().string()] = std::vector<tcp::endpoint>(it, end);
+            result.endpoints[node->first] = std::vector<tcp::endpoint>(it, end);
         }
 
         result.interval = boost::posix_time::seconds(
@@ -95,15 +95,13 @@ predefine_t::predefine_t(context_t& context, interface& locator, const std::stri
     m_cfg(args.to<predefine_cfg_t>()),
     m_timer(locator.asio())
 {
-    COCAINE_LOG_INFO(m_log, "using %d predefined nodes", m_cfg.endpoints.size());
-
     for(auto it = m_cfg.endpoints.begin(); it != m_cfg.endpoints.end(); ++it) {
         std::ostringstream stream;
         std::ostream_iterator<char> builder(stream);
 
         boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", it->second);
 
-        COCAINE_LOG_INFO(m_log, "determined endpoints for node: %s", stream.str())(
+        COCAINE_LOG_INFO(m_log, "resolved node endpoints: %s", stream.str())(
             "uuid", it->first
         );
     }

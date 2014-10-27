@@ -19,6 +19,7 @@ cocaine-core (0.12.0.0) unstable; urgency=low
     service management is a responsibility of the Context.
   * Configurable cluster discovery mechanics, including multicast and predefine
     cluster discovery plugins.
+  * Routing groups re-implemented using Ketama consistent hashing continuums.
 
  -- Andrey Sibiryov <kobolog@yandex-team.ru>  Tue, 23 Oct 2014 17:49:29 -0500
 

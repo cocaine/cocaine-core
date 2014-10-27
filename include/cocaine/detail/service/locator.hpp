@@ -19,12 +19,14 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_SERVICE_LOCATOR_HPP
-#define COCAINE_SERVICE_LOCATOR_HPP
+#ifndef COCAINE_LOCATOR_SERVICE_HPP
+#define COCAINE_LOCATOR_SERVICE_HPP
 
 #include "cocaine/api/cluster.hpp"
 #include "cocaine/api/resolve.hpp"
 #include "cocaine/api/service.hpp"
+
+#include "cocaine/detail/service/locator/routing.hpp"
 
 #include "cocaine/idl/locator.hpp"
 #include "cocaine/rpc/dispatch.hpp"
@@ -54,7 +56,10 @@ class locator_cfg_t
 public:
     locator_cfg_t(const std::string& name, const dynamic_t& args);
 
+    std::string name;
     std::string uuid;
+
+    // Restricted services.
     std::set<std::string> restricted;
 };
 
@@ -78,7 +83,7 @@ class locator_t:
     boost::asio::io_service& m_asio;
 
     // Remote sessions are created using this resolve.
-    std::unique_ptr<api::resolve_t> m_resolve;
+    std::shared_ptr<api::resolve_t> m_resolve;
 
     // Incoming sessions indexed by uuid. The uuid is required to disambiguate between different two
     // instances on the same host, even if the instance was restarted on the same port.
@@ -88,15 +93,15 @@ class locator_t:
     std::map<std::string, streamed<results::connect>> m_streams;
     std::mutex m_mutex;
 
-    results::connect m_snapshot;
+    // Snapshot of the local service disposition.
+    std::map<std::string, results::resolve> m_snapshot;
 
     // Clustering components.
     std::unique_ptr<api::gateway_t> m_gateway;
     std::shared_ptr<api::cluster_t> m_cluster;
 
-    // Used to resolve service names against service groups based on weights and other metrics.
-    // TODO: Make it a part of this class itself.
-    std::shared_ptr<router_t> m_routing;
+    // Used to resolve service names against routing groups, based on weights and other metrics.
+    std::map<std::string, continuum_t> m_groups;
 
 public:
     locator_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
@@ -130,10 +135,10 @@ public:
 
 private:
     auto
-    on_resolve(const std::string& name) const -> results::resolve;
+    on_resolve(const std::string& name, const std::string& seed) const -> results::resolve;
 
     auto
-    on_connect(const std::string& uuid, uint64_t ssid) -> streamed<results::connect>;
+    on_connect(const std::string& uuid) -> streamed<results::connect>;
 
     void
     on_refresh(const std::vector<std::string>& groups);

@@ -22,6 +22,8 @@
 #define COCAINE_GATEWAY_API_HPP
 
 #include "cocaine/common.hpp"
+
+#include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
 // TODO: Drop this.

@@ -29,8 +29,7 @@ adhoc_t::adhoc_t(context_t& context, const std::string& name, const dynamic_t& a
     category_type(context, name, args),
     m_log(context.log(name))
 {
-    std::random_device device;
-    m_random_generator.seed(device());
+    std::random_device rd; m_random_generator.seed(rd());
 }
 
 adhoc_t::~adhoc_t() {
@@ -41,18 +40,20 @@ auto
 adhoc_t::resolve(const std::string& name) const -> metadata_t {
     remote_service_map_t::const_iterator lb, ub;
 
-    if(!m_remote_services.count(name)) {
+    auto ptr = m_remote_services.synchronize();
+
+    if(!ptr->count(name)) {
         throw boost::system::system_error(error::service_not_available);
     }
 
-    std::tie(lb, ub) = m_remote_services.equal_range(name);
+    std::tie(lb, ub) = ptr->equal_range(name);
 
     std::uniform_int_distribution<int> distribution(0, std::distance(lb, ub) - 1);
     std::advance(lb, distribution(m_random_generator));
 
-    COCAINE_LOG_DEBUG(m_log, "providing service using remote node")(
+    COCAINE_LOG_DEBUG(m_log, "providing service using remote actor")(
         "service", name,
-        "uuid", lb->second.uuid
+        "uuid",    lb->second.uuid
     );
 
     return lb->second.info;
@@ -60,23 +61,30 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
 
 void
 adhoc_t::consume(const std::string& uuid, const std::string& name, const metadata_t& info) {
-    m_remote_services.insert({
+    m_remote_services->insert({
         name,
-        remote_service_t { uuid, info }
+        remote_service_t{uuid, info}
     });
+
+    COCAINE_LOG_DEBUG(m_log, "adding '%s' backend %s", name, uuid);
 }
 
 void
 adhoc_t::cleanup(const std::string& uuid, const std::string& name) {
     remote_service_map_t::iterator it, end;
 
-    std::tie(it, end) = m_remote_services.equal_range(name);
+    auto ptr = m_remote_services.synchronize();
+
+    // Only one remote will match the specified arguments.
+    std::tie(it, end) = ptr->equal_range(name);
 
     while(it != end) {
-        if(it->second.uuid == uuid) {
-            m_remote_services.erase(it++);
+        if(it->second.uuid != uuid) {
+            it++;
         } else {
-            ++it;
+            it = ptr->erase(it);
         }
     }
+
+    COCAINE_LOG_DEBUG(m_log, "erased '%s' backend %s", name, uuid);
 }

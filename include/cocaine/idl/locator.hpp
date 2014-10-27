@@ -47,7 +47,9 @@ struct resolve {
 
     typedef boost::mpl::list<
      /* An alias of the service to resolve. */
-        std::string
+        std::string,
+     /* Routing seed. Can be used to consistently map users to service versions. */
+        optional<std::string>
     > argument_type;
 
     typedef option_of<
@@ -71,12 +73,12 @@ struct connect {
 
     typedef boost::mpl::list<
      /* Node ID. */
-        std::string,
-     /* Snapshot generation ID. */
-        optional<uint64_t>
+        std::string
     > argument_type;
 
     typedef stream_of<
+     /* Node ID. */
+        std::string,
      /* A full dump of all available services on this node. Used by metalocator to aggregate
         node information from the cluster. */
         std::map<std::string, tuple::fold<protocol<resolve::upstream_type>::sequence_type>::type>

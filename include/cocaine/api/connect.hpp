@@ -23,7 +23,6 @@
 #define COCAINE_CONNECT_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/locked_ptr.hpp"
 
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/session.hpp"
@@ -97,6 +96,10 @@ public:
 
         if(!m_session) {
             throw cocaine::error_t("client is not connected");
+        }
+
+        if(std::is_same<typename result_of<Event>::type, io::mute_slot_tag>::value && dispatch) {
+            throw cocaine::error_t("callee has no upstreams specified");
         }
 
         // Get an untagged upstream. The message will be send directly using this upstream avoiding

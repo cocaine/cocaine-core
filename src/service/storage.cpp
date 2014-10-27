@@ -31,7 +31,7 @@ storage_t::storage_t(context_t& context, boost::asio::io_service& asio, const st
     category_type(context, asio, name, args),
     dispatch<storage_tag>(name)
 {
-    auto storage = api::storage(context, args.as_object().at("backend", "core").as_string());
+    const auto storage = api::storage(context, args.as_object().at("backend", "core").as_string());
 
     using namespace std::placeholders;
 
