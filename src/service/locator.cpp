@@ -310,6 +310,10 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
             "active"
         }));
 
+        if(groups.empty()) {
+            return;
+        }
+
         std::ostringstream stream;
         std::ostream_iterator<char> builder(stream);
 
