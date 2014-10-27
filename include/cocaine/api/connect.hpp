@@ -23,7 +23,6 @@
 #define COCAINE_CONNECT_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/locked_ptr.hpp"
 
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/session.hpp"

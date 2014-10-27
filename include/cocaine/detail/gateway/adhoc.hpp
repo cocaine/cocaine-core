@@ -43,7 +43,7 @@ class adhoc_t:
     typedef std::multimap<std::string, remote_service_t> remote_service_map_t;
 
     // TODO: Merge service metadata from remote nodes and check whether it's consistent.
-    remote_service_map_t m_remote_services;
+    synchronized<remote_service_map_t> m_remote_services;
 
 public:
     adhoc_t(context_t& context, const std::string& name, const dynamic_t& args);
