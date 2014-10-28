@@ -40,8 +40,7 @@ logging_t::logging_t(context_t& context, boost::asio::io_service& asio, const st
     try {
         // TODO: Does it work for logger backends other than "core"?
         // TODO: Setting verbosity is ugly.
-        auto& repository = repository_t::instance();
-        m_logger = std::make_unique<logger_t>(repository.create<verbose_logger_t<priorities>>(backend));
+        m_logger = std::make_unique<logger_t>(repository_t::instance().create<logger_t>(backend));
         m_logger->verbosity(context.log(name)->log().verbosity());
     } catch(const std::out_of_range& e) {
         throw cocaine::error_t("logger '%s' is not configured", backend);
