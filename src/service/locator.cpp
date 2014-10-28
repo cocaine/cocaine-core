@@ -28,6 +28,7 @@
 
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/unique_id.hpp"
+#include "cocaine/detail/waitable.hpp"
 
 #include "cocaine/idl/streaming.hpp"
 
@@ -36,14 +37,9 @@
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/map.hpp"
-#include "cocaine/traits/tuple.hpp"
 #include "cocaine/traits/vector.hpp"
 
-#include "cocaine/tuple.hpp"
-
 #include <blackhole/scoped_attributes.hpp>
-
-#include <boost/asio/connect.hpp>
 
 #include <boost/range/adaptor/map.hpp>
 
@@ -73,7 +69,7 @@ class locator_t::remote_client_t:
     std::set<std::string> active;
 
 public:
-    remote_client_t(locator_t* parent_, const std::string& uuid_):
+    remote_client_t(locator_t *const parent_, const std::string& uuid_):
         dispatch<event_traits<locator::connect>::upstream_type>(parent_->name()),
         parent(parent_),
         uuid(uuid_)
@@ -193,28 +189,26 @@ locator_t::remote_client_t::on_shutdown() {
     parent->drop_node(uuid);
 }
 
-class locator_t::cleanup_action_t {
+class locator_t::cleanup_action_t: public waitable<cleanup_action_t> {
     locator_t *const parent;
 
 public:
-    cleanup_action_t(locator_t* parent_):
+    cleanup_action_t(locator_t *const parent_):
         parent(parent_)
     { }
 
     void
-    operator()();
+    execute();
 };
 
 void
-locator_t::cleanup_action_t::operator()() {
-    if(!parent->m_remotes.empty()) {
-        COCAINE_LOG_DEBUG(parent->m_log, "cleaning up %d remote node client(s)", parent->m_remotes.size());
+locator_t::cleanup_action_t::execute() {
+    COCAINE_LOG_DEBUG(parent->m_log, "cleaning up %d remote node client(s)", parent->m_remotes.size());
 
-        // Disconnect all the remote nodes.
-        parent->m_remotes.clear();
-    }
+    // Disconnect all the remote nodes.
+    parent->m_remotes.clear();
 
-    COCAINE_LOG_DEBUG(parent->m_log, "shutting down clustering components");
+    COCAINE_LOG_DEBUG(parent->m_log, "shutting down distributed components");
 
     // Destroy the clustering stuff.
     parent->m_gateway = nullptr;
@@ -564,8 +558,11 @@ locator_t::on_context_shutdown() {
         it = m_streams.erase(it);
     }
 
-    // Schedule the rest of internal state cleanup inside the reactor's event loop.
-    m_asio.post(cleanup_action_t(this));
+    cleanup_action_t action{this};
+
+    // Schedule the rest of internal state cleanup inside the reactor's event loop and wait.
+    m_asio.post(std::bind(&cleanup_action_t::operator(), std::ref(action)));
+    action.wait();
 }
 
 namespace {
