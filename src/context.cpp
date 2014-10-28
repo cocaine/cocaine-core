@@ -53,9 +53,9 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 
+#include <boost/spirit/include/karma_char.hpp>
 #include <boost/spirit/include/karma_generate.hpp>
 #include <boost/spirit/include/karma_list.hpp>
-#include <boost/spirit/include/karma_stream.hpp>
 #include <boost/spirit/include/karma_string.hpp>
 
 #include "rapidjson/reader.h"
@@ -721,7 +721,7 @@ context_t::bootstrap() {
         std::ostringstream stream;
         std::ostream_iterator<char> builder(stream);
 
-        boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", errored);
+        boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
 
         COCAINE_LOG_ERROR(m_logger, "coudn't start %d service(s): %s", errored.size(), stream.str());
 
