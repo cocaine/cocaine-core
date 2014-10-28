@@ -106,7 +106,7 @@ private:
     struct enqueue_slot_t:
         public basic_slot<app::enqueue>
     {
-        enqueue_slot_t(app_service_t* parent_):
+        enqueue_slot_t(app_service_t *const parent_):
             parent(parent_)
         { }
 
@@ -172,7 +172,7 @@ private:
     }
 
 public:
-    app_service_t(const std::string& name_, app_t* parent_):
+    app_service_t(const std::string& name_, app_t *const parent_):
         dispatch<app_tag>(name_),
         parent(parent_)
     {

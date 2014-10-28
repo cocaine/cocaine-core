@@ -125,7 +125,7 @@ class resolve_t::resolve_action_t:
     handler_type handle;
 
 public:
-    resolve_action_t(resolve_t* parent_, basic_client_t& client_, handler_type handle_):
+    resolve_action_t(resolve_t *const parent_, basic_client_t& client_, handler_type handle_):
         dispatch<io::event_traits<io::locator::resolve>::upstream_type>("resolve"),
         parent(parent_),
         client(client_),
@@ -180,7 +180,7 @@ class resolve_t::connect_action_t:
     std::unique_ptr<tcp::socket> socket;
 
 public:
-    connect_action_t(resolve_t* parent_, basic_client_t& client_,
+    connect_action_t(resolve_t *const parent_, basic_client_t& client_,
                      const std::vector<endpoint_type>& endpoints_, handler_type handle_)
     :
         parent(parent_),

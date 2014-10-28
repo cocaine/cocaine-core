@@ -72,7 +72,7 @@ class chamber_t::stats_periodic_action_t:
 
 public:
     template<class Interval>
-    stats_periodic_action_t(chamber_t* parent_, Interval interval_):
+    stats_periodic_action_t(chamber_t *const parent_, Interval interval_):
         parent(parent_),
         interval(interval_)
     {

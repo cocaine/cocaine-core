@@ -46,7 +46,7 @@ class actor_t::accept_action_t:
     tcp::socket    socket;
 
 public:
-    accept_action_t(actor_t* parent_):
+    accept_action_t(actor_t *const parent_):
         parent(parent_),
         socket(*parent->m_asio)
     { }
