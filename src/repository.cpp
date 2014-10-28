@@ -53,7 +53,7 @@ struct validate_t {
 } // namespace
 
 repository_t::repository_t(logging::logger_t& logger):
-    m_log(new logging::log_t(logger, blackhole::log::attributes_t({
+    m_log(new logging::log_t(logger, blackhole::attribute::set_t({
         logging::keyword::source() = "repository"
     })))
 {

@@ -28,10 +28,10 @@
 namespace cocaine { namespace io {
 
 template<>
-struct type_traits<blackhole::log::attribute_value_t> {
+struct type_traits<blackhole::attribute::value_t> {
     static inline
     void
-    unpack(const msgpack::object& source, blackhole::log::attribute_value_t& target) {
+    unpack(const msgpack::object& source, blackhole::attribute::value_t& target) {
         switch(source.type) {
           case msgpack::type::RAW:
             target = source.as<std::string>();
@@ -60,10 +60,10 @@ struct type_traits<blackhole::log::attribute_value_t> {
 };
 
 template<>
-struct type_traits<blackhole::log::attributes_t> {
+struct type_traits<blackhole::attribute::set_t> {
     static inline
     void
-    unpack(const msgpack::object& source, blackhole::log::attributes_t& target) {
+    unpack(const msgpack::object& source, blackhole::attribute::set_t& target) {
         if(source.type != msgpack::type::MAP) {
             throw msgpack::type_error();
         }
@@ -78,10 +78,10 @@ struct type_traits<blackhole::log::attributes_t> {
 
             const std::string& name = ptr->key.as<std::string>();
 
-            blackhole::log::attribute_value_t value;
-            type_traits<blackhole::log::attribute_value_t>::unpack(ptr->val, value);
+            blackhole::attribute::value_t value;
+            type_traits<blackhole::attribute::value_t>::unpack(ptr->val, value);
 
-            target[name] = blackhole::log::attribute_t(value);
+            target[name] = blackhole::attribute::value_t(value);
         }
     }
  };

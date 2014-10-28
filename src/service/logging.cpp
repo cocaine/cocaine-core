@@ -40,7 +40,8 @@ logging_t::logging_t(context_t& context, boost::asio::io_service& asio, const st
     try {
         // TODO: Does it work for logger backends other than "core"?
         // TODO: Setting verbosity is ugly.
-        m_logger = std::make_unique<logger_t>(repository_t::instance().create<priorities>(backend));
+        auto& repository = repository_t::instance();
+        m_logger = std::make_unique<logger_t>(repository.create<verbose_logger_t<priorities>>(backend));
         m_logger->verbosity(context.log(name)->log().verbosity());
     } catch(const std::out_of_range& e) {
         throw cocaine::error_t("logger '%s' is not configured", backend);
@@ -63,7 +64,7 @@ logging_t::prototype() const -> const basic_dispatch_t& {
 
 void
 logging_t::on_emit(logging::priorities level, std::string&& source, std::string&& message,
-                   blackhole::log::attributes_t&& attributes)
+                   blackhole::attribute::set_t&& attributes)
 {
     auto record = m_logger->open_record(level, std::move(attributes));
 
@@ -71,8 +72,8 @@ logging_t::on_emit(logging::priorities level, std::string&& source, std::string&
         return;
     }
 
-    record.attributes.insert(cocaine::logging::keyword::source() = std::move(source));
-    record.attributes.insert(blackhole::keyword::message() = std::move(message));
+    record.insert(cocaine::logging::keyword::source() = std::move(source));
+    record.message(std::move(message));
 
     m_logger->push(std::move(record));
 }
