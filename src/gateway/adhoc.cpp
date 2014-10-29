@@ -66,7 +66,7 @@ adhoc_t::consume(const std::string& uuid, const std::string& name, const metadat
         remote_service_t{uuid, info}
     });
 
-    COCAINE_LOG_DEBUG(m_log, "adding '%s' backend %s", name, uuid);
+    COCAINE_LOG_DEBUG(m_log, "adding '%s' backend '%s'", name, uuid);
 }
 
 void
@@ -86,5 +86,5 @@ adhoc_t::cleanup(const std::string& uuid, const std::string& name) {
         }
     }
 
-    COCAINE_LOG_DEBUG(m_log, "erased '%s' backend %s", name, uuid);
+    COCAINE_LOG_DEBUG(m_log, "erased '%s' backend '%s'", name, uuid);
 }
