@@ -50,7 +50,11 @@ class session_t:
     class push_action_t;
 
     // The underlying connection.
+#if defined(__clang__)
+    std::shared_ptr<io::channel<asio::ip::tcp>> transport;
+#else
     synchronized<std::shared_ptr<io::channel<asio::ip::tcp>>> transport;
+#endif
 
     // Initial dispatch.
     const io::dispatch_ptr_t prototype;
