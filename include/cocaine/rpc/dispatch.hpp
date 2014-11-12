@@ -63,7 +63,7 @@ public:
 
     // Concrete protocol transition as opposed to transition description in protocol graphs. It can
     // either be some new dispatch pointer, an uninitialized pointer - terminal transition, or just
-    // an empty optional - recurrent transition.
+    // an empty optional - recurrent transition (i.e. no transition at all).
 
     virtual
     transition_t

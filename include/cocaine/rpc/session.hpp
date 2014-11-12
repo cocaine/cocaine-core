@@ -50,7 +50,7 @@ class session_t:
     typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
 
     // The underlying connection.
-    std::shared_ptr<io::channel<boost::asio::ip::tcp>> transport;
+    synchronized<std::shared_ptr<io::channel<boost::asio::ip::tcp>>> transport;
 
     // Keep the remote endpoint in case the socket is closed abruptly and we need to report it.
     const boost::asio::ip::tcp::endpoint endpoint;
