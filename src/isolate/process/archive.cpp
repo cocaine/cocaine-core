@@ -78,6 +78,7 @@ archive_t::deploy(const std::string& prefix_) {
 
     if(fs::exists(prefix)) {
         COCAINE_LOG_DEBUG(m_log, "cleaning %s up", prefix);
+
         for(fs::directory_iterator it(prefix), end; it != end; ++it) {
             fs::remove_all(it->path());
         }

@@ -28,7 +28,8 @@
 
 namespace cocaine { namespace cluster {
 
-class predefine_cfg_t {
+class predefine_cfg_t
+{
 public:
     // Maps randomly generated UUIDs to predefined host endpoints.
     std::map<std::string, std::vector<boost::asio::ip::tcp::endpoint>> endpoints;

@@ -66,7 +66,7 @@ struct test {
             std::string
         > argument_type;
 
-        typedef stream_of<
+        typedef option_of<
             std::string
         >::tag upstream_type;
     };

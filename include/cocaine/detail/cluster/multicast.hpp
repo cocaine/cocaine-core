@@ -30,7 +30,8 @@
 
 namespace cocaine { namespace cluster {
 
-class multicast_cfg_t {
+class multicast_cfg_t
+{
 public:
     // An UDP endpoint to bind for multicast node announces. Not a multicast group.
     boost::asio::ip::udp::endpoint endpoint;
