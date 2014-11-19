@@ -470,15 +470,17 @@ context_t::context_t(config_t config_, const std::string& logger_backend):
         using blackhole::keyword::tag::severity_t;
 
         // For each logging config define mappers. Then add them into the repository.
-        for (auto it = config.logging.loggers.begin(); it != config.logging.loggers.end(); ++it) {
+        for(auto it = config.logging.loggers.begin(); it != config.logging.loggers.end(); ++it) {
             // Configure some mappings for timestamps and severity attributes.
             blackhole::mapping::value_t mapper;
+
             mapper.add<severity_t<logging::priorities>>(&logging::map_severity);
             mapper.add<timestamp_t>(it->second.timestamp);
 
             // Attach them to the logging config.
             auto config = it->second.config;
             auto& frontends = config.frontends;
+
             for(auto it = frontends.begin(); it != frontends.end(); ++it) {
                 it->formatter.mapper = mapper;
             }
