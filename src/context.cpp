@@ -469,26 +469,28 @@ context_t::context_t(config_t config_, const std::string& logger_backend):
         using blackhole::keyword::tag::timestamp_t;
         using blackhole::keyword::tag::severity_t;
 
-        // Fetch configuration object.
-        auto logger = config.logging.loggers.at(logger_backend);
+        // For each logging config define mappers. Then add them into the repository.
+        for (auto it = config.logging.loggers.begin(); it != config.logging.loggers.end(); ++it) {
+            // Configure some mappings for timestamps and severity attributes.
+            blackhole::mapping::value_t mapper;
+            mapper.add<severity_t<logging::priorities>>(&logging::map_severity);
+            mapper.add<timestamp_t>(it->second.timestamp);
 
-        // Configure some mappings for timestamps and severity attributes.
-        blackhole::mapping::value_t mapper;
+            // Attach them to the logging config.
+            auto config = it->second.config;
+            auto& frontends = config.frontends;
+            for(auto it = frontends.begin(); it != frontends.end(); ++it) {
+                it->formatter.mapper = mapper;
+            }
 
-        mapper.add<severity_t<logging::priorities>>(&logging::map_severity);
-        mapper.add<timestamp_t>(logger.timestamp);
-
-        // Attach them to the logging config.
-        auto& frontends = logger.config.frontends;
-
-        for(auto it = frontends.begin(); it != frontends.end(); ++it) {
-            it->formatter.mapper = mapper;
+            // Register logger configuration with the Blackhole's repository.
+            repository.add_config(config);
         }
 
-        // Register logger configuration with the Blackhole's repository.
-        repository.add_config(logger.config);
-
         typedef logging::logger_t logger_type;
+
+        // Fetch 'core' configuration object.
+        auto logger = config.logging.loggers.at(logger_backend);
 
         // Try to initialize the logger. If it fails, there's no way to report the failure, except
         // printing it to the standart output.
