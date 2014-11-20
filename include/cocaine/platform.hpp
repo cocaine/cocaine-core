@@ -35,4 +35,12 @@
     #endif
 #endif
 
+#if defined(__clang__) || defined(HAVE_GCC47)
+    #define COCAINE_HAS_FEATURE_UNDERLYING_TYPE
+#endif
+
+#if defined(__clang__) || defined(HAVE_GCC48)
+    #define COCAINE_HAS_FEATURE_STEADY_CLOCK
+#endif
+
 #endif

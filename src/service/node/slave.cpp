@@ -86,7 +86,7 @@ slave_t::slave_t(const std::string& id,
     m_rebalance(rebalance),
     m_suicide(suicide),
     m_state(states::unknown),
-#if defined(__clang__) || defined(HAVE_GCC48)
+#ifdef COCAINE_HAS_FEATURE_STEADY_CLOCK
     m_birthstamp(std::chrono::steady_clock::now()),
 #else
     m_birthstamp(std::chrono::monotonic_clock::now()),
@@ -337,7 +337,7 @@ slave_t::on_ping() {
     );
 
     if(m_state == states::unknown) {
-#if defined(__clang__) || defined(HAVE_GCC48)
+#ifdef COCAINE_HAS_FEATURE_STEADY_CLOCK
         auto now = std::chrono::steady_clock::now();
 #else
         auto now = std::chrono::monotonic_clock::now();
