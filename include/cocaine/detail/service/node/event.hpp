@@ -27,7 +27,7 @@ namespace cocaine { namespace api {
 
 struct policy_t {
     // TODO: Consider some environment-independent workaround.
-#if defined(__clang__) || defined(HAVE_GCC48)
+#ifdef COCAINE_HAS_FEATURE_STEADY_CLOCK
     typedef std::chrono::steady_clock clock_type;
 #else
     typedef std::chrono::monotonic_clock clock_type;
