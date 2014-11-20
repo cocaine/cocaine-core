@@ -151,19 +151,6 @@ locator_t::remote_client_t::on_announce(const std::string& node, const std::map<
         return;
     }
 
-    std::ostringstream stream;
-    std::ostream_iterator<char> builder(stream);
-
-    boost::spirit::karma::generate(
-        builder,
-        boost::spirit::karma::string % ", ",
-        update | boost::adaptors::map_keys
-    );
-
-    COCAINE_LOG_INFO(parent->m_log, "remote node has updated %d service(s): %s", update.size(), stream.str())(
-        "uuid", uuid
-    );
-
     for(auto it = update.begin(); it != update.end(); ++it) {
         std::vector<tcp::endpoint> endpoints;
 
@@ -178,6 +165,19 @@ locator_t::remote_client_t::on_announce(const std::string& node, const std::map<
             active.insert(it->first);
         }
     }
+
+    std::ostringstream stream;
+    std::ostream_iterator<char> builder(stream);
+
+    boost::spirit::karma::generate(
+        builder,
+        boost::spirit::karma::string % ", ",
+        update | boost::adaptors::map_keys
+    );
+
+    COCAINE_LOG_INFO(parent->m_log, "remote node has updated %d service(s): %s", update.size(), stream.str())(
+        "uuid", uuid
+    );
 }
 
 void
