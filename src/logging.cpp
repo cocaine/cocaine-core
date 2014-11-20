@@ -90,16 +90,27 @@ namespace cocaine { namespace logging {
 std::string
 demangle(const std::string& mangled) {
     auto custom_deleter = std::bind(&::free, std::placeholders::_1);
-    auto demangled_size = 0ul;
+    auto status = 0;
 
     std::unique_ptr<char[], decltype(custom_deleter)> buffer(
-        abi::__cxa_demangle(mangled.c_str(), nullptr, &demangled_size, nullptr),
+        abi::__cxa_demangle(mangled.c_str(), nullptr, nullptr, &status),
         custom_deleter
     );
 
-    BOOST_ASSERT(buffer != nullptr);
+    static const std::map<int, std::string> errors = {
+        {  0, "The demangling operation succeeded." },
+        { -1, "A memory allocation failure occurred." },
+        { -2, "The mangled name is not a valid name under the C++ ABI mangling rules." },
+        { -3, "One of the arguments is invalid." }
+    };
 
-    return { buffer.get(), demangled_size };
+    BOOST_ASSERT(errors.count(status));
+
+    if(status != 0) {
+        return cocaine::format("failed to demangle '%s': %d", mangled, errors.at(status));
+    }
+
+    return buffer.get();
 }
 
 // Severity attribute converter from enumeration underlying type into string
