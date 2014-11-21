@@ -523,7 +523,7 @@ context_t::~context_t() {
     COCAINE_LOG_INFO(m_logger, "stopping %d service(s)", m_services->size());
 
     // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
-    // the outstanding connections are closed, so services have a change to send their last wishes.
+    // the outstanding connections are closed, so services have a chance to send their last wishes.
     signals.shutdown();
 
     // Stop the service from accepting new clients or doing any processing. Pop them from the active

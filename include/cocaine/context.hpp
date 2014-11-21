@@ -127,6 +127,8 @@ public:
 
 // Context
 
+namespace signals = boost::signals2;
+
 class actor_t;
 class execution_unit_t;
 
@@ -161,8 +163,8 @@ public:
     port_mapping_t mapper;
 
     struct signals_t {
-        typedef boost::signals2::signal<void()> context_signals_t;
-        typedef boost::signals2::signal<void(const actor_t& service)> service_signals_t;
+        typedef signals::signal<void()> context_signals_t;
+        typedef signals::signal<void(const actor_t& service)> service_signals_t;
 
         struct {
             // Fired on service creation, after service's thread is launched and is ready to accept

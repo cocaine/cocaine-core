@@ -36,6 +36,8 @@
 
 namespace cocaine {
 
+namespace signals = boost::signals2;
+
 class session_t:
     public std::enable_shared_from_this<session_t>
 {
@@ -67,7 +69,7 @@ class session_t:
 
 public:
     struct {
-        boost::signals2::signal<void(const boost::system::error_code&)> shutdown;
+        signals::signal<void(const boost::system::error_code&)> shutdown;
     } signals;
 
 public:

@@ -99,7 +99,7 @@ template<class Tag>
 class dispatch:
     public io::basic_dispatch_t
 {
-    const io::graph_basis_t m_graph;
+    static const io::graph_basis_t kGraph;
 
     // Slot construction
 
@@ -135,8 +135,7 @@ class dispatch:
 public:
     explicit
     dispatch(const std::string& name):
-        basic_dispatch_t(name),
-        m_graph(io::traverse<Tag>().get())
+        basic_dispatch_t(name)
     { }
 
     template<class Event, class F>
@@ -159,7 +158,7 @@ public:
     virtual
     auto
     graph() const -> const io::graph_basis_t& {
-        return m_graph;
+        return kGraph;
     }
 
     virtual
@@ -173,6 +172,9 @@ private:
     typename Visitor::result_type
     visit(int id, const Visitor& visitor) const;
 };
+
+template<class Tag>
+const io::graph_basis_t dispatch<Tag>::kGraph = io::traverse<Tag>().get();
 
 namespace aux {
 
@@ -212,15 +214,15 @@ struct calling_visitor_t:
         typename slot_type::tuple_type args;
 
         try {
-            // NOTE: Unpacks the object into a tuple using the argument typelist as opposed to using
-            // plain tuple type traits, in order to support parameter tags, like optional<T>.
+            // NOTE: Unpacks the object into a tuple using the argument typelist unlike using plain
+            // tuple type traits, in order to support parameter tags, like optional<T>.
             io::type_traits<typename io::event_traits<Event>::argument_type>::unpack(unpacked, args);
         } catch(const msgpack::type_error& e) {
             // TODO: Throw a system_error with some meaningful error code.
             throw cocaine::error_t("unable to unpack message arguments");
         }
 
-        // Call the slot with the upstream constrained using the event's upstream protocol type tag.
+        // Call the slot with the upstream constrained with the event's upstream protocol type tag.
         return result_type((*slot)(std::move(args), typename slot_type::upstream_type(upstream)));
     }
 
@@ -275,12 +277,11 @@ template<class Tag>
 template<class Visitor>
 typename Visitor::result_type
 dispatch<Tag>::visit(int id, const Visitor& visitor) const {
+    typename slot_map_t::const_iterator lb, ub;
     typename slot_map_t::mapped_type slot;
 
     {
         auto ptr = m_slots.synchronize();
-
-        typename slot_map_t::const_iterator lb, ub;
 
         // NOTE: Using equal_range() here instead of find() to check for slot existence and get the
         // slot pointer in one call instead of two.
@@ -290,7 +291,7 @@ dispatch<Tag>::visit(int id, const Visitor& visitor) const {
             throw cocaine::error_t("unbound type %d slot", id);
         }
 
-        // NOTE: The slot pointer is copied here so that the handling code could unregister the slot
+        // NOTE: The slot pointer is copied here, allowing the handling code to unregister the slot
         // via dispatch<T>::forget() without pulling the object from underneath itself.
         slot = lb->second;
     }
