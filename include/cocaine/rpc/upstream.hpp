@@ -79,20 +79,26 @@ template<class Tag, class Upstream> class message_queue;
 
 } // namespace io
 
+template<class Tag, class T>
+class allowing:
+    public std::enable_if<!std::is_same<typename pristine<T>::type, upstream<Tag>>::value>
+{ };
+
 template<class Tag>
 class upstream {
     template<class, class> friend class io::message_queue;
 
     // The original non-typed upstream.
-    const io::upstream_ptr_t ptr;
+    io::upstream_ptr_t ptr;
 
 public:
-    upstream(const io::upstream_ptr_t& upstream_):
-        ptr(upstream_)
+    template<class Stream>
+    upstream(Stream&& ptr,
+             typename allowing<Tag, Stream>::type* = nullptr): ptr(std::forward<Stream>(ptr))
     { }
 
     template<class Event, typename... Args>
-    void
+    upstream<typename io::event_traits<Event>::upstream_type>
     send(Args&&... args) {
         static_assert(
             std::is_same<typename Event::tag, Tag>::value,
@@ -100,15 +106,18 @@ public:
         );
 
         ptr->send<Event>(std::forward<Args>(args)...);
+
+        // Move the actual upstream pointer down the graph.
+        return std::move(ptr);
     }
 };
 
 template<>
-class upstream<void> {
-    template<class, class> friend class io::message_queue;
-
+class upstream<void>
+{
 public:
-    upstream(const io::upstream_ptr_t& COCAINE_UNUSED_(upstream)) {
+    template<class Stream>
+    upstream(Stream&&, typename allowing<void, Stream>::type* = nullptr) {
         // Empty.
     }
 };
