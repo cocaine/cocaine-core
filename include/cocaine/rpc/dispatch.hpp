@@ -75,7 +75,7 @@ public:
 
     virtual
     void
-    discard(const boost::system::error_code& COCAINE_UNUSED_(ec)) const { }
+    discard(const boost::system::error_code& ec) const;
 
     // Observers
 

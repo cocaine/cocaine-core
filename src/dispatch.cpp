@@ -30,6 +30,11 @@ basic_dispatch_t::~basic_dispatch_t() {
     // Empty.
 }
 
+void
+basic_dispatch_t::discard(const boost::system::error_code& COCAINE_UNUSED_(ec)) const {
+    // Empty.
+}
+
 std::string
 basic_dispatch_t::name() const {
     return m_name;
