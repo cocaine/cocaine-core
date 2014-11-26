@@ -23,15 +23,15 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include <boost/asio/io_service.hpp>
-
 #include <boost/spirit/include/karma_generate.hpp>
 #include <boost/spirit/include/karma_list.hpp>
 #include <boost/spirit/include/karma_stream.hpp>
 #include <boost/spirit/include/karma_string.hpp>
 
-using namespace boost::asio;
-using namespace boost::asio::ip;
+#include <asio/io_service.hpp>
+
+using namespace asio;
+using namespace asio::ip;
 
 using namespace cocaine::cluster;
 
@@ -67,7 +67,7 @@ struct dynamic_converter<predefine_cfg_t> {
                     // TODO: A better way to parse this.
                     addr.substr(0, addr.rfind(":")), addr.substr(addr.rfind(":") + 1)
                 ));
-            } catch(const boost::system::system_error& e) {
+            } catch(const asio::system_error&) {
 #if defined(HAVE_GCC48)
                 std::throw_with_nested(cocaine::error_t("unable to determine predefined node endpoints"));
 #else
@@ -115,8 +115,8 @@ predefine_t::~predefine_t() {
 }
 
 void
-predefine_t::on_announce(const boost::system::error_code& ec) {
-    if(ec == boost::asio::error::operation_aborted) {
+predefine_t::on_announce(const std::error_code& ec) {
+    if(ec == asio::error::operation_aborted) {
         return;
     }
 

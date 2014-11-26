@@ -42,6 +42,8 @@
 #include <boost/circular_buffer.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <asio/posix/stream_descriptor.hpp>
+
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -53,9 +55,9 @@ struct slave_t::output_t  {
     std::array<char, 4096> buffer;
     boost::circular_buffer<std::string> lines;
     std::unique_ptr<api::handle_t> handler;
-    boost::asio::posix::stream_descriptor stream;
+    asio::posix::stream_descriptor stream;
 
-    output_t(unsigned long limit, std::unique_ptr<api::handle_t>&& handler, boost::asio::io_service& loop) :
+    output_t(unsigned long limit, std::unique_ptr<api::handle_t>&& handler, asio::io_service& loop) :
         lines(limit),
         handler(std::move(handler)),
         stream(loop, this->handler->stdout())
@@ -76,7 +78,7 @@ slave_t::slave_t(const std::string& id,
                  context_t& context,
                  rebalance_type rebalance,
                  suicide_type suicide,
-                 boost::asio::io_service& asio) :
+                 asio::io_service& asio) :
     m_context(context),
     m_log(context.log(manifest.name)),
     m_asio(asio),
@@ -190,7 +192,7 @@ slave_t::activate() {
             m_asio
         );
         m_output->stream.async_read_some(
-            boost::asio::buffer(m_output->buffer.data(), m_output->buffer.size()),
+            asio::buffer(m_output->buffer.data(), m_output->buffer.size()),
             std::bind(&slave_t::on_output, shared_from_this(), ph::_1, ph::_2, std::string())
         );
     } catch(const std::system_error& e) {
@@ -206,9 +208,9 @@ slave_t::activate() {
 }
 
 void
-slave_t::on_read(const boost::system::error_code& ec) {
+slave_t::on_read(const std::error_code& ec) {
     if(ec) {
-        if(ec == boost::asio::error::operation_aborted) {
+        if(ec == asio::error::operation_aborted) {
             return;
         }
         on_failure(ec);
@@ -219,9 +221,9 @@ slave_t::on_read(const boost::system::error_code& ec) {
 }
 
 void
-slave_t::on_write(const boost::system::error_code& ec) {
+slave_t::on_write(const std::error_code& ec) {
     if(ec) {
-        if(ec == boost::asio::error::operation_aborted) {
+        if(ec == asio::error::operation_aborted) {
             return;
         }
         on_failure(ec);
@@ -229,9 +231,9 @@ slave_t::on_write(const boost::system::error_code& ec) {
 }
 
 void
-slave_t::on_output(const boost::system::error_code& ec, std::size_t size, std::string left) {
+slave_t::on_output(const std::error_code& ec, std::size_t size, std::string left) {
     if(ec) {
-        if(ec == boost::asio::error::operation_aborted) {
+        if(ec == asio::error::operation_aborted) {
             return;
         }
 
@@ -255,7 +257,7 @@ slave_t::on_output(const boost::system::error_code& ec, std::size_t size, std::s
     }
 
     m_output->stream.async_read_some(
-        boost::asio::buffer(m_output->buffer.data(), m_output->buffer.size()),
+        asio::buffer(m_output->buffer.data(), m_output->buffer.size()),
         std::bind(&slave_t::on_output, shared_from_this(), ph::_1, ph::_2, line)
     );
 }
@@ -303,9 +305,9 @@ slave_t::on_message(const io::decoder_t::message_type& message) {
 }
 
 void
-slave_t::on_failure(const boost::system::error_code& ec) {
+slave_t::on_failure(const std::error_code& ec) {
     if(ec) {
-        if(ec == boost::asio::error::operation_aborted) {
+        if(ec == asio::error::operation_aborted) {
             return;
         }
 
@@ -428,8 +430,8 @@ slave_t::on_choke(uint64_t session_id) {
 }
 
 void
-slave_t::on_timeout(const boost::system::error_code& ec) {
-    if(ec == boost::asio::error::operation_aborted) {
+slave_t::on_timeout(const std::error_code& ec) {
+    if(ec == asio::error::operation_aborted) {
         return;
     }
 
@@ -451,8 +453,8 @@ slave_t::on_timeout(const boost::system::error_code& ec) {
 }
 
 void
-slave_t::on_idle(const boost::system::error_code& ec) {
-    if(ec == boost::asio::error::operation_aborted) {
+slave_t::on_idle(const std::error_code& ec) {
+    if(ec == asio::error::operation_aborted) {
         return;
     }
 

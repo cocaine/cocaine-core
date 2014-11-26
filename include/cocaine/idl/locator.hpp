@@ -28,7 +28,7 @@
 
 #include "cocaine/tuple.hpp"
 
-#include <boost/asio/ip/tcp.hpp>
+#include <asio/ip/tcp.hpp>
 
 namespace cocaine { namespace io {
 
@@ -54,7 +54,7 @@ struct resolve {
 
     typedef option_of<
      /* Endpoints for the client to connect to in order to use the the service. */
-        std::vector<boost::asio::ip::tcp::endpoint>,
+        std::vector<asio::ip::tcp::endpoint>,
      /* Service protocol version. If the client wishes to use the service, the protocol
         versions must match. */
         unsigned int,
@@ -106,7 +106,7 @@ struct cluster {
     }
 
     typedef option_of<
-        std::map<std::string, boost::asio::ip::tcp::endpoint>
+        std::map<std::string, asio::ip::tcp::endpoint>
     >::tag upstream_type;
 };
 
@@ -138,17 +138,17 @@ enum locator_errors {
 };
 
 auto
-make_error_code(locator_errors code) -> boost::system::error_code;
+make_error_code(locator_errors code) -> std::error_code;
 
 }} // namespace cocaine::error
 
-namespace boost { namespace system {
+namespace std {
 
 template<>
 struct is_error_code_enum<cocaine::error::locator_errors>:
     public true_type
 { };
 
-}} // namespace boost::system
+} // namespace std
 
 #endif

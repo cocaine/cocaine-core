@@ -23,10 +23,10 @@
 
 #include "cocaine/api/cluster.hpp"
 
-#include <boost/asio/deadline_timer.hpp>
+#include <asio/deadline_timer.hpp>
 
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ip/udp.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/ip/udp.hpp>
 
 namespace cocaine { namespace cluster {
 
@@ -34,10 +34,10 @@ class multicast_cfg_t
 {
 public:
     // An UDP endpoint to bind for multicast node announces. Not a multicast group.
-    boost::asio::ip::udp::endpoint endpoint;
+    asio::ip::udp::endpoint endpoint;
 
     // Will announce local endpoints to the specified multicast group every `interval` seconds.
-    boost::asio::deadline_timer::duration_type interval;
+    asio::deadline_timer::duration_type interval;
 };
 
 class multicast_t:
@@ -55,11 +55,11 @@ class multicast_t:
     // Component config.
     const multicast_cfg_t m_cfg;
 
-    boost::asio::ip::udp::socket m_socket;
-    boost::asio::deadline_timer m_timer;
+    asio::ip::udp::socket m_socket;
+    asio::deadline_timer m_timer;
 
     // Announce expiration timeouts.
-    std::map<std::string, std::unique_ptr<boost::asio::deadline_timer>> m_expirations;
+    std::map<std::string, std::unique_ptr<asio::deadline_timer>> m_expirations;
 
 public:
     multicast_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args);
@@ -69,14 +69,14 @@ public:
 
 private:
     void
-    on_publish(const boost::system::error_code& ec);
+    on_publish(const std::error_code& ec);
 
     void
-    on_receive(const boost::system::error_code& ec, size_t bytes_received,
+    on_receive(const std::error_code& ec, size_t bytes_received,
                const std::shared_ptr<announce_t>& ptr);
 
     void
-    on_expired(const boost::system::error_code& ec, const std::string& uuid);
+    on_expired(const std::error_code& ec, const std::string& uuid);
 };
 
 }} // namespace cocaine::cluster

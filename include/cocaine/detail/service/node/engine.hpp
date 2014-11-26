@@ -37,8 +37,8 @@
 #include <atomic>
 #include <mutex>
 
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/asio/local/stream_protocol.hpp>
+#include <asio/deadline_timer.hpp>
+#include <asio/local/stream_protocol.hpp>
 
 namespace cocaine { namespace engine {
 
@@ -47,7 +47,7 @@ class slave_t;
 class engine_t {
     COCAINE_DECLARE_NONCOPYABLE(engine_t)
 
-    typedef boost::asio::local::stream_protocol protocol_type;
+    typedef asio::local::stream_protocol protocol_type;
 
     enum class states {
         running,
@@ -68,8 +68,8 @@ class engine_t {
     states m_state;
 
     // Event loop.
-    boost::asio::io_service m_loop;
-    boost::asio::deadline_timer m_termination_timer;
+    asio::io_service m_loop;
+    asio::deadline_timer m_termination_timer;
 
     // Unix socket server acceptor.
     protocol_type::socket m_socket;
@@ -135,23 +135,23 @@ private:
 
     // Called by acceptor, when a new connection from worker comes.
     void
-    on_accept(const boost::system::error_code& ec);
+    on_accept(const std::error_code& ec);
 
     // Called on successful connection with worker.
     void
     on_connection(std::unique_ptr<protocol_type::socket>&& m_socket);
 
     void
-    on_maybe_handshake(const boost::system::error_code& ec, int fd);
+    on_maybe_handshake(const std::error_code& ec, int fd);
 
     void
     on_handshake(int fd, const io::decoder_t::message_type& m_message);
 
     void
-    on_disconnect(int fd, const boost::system::error_code& ec);
+    on_disconnect(int fd, const std::error_code& ec);
 
     void
-    on_termination(const boost::system::error_code& ec);
+    on_termination(const std::error_code& ec);
 
     void
     erase(const std::string& id, int code, const std::string& reason);

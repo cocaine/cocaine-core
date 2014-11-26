@@ -32,8 +32,8 @@
 
 using namespace blackhole;
 
-using namespace boost::asio;
-using namespace boost::asio::ip;
+using namespace asio;
+using namespace asio::ip;
 
 using namespace cocaine;
 
@@ -56,7 +56,7 @@ public:
 
 private:
     void
-    finalize(const boost::system::error_code& ec);
+    finalize(const std::error_code& ec);
 };
 
 void
@@ -68,13 +68,13 @@ actor_t::accept_action_t::operator()() {
 }
 
 void
-actor_t::accept_action_t::finalize(const boost::system::error_code& ec) {
+actor_t::accept_action_t::finalize(const std::error_code& ec) {
     // Prepare the internal socket object for consequential operations by moving its contents to a
     // heap-allocated object, which in turn might be attached to an engine.
     auto ptr = std::make_shared<tcp::socket>(std::move(socket));
 
     if(ec) {
-        if(ec == boost::asio::error::operation_aborted) {
+        if(ec == asio::error::operation_aborted) {
             return;
         }
 
@@ -145,7 +145,7 @@ actor_t::endpoints() const {
             m_context.config.network.hostname, std::to_string(m_acceptor->local_endpoint().port()),
             flags
         ));
-    } catch(const boost::system::system_error& e) {
+    } catch(const asio::system_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to determine local endpoints: [%d] %s",
             e.code().value(),
             e.code().message()

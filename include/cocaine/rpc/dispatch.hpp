@@ -75,7 +75,7 @@ public:
 
     virtual
     void
-    discard(const boost::system::error_code& ec) const;
+    discard(const std::error_code& ec) const;
 
     // Observers
 

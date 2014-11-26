@@ -201,7 +201,7 @@ engine_t::run() {
     );
 
     m_state = states::running;
-    boost::system::error_code ec;
+    std::error_code ec;
     m_loop.run(ec);
     if(ec) {
         COCAINE_LOG_DEBUG(m_log, "engine has been stopped with error: [%d] %s", ec.value(), ec.message());
@@ -349,9 +349,9 @@ engine_t::info(std::function<void(dynamic_t::object_t)> callback) {
 }
 
 void
-engine_t::on_accept(const boost::system::error_code& ec) {
+engine_t::on_accept(const std::error_code& ec) {
     if(ec) {
-        if(ec == boost::asio::error::operation_aborted) {
+        if(ec == asio::error::operation_aborted) {
             return;
         }
 
@@ -383,7 +383,7 @@ engine_t::on_connection(std::unique_ptr<protocol_type::socket>&& socket) {
 }
 
 void
-engine_t::on_maybe_handshake(const boost::system::error_code& ec, int fd) {
+engine_t::on_maybe_handshake(const std::error_code& ec, int fd) {
     if(ec) {
         on_disconnect(fd, ec);
     } else {
@@ -409,7 +409,7 @@ engine_t::on_handshake(int fd, const decoder_t::message_type& message) {
         io::type_traits<
             typename io::event_traits<rpc::handshake>::argument_type
         >::unpack(message.args(), id);
-    } catch(const std::system_error& e) {
+    } catch(const std::exception& e) {
         COCAINE_LOG_WARNING(m_log, "disconnecting an incompatible slave on %d fd: %s", fd, e.what());
         return;
     }
@@ -430,8 +430,8 @@ engine_t::on_handshake(int fd, const decoder_t::message_type& message) {
 }
 
 void
-engine_t::on_disconnect(int fd, const boost::system::error_code& ec) {
-    if(ec == boost::asio::error::operation_aborted) {
+engine_t::on_disconnect(int fd, const std::error_code& ec) {
+    if(ec == asio::error::operation_aborted) {
         return;
     }
     COCAINE_LOG_INFO(m_log, "slave on %d fd has disconnected during the handshake: [%d] %s", fd, ec.value(), ec.message());
@@ -439,8 +439,8 @@ engine_t::on_disconnect(int fd, const boost::system::error_code& ec) {
 }
 
 void
-engine_t::on_termination(const boost::system::error_code& ec) {
-    if(ec == boost::asio::error::operation_aborted) {
+engine_t::on_termination(const std::error_code& ec) {
+    if(ec == asio::error::operation_aborted) {
         return;
     }
 

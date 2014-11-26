@@ -23,8 +23,8 @@
 
 #include "cocaine/common.hpp"
 
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/ip/tcp.hpp>
+#include <asio/io_service.hpp>
+#include <asio/ip/tcp.hpp>
 
 namespace cocaine {
 
@@ -41,7 +41,7 @@ class execution_unit_t {
 
     // I/O
 
-    std::shared_ptr<boost::asio::io_service> m_asio;
+    std::shared_ptr<asio::io_service> m_asio;
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:
@@ -51,17 +51,17 @@ public:
    ~execution_unit_t();
 
     void
-    attach(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
+    attach(const std::shared_ptr<asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
     double
     utilization() const;
 
 private:
     void
-    attach_impl(const std::shared_ptr<boost::asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
+    attach_impl(const std::shared_ptr<asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
     void
-    on_shutdown(const boost::system::error_code& ec, int socket);
+    on_shutdown(const std::error_code& ec, int socket);
 };
 
 } // namespace cocaine

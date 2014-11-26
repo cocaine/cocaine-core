@@ -31,7 +31,7 @@ using namespace blackhole;
 using namespace cocaine::logging;
 using namespace cocaine::service;
 
-logging_t::logging_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args):
+logging_t::logging_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),
     dispatch<io::log_tag>(name)
 {

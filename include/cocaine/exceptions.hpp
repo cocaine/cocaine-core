@@ -23,9 +23,7 @@
 
 #include "cocaine/format.hpp"
 
-#include <exception>
-
-#include <boost/system/error_code.hpp>
+#include <system_error>
 
 namespace cocaine { namespace error {
 
@@ -40,7 +38,7 @@ enum dispatch_errors {
 namespace aux {
 
 class dispatch_category_t:
-    public boost::system::error_category
+    public std::error_category
 {
     virtual
     auto
@@ -73,15 +71,15 @@ class dispatch_category_t:
 
 inline
 auto
-dispatch_category() -> const boost::system::error_category& {
+dispatch_category() -> const std::error_category& {
     static aux::dispatch_category_t instance;
     return instance;
 }
 
 inline
 auto
-make_error_code(dispatch_errors code) -> boost::system::error_code {
-    return boost::system::error_code(static_cast<int>(code), dispatch_category());
+make_error_code(dispatch_errors code) -> std::error_code {
+    return std::error_code(static_cast<int>(code), dispatch_category());
 }
 
 } // namespace error
@@ -111,13 +109,13 @@ private:
 
 } // namespace cocaine
 
-namespace boost { namespace system {
+namespace std {
 
 template<>
 struct is_error_code_enum<cocaine::error::dispatch_errors>:
     public true_type
 { };
 
-}} // namespace boost::system
+} // namespace std
 
 #endif

@@ -128,7 +128,7 @@ private:
 };
 
 struct cgroup_category_t:
-    public boost::system::error_category
+    public std::error_category
 {
     virtual
     auto
@@ -144,7 +144,7 @@ struct cgroup_category_t:
 };
 
 auto
-cgroup_category() -> const boost::system::error_category& {
+cgroup_category() -> const std::error_category& {
     static cgroup_category_t instance;
     return instance;
 }
@@ -163,9 +163,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     int rv = 0;
 
     if((rv = cgroup_init()) != 0) {
-        throw boost::system::system_error(rv, cgroup_category(),
-            "unable to initialize cgroups"
-        );
+        throw asio::system_error(rv, cgroup_category(), "unable to initialize cgroups");
     }
 
     m_cgroup = cgroup_new_cgroup(m_name.c_str());
@@ -198,9 +196,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
         cgroup_free(&m_cgroup);
 
-        throw boost::system::system_error(rv, cgroup_category(),
-            "unable to create cgroup"
-        );
+        throw asio::system_error(rv, cgroup_category(), "unable to create cgroup");
     }
 #endif
 }
@@ -229,9 +225,7 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
     std::array<int, 2> pipes;
 
     if(::pipe(pipes.data()) != 0) {
-        throw boost::system::system_error(errno, boost::system::system_category(),
-            "unable to create an output pipe"
-        );
+        throw asio::system_error(errno, asio::system_category(), "unable to create an output pipe");
     }
 
     for(auto it = pipes.begin(); it != pipes.end(); ++it) {
@@ -243,9 +237,7 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
     if(pid < 0) {
         std::for_each(pipes.begin(), pipes.end(), ::close);
 
-        throw boost::system::system_error(errno, boost::system::system_category(),
-            "unable to fork"
-        );
+        throw asio::system_error(errno, asio::system_category(), "unable to fork");
     }
 
     ::close(pipes[pid > 0]);

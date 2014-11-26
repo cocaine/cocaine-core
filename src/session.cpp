@@ -25,8 +25,8 @@
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
-using namespace boost::asio;
-using namespace boost::asio::ip;
+using namespace asio;
+using namespace asio::ip;
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -81,7 +81,7 @@ public:
 
 private:
     void
-    finalize(const boost::system::error_code& ec);
+    finalize(const std::error_code& ec);
 };
 
 void
@@ -93,7 +93,7 @@ session_t::pull_action_t::operator()(std::shared_ptr<channel<tcp>> ptr) {
 }
 
 void
-session_t::pull_action_t::finalize(const boost::system::error_code& ec) {
+session_t::pull_action_t::finalize(const std::error_code& ec) {
     if(ec) {
         session->signals.shutdown(ec);
         return;
@@ -134,7 +134,7 @@ public:
 
 private:
     void
-    finalize(const boost::system::error_code& ec);
+    finalize(const std::error_code& ec);
 };
 
 void
@@ -146,7 +146,7 @@ session_t::push_action_t::operator()(std::shared_ptr<channel<tcp>> ptr) {
 }
 
 void
-session_t::push_action_t::finalize(const boost::system::error_code& ec) {
+session_t::push_action_t::finalize(const std::error_code& ec) {
     if(ec) {
         session->signals.shutdown(ec);
     }
@@ -161,11 +161,11 @@ public:
     { }
 
     void
-    operator()(const boost::system::error_code& ec);
+    operator()(const std::error_code& ec);
 };
 
 void
-session_t::discard_action_t::operator()(const boost::system::error_code& ec) {
+session_t::discard_action_t::operator()(const std::error_code& ec) {
     auto ptr = channels.synchronize();
 
     for(auto it = ptr->begin(); it != ptr->end(); ++it) {

@@ -54,9 +54,9 @@ public:
 
 private:
     void
-    on_write(const boost::system::error_code& ec) {
+    on_write(const std::error_code& ec) {
         if(ec) {
-            if(ec == boost::asio::error::operation_aborted) {
+            if(ec == asio::error::operation_aborted) {
                 return;
             }
 

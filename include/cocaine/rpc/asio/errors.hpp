@@ -21,8 +21,6 @@
 #ifndef COCAINE_IO_ERROR_CODES_HPP
 #define COCAINE_IO_ERROR_CODES_HPP
 
-#include <boost/system/error_code.hpp>
-
 namespace cocaine { namespace error {
 
 enum decode_errors {
@@ -34,7 +32,7 @@ enum decode_errors {
 namespace aux {
 
 class decode_category_t:
-    public boost::system::error_category
+    public std::error_category
 {
     virtual
     auto
@@ -64,26 +62,26 @@ class decode_category_t:
 
 inline
 auto
-decode_category() -> const boost::system::error_category& {
+decode_category() -> const std::error_category& {
     static aux::decode_category_t instance;
     return instance;
 }
 
 inline
 auto
-make_error_code(decode_errors code) -> boost::system::error_code {
-    return boost::system::error_code(static_cast<int>(code), decode_category());
+make_error_code(decode_errors code) -> std::error_code {
+    return std::error_code(static_cast<int>(code), decode_category());
 }
 
 }} // namespace cocaine::error
 
-namespace boost { namespace system {
+namespace std {
 
 template<>
 struct is_error_code_enum<cocaine::error::decode_errors>:
     public true_type
 { };
 
-}} // namespace boost::system
+} // std
 
 #endif

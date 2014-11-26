@@ -68,11 +68,11 @@ public:
     // Modifiers
 
     void
-    connect(std::unique_ptr<boost::asio::ip::tcp::socket> socket);
+    connect(std::unique_ptr<asio::ip::tcp::socket> socket);
 
 private:
     void
-    cleanup(const boost::system::error_code& ec);
+    cleanup(const std::error_code& ec);
 };
 
 } // namespace details

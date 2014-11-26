@@ -50,8 +50,8 @@
 
 using namespace blackhole;
 
-using namespace boost::asio;
-using namespace boost::asio::ip;
+using namespace asio;
+using namespace asio::ip;
 
 using namespace cocaine::io;
 using namespace cocaine::service;
@@ -90,11 +90,11 @@ public:
     }
 
     void
-    on_link(const boost::system::error_code& ec);
+    on_link(const std::error_code& ec);
 
     virtual
     void
-    discard(const boost::system::error_code& ec) const;
+    discard(const std::error_code& ec) const;
 
 private:
     void
@@ -105,7 +105,7 @@ private:
 };
 
 void
-locator_t::remote_client_t::on_link(const boost::system::error_code& ec) {
+locator_t::remote_client_t::on_link(const std::error_code& ec) {
     scoped_attributes_t attributes(*parent->m_log, {
         attribute::make("uuid", uuid)
     });
@@ -135,7 +135,7 @@ locator_t::remote_client_t::on_link(const boost::system::error_code& ec) {
 }
 
 void
-locator_t::remote_client_t::discard(const boost::system::error_code& ec) const {
+locator_t::remote_client_t::discard(const std::error_code& ec) const {
     COCAINE_LOG_ERROR(parent->m_log, "remote node has been discarded: [%d] %s", ec.value(), ec.message())(
         "uuid", uuid
     );
@@ -409,7 +409,7 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const ->
     if(m_gateway) {
         return m_gateway->resolve(remapped);
     } else {
-        throw boost::system::system_error(error::service_not_available);
+        throw std::system_error(error::service_not_available);
     }
 }
 
@@ -462,7 +462,7 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
             values.insert({*it, storage->get<continuum_t::stored_type>("groups", *it)});
         }
     } catch(const storage_error_t& e) {
-        throw boost::system::system_error(error::routing_storage_error);
+        throw asio::system_error(error::routing_storage_error);
     }
 
     for(auto it = groups.begin(); it != groups.end(); ++it) {
@@ -568,7 +568,7 @@ namespace {
 // Locator errors
 
 struct locator_category_t:
-    public boost::system::error_category
+    public std::error_category
 {
     virtual
     auto
@@ -591,7 +591,7 @@ struct locator_category_t:
 };
 
 auto
-locator_category() -> const boost::system::error_category& {
+locator_category() -> const std::error_category& {
     static locator_category_t instance;
     return instance;
 }
@@ -601,8 +601,8 @@ locator_category() -> const boost::system::error_category& {
 namespace cocaine { namespace error {
 
 auto
-make_error_code(locator_errors code) -> boost::system::error_code {
-    return boost::system::error_code(static_cast<int>(code), locator_category());
+make_error_code(locator_errors code) -> std::error_code {
+    return std::error_code(static_cast<int>(code), locator_category());
 }
 
 }} // namespace cocaine::error
