@@ -36,10 +36,9 @@ struct socket {
 
     typedef Medium medium_type;
     typedef typename medium_type::endpoint endpoint_type;
+    typedef typename endpoint_type::protocol_type protocol_type;
 
-    socket() {
-        typename endpoint_type::protocol_type protocol(endpoint_type().protocol());
-
+    socket(const protocol_type& protocol = endpoint_type().protocol()) {
         m_fd = ::socket(protocol.family(), protocol.type(), protocol.protocol());
 
         if(m_fd == -1) {
