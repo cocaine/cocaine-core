@@ -111,6 +111,19 @@ locator_t::~locator_t() {
     }
 }
 
+static inline
+int
+family_to_level(int family) {
+    switch(family) {
+    case AF_INET:
+        return IPPROTO_IP;
+    case AF_INET6:
+        return IPPROTO_IPV6;
+    default:
+        return -1;
+    }
+}
+
 void
 locator_t::connect() {
     using namespace boost::asio::ip;
@@ -121,9 +134,9 @@ locator_t::connect() {
     };
 
     if(m_context.config.network.gateway) {
-        const io::udp::endpoint bindpoint = { address::from_string("0.0.0.0"), 10054 };
+        const io::udp::endpoint bindpoint = { endpoint.protocol(), 10054 };
 
-        m_sink.reset(new io::socket<io::udp>());
+        m_sink.reset(new io::socket<io::udp>(endpoint.protocol()));
 
         if(::bind(m_sink->fd(), bindpoint.data(), bindpoint.size()) != 0) {
             throw std::system_error(errno, std::system_category(), "unable to bind an announce socket");
@@ -139,7 +152,7 @@ locator_t::connect() {
 
         std::memcpy(&request.gr_group, endpoint.data(), endpoint.size());
 
-        if(::setsockopt(m_sink->fd(), IPPROTO_IP, MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
+        if(::setsockopt(m_sink->fd(), family_to_level(endpoint.protocol().family()), MCAST_JOIN_GROUP, &request, sizeof(request)) != 0) {
             throw std::system_error(errno, std::system_category(), "unable to join a multicast group");
         }
 
@@ -166,8 +179,16 @@ locator_t::connect() {
     const int life = IP_DEFAULT_MULTICAST_TTL;
 
     // NOTE: I don't think these calls might fail at all.
-    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
-    ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
+    switch(endpoint.protocol().family()) {
+    case AF_INET:
+        ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_LOOP, &loop, sizeof(loop));
+        ::setsockopt(m_announce->fd(), IPPROTO_IP, IP_MULTICAST_TTL,  &life, sizeof(life));
+        break;
+    case AF_INET6:
+        ::setsockopt(m_announce->fd(), IPPROTO_IPV6, IPV6_MULTICAST_LOOP, &loop, sizeof(loop));
+        ::setsockopt(m_announce->fd(), IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &life, sizeof(life));
+        break;
+    }
 
     m_announce_timer.reset(new ev::timer(m_reactor.native()));
     m_announce_timer->set<locator_t, &locator_t::on_announce_timer>(this);
