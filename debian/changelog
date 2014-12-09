@@ -1,3 +1,9 @@
+cocaine-core (0.11.3.2) unstable; urgency=low
+
+  * Feature: support for IPv6-based multicast in Locator.
+
+ -- Andrey Sibiryov <me@kobology.ru>  Tue, 09 Dec 2014 21:59:00 +0100
+
 cocaine-core (0.11.3.1) unstable; urgency=low
 
   * Feature: reopenable file logger service.
