@@ -38,16 +38,18 @@ logging_t::logging_t(context_t& context, boost::asio::io_service& asio, const st
     const auto backend = args.as_object().at("backend", "core").as_string();
 
     try {
-        m_logger = std::make_unique<logger_t>(repository_t::instance().create<logger_t>(backend));
-        m_logger->verbosity(context.config.logging.loggers.at(backend).verbosity);
+        m_logger = std::make_unique<logger_t>(repository_t::instance().create<logger_t>(
+            backend,
+            context.config.logging.loggers.at(backend).verbosity
+        ));
     } catch(const std::out_of_range&) {
         throw cocaine::error_t("logger '%s' is not configured", backend);
     }
 
     using namespace std::placeholders;
 
-    const auto getter = static_cast<priorities(logger_t::*)()const>(&logger_t::verbosity);
-    const auto setter = static_cast<void(logger_t::*)(priorities)>(&logger_t::verbosity);
+    const auto getter = &logger_t::verbosity;
+    const auto setter = static_cast<void(logger_t::*)(priorities)>(&logger_t::set_filter);
 
     on<io::log::emit>(std::bind(&logging_t::on_emit, this, _1, _2, _3, _4));
     on<io::log::verbosity>(std::bind(getter, std::ref(*m_logger)));
