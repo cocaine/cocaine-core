@@ -496,8 +496,9 @@ context_t::context_t(config_t config_, const std::string& logger_backend):
 
         // Try to initialize the logger. If it fails, there's no way to report the failure, except
         // printing it to the standart output.
-        m_logger = std::make_unique<logger_type>(repository.create<logger_type>(logger_backend));
-        m_logger->verbosity(logger.verbosity);
+        m_logger = std::make_unique<logger_type>(
+            repository.create<logger_type>(logger_backend, logger.verbosity)
+        );
     } catch(const std::out_of_range&) {
         throw cocaine::error_t("logger '%s' is not configured", logger_backend);
     }
@@ -557,7 +558,7 @@ context_t::~context_t() {
 
 std::unique_ptr<logging::log_t>
 context_t::log(const std::string& source, blackhole::attribute::set_t attributes) {
-    attributes.insert(logging::keyword::source() = source);
+    attributes.emplace_back(logging::keyword::source() = source);
     return std::make_unique<logging::log_t>(*m_logger, std::move(attributes));
 }
 

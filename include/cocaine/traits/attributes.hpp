@@ -81,7 +81,7 @@ struct type_traits<blackhole::attribute::set_t> {
             blackhole::attribute::value_t value;
             type_traits<blackhole::attribute::value_t>::unpack(ptr->val, value);
 
-            target[name] = blackhole::attribute::value_t(value);
+            target.emplace_back(name, blackhole::attribute::value_t(value));
         }
     }
  };
