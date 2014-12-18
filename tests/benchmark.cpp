@@ -18,9 +18,9 @@
 
 #include <celero/Celero.h>
 
-#include <boost/asio/connect.hpp>
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/ip/tcp.hpp>
+#include <asio/connect.hpp>
+#include <asio/io_service.hpp>
+#include <asio/ip/tcp.hpp>
 
 namespace cocaine { namespace io {
 
@@ -143,7 +143,7 @@ struct test_fixture_t:
     public celero::TestFixture
 {
     std::unique_ptr<cocaine::context_t> context;
-    std::unique_ptr<boost::asio::io_service> reactor;
+    std::unique_ptr<asio::io_service> reactor;
     std::unique_ptr<boost::thread> chamber;
 
     cocaine::api::client<cocaine::io::test_tag> service;
@@ -153,18 +153,18 @@ public:
     void
     setUp(int64_t) {
         context.reset(new cocaine::context_t(cocaine::config_t("cocaine-benchmark.conf"), "core"));
-        reactor.reset(new boost::asio::io_service());
+        reactor.reset(new asio::io_service());
 
         context->insert("benchmark", std::make_unique<cocaine::actor_t>(
            *context,
-            std::make_shared<boost::asio::io_service>(),
+            std::make_shared<asio::io_service>(),
             std::make_unique<cocaine::test_service_t>()
         ));
 
         auto endpoints = context->locate("benchmark").get().endpoints();
-        auto socket = std::make_unique<boost::asio::ip::tcp::socket>(*reactor);
+        auto socket = std::make_unique<asio::ip::tcp::socket>(*reactor);
 
-        boost::asio::connect(*socket, endpoints.begin(), endpoints.end());
+        asio::connect(*socket, endpoints.begin(), endpoints.end());
 
         service.connect(std::move(socket));
         chamber.reset(new boost::thread([this]{ reactor->run(); }));
