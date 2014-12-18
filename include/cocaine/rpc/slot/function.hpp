@@ -35,7 +35,7 @@
 #include <boost/function_types/function_type.hpp>
 #include <boost/mpl/push_front.hpp>
 
-#include <boost/system/system_error.hpp>
+#include <asio/system_error.hpp>
 
 namespace cocaine { namespace io {
 

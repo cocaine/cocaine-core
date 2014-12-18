@@ -24,7 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-#include <boost/asio/ip/tcp.hpp>
+#include <asio/ip/tcp.hpp>
 
 namespace cocaine { namespace api {
 
@@ -33,12 +33,12 @@ struct cluster_t {
 
     struct interface {
         virtual
-        boost::asio::io_service&
+        asio::io_service&
         asio() = 0;
 
         virtual
         void
-        link_node(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints) = 0;
+        link_node(const std::string& uuid, const std::vector<asio::ip::tcp::endpoint>& endpoints) = 0;
 
         virtual
         void

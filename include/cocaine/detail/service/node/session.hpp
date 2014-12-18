@@ -31,7 +31,7 @@
 #include "cocaine/rpc/asio/writable_stream.hpp"
 #include "cocaine/rpc/queue.hpp"
 
-#include <boost/asio/local/stream_protocol.hpp>
+#include <asio/local/stream_protocol.hpp>
 
 namespace cocaine { namespace engine {
 
@@ -40,7 +40,7 @@ struct session_t:
 {
     COCAINE_DECLARE_NONCOPYABLE(session_t)
 
-    typedef boost::asio::local::stream_protocol protocol_type;
+    typedef asio::local::stream_protocol protocol_type;
 
     session_t(uint64_t id, const api::event_t& event, const api::stream_ptr_t& upstream);
 

@@ -40,7 +40,7 @@
 using namespace cocaine::io;
 using namespace cocaine::service;
 
-node_t::node_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args):
+node_t::node_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),
     dispatch<node_tag>(name),
     m_context(context),

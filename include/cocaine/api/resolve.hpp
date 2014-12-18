@@ -33,14 +33,14 @@ class resolve_t {
     class resolve_action_t;
     class connect_action_t;
 
-    typedef boost::asio::ip::tcp::endpoint endpoint_type;
-    typedef std::function<void(const boost::system::error_code&)> handler_type;
+    typedef asio::ip::tcp::endpoint endpoint_type;
+    typedef std::function<void(const std::error_code&)> handler_type;
 
     static const std::vector<endpoint_type> kDefaultEndpoints;
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    boost::asio::io_service& m_asio;
+    asio::io_service& m_asio;
     client<io::locator_tag> m_locator;
 
     struct pending_request_t {
@@ -51,7 +51,7 @@ class resolve_t {
     std::deque<pending_request_t> m_pending;
 
 public:
-    resolve_t(std::unique_ptr<logging::log_t> log, boost::asio::io_service& asio,
+    resolve_t(std::unique_ptr<logging::log_t> log, asio::io_service& asio,
               const std::vector<endpoint_type>& endpoints = kDefaultEndpoints);
 
     void
@@ -63,7 +63,7 @@ public:
 
 private:
     void
-    resolve_pending(const boost::system::error_code& ec);
+    resolve_pending(const std::error_code& ec);
 };
 
 }} // namespace cocaine::api
@@ -75,17 +75,17 @@ enum resolve_errors {
 };
 
 auto
-make_error_code(resolve_errors code) -> boost::system::error_code;
+make_error_code(resolve_errors code) -> std::error_code;
 
 }} // namespace cocaine::error
 
-namespace boost { namespace system {
+namespace std {
 
 template<>
 struct is_error_code_enum<cocaine::error::resolve_errors>:
     public true_type
 { };
 
-}} // namespace boost::system
+} // namespace std
 
 #endif

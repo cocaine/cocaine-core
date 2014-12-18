@@ -29,11 +29,13 @@
 #include "cocaine/traits/tuple.hpp"
 #include "cocaine/traits/vector.hpp"
 
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/ip/multicast.hpp>
+#include <asio/io_service.hpp>
+#include <asio/ip/multicast.hpp>
+#include <asio/ip/udp.hpp>
+#include <asio/ip/tcp.hpp>
 
-using namespace boost::asio;
-using namespace boost::asio::ip;
+using namespace asio;
+using namespace asio::ip;
 
 using namespace cocaine::cluster;
 
@@ -149,8 +151,8 @@ multicast_t::~multicast_t() {
 }
 
 void
-multicast_t::on_publish(const boost::system::error_code& ec) {
-    if(ec == boost::asio::error::operation_aborted) {
+multicast_t::on_publish(const std::error_code& ec) {
+    if(ec == asio::error::operation_aborted) {
         return;
     }
 
@@ -178,7 +180,7 @@ multicast_t::on_publish(const boost::system::error_code& ec) {
 
         try {
             m_socket.send_to(buffer(target.data(), target.size()), m_cfg.endpoint);
-        } catch(const boost::system::system_error& e) {
+        } catch(const asio::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: [%d] %s",
                 e.code().value(), e.code().message()
             );
@@ -192,11 +194,11 @@ multicast_t::on_publish(const boost::system::error_code& ec) {
 }
 
 void
-multicast_t::on_receive(const boost::system::error_code& ec, size_t bytes_received,
+multicast_t::on_receive(const std::error_code& ec, size_t bytes_received,
                         const std::shared_ptr<announce_t>& ptr)
 {
     if(ec) {
-        if(ec != boost::asio::error::operation_aborted) {
+        if(ec != asio::error::operation_aborted) {
             COCAINE_LOG_ERROR(m_log, "unexpected error in multicast_t::on_receive(): [%d] %s",
                 ec.value(), ec.message()
             );
@@ -251,8 +253,8 @@ multicast_t::on_receive(const boost::system::error_code& ec, size_t bytes_receiv
 }
 
 void
-multicast_t::on_expired(const boost::system::error_code& ec, const std::string& uuid) {
-    if(ec == boost::asio::error::operation_aborted) {
+multicast_t::on_expired(const std::error_code& ec, const std::string& uuid) {
+    if(ec == asio::error::operation_aborted) {
         return;
     }
 

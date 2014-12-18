@@ -34,10 +34,10 @@ using namespace cocaine::io;
 
 class chamber_t::named_runnable_t {
     const std::string name;
-    const std::shared_ptr<boost::asio::io_service>& asio;
+    const std::shared_ptr<asio::io_service>& asio;
 
 public:
-    named_runnable_t(const std::string& name_, const std::shared_ptr<boost::asio::io_service>& asio_):
+    named_runnable_t(const std::string& name_, const std::shared_ptr<asio::io_service>& asio_):
         name(name_),
         asio(asio_)
     { }
@@ -84,7 +84,7 @@ public:
 
 private:
     void
-    finalize(const boost::system::error_code& ec);
+    finalize(const std::error_code& ec);
 };
 
 void
@@ -98,8 +98,8 @@ chamber_t::stats_periodic_action_t::operator()() {
 }
 
 void
-chamber_t::stats_periodic_action_t::finalize(const boost::system::error_code& ec) {
-    if(ec == boost::asio::error::operation_aborted) {
+chamber_t::stats_periodic_action_t::finalize(const std::error_code& ec) {
+    if(ec == asio::error::operation_aborted) {
         return;
     }
 
@@ -135,7 +135,7 @@ chamber_t::stats_periodic_action_t::finalize(const boost::system::error_code& ec
 
 namespace bpt = boost::posix_time;
 
-chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<boost::asio::io_service>& asio_):
+chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<asio::io_service>& asio_):
     name(name_),
     asio(asio_),
     cron(*asio_),
@@ -158,7 +158,7 @@ struct cancel_action_t {
     operator()();
 
     // Never becomes a dangling reference.
-    boost::asio::deadline_timer& cron;
+    asio::deadline_timer& cron;
 };
 
 void

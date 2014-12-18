@@ -24,7 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-#include <boost/asio/io_service.hpp>
+#include <asio/io_service.hpp>
 
 namespace cocaine { namespace api {
 
@@ -41,7 +41,7 @@ struct service_t {
     prototype() const -> const io::basic_dispatch_t& = 0;
 
 protected:
-    service_t(context_t&, boost::asio::io_service&, const std::string& /* name */, const dynamic_t& /* args */) {
+    service_t(context_t&, asio::io_service&, const std::string& /* name */, const dynamic_t& /* args */) {
         // Empty.
     }
 };
@@ -53,14 +53,14 @@ struct category_traits<service_t> {
     struct factory_type: public basic_factory<service_t> {
         virtual
         ptr_type
-        get(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args) = 0;
+        get(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args) = 0;
     };
 
     template<class T>
     struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args) {
+        get(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args) {
             return ptr_type(new T(context, asio, name, args));
         }
     };

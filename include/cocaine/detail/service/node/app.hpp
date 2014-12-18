@@ -65,7 +65,7 @@ class app_t {
     std::unique_ptr<const engine::profile_t> m_profile;
 
     // IO.
-    std::shared_ptr<boost::asio::io_service> m_asio;
+    std::shared_ptr<asio::io_service> m_asio;
     std::shared_ptr<engine::engine_t> m_engine;
 
 public:

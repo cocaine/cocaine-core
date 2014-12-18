@@ -27,7 +27,7 @@
 using namespace cocaine::io;
 using namespace cocaine::service;
 
-storage_t::storage_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args):
+storage_t::storage_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),
     dispatch<storage_tag>(name)
 {

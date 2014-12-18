@@ -23,8 +23,8 @@
 
 #include "cocaine/api/cluster.hpp"
 
-#include <boost/asio/deadline_timer.hpp>
-#include <boost/asio/ip/tcp.hpp>
+#include <asio/deadline_timer.hpp>
+#include <asio/ip/tcp.hpp>
 
 namespace cocaine { namespace cluster {
 
@@ -32,10 +32,10 @@ class predefine_cfg_t
 {
 public:
     // Maps randomly generated UUIDs to predefined host endpoints.
-    std::map<std::string, std::vector<boost::asio::ip::tcp::endpoint>> endpoints;
+    std::map<std::string, std::vector<asio::ip::tcp::endpoint>> endpoints;
 
     // Will try to reconnect to the hosts specified above every `interval` seconds.
-    boost::asio::deadline_timer::duration_type interval;
+    asio::deadline_timer::duration_type interval;
 };
 
 class predefine_t:
@@ -50,7 +50,7 @@ class predefine_t:
     const predefine_cfg_t m_cfg;
 
     // Simply try linking the whole predefined list every timer tick.
-    boost::asio::deadline_timer m_timer;
+    asio::deadline_timer m_timer;
 
 public:
     predefine_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args);
@@ -60,7 +60,7 @@ public:
 
 private:
     void
-    on_announce(const boost::system::error_code& ec);
+    on_announce(const std::error_code& ec);
 };
 
 }} // namespace cocaine::cluster

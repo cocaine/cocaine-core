@@ -49,7 +49,7 @@ class node_t:
     synchronized<std::map<std::string, std::shared_ptr<app_t>>> m_apps;
 
 public:
-    node_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
+    node_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);
 
     virtual
    ~node_t();

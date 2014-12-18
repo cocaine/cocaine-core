@@ -32,8 +32,8 @@
 
 using namespace blackhole;
 
-using namespace boost::asio;
-using namespace boost::asio::ip;
+using namespace asio;
+using namespace asio::ip;
 
 using namespace cocaine;
 
@@ -94,7 +94,7 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
     int socket;
 
     if((socket = ::dup(ptr->native_handle())) == -1) {
-        boost::system::error_code ec(errno, boost::system::system_category());
+        std::error_code ec(errno, std::system_category());
         COCAINE_LOG_ERROR(m_log, "unable to clone client's socket - [%d] %s", ec.value(), ec.message());
         return;
     }
@@ -114,7 +114,7 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
 
     try {
         m_sessions[socket] = std::make_shared<session_t>(std::move(channel), dispatch);
-    } catch(const boost::system::system_error& e) {
+    } catch(const asio::system_error& e) {
         COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session");
         return;
     }
@@ -136,7 +136,7 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
 }
 
 void
-execution_unit_t::on_shutdown(const boost::system::error_code& ec, int socket) {
+execution_unit_t::on_shutdown(const std::error_code& ec, int socket) {
     auto it = m_sessions.find(socket);
 
     BOOST_ASSERT(ec && it != m_sessions.end());
@@ -146,7 +146,7 @@ execution_unit_t::on_shutdown(const boost::system::error_code& ec, int socket) {
         attribute::make("service",  it->second->name())
     });
 
-    if(ec != boost::asio::error::eof) {
+    if(ec != asio::error::eof) {
         COCAINE_LOG_ERROR(m_log, "client has disconnected: [%d] %s", ec.value(), ec.message());
     } else {
         COCAINE_LOG_DEBUG(m_log, "client has disconnected");

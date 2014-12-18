@@ -28,8 +28,8 @@
 #include <csignal>
 #include <iostream>
 
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/signal_set.hpp>
+#include <asio/io_service.hpp>
+#include <asio/signal_set.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -140,8 +140,8 @@ struct runtime_t {
 
 private:
     void
-    on_signal(const boost::system::error_code& ec, int signum) {
-        if(ec == boost::asio::error::operation_aborted) {
+    on_signal(const std::error_code& ec, int signum) {
+        if(ec == asio::error::operation_aborted) {
             return;
         }
 
@@ -157,8 +157,8 @@ private:
     }
 
 private:
-    boost::asio::io_service m_asio;
-    boost::asio::signal_set m_signals;
+    asio::io_service m_asio;
+    asio::signal_set m_signals;
 
     // An alternative signal stack for SIGSEGV handling.
     stack_t m_alt_stack;

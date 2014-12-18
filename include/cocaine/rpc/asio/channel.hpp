@@ -32,7 +32,7 @@ namespace cocaine { namespace io {
 template<class Protocol>
 struct channel {
     typedef Protocol protocol_type;
-    typedef boost::asio::basic_stream_socket<protocol_type> socket_type;
+    typedef asio::basic_stream_socket<protocol_type> socket_type;
 
     explicit
     channel(std::unique_ptr<socket_type> socket_):
@@ -47,7 +47,7 @@ struct channel {
         try {
             socket->shutdown(socket_type::shutdown_both);
             socket->close();
-        } catch(const boost::system::system_error& e) {
+        } catch(const asio::system_error&) {
             // Might be already disconnected by the remote peer, so ignore all errors.
         }
     }

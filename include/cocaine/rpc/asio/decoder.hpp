@@ -64,7 +64,7 @@ struct decoder_t {
     typedef aux::decoded_message_t message_type;
 
     size_t
-    decode(const char* data, size_t size, message_type& message, boost::system::error_code& ec) {
+    decode(const char* data, size_t size, message_type& message, std::error_code& ec) {
         size_t offset = 0;
 
         msgpack::unpack_return rv = msgpack::unpack(data, size, &offset, &zone, &message.object);

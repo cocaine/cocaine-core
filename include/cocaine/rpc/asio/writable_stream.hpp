@@ -25,8 +25,8 @@
 
 #include <functional>
 
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/basic_stream_socket.hpp>
+#include <asio/io_service.hpp>
+#include <asio/basic_stream_socket.hpp>
 
 #include <deque>
 
@@ -40,16 +40,16 @@ class writable_stream:
 {
     COCAINE_DECLARE_NONCOPYABLE(writable_stream)
 
-    typedef boost::asio::basic_stream_socket<Protocol> channel_type;
+    typedef asio::basic_stream_socket<Protocol> channel_type;
 
     typedef Encoder encoder_type;
     typedef typename encoder_type::message_type message_type;
 
     const std::shared_ptr<channel_type> m_channel;
 
-    typedef std::function<void(const boost::system::error_code&)> handler_type;
+    typedef std::function<void(const std::error_code&)> handler_type;
 
-    std::deque<boost::asio::const_buffer> m_messages;
+    std::deque<asio::const_buffer> m_messages;
     std::deque<handler_type> m_handlers;
 
     enum class states { idle, flushing } m_state;
@@ -66,10 +66,10 @@ public:
         size_t bytes_written = 0;
 
         if(m_state == states::idle) {
-            boost::system::error_code ec;
+            std::error_code ec;
 
             // Try to write some data right away, as we don't have anything pending.
-            bytes_written = m_channel->write_some(boost::asio::buffer(message.data(), message.size()), ec);
+            bytes_written = m_channel->write_some(asio::buffer(message.data(), message.size()), ec);
 
             if(!ec && bytes_written == message.size()) {
                 return m_channel->get_io_service().post(std::bind(handle, ec));
@@ -97,14 +97,14 @@ public:
 
     auto
     pressure() const -> size_t {
-        return boost::asio::buffer_size(m_messages);
+        return asio::buffer_size(m_messages);
     }
 
 private:
     void
-    flush(const boost::system::error_code& ec, size_t bytes_written) {
+    flush(const std::error_code& ec, size_t bytes_written) {
         if(ec) {
-            if(ec == boost::asio::error::operation_aborted) {
+            if(ec == asio::error::operation_aborted) {
                 return;
             }
 
@@ -121,7 +121,7 @@ private:
         while(bytes_written) {
             BOOST_ASSERT(!m_messages.empty() && !m_handlers.empty());
 
-            const size_t message_size = boost::asio::buffer_size(m_messages.front());
+            const size_t message_size = asio::buffer_size(m_messages.front());
 
             if(message_size > bytes_written) {
                 m_messages.front() = m_messages.front() + bytes_written;

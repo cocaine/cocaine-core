@@ -30,7 +30,7 @@
 
 #include <blackhole/blackhole.hpp>
 
-#include <boost/asio/ip/address.hpp>
+#include <asio/ip/address.hpp>
 
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/optional.hpp>
@@ -56,7 +56,7 @@ public:
     struct {
         // An endpoint where all the services will be bound. Note that binding on [::] will bind on
         // 0.0.0.0 too as long as the "net.ipv6.bindv6only" sysctl is set to 0 (default).
-        boost::asio::ip::address endpoint;
+        asio::ip::address endpoint;
 
         // Local hostname. In case it can't be automatically detected by resolving a CNAME for the
         // contents of /etc/hostname via the default system resolver, it can be configured manually.

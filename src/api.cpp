@@ -31,15 +31,15 @@
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/vector.hpp"
 
-#include <boost/asio/connect.hpp>
-
 #include <boost/spirit/include/karma_generate.hpp>
 #include <boost/spirit/include/karma_list.hpp>
 #include <boost/spirit/include/karma_stream.hpp>
 #include <boost/spirit/include/karma_string.hpp>
 
-using namespace boost::asio;
-using namespace boost::asio::ip;
+#include <asio/connect.hpp>
+
+using namespace asio;
+using namespace asio::ip;
 
 // Connect
 
@@ -101,7 +101,7 @@ basic_client_t::connect(std::unique_ptr<tcp::socket> socket) {
 }
 
 void
-basic_client_t::cleanup(const boost::system::error_code& COCAINE_UNUSED_(ec)) {
+basic_client_t::cleanup(const std::error_code& COCAINE_UNUSED_(ec)) {
     if(m_session) {
         m_session->detach();
         m_session = nullptr;
@@ -141,7 +141,7 @@ public:
 
     virtual
     void
-    discard(const boost::system::error_code& ec) const {
+    discard(const std::error_code& ec) const {
         parent->m_asio.post(std::bind(handle, ec));
     }
 
@@ -204,11 +204,11 @@ public:
 
 private:
     void
-    finalize(const boost::system::error_code& ec, iterator_type COCAINE_UNUSED_(endpoint)) {
-        if(ec == boost::system::errc::success) {
+    finalize(const std::error_code& ec, iterator_type COCAINE_UNUSED_(endpoint)) {
+        if(!ec) {
             try {
                 client.connect(std::move(socket));
-            } catch(const boost::system::system_error& e) {
+            } catch(const asio::system_error& e) {
                 // The socket might already be disconnected by this time.
                 parent->m_asio.post(std::bind(handle, e.code()));
                 return;
@@ -271,7 +271,7 @@ resolve_t::connect(basic_client_t& client, const std::vector<endpoint_type>& end
 }
 
 void
-resolve_t::resolve_pending(const boost::system::error_code& ec) {
+resolve_t::resolve_pending(const std::error_code& ec) {
     if(ec) {
         COCAINE_LOG_ERROR(m_log, "unable to connect to remote locator - [%d] %s",
             ec.value(), ec.message()
@@ -300,7 +300,7 @@ namespace {
 // Resolve errors
 
 struct resolve_category_t:
-    public boost::system::error_category
+    public std::error_category
 {
     virtual
     auto
@@ -321,7 +321,7 @@ struct resolve_category_t:
 };
 
 auto
-resolve_category() -> const boost::system::error_category& {
+resolve_category() -> const std::error_category& {
     static resolve_category_t instance;
     return instance;
 }
@@ -331,8 +331,8 @@ resolve_category() -> const boost::system::error_category& {
 namespace cocaine { namespace error {
 
 auto
-make_error_code(resolve_errors code) -> boost::system::error_code {
-    return boost::system::error_code(static_cast<int>(code), resolve_category());
+make_error_code(resolve_errors code) -> std::error_code {
+    return std::error_code(static_cast<int>(code), resolve_category());
 }
 
 }} // namespace cocaine::error

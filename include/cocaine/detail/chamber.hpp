@@ -27,8 +27,8 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/rolling_mean.hpp>
 
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/deadline_timer.hpp>
+#include <asio/io_service.hpp>
+#include <asio/deadline_timer.hpp>
 
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/thread/thread.hpp>
@@ -42,10 +42,10 @@ class chamber_t {
     static const unsigned int kCollectionInterval = 2;
 
     const std::string name;
-    const std::shared_ptr<boost::asio::io_service> asio;
+    const std::shared_ptr<asio::io_service> asio;
 
     // Takes resource usage snapshots every kCollectInterval seconds.
-    boost::asio::deadline_timer cron;
+    asio::deadline_timer cron;
 
     // This thread will run the reactor's event loop until terminated.
     std::unique_ptr<boost::thread> thread;
@@ -59,7 +59,7 @@ class chamber_t {
     synchronized<load_average_t> load_average;
 
 public:
-    chamber_t(const std::string& name, const std::shared_ptr<boost::asio::io_service>& asio);
+    chamber_t(const std::string& name, const std::shared_ptr<asio::io_service>& asio);
    ~chamber_t();
 
     auto

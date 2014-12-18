@@ -80,7 +80,7 @@ class locator_t:
     const locator_cfg_t m_cfg;
 
     // Cluster interconnections.
-    boost::asio::io_service& m_asio;
+    asio::io_service& m_asio;
 
     // Remote sessions are created using this resolve.
     std::shared_ptr<api::resolve_t> m_resolve;
@@ -104,7 +104,7 @@ class locator_t:
     std::map<std::string, continuum_t> m_groups;
 
 public:
-    locator_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
+    locator_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);
 
     virtual
    ~locator_t();
@@ -118,12 +118,12 @@ public:
     // Cluster API
 
     virtual
-    boost::asio::io_service&
+    asio::io_service&
     asio();
 
     virtual
     void
-    link_node(const std::string& uuid, const std::vector<boost::asio::ip::tcp::endpoint>& endpoints);
+    link_node(const std::string& uuid, const std::vector<asio::ip::tcp::endpoint>& endpoints);
 
     virtual
     void

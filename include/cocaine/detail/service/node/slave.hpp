@@ -34,7 +34,7 @@
 #include <atomic>
 #include <chrono>
 
-#include <boost/asio.hpp>
+#include <asio/local/stream_protocol.hpp>
 
 namespace cocaine { namespace engine {
 
@@ -43,7 +43,7 @@ struct session_t;
 class slave_t : public std::enable_shared_from_this<slave_t> {
     COCAINE_DECLARE_NONCOPYABLE(slave_t)
 
-    typedef boost::asio::local::stream_protocol protocol_type;
+    typedef asio::local::stream_protocol protocol_type;
 
     enum class states {
         unknown,
@@ -56,7 +56,7 @@ class slave_t : public std::enable_shared_from_this<slave_t> {
     const std::unique_ptr<logging::log_t> m_log;
 
     // IO.
-    boost::asio::io_service& m_asio;
+    asio::io_service& m_asio;
 
     // Configuration
 
@@ -81,8 +81,8 @@ class slave_t : public std::enable_shared_from_this<slave_t> {
     const std::chrono::monotonic_clock::time_point m_birthstamp;
 #endif
 
-    boost::asio::deadline_timer m_heartbeat_timer;
-    boost::asio::deadline_timer m_idle_timer;
+    asio::deadline_timer m_heartbeat_timer;
+    asio::deadline_timer m_idle_timer;
 
     // IO communication with worker.
     io::decoder_t::message_type m_message;
@@ -109,7 +109,7 @@ public:
             context_t& context,
             rebalance_type rebalance,
             suicide_type suicide,
-            boost::asio::io_service& asio);
+            asio::io_service& asio);
    ~slave_t();
 
     // Bind IO channel. Single shot.
@@ -148,15 +148,15 @@ private:
 
     // Called on any read event from the worker.
     void
-    on_read(const boost::system::error_code& ec);
+    on_read(const std::error_code& ec);
 
     // Called on any write event to the worker.
     void
-    on_write(const boost::system::error_code& ec);
+    on_write(const std::error_code& ec);
 
     // Called on any read event from worker's outputs.
     void
-    on_output(const boost::system::error_code& ec, std::size_t size, std::string left);
+    on_output(const std::error_code& ec, std::size_t size, std::string left);
 
     // Called by read callback on every successful message received from a worker.
     void
@@ -164,7 +164,7 @@ private:
 
     // On any socket error associated with worker.
     void
-    on_failure(const boost::system::error_code& ec);
+    on_failure(const std::error_code& ec);
 
     // Heartbeat handler.
     void
@@ -188,11 +188,11 @@ private:
 
     // Called on heartbeat timeout.
     void
-    on_timeout(const boost::system::error_code& ec);
+    on_timeout(const std::error_code& ec);
 
     // Called on idle timeout.
     void
-    on_idle(const boost::system::error_code& ec);
+    on_idle(const std::error_code& ec);
 
     // Housekeeping.
     void

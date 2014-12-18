@@ -24,7 +24,7 @@
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
 
-#include <boost/asio/ip/basic_endpoint.hpp>
+#include <asio/ip/basic_endpoint.hpp>
 
 namespace cocaine { namespace io {
 
@@ -32,8 +32,8 @@ namespace cocaine { namespace io {
 // them without figuring out the correct sockaddr structure formats.
 
 template<class InternetProtocol>
-struct type_traits<boost::asio::ip::basic_endpoint<InternetProtocol>> {
-    typedef boost::asio::ip::basic_endpoint<InternetProtocol> endpoint_type;
+struct type_traits<asio::ip::basic_endpoint<InternetProtocol>> {
+    typedef asio::ip::basic_endpoint<InternetProtocol> endpoint_type;
     typedef std::tuple<std::string, unsigned short> tuple_type;
 
     template<class Stream>
@@ -54,7 +54,7 @@ struct type_traits<boost::asio::ip::basic_endpoint<InternetProtocol>> {
 
         type_traits<tuple_type>::unpack(source, std::move(std::tie(address, port)));
 
-        target.address(boost::asio::ip::address::from_string(address));
+        target.address(asio::ip::address::from_string(address));
         target.port(port);
     }
 };

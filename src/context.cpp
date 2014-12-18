@@ -45,10 +45,6 @@
 #include <blackhole/scoped_attributes.hpp>
 #include <blackhole/sink/socket.hpp>
 
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/ip/host_name.hpp>
-#include <boost/asio/ip/tcp.hpp>
-
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -57,6 +53,10 @@
 #include <boost/spirit/include/karma_generate.hpp>
 #include <boost/spirit/include/karma_list.hpp>
 #include <boost/spirit/include/karma_string.hpp>
+
+#include <asio/io_service.hpp>
+#include <asio/ip/host_name.hpp>
+#include <asio/ip/tcp.hpp>
 
 #include "rapidjson/reader.h"
 
@@ -324,20 +324,20 @@ config_t::config_t(const std::string& source) {
 
     // Network configuration
 
-    network.endpoint = boost::asio::ip::address::from_string(
+    network.endpoint = asio::ip::address::from_string(
         network_config.at("endpoint", defaults::endpoint).as_string()
     );
 
-    boost::asio::io_service asio;
-    boost::asio::ip::tcp::resolver resolver(asio);
-    boost::asio::ip::tcp::resolver::iterator it, end;
+    asio::io_service asio;
+    asio::ip::tcp::resolver resolver(asio);
+    asio::ip::tcp::resolver::iterator it, end;
 
     try {
-        it = resolver.resolve(boost::asio::ip::tcp::resolver::query(
-            boost::asio::ip::host_name(), std::string(),
-            boost::asio::ip::tcp::resolver::query::canonical_name
+        it = resolver.resolve(asio::ip::tcp::resolver::query(
+            asio::ip::host_name(), std::string(),
+            asio::ip::tcp::resolver::query::canonical_name
         ));
-    } catch(const boost::system::system_error& e) {
+    } catch(const asio::system_error& e) {
 #if defined(HAVE_GCC48)
         std::throw_with_nested(cocaine::error_t("unable to determine local hostname"));
 #else
@@ -700,7 +700,7 @@ context_t::bootstrap() {
             blackhole::attribute::make("service", it->first)
         });
 
-        const auto asio = std::make_shared<boost::asio::io_service>();
+        const auto asio = std::make_shared<asio::io_service>();
 
         COCAINE_LOG_INFO(m_logger, "starting service");
 

@@ -26,7 +26,7 @@ IF(NOT APPLE)
     SET(LIBBFD_LIBRARY "bfd" "dl")
 ENDIF()
 
-FIND_PACKAGE(Boost 1.48.0
+FIND_PACKAGE(Boost 1.46.0
     REQUIRED COMPONENTS
         filesystem
         program_options
@@ -64,6 +64,7 @@ INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
     ${PROJECT_SOURCE_DIR}/foreign/blackhole/src
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include
+    ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
     ${PROJECT_SOURCE_DIR}/include)
 
 LINK_DIRECTORIES(

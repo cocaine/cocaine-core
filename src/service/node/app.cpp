@@ -46,13 +46,13 @@
 #include "cocaine/traits/dynamic.hpp"
 #include "cocaine/traits/literal.hpp"
 
-#include <boost/asio/local/stream_protocol.hpp>
-
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
-using namespace boost::asio;
-using namespace boost::asio::local;
+#include <asio/local/stream_protocol.hpp>
+
+using namespace asio;
+using namespace asio::local;
 
 using namespace cocaine;
 using namespace cocaine::engine;
@@ -188,7 +188,7 @@ app_t::app_t(context_t& context, const std::string& name, const std::string& pro
     m_log(context.log(name)),
     m_manifest(new manifest_t(context, name)),
     m_profile(new profile_t(context, profile)),
-    m_asio(std::make_shared<boost::asio::io_service>())
+    m_asio(std::make_shared<asio::io_service>())
 {
     auto isolate = m_context.get<api::isolate_t>(
         m_profile->isolate.type,
@@ -245,14 +245,14 @@ app_t::pause() {
 namespace {
 
 class info_handler_t {
-    typedef result_of<io::app::info>::type result_type;
+    typedef cocaine::result_of<io::app::info>::type result_type;
     typedef cocaine::deferred<result_type> deferred_type;
 
     boost::optional<deferred_type> deferred;
-    std::shared_ptr<boost::asio::deadline_timer> timer;
+    std::shared_ptr<asio::deadline_timer> timer;
 
 public:
-    info_handler_t(deferred_type deferred, std::shared_ptr<boost::asio::deadline_timer> timer) :
+    info_handler_t(deferred_type deferred, std::shared_ptr<asio::deadline_timer> timer) :
         deferred(std::move(deferred)),
         timer(timer)
     {}
@@ -265,9 +265,9 @@ public:
         }
     }
 
-    void timeout(const boost::system::error_code& ec) {
+    void timeout(const std::error_code& ec) {
         if(ec) {
-            if(ec == boost::asio::error::operation_aborted) {
+            if(ec == asio::error::operation_aborted) {
                 return;
             }
             // Any other IO error except manual timer abort.
@@ -281,9 +281,9 @@ public:
 
 }
 
-deferred<result_of<io::app::info>::type>
+deferred<cocaine::result_of<io::app::info>::type>
 app_t::info() const {
-    typedef result_of<io::app::info>::type result_type;
+    typedef cocaine::result_of<io::app::info>::type result_type;
 
     COCAINE_LOG_DEBUG(m_log, "handling info request");
 
@@ -297,7 +297,7 @@ app_t::info() const {
         return deferred;
     }
 
-    auto timer = std::make_shared<boost::asio::deadline_timer>(*m_asio);
+    auto timer = std::make_shared<asio::deadline_timer>(*m_asio);
     auto handler = std::make_shared<info_handler_t>(deferred, timer);
 
     timer->expires_from_now(boost::posix_time::seconds(defaults::control_timeout));

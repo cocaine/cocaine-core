@@ -25,8 +25,8 @@
 
 #include <functional>
 
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/basic_stream_socket.hpp>
+#include <asio/io_service.hpp>
+#include <asio/basic_stream_socket.hpp>
 
 #include <cstring>
 
@@ -42,14 +42,14 @@ class readable_stream:
 
     static const size_t kInitialBufferSize = 65536;
 
-    typedef boost::asio::basic_stream_socket<Protocol> channel_type;
+    typedef asio::basic_stream_socket<Protocol> channel_type;
 
     typedef Decoder decoder_type;
     typedef typename decoder_type::message_type message_type;
 
     const std::shared_ptr<channel_type> m_channel;
 
-    typedef std::function<void(const boost::system::error_code&)> handler_type;
+    typedef std::function<void(const std::error_code&)> handler_type;
 
     std::vector<char, uninitialized<char>> m_ring;
     std::vector<char, uninitialized<char>>::size_type m_rd_offset, m_rx_offset;
@@ -67,7 +67,7 @@ public:
 
     void
     read(message_type& message, handler_type handle) {
-        boost::system::error_code ec;
+        std::error_code ec;
 
         const size_t
             bytes_pending = m_rd_offset - m_rx_offset,
@@ -96,7 +96,7 @@ public:
         }
 
         m_channel->async_read_some(
-            boost::asio::buffer(m_ring.data() + m_rd_offset, m_ring.size() - m_rd_offset),
+            asio::buffer(m_ring.data() + m_rd_offset, m_ring.size() - m_rd_offset),
             std::bind(&readable_stream::fill, this->shared_from_this(), std::ref(message), handle, ph::_1, ph::_2)
         );
     }
@@ -108,9 +108,9 @@ public:
 
 private:
     void
-    fill(message_type& message, handler_type handle, const boost::system::error_code& ec, size_t bytes_read) {
+    fill(message_type& message, handler_type handle, const std::error_code& ec, size_t bytes_read) {
         if(ec) {
-            if(ec == boost::asio::error::operation_aborted) {
+            if(ec == asio::error::operation_aborted) {
                 return;
             }
 

@@ -50,7 +50,7 @@ struct blocking_slot:
     operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
             upstream.template send<typename protocol::value>(this->call(std::move(args)));
-        } catch(const boost::system::system_error& e) {
+        } catch(const asio::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {
             upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
@@ -91,7 +91,7 @@ struct blocking_slot<Event, void>:
 
             // This is needed anyway so that service clients could detect operation completion.
             upstream.template send<typename protocol::value>();
-        } catch(const boost::system::system_error& e) {
+        } catch(const asio::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {
             upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));

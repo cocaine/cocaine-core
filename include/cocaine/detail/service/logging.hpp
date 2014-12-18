@@ -35,7 +35,7 @@ class logging_t:
     std::unique_ptr<logging::logger_t> m_logger;
 
 public:
-    logging_t(context_t& context, boost::asio::io_service& asio, const std::string& name, const dynamic_t& args);
+    logging_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);
 
     virtual
     auto
