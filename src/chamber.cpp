@@ -124,8 +124,8 @@ chamber_t::stats_periodic_action_t::finalize(const std::error_code& ec) {
     // Sum up the user and system running time.
     timeradd(&tick_diff.ru_utime, &tick_diff.ru_stime, &real_time);
 
-    (*parent->load_average.synchronize())(
-        (real_time.tv_sec * 1e6 + real_time.tv_usec) / interval.total_microseconds()
+    (*parent->load_acc1.synchronize())(
+        (real_time.tv_sec * 1e+6 + real_time.tv_usec) / interval.total_microseconds()
     );
 
     operator()();
@@ -139,14 +139,14 @@ chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<asio::io_se
     name(name_),
     asio(asio_),
     cron(*asio_),
-    load_average(boost::accumulators::rolling_window_size = 60 / kCollectionInterval)
+    load_acc1(boost::accumulators::rolling_window_size = 60 / kCollectionInterval)
 {
     asio->post(std::bind(&stats_periodic_action_t::operator(),
         std::make_shared<stats_periodic_action_t>(this, bpt::seconds(kCollectionInterval))
     ));
 
-    // Bootstrap the rolling mean to avoid showing NaNs for the first clients.
-    (*load_average.synchronize())(0.0f);
+    // Bootstrap the rolling mean to avoid showing NaNs to the first clients.
+    (*load_acc1.synchronize())(0.0f);
 
     thread = std::make_unique<boost::thread>(named_runnable_t(name, asio));
 }

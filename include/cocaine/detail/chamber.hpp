@@ -56,7 +56,7 @@ class chamber_t {
     > load_average_t;
 
     // Rolling resource usage mean over last minute.
-    synchronized<load_average_t> load_average;
+    synchronized<load_average_t> load_acc1;
 
 public:
     chamber_t(const std::string& name, const std::shared_ptr<asio::io_service>& asio);
@@ -64,7 +64,7 @@ public:
 
     auto
     load_avg1() const -> double {
-        return boost::accumulators::rolling_mean(*load_average.synchronize());
+        return boost::accumulators::rolling_mean(*load_acc1.synchronize());
     }
 
     auto
