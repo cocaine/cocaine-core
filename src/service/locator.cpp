@@ -58,9 +58,9 @@ using namespace cocaine::service;
 
 // Locator internals
 
-class locator_t::remote_client_t:
+class locator_t::connect_client_t:
     public dispatch<event_traits<locator::connect>::upstream_type>,
-    public std::enable_shared_from_this<remote_client_t>
+    public std::enable_shared_from_this<connect_client_t>
 {
     locator_t      *const parent;
     std::string     const uuid;
@@ -69,7 +69,7 @@ class locator_t::remote_client_t:
     std::set<std::string> active;
 
 public:
-    remote_client_t(locator_t *const parent_, const std::string& uuid_):
+    connect_client_t(locator_t *const parent_, const std::string& uuid_):
         dispatch<event_traits<locator::connect>::upstream_type>(parent_->name()),
         parent(parent_),
         uuid(uuid_)
@@ -78,12 +78,12 @@ public:
 
         using namespace std::placeholders;
 
-        on<protocol::chunk>(std::bind(&remote_client_t::on_announce, this, _1, _2));
-        on<protocol::choke>(std::bind(&remote_client_t::on_shutdown, this));
+        on<protocol::chunk>(std::bind(&connect_client_t::on_announce, this, _1, _2));
+        on<protocol::choke>(std::bind(&connect_client_t::on_shutdown, this));
     }
 
     virtual
-   ~remote_client_t() {
+   ~connect_client_t() {
         for(auto it = active.begin(); it != active.end(); ++it) {
             parent->m_gateway->cleanup(uuid, *it);
         }
@@ -105,7 +105,7 @@ private:
 };
 
 void
-locator_t::remote_client_t::on_link(const std::error_code& ec) {
+locator_t::connect_client_t::on_link(const std::error_code& ec) {
     scoped_attributes_t attributes(*parent->m_log, {
         attribute::make("uuid", uuid)
     });
@@ -122,6 +122,8 @@ locator_t::remote_client_t::on_link(const std::error_code& ec) {
     }
 
     if(!parent->m_remotes.count(uuid)) {
+        // Can happen if the cluter plugin decides to drop the remote node while the locator tries
+        // to connect to it.
         COCAINE_LOG_ERROR(parent->m_log, "client has been dropped while connecting to remote node");
         return;
     }
@@ -135,7 +137,7 @@ locator_t::remote_client_t::on_link(const std::error_code& ec) {
 }
 
 void
-locator_t::remote_client_t::discard(const std::error_code& ec) const {
+locator_t::connect_client_t::discard(const std::error_code& ec) const {
     COCAINE_LOG_ERROR(parent->m_log, "remote node has been discarded: [%d] %s", ec.value(), ec.message())(
         "uuid", uuid
     );
@@ -144,7 +146,7 @@ locator_t::remote_client_t::discard(const std::error_code& ec) const {
 }
 
 void
-locator_t::remote_client_t::on_announce(const std::string& node, const std::map<std::string, results::resolve>& update) {
+locator_t::connect_client_t::on_announce(const std::string& node, const std::map<std::string, results::resolve>& update) {
     if(node != uuid) {
         COCAINE_LOG_ERROR(parent->m_log, "remote node id mismatch: expected '%s', received '%s'", uuid, node);
         parent->drop_node(uuid);
@@ -181,7 +183,7 @@ locator_t::remote_client_t::on_announce(const std::string& node, const std::map<
 }
 
 void
-locator_t::remote_client_t::on_shutdown() {
+locator_t::connect_client_t::on_shutdown() {
     COCAINE_LOG_INFO(parent->m_log, "remote node has closed synchronization stream")(
         "uuid", uuid
     );
@@ -356,8 +358,8 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         "uuid", uuid
     );
 
-    m_resolve->connect(m_remotes[uuid], endpoints, std::bind(&remote_client_t::on_link,
-        std::make_shared<remote_client_t>(this, uuid),
+    m_resolve->connect(m_remotes[uuid], endpoints, std::bind(&connect_client_t::on_link,
+        std::make_shared<connect_client_t>(this, uuid),
         std::placeholders::_1
     ));
 }

@@ -68,10 +68,7 @@ class locator_t:
     public api::cluster_t::interface,
     public dispatch<io::locator_tag>
 {
-    class remote_client_t;
-    class router_t;
-
-    // Used to gracefully shutdown clustering components on context shutdown signal.
+    class connect_client_t;
     class cleanup_action_t;
 
     context_t& m_context;
@@ -83,14 +80,15 @@ class locator_t:
     asio::io_service& m_asio;
 
     // Remote sessions are created using this resolve.
+    // TODO: Since we don't resolve any remote services, drop this as a permanent member.
     std::shared_ptr<api::resolve_t> m_resolve;
 
-    // Incoming sessions indexed by uuid. The uuid is required to disambiguate between different two
+    // Incoming sessions indexed by uuid. It is required to disambiguate between multiple different
     // instances on the same host, even if the instance was restarted on the same port.
     std::map<std::string, api::client<io::locator_tag>> m_remotes;
 
-    // Outgoing sessions indexed by uuid and the most recent snapshot of the local service info.
-    std::map<std::string, streamed<results::connect>> m_streams;
+    // Outgoing sessions indexed by uuid.
+    std::map<std::string, streamed<results::connect>>   m_streams;
     std::mutex m_mutex;
 
     // Snapshot of the local service disposition.
