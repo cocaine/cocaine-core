@@ -732,8 +732,8 @@ context_t::bootstrap() {
         signals.shutdown();
 
         while(!m_services->empty()) {
-            m_services->front().second->terminate();
-            m_services->pop_front();
+            m_services->back().second->terminate();
+            m_services->pop_back();
         }
 
         COCAINE_LOG_ERROR(m_logger, "emergency core shutdown");
