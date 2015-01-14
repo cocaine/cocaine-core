@@ -35,8 +35,10 @@ namespace cocaine { namespace service {
 class node_t;
 
 namespace results {
-    typedef result_of<io::node::list>::type list;
-}
+
+typedef result_of<io::node::list>::type list;
+
+} // namespace results
 
 class node_t:
     public api::service_t,
