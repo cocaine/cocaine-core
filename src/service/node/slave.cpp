@@ -385,7 +385,11 @@ slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
         return;
     }
 
-    it->second->upstream->write(chunk.data(), chunk.size());
+    try {
+        it->second->upstream->write(chunk.data(), chunk.size());
+    } catch (const cocaine::error_t& err) {
+        COCAINE_LOG_WARNING(m_log, "slave %s is unable to send write event to the upstream: %s", m_id, err.what());
+    }
 }
 
 void
@@ -403,7 +407,11 @@ slave_t::on_error(uint64_t session_id, int code, const std::string& reason) {
         return;
     }
 
-    it->second->upstream->error(code, reason);
+    try {
+        it->second->upstream->error(code, reason);
+    } catch (const cocaine::error_t& err) {
+        COCAINE_LOG_WARNING(m_log, "slave %s is unable to send error event to the upstream: %s", m_id, err.what());
+    }
 }
 
 void
@@ -421,8 +429,13 @@ slave_t::on_choke(uint64_t session_id) {
     auto session = std::move(it->second);
     m_sessions.erase(it);
 
-    session->upstream->close();
-    session->detach();
+    try {
+        session->upstream->close();
+        session->detach();
+    } catch (const cocaine::error_t& err) {
+        COCAINE_LOG_WARNING(m_log, "slave %s is unable to send close event to the upstream: %s", m_id, err.what());
+    }
+
     // Destroy the session before calling the potentially heavy queue pumps.
     session.reset();
 
@@ -529,8 +542,12 @@ slave_t::terminate(int code, const std::string& reason) {
     if(!m_sessions.empty()) {
         COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
         for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
-            it->second->upstream->error(error::resource_error, reason);
-            it->second->detach();
+            try {
+                it->second->upstream->error(error::resource_error, reason);
+                it->second->detach();
+            } catch (const std::exception& err) {
+                COCAINE_LOG_WARNING(m_log, "slave %s is unable to send error event to the upstream: %s", m_id, err.what());
+            }
         }
 
         m_sessions.clear();
