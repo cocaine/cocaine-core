@@ -32,7 +32,7 @@ namespace cocaine { namespace io {
 template<class Protocol>
 struct channel {
     typedef Protocol protocol_type;
-    typedef asio::basic_stream_socket<protocol_type> socket_type;
+    typedef typename protocol_type::socket socket_type;
 
     explicit
     channel(std::unique_ptr<socket_type> socket_):
