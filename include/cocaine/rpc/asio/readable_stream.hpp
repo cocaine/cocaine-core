@@ -42,7 +42,7 @@ class readable_stream:
 
     static const size_t kInitialBufferSize = 65536;
 
-    typedef asio::basic_stream_socket<Protocol> channel_type;
+    typedef typename Protocol::socket channel_type;
 
     typedef Decoder decoder_type;
     typedef typename decoder_type::message_type message_type;

@@ -40,7 +40,7 @@ class writable_stream:
 {
     COCAINE_DECLARE_NONCOPYABLE(writable_stream)
 
-    typedef asio::basic_stream_socket<Protocol> channel_type;
+    typedef typename Protocol::socket channel_type;
 
     typedef Encoder encoder_type;
     typedef typename encoder_type::message_type message_type;
