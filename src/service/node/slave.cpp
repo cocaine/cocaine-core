@@ -520,7 +520,9 @@ slave_t::dump() {
         return;
     }
 
-    const auto now = std::chrono::system_clock::now().time_since_epoch().count();
+    const auto now = std::chrono::duration_cast<
+        std::chrono::microseconds
+    >(std::chrono::system_clock::now().time_since_epoch()).count();
     const auto key = cocaine::format("%lld:%s", now, m_id);
 
     COCAINE_LOG_INFO(m_log, "slave %s is dumping output to 'crashlogs/%s'", m_id, key);
