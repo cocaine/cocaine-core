@@ -283,17 +283,17 @@ dispatch<Tag>::visit(int id, const Visitor& visitor) const {
     {
         auto ptr = m_slots.synchronize();
 
-        // NOTE: Using equal_range() here instead of find() to check for slot existence and get the
+        // NOTE: Using equal_range() here, instead of find() to check for slot existence and get the
         // slot pointer in one call instead of two.
         std::tie(lb, ub) = ptr->equal_range(id);
 
-        if(lb == ub) {
+        if(lb != ub) {
+            // NOTE: The slot pointer is copied here, allowing the handling code to unregister slots
+            // via dispatch<T>::forget() without pulling the object from underneath itself.
+            slot = lb->second;
+        } else {
             throw cocaine::error_t("unbound type %d slot", id);
         }
-
-        // NOTE: The slot pointer is copied here, allowing the handling code to unregister the slot
-        // via dispatch<T>::forget() without pulling the object from underneath itself.
-        slot = lb->second;
     }
 
     return boost::apply_visitor(visitor, slot);
