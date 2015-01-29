@@ -98,7 +98,7 @@ public:
     { }
 
     template<class Event, typename... Args>
-    upstream<typename io::event_traits<Event>::upstream_type>
+    upstream<typename io::event_traits<Event>::dispatch_type>
     send(Args&&... args) {
         static_assert(
             std::is_same<typename Event::tag, Tag>::value,
