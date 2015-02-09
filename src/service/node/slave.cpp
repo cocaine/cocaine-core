@@ -58,6 +58,7 @@ struct slave_t::output_t  {
     asio::posix::stream_descriptor stream;
 
     output_t(unsigned long limit, std::unique_ptr<api::handle_t>&& handler, asio::io_service& loop) :
+        buffer(),
         lines(limit),
         handler(std::move(handler)),
         stream(loop, this->handler->stdout())
@@ -441,14 +442,14 @@ slave_t::on_timeout(const std::error_code& ec) {
         COCAINE_LOG_ERROR(m_log, "slave %s has failed to activate", m_id);
         break;
     case states::active:
+        //Only active slaves should dump output
+        dump();
         COCAINE_LOG_ERROR(m_log, "slave %s has timed out", m_id);
         break;
     case states::inactive:
         COCAINE_LOG_ERROR(m_log, "slave %s has failed to deactivate", m_id);
         break;
     }
-
-    dump();
     terminate(rpc::terminate::code::normal, "slave has timed out");
 }
 
@@ -545,7 +546,10 @@ slave_t::terminate(int code, const std::string& reason) {
     // Cancel fetching output. I don't know what is better for now:
     // * to cancel output stream - and to lose everything from stdout;
     // * or to do nothing and possibly wait forever.
-    m_output->cancel();
+    // also there is a possibility we could not initialize m_output till this time (f.e. on spawn error)
+    if(m_output) {
+        m_output->cancel();
+    }
 
     COCAINE_LOG_DEBUG(m_log, "slave %s has cancelled its handlers", m_id);
     m_suicide(m_id, code, reason);
