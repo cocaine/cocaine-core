@@ -246,7 +246,7 @@ slave_t::on_output(const std::error_code& ec, std::size_t size, std::string left
 
     COCAINE_LOG_DEBUG(m_log, "slave %s received %d bytes of output", m_id, size);
     std::stringstream stream(left);
-    stream << std::string(m_output->buffer.begin(), size);
+    stream << std::string(m_output->buffer.data(), size);
 
     std::string line;
     while(std::getline(stream, line)) {
