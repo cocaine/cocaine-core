@@ -58,7 +58,6 @@ struct slave_t::output_t  {
     asio::posix::stream_descriptor stream;
 
     output_t(unsigned long limit, std::unique_ptr<api::handle_t>&& handler, asio::io_service& loop) :
-        buffer(),
         lines(limit),
         handler(std::move(handler)),
         stream(loop, this->handler->stdout())
@@ -442,14 +441,14 @@ slave_t::on_timeout(const std::error_code& ec) {
         COCAINE_LOG_ERROR(m_log, "slave %s has failed to activate", m_id);
         break;
     case states::active:
-        //Only active slaves should dump output
-        dump();
         COCAINE_LOG_ERROR(m_log, "slave %s has timed out", m_id);
         break;
     case states::inactive:
         COCAINE_LOG_ERROR(m_log, "slave %s has failed to deactivate", m_id);
         break;
     }
+
+    dump();
     terminate(rpc::terminate::code::normal, "slave has timed out");
 }
 
@@ -499,7 +498,10 @@ slave_t::pump() {
 
 void
 slave_t::dump() {
-    BOOST_ASSERT(m_output);
+    if(!m_output) {
+        COCAINE_LOG_WARNING(m_log, "No output from slave - slave %s failed to create handle", m_id);
+        return;
+    }
     std::vector<std::string> dump;
     std::copy(m_output->lines.begin(), m_output->lines.end(), std::back_inserter(dump));
 
