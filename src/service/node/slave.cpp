@@ -245,7 +245,7 @@ slave_t::on_output(const std::error_code& ec, std::size_t size, std::string left
 
     COCAINE_LOG_DEBUG(m_log, "slave %s received %d bytes of output", m_id, size);
     std::stringstream stream(left);
-    stream << std::string(m_output->buffer.begin(), size);
+    stream << std::string(m_output->buffer.data(), size);
 
     std::string line;
     while(std::getline(stream, line)) {
@@ -511,7 +511,10 @@ slave_t::pump() {
 
 void
 slave_t::dump() {
-    BOOST_ASSERT(m_output);
+    if(!m_output) {
+        COCAINE_LOG_WARNING(m_log, "No output from slave - slave %s failed to create handle", m_id);
+        return;
+    }
     std::vector<std::string> dump;
     std::copy(m_output->lines.begin(), m_output->lines.end(), std::back_inserter(dump));
 
@@ -564,7 +567,10 @@ slave_t::terminate(int code, const std::string& reason) {
     // Cancel fetching output. I don't know what is better for now:
     // * to cancel output stream - and to lose everything from stdout;
     // * or to do nothing and possibly wait forever.
-    m_output->cancel();
+    // also there is a possibility we could not initialize m_output till this time (f.e. on spawn error)
+    if(m_output) {
+        m_output->cancel();
+    }
 
     COCAINE_LOG_DEBUG(m_log, "slave %s has cancelled its handlers", m_id);
     m_suicide(m_id, code, reason);
