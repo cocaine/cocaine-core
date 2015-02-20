@@ -29,7 +29,9 @@
 
 #include <blackhole/repository/config/parser.hpp>
 
-namespace blackhole { namespace repository { namespace config {
+BLACKHOLE_BEG_NS
+
+namespace repository { namespace config {
 
 template<>
 struct transformer_t<cocaine::dynamic_t> {
@@ -40,11 +42,15 @@ struct transformer_t<cocaine::dynamic_t> {
     transform(const value_type& value);
 };
 
-}}} // namespace blackhole::repository::config
+}} // namespace repository::config
+
+BLACKHOLE_END_NS
 
 #include <blackhole/frontend/syslog.hpp>
 
-namespace blackhole { namespace sink {
+BLACKHOLE_BEG_NS
+
+namespace sink {
 
 template<>
 struct priority_traits<cocaine::logging::priorities> {
@@ -53,7 +59,9 @@ struct priority_traits<cocaine::logging::priorities> {
     map(cocaine::logging::priorities level);
 };
 
-}} // namespace blackhole::sink
+} // namespace sink
+
+BLACKHOLE_END_NS
 
 namespace cocaine { namespace logging {
 
