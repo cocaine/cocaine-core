@@ -22,7 +22,9 @@
 
 #include <cxxabi.h>
 
-namespace blackhole { namespace repository { namespace config {
+BLACKHOLE_BEG_NS
+
+namespace repository { namespace config {
 
 // Converter adapter specializations for dynamic value
 
@@ -59,9 +61,13 @@ transformer_t<cocaine::dynamic_t>::transform(const value_type& value) {
     return dynamic_t();
 }
 
-}}} // namespace blackhole::repository::config
+}} // namespace repository::config
 
-namespace blackhole { namespace sink {
+BLACKHOLE_END_NS
+
+BLACKHOLE_BEG_NS
+
+namespace sink {
 
 // Mapping trait that is called by Blackhole each time when syslog mapping is required
 
@@ -83,7 +89,9 @@ priority_traits<cocaine::logging::priorities>::map(cocaine::logging::priorities 
     return priority_t::debug;
 }
 
-}} // namespace blackhole::sink
+} // namespace sink
+
+BLACKHOLE_END_NS
 
 namespace cocaine { namespace logging {
 
