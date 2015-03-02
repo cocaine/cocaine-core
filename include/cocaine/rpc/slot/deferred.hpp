@@ -56,7 +56,7 @@ struct deferred_slot:
 
             // Upstream is attached in a critical section, because the internal message queue might
             // be already in use in some other processing thread of the service.
-            result.outbox->synchronize()->attach(std::move(upstream));
+            result.attach(std::move(upstream));
         } catch(const asio::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {
@@ -128,6 +128,12 @@ struct deferred {
         return *this;
     }
 
+    template <class upstream_type>
+    void attach(upstream_type&& upstream) const {
+        outbox->synchronize()->attach(std::move(upstream));
+    }
+
+
 private:
     const std::shared_ptr<synchronized<queue_type>> outbox;
 };
@@ -155,6 +161,11 @@ struct deferred<void> {
     close() {
         outbox->synchronize()->append<protocol::value>();
         return *this;
+    }
+
+    template <class upstream_type>
+    void attach(upstream_type&& upstream) {
+        outbox->synchronize()->attach(std::move(upstream));
     }
 
 private:
