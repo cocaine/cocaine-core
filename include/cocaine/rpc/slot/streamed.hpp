@@ -60,8 +60,8 @@ struct streamed {
         return *this;
     }
 
-    template <class upstream_type>
-    void attach(upstream_type&& upstream) const {
+    template<class UpstreamType>
+    void attach(UpstreamType&& upstream) const {
         outbox->synchronize()->attach(std::move(upstream));
     }
 

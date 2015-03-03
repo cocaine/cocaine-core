@@ -90,7 +90,6 @@ private:
 
 template<class Tag, class Upstream>
 class message_queue {
-public:
     typedef Upstream upstream_type;
 
 private:
