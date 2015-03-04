@@ -66,6 +66,13 @@ struct invoke_impl<index_sequence<Indices...>> {
     template<class F, typename... Args>
     static inline
     typename result_of<F>::type
+    apply(F&& callable, std::tuple<Args...>&& args) {
+        return callable(std::get<Indices>(args)...);
+    }
+
+    template<class F, typename... Args>
+    static inline
+    typename result_of<F>::type
     apply(const F& callable, std::tuple<Args...>&& args) {
         return callable(std::get<Indices>(args)...);
     }
@@ -82,6 +89,15 @@ struct fold {
 };
 
 // Function invocation with arguments provided as a tuple
+
+template<class F, typename... Args>
+inline
+typename result_of<F>::type
+invoke(F&& callable, std::tuple<Args...>&& args) {
+    return aux::invoke_impl<
+        typename make_index_sequence<sizeof...(Args)>::type
+    >::apply(std::move(callable), std::move(args));
+}
 
 template<class F, typename... Args>
 inline

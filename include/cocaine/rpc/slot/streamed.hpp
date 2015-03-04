@@ -60,6 +60,12 @@ struct streamed {
         return *this;
     }
 
+    template<class UpstreamType>
+    void
+    attach(UpstreamType&& upstream) const {
+        outbox->synchronize()->attach(std::move(upstream));
+    }
+
 private:
     const std::shared_ptr<synchronized<queue_type>> outbox;
 };
