@@ -92,7 +92,6 @@ template<class Tag, class Upstream>
 class message_queue {
     typedef Upstream upstream_type;
 
-private:
     typedef typename mpl::transform<
         typename messages<Tag>::type,
         typename mpl::lambda<aux::frozen<mpl::_1>>

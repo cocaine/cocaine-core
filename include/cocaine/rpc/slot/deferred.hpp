@@ -129,7 +129,8 @@ struct deferred {
     }
 
     template<class UpstreamType>
-    void attach(UpstreamType&& upstream) const {
+    void
+    attach(UpstreamType&& upstream) const {
         outbox->synchronize()->attach(std::move(upstream));
     }
 
@@ -164,7 +165,8 @@ struct deferred<void> {
     }
 
     template<class UpstreamType>
-    void attach(UpstreamType&& upstream) {
+    void
+    attach(UpstreamType&& upstream) {
         outbox->synchronize()->attach(std::move(upstream));
     }
 
