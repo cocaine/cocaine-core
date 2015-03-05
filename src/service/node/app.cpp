@@ -139,7 +139,7 @@ private:
         virtual
         void
         write(const char* chunk, size_t size) {
-            upstream.send<protocol::chunk>(literal_t { chunk, size });
+            upstream = upstream.send<protocol::chunk>(literal_t { chunk, size });
         }
 
         virtual
