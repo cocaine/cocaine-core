@@ -244,11 +244,48 @@ app_t::pause() {
 
 namespace {
 
+template<class Deferred>
+class deferred_eater {
+    typedef Deferred deferred_type;
+
+    deferred_type deferred;
+
+public:
+    explicit deferred_eater(deferred_type deferred) :
+        deferred(std::move(deferred))
+    {}
+
+    template<class U>
+    deferred_type&
+    write(U&& value) {
+        try {
+            deferred.write(std::forward<U>(value));
+        } catch (const cocaine::error_t&) {
+            // The client has disconnected. We can do nothing yet, except logging a message.
+        }
+
+        return deferred;
+    }
+
+    deferred_type&
+    abort(int code, const std::string& reason) {
+        try {
+            deferred.abort(code, reason);
+        } catch (const cocaine::error_t&) {
+            // The client has disconnected. We can do nothing yet, except logging a message.
+        }
+
+        return deferred;
+    }
+};
+
+// This handler may outlive its parent (the app service). Its callbacks must be called from the
+// single thread.
 class info_handler_t {
     typedef cocaine::result_of<io::app::info>::type result_type;
     typedef cocaine::deferred<result_type> deferred_type;
 
-    boost::optional<deferred_type> deferred;
+    boost::optional<deferred_eater<deferred_type>> deferred;
     std::shared_ptr<asio::deadline_timer> timer;
 
 public:
@@ -266,16 +303,15 @@ public:
     }
 
     void timeout(const std::error_code& ec) {
+        // According to the boost::asio documentation, the handler can be only called either the
+        // timer has expired or it was cancelled.
+
         if(ec) {
-            if(ec == asio::error::operation_aborted) {
-                return;
-            }
-            // Any other IO error except manual timer abort.
-            deferred->abort(-2, cocaine::format("internal error: %s", ec.message()));
+            deferred.reset();
         } else {
+            // TODO: Error categories should help to get rid of that magic error codes.
             deferred->abort(-1, "engine is unresponsive");
         }
-        deferred.reset();
     }
 };
 
