@@ -29,16 +29,18 @@
 
 namespace cocaine { namespace io {
 
-template<class Protocol>
+template<class Protocol, class Encoder, class Decoder>
 struct channel {
     typedef Protocol protocol_type;
+    typedef Encoder  encoder_type;
+    typedef Decoder  decoder_type;
     typedef typename protocol_type::socket socket_type;
 
     explicit
     channel(std::unique_ptr<socket_type> socket_):
         socket(std::move(socket_)),
-        reader(new readable_stream<protocol_type, decoder_t>(socket)),
-        writer(new writable_stream<protocol_type, encoder_t>(socket))
+        reader(new readable_stream<protocol_type, decoder_type>(socket)),
+        writer(new writable_stream<protocol_type, encoder_type>(socket))
     {
         socket->non_blocking(true);
     }
@@ -56,8 +58,8 @@ struct channel {
     const std::shared_ptr<socket_type> socket;
 
     // Unidirectional channel streams.
-    const std::shared_ptr<readable_stream<protocol_type, decoder_t>> reader;
-    const std::shared_ptr<writable_stream<protocol_type, encoder_t>> writer;
+    const std::shared_ptr<readable_stream<protocol_type, decoder_type>> reader;
+    const std::shared_ptr<writable_stream<protocol_type, encoder_type>> writer;
 };
 
 }} // namespace cocaine::io

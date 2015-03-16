@@ -62,7 +62,10 @@ class writable_stream;
 
 // Stream composition
 
-template<class>
+struct encoder_t;
+struct decoder_t;
+
+template<class, class = encoder_t, class = decoder_t>
 struct channel;
 
 // Generic RPC objects
