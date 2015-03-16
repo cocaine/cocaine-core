@@ -23,6 +23,8 @@
 
 #include "cocaine/errors.hpp"
 
+#include "cocaine/trace/trace.hpp"
+
 #include <functional>
 
 #include <asio/io_service.hpp>
@@ -75,8 +77,9 @@ public:
             if(!ec) {
                 m_rx_offset += bytes_decoded;
             }
-
-            return m_channel->get_io_service().post(std::bind(handle, ec));
+            std::cout<<"HERE" << std::endl;
+            tracer::trace_context_t::push("TEST");
+            return m_channel->get_io_service().post(tracer::make_callable(handle, ec));
         }
 
         if(m_rx_offset) {

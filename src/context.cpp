@@ -25,6 +25,8 @@
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
 
+#include "cocaine/trace/trace.hpp"
+
 #include "cocaine/logging.hpp"
 
 #include "cocaine/rpc/actor.hpp"
@@ -222,6 +224,8 @@ context_t::engine() {
 
 void
 context_t::bootstrap() {
+    tracer::trace_context_t::set_logger(*m_logger);
+
     COCAINE_LOG_INFO(m_logger, "starting %d execution unit(s)", config.network.pool);
 
     while(m_pool.size() != config.network.pool) {
