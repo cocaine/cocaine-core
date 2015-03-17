@@ -2,11 +2,9 @@ language: cpp
 compiler:
   - gcc
 before_install:
-  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
   - sudo apt-get update -qq
 install:
-  - sudo apt-get install -qq g++-4.8 devscripts build-essential equivs python-software-properties
-  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 90
+  - sudo apt-get install -qq devscripts build-essential equivs python-software-properties
 notifications:
   slack: cocaine:qDewv6ZVDt0TciQeNdE47GqG
 script: "tests/ci/travis.sh"

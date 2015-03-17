@@ -27,6 +27,7 @@
 
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
+#include "cocaine/signal.hpp"
 
 #include <blackhole/blackhole.hpp>
 
@@ -102,8 +103,8 @@ public:
 // Dynamic port mapper
 
 class port_mapping_t {
-    // Pinned service ports.
-    std::map<std::string, port_t> const m_pinned;
+    const
+    std::map<std::string, port_t> m_pinned;
 
     // Ports available for dynamic allocation.
     std::deque<port_t> m_shared;
@@ -126,8 +127,6 @@ public:
 };
 
 // Context
-
-namespace signals = boost::signals2;
 
 class actor_t;
 class execution_unit_t;
@@ -164,7 +163,7 @@ public:
 
     struct signals_t {
         typedef signals::signal<void()> context_signals_t;
-        typedef signals::signal<void(const actor_t& service)> service_signals_t;
+        typedef cocaine::retroactive_signal<void(const actor_t& service)> service_signals_t;
 
         struct {
             // Fired on service creation, after service's thread is launched and is ready to accept
