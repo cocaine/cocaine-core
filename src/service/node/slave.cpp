@@ -182,7 +182,7 @@ slave_t::activate() {
     args["--uuid"]     = m_id;
     args["--app"]      = m_manifest.name;
     args["--endpoint"] = m_manifest.endpoint;
-    args["--locator"]  = cocaine::format("localhost:%d", locator.endpoints().front().port());
+    args["--locator"]  = cocaine::format("%s:%d", m_context.config.network.hostname, locator.endpoints().front().port());
 
     // Spawn a worker instance and start reading standard outputs of it.
     try {
