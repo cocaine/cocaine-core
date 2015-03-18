@@ -1,3 +1,9 @@
+cocaine-core (0.12.0.2) unstable; urgency=low
+
+  * Fix --locator arg for a slave
+
+ -- Anton Tiurin <noxiouz@yandex.ru>  Wed, 18 Mar 2015 13:50:19 +0300
+
 cocaine-core (0.12.0.1) unstable; urgency=low
 
   * Release 0.12.0.1.
