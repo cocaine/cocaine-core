@@ -641,10 +641,11 @@ context_t::locate(const std::string& name) const {
     auto ptr = m_services.synchronize();
     auto it  = std::find_if(ptr->begin(), ptr->end(), match{name});
 
-    return boost::optional<const actor_t&>(
-        it != ptr->end() && it->second->is_active(),
-       *it->second
-    );
+    if(it == ptr->end()) {
+        return boost::none;
+    }
+
+    return boost::optional<const actor_t&>(it->second->is_active(), *it->second);
 }
 
 namespace {
