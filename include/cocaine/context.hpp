@@ -94,10 +94,6 @@ public:
 
     component_map_t services;
     component_map_t storages;
-
-#ifdef COCAINE_ALLOW_RAFT
-    bool create_raft_cluster;
-#endif
 };
 
 // Dynamic port mapper
@@ -150,10 +146,6 @@ class context_t {
     // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
     // because services are allowed to start and stop other services during their lifetime.
     synchronized<service_list_t> m_services;
-
-#ifdef COCAINE_ALLOW_RAFT
-    std::unique_ptr<raft::repository_t> m_raft;
-#endif
 
 public:
     const config_t config;
@@ -210,15 +202,6 @@ public:
 
     auto
     engine() -> execution_unit_t&;
-
-    // Raft
-
-#ifdef COCAINE_ALLOW_RAFT
-    auto
-    raft() -> raft::repository_t& {
-        return *m_raft;
-    }
-#endif
 
 private:
     void

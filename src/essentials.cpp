@@ -30,11 +30,6 @@
 #include "cocaine/detail/service/storage.hpp"
 #include "cocaine/detail/storage/files.hpp"
 
-#ifdef COCAINE_ALLOW_RAFT
-    #include "cocaine/detail/raft/control_service.hpp"
-    #include "cocaine/detail/service/counter.hpp"
-#endif
-
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<cluster::multicast_t>("multicast");
@@ -46,9 +41,4 @@ cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<service::node_t>("node");
     repository.insert<service::storage_t>("storage");
     repository.insert<storage::files_t>("files");
-
-#ifdef COCAINE_ALLOW_RAFT
-    repository.insert<raft::control_service_t>("raft");
-    repository.insert<service::counter_t>("counter");
-#endif
 }

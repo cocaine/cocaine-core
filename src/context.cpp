@@ -28,12 +28,6 @@
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
 
-#ifdef COCAINE_ALLOW_RAFT
-    #include "cocaine/detail/raft/repository.hpp"
-    #include "cocaine/detail/raft/node_service.hpp"
-    #include "cocaine/detail/raft/control_service.hpp"
-#endif
-
 #include "cocaine/logging.hpp"
 
 #include <numeric>
@@ -366,10 +360,6 @@ config_t::config_t(const std::string& source) {
     // Component configuration
     services = root.as_object().at("services", dynamic_t::empty_object).to<config_t::component_map_t>();
     storages = root.as_object().at("storages", dynamic_t::empty_object).to<config_t::component_map_t>();
-
-#ifdef COCAINE_ALLOW_RAFT
-    create_raft_cluster = false;
-#endif
 }
 
 int
@@ -675,10 +665,6 @@ context_t::bootstrap() {
     COCAINE_LOG_INFO(m_logger, "initializing the core");
 
     m_repository = std::make_unique<api::repository_t>(*m_logger);
-
-#ifdef COCAINE_ALLOW_RAFT
-    m_raft = std::make_unique<raft::repository_t>(*this);
-#endif
 
     // Load the builtin plugins.
     essentials::initialize(*m_repository);
