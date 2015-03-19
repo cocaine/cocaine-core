@@ -49,8 +49,6 @@ class session_t:
     class pull_action_t;
     class push_action_t;
 
-    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
-
     // The underlying connection.
     synchronized<std::shared_ptr<io::channel<asio::ip::tcp>>> transport;
 
@@ -60,6 +58,8 @@ class session_t:
     // The maximum channel id processed by the session. The session assumes that ids of incoming
     // channels are strongly increasing and discards messages with old channel ids.
     uint64_t max_channel_id;
+
+    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
 
     // Virtual channels.
     synchronized<channel_map_t> channels;
