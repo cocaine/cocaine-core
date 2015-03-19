@@ -54,9 +54,6 @@ class session_t:
     // The underlying connection.
     synchronized<std::shared_ptr<io::channel<asio::ip::tcp>>> transport;
 
-    // Keep the remote endpoint in case the socket is closed abruptly and we need to report it.
-    const asio::ip::tcp::endpoint endpoint;
-
     // Initial dispatch.
     const io::dispatch_ptr_t prototype;
 

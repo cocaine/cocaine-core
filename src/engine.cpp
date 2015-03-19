@@ -99,40 +99,43 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
         return;
     }
 
-    // Make sure that the fd wasn't reused before it was actually processed for disconnection.
-    BOOST_ASSERT(!m_sessions.count(socket));
-
-    // Copy the socket into the new reactor.
-    auto channel = std::make_unique<io::channel<tcp>>(std::make_unique<tcp::socket>(
-       *m_asio,
-        ptr->local_endpoint().protocol(),
-        socket
-    ));
-
-    // Set the NO_DELAY TCP option to speed up small message passing.
-    channel->socket->set_option(tcp::no_delay(true));
+    std::shared_ptr<session_t> session;
 
     try {
-        m_sessions[socket] = std::make_shared<session_t>(std::move(channel), dispatch);
+        // Local endpoint address of the socket to be cloned.
+        const auto protocol = ptr->local_endpoint().protocol();
+
+        // Copy the socket into the new reactor.
+        auto channel = std::make_unique<io::channel<tcp>>(std::make_unique<tcp::socket>(
+           *m_asio,
+            protocol,
+            socket
+        ));
+
+        // Create the new inactive session.
+        session = std::make_shared<session_t>(std::move(channel), dispatch);
     } catch(const asio::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session");
+        COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session: [%d] %s",
+            e.code().value(), e.code().message());
         return;
     }
 
-    // Bind the shutdown signals.
-    m_sessions.at(socket)->signals.shutdown.connect(std::bind(&execution_unit_t::on_shutdown,
+    session->signals.shutdown.connect(std::bind(&execution_unit_t::on_shutdown,
         this,
         std::placeholders::_1,
         socket
     ));
 
+    // Register the new session with this engine.
+    m_sessions[socket] = session;
+
     COCAINE_LOG_DEBUG(m_log, "attached client to engine with %.2f%% utilization", utilization() * 100)(
-        "endpoint", m_sessions.at(socket)->remote_endpoint(),
-        "service",  m_sessions.at(socket)->name()
+        "endpoint", session->remote_endpoint(),
+        "service",  session->name()
     );
 
     // Start the message dispatching.
-    m_sessions.at(socket)->pull();
+    session->pull();
 }
 
 void
