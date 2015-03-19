@@ -77,9 +77,8 @@ public:
             if(!ec) {
                 m_rx_offset += bytes_decoded;
             }
-            std::cout<<"HERE" << std::endl;
-            tracer::trace_context_t::push("TEST");
-            return m_channel->get_io_service().post(tracer::make_callable(handle, ec));
+            TRACE_PUSH("message read");
+            return m_channel->get_io_service().post(TRACE_MOVE_TO_CALLABLE(handle, ec));
         }
 
         if(m_rx_offset) {

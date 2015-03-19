@@ -19,16 +19,19 @@ trace_context_t::get_context() {
     return *thread_context.get();
 }
 
-void
+const trace_context_t::trace_t&
 trace_context_t::push(const char* message) {
     auto& ctx = get_context();
-    ctx.push_impl(message);
+    return ctx.push_impl(message);
 }
 
-void
+const trace_context_t::trace_t&
 trace_context_t::push_impl(const char* message) {
+//    std::cerr << "PUSH_IMPL. THIS: " << this << ", thread:" << std::this_thread::get_id() << std::endl;
+    depth++;
     assert(log);
     trace_t* result = new trace_t();
+//    std::cerr << "NEW: " << result << std::endl;
     result->message = message;
     uint64_t new_id = generate_id();
     result->parent = current_trace;
@@ -41,8 +44,9 @@ trace_context_t::push_impl(const char* message) {
         result->span_id = new_id;
     }
     current_trace = result;
-    set_attributes();
+    blackhole::scoped_attributes_t scope(*log, current_trace->attributes());
     COCAINE_LOG_INFO(log, "Trace: %s", message)("event", "start");
+    return *current_trace;
 }
 
 void
@@ -53,35 +57,45 @@ trace_context_t::pop() {
 
 void
 trace_context_t::pop_impl() {
+//    std::cerr << "POP_IMPL. THIS: " << this << ", thread:" << std::this_thread::get_id() << std::endl;
+    if(depth == 0) {
+        return;
+    }
+    depth--;
     assert(log);
     assert(current_trace);
     auto ptr = current_trace;
     current_trace = current_trace->parent;
-    delete ptr;
+
     COCAINE_LOG_INFO(log, "Trace: %s", ptr->message)("event", "stop");
-    set_attributes();
+//    std::cerr << "DELETE: " << ptr << std::endl;
+    delete ptr;
 }
 
-trace_context_t::trace_context_t() {}
+trace_context_t::trace_context_t() :
+    depth(0),
+    current_trace(nullptr)
+{
+//    std::cerr << "CONTEXT CTOR. THIS: " << this << ", thread:" << std::this_thread::get_id() << std::endl;
+}
 
 trace_context_t::~trace_context_t() {
+//    std::cerr << "CONTEXT DTOR. THIS: " << this << ", thread:" << std::this_thread::get_id() << std::endl;
     while(current_trace != nullptr) {
         pop_impl();
     }
+//    std::cerr << "CONTEXT DTOR END. THIS: " << this << ", thread:" << std::this_thread::get_id() << std::endl;
 }
 
 void
 trace_context_t::set_logger(logging::logger_t& _log) {
     default_logger = &_log;
 }
-void
-trace_context_t::set_attributes() {
-    attributes.reset(new blackhole::scoped_attributes_t(*log,
-        {
-            blackhole::attribute::make("trace_id", current_trace->trace_id),
-            blackhole::attribute::make("span_id", current_trace->span_id),
-            blackhole::attribute::make("parent_id", current_trace->parent ? current_trace->parent->span_id : 0)
-        }
-    ));
+
+logging::logger_t&
+trace_context_t::get_logger() {
+    assert(default_logger);
+    return *default_logger;
 }
+
 }}

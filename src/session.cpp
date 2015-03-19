@@ -304,7 +304,7 @@ session_t::pull() {
 void
 session_t::push(const std::shared_ptr<io::channel<protocol_type>>& transport_, encoder_t::message_type&& message) {
     // Use dispatch() instead of a direct call for thread safety.
-    transport_->socket->get_io_service().dispatch(std::bind(
+    transport_->socket->get_io_service().dispatch(trace_t::bind(
         &push_action_t::operator(),
         std::make_shared<push_action_t>(std::move(message), shared_from_this()),
         transport_
