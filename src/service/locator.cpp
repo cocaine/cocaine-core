@@ -404,7 +404,7 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const ->
         return results::resolve {
             provided.get().endpoints(),
             provided.get().prototype().version(),
-            provided.get().prototype().graph()
+            provided.get().prototype().root()
         };
     }
 
@@ -507,7 +507,7 @@ locator_t::on_service(const actor_t& actor) {
     const auto metadata = results::resolve {
         actor.endpoints(),
         actor.prototype().version(),
-        actor.prototype().graph()
+        actor.prototype().root()
     };
 
     const auto response = results::connect {

@@ -29,28 +29,28 @@
 
 namespace cocaine { namespace io {
 
-struct graph_point_t;
+struct graph_node_t;
 
 namespace aux {
 
-// Protocol transitions are described by an optional<graph_point_t>. Transition could be a new graph
+// Protocol transitions are described by an optional<graph_node_t>. Transition could be a new graph
 // point, an empty graph point (terminal message) or none, which means recurrent transition.
 
 typedef std::map<
     int,
-    std::tuple<std::string, boost::optional<graph_point_t>>
+    std::tuple<std::string, boost::optional<graph_node_t>>
 > recursion_base_t;
 
 } // namespace aux
 
-struct graph_point_t: public aux::recursion_base_t {
+struct graph_node_t: public aux::recursion_base_t {
     typedef aux::recursion_base_t base_type;
 };
 
 typedef std::map<
     int,
-    std::tuple<std::string, boost::optional<graph_point_t>, boost::optional<graph_point_t>>
-> graph_basis_t;
+    std::tuple<std::string, boost::optional<graph_node_t>, boost::optional<graph_node_t>>
+> graph_root_t;
 
 }} // namespace cocaine::io
 

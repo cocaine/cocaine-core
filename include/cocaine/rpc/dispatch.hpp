@@ -81,7 +81,7 @@ public:
 
     virtual
     auto
-    graph() const -> const graph_basis_t& = 0;
+    root() const -> const graph_root_t& = 0;
 
     auto
     name() const -> std::string;
@@ -99,7 +99,7 @@ template<class Tag>
 class dispatch:
     public io::basic_dispatch_t
 {
-    static const io::graph_basis_t kGraph;
+    static const io::graph_root_t kGraph;
 
     // Slot construction
 
@@ -152,7 +152,7 @@ public:
 
     virtual
     auto
-    graph() const -> const io::graph_basis_t& {
+    root() const -> const io::graph_root_t& {
         return kGraph;
     }
 
@@ -169,7 +169,7 @@ private:
 };
 
 template<class Tag>
-const io::graph_basis_t dispatch<Tag>::kGraph = io::traverse<Tag>().get();
+const io::graph_root_t dispatch<Tag>::kGraph = io::traverse<Tag>().get();
 
 namespace aux {
 

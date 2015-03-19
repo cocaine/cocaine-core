@@ -147,7 +147,7 @@ public:
 
 private:
     void
-    on_value(const std::vector<endpoint_type>& endpoints, int version, const io::graph_basis_t&) {
+    on_value(const std::vector<endpoint_type>& endpoints, int version, const io::graph_root_t&) {
         if(version != client.version()) {
             parent->m_asio.post(std::bind(handle, error::version_mismatch));
             return;
