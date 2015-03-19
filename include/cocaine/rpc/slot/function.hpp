@@ -79,26 +79,25 @@ struct function_slot:
         "messages with dispatch transition are not supported"
     );
 
-    typedef typename basic_slot<Event>::sequence_type sequence_type;
-
-    typedef typename bft::function_type<
-        typename mpl::push_front<sequence_type, R>::type
-    >::type function_type;
+    typedef typename bft::function_type<typename mpl::push_front<
+        typename basic_slot<Event>::sequence_type,
+        R
+    >::type>::type function_type;
 
     typedef std::function<function_type> callable_type;
+
+    typedef typename basic_slot<Event>::dispatch_type dispatch_type;
+    typedef typename basic_slot<Event>::tuple_type    tuple_type;
+    typedef typename basic_slot<Event>::upstream_type upstream_type;
+
+    typedef typename aux::protocol_impl<typename event_traits<
+        Event
+    >::upstream_type>::type protocol;
 
     explicit
     function_slot(callable_type callable_):
         callable(callable_)
     { }
-
-    typedef typename basic_slot<Event>::dispatch_type dispatch_type;
-    typedef typename basic_slot<Event>::tuple_type tuple_type;
-    typedef typename basic_slot<Event>::upstream_type upstream_type;
-
-    typedef typename aux::protocol_impl<
-        typename event_traits<Event>::upstream_type
-    >::type protocol;
 
     R
     call(tuple_type&& args) const {
