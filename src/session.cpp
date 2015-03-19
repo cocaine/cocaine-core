@@ -179,7 +179,6 @@ session_t::discard_action_t::operator()(const std::error_code& ec) {
 
 session_t::session_t(std::unique_ptr<channel<tcp>> transport_, const dispatch_ptr_t& prototype_):
     transport(std::shared_ptr<channel<tcp>>(std::move(transport_))),
-    endpoint((*transport.synchronize())->socket->remote_endpoint()),
     prototype(prototype_),
     max_channel_id(0)
 {
@@ -314,5 +313,17 @@ session_t::name() const {
 
 tcp::endpoint
 session_t::remote_endpoint() const {
+    tcp::endpoint endpoint;
+
+    if(const auto ptr = *transport.synchronize()) {
+        try {
+            endpoint = ptr->socket->remote_endpoint();
+        } catch(const asio::system_error& e) {
+            // TODO: Log this.
+        }
+    } else {
+        // TODO: Log this.
+    }
+
     return endpoint;
 }
