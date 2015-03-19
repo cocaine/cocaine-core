@@ -21,6 +21,7 @@
 #ifndef COCAINE_IO_PROTOCOL_HPP
 #define COCAINE_IO_PROTOCOL_HPP
 
+#include "cocaine/rpc/sanitize.hpp"
 #include "cocaine/rpc/tags.hpp"
 
 #include <boost/mpl/begin.hpp>
@@ -131,6 +132,11 @@ struct event_traits {
     // Tuple is the type list of the message arguments.
     // By default, all messages have no arguments, the only information they provide is their type.
     typedef typename aux::argument_type<Event>::type argument_type;
+
+    static_assert(
+        sanitize<argument_type>::result,
+        "mixing optional and non-optional message arguments is not supported"
+    );
 
     // Dispatch is a protocol tag type of the service channel dispatch after the given message is
     // successfully processed. The possible transitions types are: void, recursive protocol tag or
