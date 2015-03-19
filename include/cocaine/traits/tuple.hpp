@@ -129,12 +129,11 @@ struct sequence_type_error:
 struct sequence_size_error:
     public msgpack::type_error
 {
-    sequence_size_error(size_t size, size_t minimal) {
-        message = cocaine::format("sequence size mismatch — got %d elements, expected at least %d",
-            size,
-            minimal
-        );
-    }
+    sequence_size_error(size_t size, size_t minimal):
+        message(cocaine::format("sequence size mismatch — got %d elements, expected at least %d",
+            size, minimal
+        ))
+    { }
 
     virtual
    ~sequence_size_error() throw() {
@@ -148,7 +147,7 @@ struct sequence_size_error:
     }
 
 private:
-    std::string message;
+    const std::string message;
 };
 
 } // namespace aux
@@ -340,9 +339,9 @@ operator>>(object o, std::tuple<Args...>& t) {
 template<class Stream, typename... Args>
 inline
 packer<Stream>&
-operator<<(packer<Stream>& o, const std::tuple<Args...>& t) {
-    cocaine::io::type_traits<std::tuple<Args...>>::pack(o, t);
-    return o;
+operator<<(packer<Stream>& p, const std::tuple<Args...>& t) {
+    cocaine::io::type_traits<std::tuple<Args...>>::pack(p, t);
+    return p;
 }
 
 } // namespace msgpack
