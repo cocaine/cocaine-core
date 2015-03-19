@@ -40,12 +40,14 @@ class basic_slot {
 public:
     typedef typename mpl::transform<
         typename traits_type::argument_type,
-        typename mpl::lambda<io::details::unwrap_type<mpl::_1>>
+        typename mpl::lambda<
+            io::details::unwrap_type<mpl::_1>
+        >::type
     >::type sequence_type;
 
     // Expected dispatch, parameter and upstream types.
     typedef dispatch<typename traits_type::dispatch_type> dispatch_type;
-    typedef typename tuple::fold<sequence_type>::type tuple_type;
+    typedef typename tuple::fold<sequence_type>::type     tuple_type;
     typedef upstream<typename traits_type::upstream_type> upstream_type;
 
     virtual
