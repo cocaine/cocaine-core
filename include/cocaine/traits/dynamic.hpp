@@ -128,6 +128,7 @@ struct type_traits<dynamic_t> {
 
           case msgpack::type::ARRAY: {
             dynamic_t::array_t container;
+
             container.reserve(source.via.array.size);
 
             msgpack::object *ptr = source.via.array.ptr,
