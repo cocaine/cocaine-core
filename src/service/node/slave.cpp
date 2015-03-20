@@ -329,6 +329,11 @@ slave_t::on_failure(const std::error_code& ec) {
 
 void
 slave_t::on_ping() {
+    if(m_state == states::inactive) {
+        // Slate is already inactive, do nothing.
+        return;
+    }
+
     COCAINE_LOG_DEBUG(m_log, "slave %s is resetting heartbeat timeout to %.02f seconds", m_id, m_profile.heartbeat_timeout);
 
     m_heartbeat_timer.expires_from_now(boost::posix_time::seconds(m_profile.heartbeat_timeout));
