@@ -87,10 +87,10 @@ struct enumerate {
         "message has not been registered within its protocol hierarchy"
     );
 
-    typedef typename mpl::distance<
+    static const uint64_t value = mpl::distance<
         typename mpl::begin<hierarchy_type>::type,
         typename mpl::find <hierarchy_type, Event>::type
-    >::type type;
+    >::value;
 };
 
 template<class Event, class = void>
@@ -127,14 +127,14 @@ struct upstream_type<Event, typename depend<typename Event::upstream_type>::type
 
 template<class Event>
 struct event_traits {
-    enum constants { id = aux::enumerate<Event>::type::value };
+    enum constants { id = aux::enumerate<Event>::value };
 
     // Tuple is the type list of the message arguments.
     // By default, all messages have no arguments, the only information they provide is their type.
     typedef typename aux::argument_type<Event>::type argument_type;
 
     static_assert(
-        sanitize<argument_type>::result,
+        sanitize<argument_type>::value,
         "mixing optional and non-optional message arguments is not supported"
     );
 

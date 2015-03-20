@@ -68,7 +68,7 @@ public:
     }
 
     auto
-    uuid() const -> boost::thread::id {
+    thread_id() const -> boost::thread::id {
         return thread->get_id();
     }
 };

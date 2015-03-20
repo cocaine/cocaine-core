@@ -103,14 +103,9 @@ class dispatch:
 
     // Slot construction
 
-    template<class Event>
-    struct make_slot_over {
-        typedef std::shared_ptr<io::basic_slot<Event>> type;
-    };
-
     typedef typename mpl::transform<
         typename io::messages<Tag>::type,
-        typename mpl::lambda<make_slot_over<mpl::_1>>::type
+        typename mpl::lambda<std::shared_ptr<io::basic_slot<mpl::_1>>>::type
     >::type slot_types;
 
     typedef std::map<
