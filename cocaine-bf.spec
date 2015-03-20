@@ -1,8 +1,8 @@
 %define cocaine_runtime_name cocaine-runtime
 
 Summary:	Cocaine - Core Libraries
-Name:		libcocaine-core2
-Version:	0.12.0.1
+Name:		libcocaine-core3
+Version:	0.12.0.3
 Release:	1%{?dist}
 
 
@@ -125,6 +125,9 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
+* Fri Mar 20 2015 Evgeny Safronov <division494@gmail.com> 0.12.0.3-1
+- Bug fix: do not read/write from/to already deleted channel.
+
 * Tue Oct 07 2014 Andrey Sibirev <me@kobology.ru> 0.12.0.1-1
 - Release 0.12.
 
