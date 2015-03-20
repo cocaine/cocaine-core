@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_PID_FILE_HPP
-#define COCAINE_PID_FILE_HPP
+#ifndef COCAINE_BOOTSTRAP_PIDFILE_HPP
+#define COCAINE_BOOTSTRAP_PIDFILE_HPP
 
 #include "cocaine/common.hpp"
 

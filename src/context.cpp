@@ -23,7 +23,6 @@
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/detail/actor.hpp"
-#include "cocaine/detail/bootstrap/logging.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
 
@@ -35,11 +34,7 @@
 
 #include "cocaine/logging.hpp"
 
-#include <blackhole/formatter/json.hpp>
-#include <blackhole/frontend/files.hpp>
-#include <blackhole/frontend/syslog.hpp>
 #include <blackhole/scoped_attributes.hpp>
-#include <blackhole/sink/socket.hpp>
 
 #include <boost/spirit/include/karma_char.hpp>
 #include <boost/spirit/include/karma_generate.hpp>
@@ -48,77 +43,31 @@
 
 using namespace cocaine;
 
-context_t::context_t(config_t config_, const std::string& logger_backend):
-    config(config_),
-    mapper(config_)
-{
-    auto& repository = blackhole::repository_t::instance();
-
-    // Available logging sinks.
-    typedef boost::mpl::vector<
-        blackhole::sink::stream_t,
-        blackhole::sink::files_t<>,
-        blackhole::sink::syslog_t<logging::priorities>,
-        blackhole::sink::socket_t<boost::asio::ip::tcp>,
-        blackhole::sink::socket_t<boost::asio::ip::udp>
-    > sinks_t;
-
-    // Available logging formatters.
-    typedef boost::mpl::vector<
-        blackhole::formatter::string_t,
-        blackhole::formatter::json_t
-    > formatters_t;
-
-    // Register frontends with all combinations of formatters and sinks with the logging repository.
-    repository.registrate<sinks_t, formatters_t>();
-
-    try {
-        using blackhole::keyword::tag::timestamp_t;
-        using blackhole::keyword::tag::severity_t;
-
-        // For each logging config define mappers. Then add them into the repository.
-        for(auto it = config.logging.loggers.begin(); it != config.logging.loggers.end(); ++it) {
-            // Configure some mappings for timestamps and severity attributes.
-            blackhole::mapping::value_t mapper;
-
-            mapper.add<severity_t<logging::priorities>>(&logging::map_severity);
-            mapper.add<timestamp_t>(it->second.timestamp);
-
-            // Attach them to the logging config.
-            auto config = it->second.config;
-            auto& frontends = config.frontends;
-
-            for(auto it = frontends.begin(); it != frontends.end(); ++it) {
-                it->formatter.mapper = mapper;
-            }
-
-            // Register logger configuration with the Blackhole's repository.
-            repository.add_config(config);
-        }
-
-        typedef logging::logger_t logger_type;
-
-        // Fetch 'core' configuration object.
-        auto logger = config.logging.loggers.at(logger_backend);
-
-        // Try to initialize the logger. If it fails, there's no way to report the failure, except
-        // printing it to the standart output.
-        m_logger = std::make_unique<logger_type>(
-            repository.create<logger_type>(logger_backend, logger.verbosity)
-        );
-    } catch(const std::out_of_range&) {
-        throw cocaine::error_t("logger '%s' is not configured", logger_backend);
-    }
-
-    bootstrap();
-}
-
 context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger):
     config(config_),
     mapper(config_)
 {
     m_logger = std::move(logger);
 
+    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
+        logging::keyword::source() = "core"
+    }));
+
+    COCAINE_LOG_INFO(m_logger, "initializing the core");
+
+    m_repository = std::make_unique<api::repository_t>(*m_logger);
+
+#ifdef COCAINE_ALLOW_RAFT
+    m_raft = std::make_unique<raft::repository_t>(*this);
+#endif
+
+    // Load the builtin plugins.
+    essentials::initialize(*m_repository);
+
+    // Load the rest of plugins.
+    m_repository->load(config.path.plugins);
+
+    // Spin up the configured services.
     bootstrap();
 }
 
@@ -275,24 +224,6 @@ context_t::engine() {
 
 void
 context_t::bootstrap() {
-    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
-        logging::keyword::source() = "core"
-    }));
-
-    COCAINE_LOG_INFO(m_logger, "initializing the core");
-
-    m_repository = std::make_unique<api::repository_t>(*m_logger);
-
-#ifdef COCAINE_ALLOW_RAFT
-    m_raft = std::make_unique<raft::repository_t>(*this);
-#endif
-
-    // Load the builtin plugins.
-    essentials::initialize(*m_repository);
-
-    // Load the rest of plugins.
-    m_repository->load(config.path.plugins);
-
     COCAINE_LOG_INFO(m_logger, "starting %d execution unit(s)", config.network.pool);
 
     while(m_pool.size() != config.network.pool) {

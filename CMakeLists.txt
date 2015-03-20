@@ -137,6 +137,7 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 3)
 
 ADD_EXECUTABLE(cocaine-runtime
+    src/runtime/logging.cpp
     src/runtime/pid_file.cpp
     src/runtime/runtime.cpp)
 

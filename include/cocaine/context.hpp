@@ -98,7 +98,6 @@ public:
     signals_t signals;
 
 public:
-    context_t(config_t config, const std::string& logger);
     context_t(config_t config, std::unique_ptr<logging::logger_t> logger);
    ~context_t();
 

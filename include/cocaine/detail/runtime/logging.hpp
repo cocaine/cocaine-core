@@ -22,30 +22,10 @@
 #define COCAINE_BOOTSTRAP_LOGGING_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/dynamic/dynamic.hpp"
-#include "cocaine/logging.hpp"
 
 // Blackhole support
 
-#include <blackhole/repository/config/parser.hpp>
-
-BLACKHOLE_BEG_NS
-
-namespace repository { namespace config {
-
-template<>
-struct transformer_t<cocaine::dynamic_t> {
-    typedef cocaine::dynamic_t value_type;
-
-    static
-    dynamic_t
-    transform(const value_type& value);
-};
-
-}} // namespace repository::config
-
-BLACKHOLE_END_NS
-
+#include <blackhole/blackhole.hpp>
 #include <blackhole/frontend/syslog.hpp>
 
 BLACKHOLE_BEG_NS

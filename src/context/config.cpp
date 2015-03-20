@@ -21,12 +21,12 @@
 #include "cocaine/context/config.hpp"
 
 #include "cocaine/defaults.hpp"
-#include "cocaine/detail/bootstrap/logging.hpp"
-#include "cocaine/logging.hpp"
 
 #include <asio/io_service.hpp>
 #include <asio/ip/host_name.hpp>
 #include <asio/ip/tcp.hpp>
+
+#include <blackhole/repository/config/parser.hpp>
 
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -183,6 +183,53 @@ private:
 };
 
 } // namespace
+
+BLACKHOLE_BEG_NS
+
+namespace repository { namespace config {
+
+template<>
+struct transformer_t<cocaine::dynamic_t> {
+    typedef cocaine::dynamic_t value_type;
+
+    static
+    dynamic_t
+    transform(const value_type& value) {
+        if(value.is_null()) {
+            throw blackhole::error_t("null values are not supported");
+        } else if(value.is_bool()) {
+            return value.as_bool();
+        } else if(value.is_int()) {
+            return value.as_int();
+        } else if(value.is_uint()) {
+            return value.as_uint();
+        } else if(value.is_double()) {
+            return value.as_double();
+        } else if(value.is_string()) {
+            return value.as_string();
+        } else if(value.is_array()) {
+            dynamic_t::array_t array;
+            for(auto it = value.as_array().begin(); it != value.as_array().end(); ++it) {
+                array.push_back(transformer_t<value_type>::transform(*it));
+            }
+            return array;
+        } else if(value.is_object()) {
+            dynamic_t::object_t object;
+            for(auto it = value.as_object().begin(); it != value.as_object().end(); ++it) {
+                object[it->first] = transformer_t<value_type>::transform(it->second);
+            }
+            return object;
+        } else {
+            BOOST_ASSERT(false);
+        }
+
+        return dynamic_t();
+    }
+};
+
+}} // namespace repository::config
+
+BLACKHOLE_END_NS
 
 namespace cocaine {
 

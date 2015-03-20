@@ -22,7 +22,6 @@
 #define COCAINE_CONTEXT_MAPPER_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/context/config.hpp"
 
 #include <deque>
 #include <mutex>
@@ -44,7 +43,7 @@ class port_mapping_t {
 
 public:
     explicit
-    port_mapping_t(const config_t& config);
+    port_mapping_t(const struct config_t& config);
 
     // Modifiers
 

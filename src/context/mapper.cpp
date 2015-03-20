@@ -20,6 +20,8 @@
 
 #include "cocaine/context/mapper.hpp"
 
+#include "cocaine/context/config.hpp"
+
 #include <numeric>
 #include <random>
 
