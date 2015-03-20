@@ -42,7 +42,7 @@ execution_unit_t::execution_unit_t(context_t& context):
     m_chamber(new io::chamber_t("core:asio", m_asio))
 {
     m_log = context.log("core:asio", {
-        attribute::make("engine", boost::lexical_cast<std::string>(m_chamber->uuid()))
+        attribute::make("engine", boost::lexical_cast<std::string>(m_chamber->thread_id()))
     });
 
     COCAINE_LOG_DEBUG(m_log, "engine started");

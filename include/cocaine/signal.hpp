@@ -48,8 +48,8 @@ class retroactive_signal<void(Args...), index_sequence<Indices...>> {
     signal_type wrapped;
 
     // Deferred signal arguments.
-    mutable std::list<std::tuple<Args...>> history;
-    mutable std::mutex mutex;
+    std::list<std::tuple<Args...>> mutable history;
+    std::mutex mutable mutex;
 
 public:
     typedef typename signal_type::slot_type slot_type;

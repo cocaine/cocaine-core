@@ -45,7 +45,7 @@ struct sanitize {
         mpl::back_inserter<mpl::vector<>>
     >::type partitions;
 
-    static const bool result = mpl::equal<
+    static const bool value = mpl::equal<
         typename mpl::joint_view<typename partitions::first, typename partitions::second>::type,
         Sequence
     >::value;
