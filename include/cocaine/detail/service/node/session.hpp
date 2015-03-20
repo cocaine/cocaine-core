@@ -25,7 +25,8 @@
 
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/stream.hpp"
-#include "cocaine/detail/service/node/messages.hpp"
+
+#include "cocaine/idl/rpc.hpp"
 
 #include "cocaine/rpc/asio/encoder.hpp"
 #include "cocaine/rpc/asio/writable_stream.hpp"

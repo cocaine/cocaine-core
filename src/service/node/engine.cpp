@@ -24,7 +24,6 @@
 
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/manifest.hpp"
-#include "cocaine/detail/service/node/messages.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
 #include "cocaine/detail/service/node/session.hpp"
 #include "cocaine/detail/service/node/slave.hpp"
@@ -33,6 +32,7 @@
 #include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/idl/node.hpp"
+#include "cocaine/idl/rpc.hpp"
 
 #include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/asio/decoder.hpp"

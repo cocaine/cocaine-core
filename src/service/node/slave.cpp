@@ -27,12 +27,13 @@
 #include "cocaine/detail/service/node/engine.hpp"
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/manifest.hpp"
-#include "cocaine/detail/service/node/messages.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
 #include "cocaine/detail/service/node/session.hpp"
 #include "cocaine/detail/service/node/stream.hpp"
 
 #include "cocaine/logging.hpp"
+
+#include "cocaine/idl/rpc.hpp"
 
 #include "cocaine/traits/enum.hpp"
 #include "cocaine/traits/literal.hpp"
