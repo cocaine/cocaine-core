@@ -135,7 +135,7 @@ struct event_traits {
 
     static_assert(
         sanitize<argument_type>::value,
-        "mixing optional and non-optional message arguments is not supported"
+        "mixing optional and non-optional message arguments is not allowed"
     );
 
     // Dispatch is a protocol tag type of the service channel dispatch after the given message is
