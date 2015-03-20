@@ -93,6 +93,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/cluster/multicast.cpp
     src/cluster/predefine.cpp
     src/context.cpp
+    src/context/config.cpp
+    src/context/mapper.cpp
     src/crypto.cpp
     src/defaults.cpp
     src/dispatch.cpp

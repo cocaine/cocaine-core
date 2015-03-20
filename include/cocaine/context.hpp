@@ -23,15 +23,14 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/dynamic/dynamic.hpp"
+#include "cocaine/context/config.hpp"
+#include "cocaine/context/mapper.hpp"
+#include "cocaine/context/signal.hpp"
 
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
-#include "cocaine/signal.hpp"
 
 #include <blackhole/blackhole.hpp>
-
-#include <asio/ip/address.hpp>
 
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/optional.hpp>
@@ -39,94 +38,9 @@
 
 namespace cocaine {
 
-// Configuration
-
-struct config_t {
-    config_t(const std::string& source);
-
-    static
-    int
-    versions();
-
-public:
-    struct {
-        std::string plugins;
-        std::string runtime;
-    } path;
-
-    struct {
-        // An endpoint where all the services will be bound. Note that binding on [::] will bind on
-        // 0.0.0.0 too as long as the "net.ipv6.bindv6only" sysctl is set to 0 (default).
-        asio::ip::address endpoint;
-
-        // Local hostname. In case it can't be automatically detected by resolving a CNAME for the
-        // contents of /etc/hostname via the default system resolver, it can be configured manually.
-        std::string hostname;
-
-        // I/O thread pool size.
-        size_t pool;
-
-        struct {
-            // Pinned ports for static service port allocation.
-            std::map<std::string, port_t> pinned;
-
-            // Port range to populate the dynamic port pool for service port allocation.
-            std::tuple<port_t, port_t> shared;
-        } ports;
-    } network;
-
-    struct logging_t {
-        struct logger_t {
-            logging::priorities verbosity;
-            std::string timestamp;
-            blackhole::log_config_t config;
-        };
-
-        std::map<std::string, logger_t> loggers;
-    } logging;
-
-    struct component_t {
-        std::string type;
-        dynamic_t   args;
-    };
-
-    typedef std::map<std::string, component_t> component_map_t;
-
-    component_map_t services;
-    component_map_t storages;
-
-#ifdef COCAINE_ALLOW_RAFT
-    bool create_raft_cluster;
-#endif
-};
-
-// Dynamic port mapper
-
-class port_mapping_t {
-    const
-    std::map<std::string, port_t> m_pinned;
-
-    // Ports available for dynamic allocation.
-    std::deque<port_t> m_shared;
-    std::mutex m_mutex;
-
-    // Ports currently in use.
-    std::map<std::string, port_t> m_in_use;
-
-public:
-    explicit
-    port_mapping_t(const config_t& config);
-
-    // Modifiers
-
-    port_t
-    assign(const std::string& name);
-
-    void
-    retain(const std::string& name);
-};
-
 // Context
+
+namespace signals = boost::signals2;
 
 class actor_t;
 class execution_unit_t;
