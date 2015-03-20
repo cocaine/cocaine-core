@@ -31,9 +31,9 @@
 #include "cocaine/detail/service/node/session.hpp"
 #include "cocaine/detail/service/node/stream.hpp"
 
-#include "cocaine/logging.hpp"
-
 #include "cocaine/idl/rpc.hpp"
+
+#include "cocaine/logging.hpp"
 
 #include "cocaine/traits/enum.hpp"
 #include "cocaine/traits/literal.hpp"
