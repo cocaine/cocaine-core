@@ -29,18 +29,18 @@
 namespace cocaine { namespace io {
 
 template<>
-struct type_traits<graph_point_t> {
+struct type_traits<graph_node_t> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& target, const graph_point_t& source) {
-        target << static_cast<const graph_point_t::base_type&>(source);
+    pack(msgpack::packer<Stream>& target, const graph_node_t& source) {
+        target << static_cast<const graph_node_t::base_type&>(source);
     }
 
     static inline
     void
-    unpack(const msgpack::object& source, graph_point_t& target) {
-        source >> static_cast<graph_point_t::base_type&>(target);
+    unpack(const msgpack::object& source, graph_node_t& target) {
+        source >> static_cast<graph_node_t::base_type&>(target);
     }
 };
 

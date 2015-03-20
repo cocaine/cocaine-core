@@ -31,7 +31,7 @@
 
 namespace cocaine { namespace io {
 
-template<class Tag, class Vertex = graph_basis_t>
+template<class Tag, class Vertex = graph_root_t>
 auto
 traverse() -> boost::optional<Vertex>;
 
@@ -46,12 +46,12 @@ struct traverse_impl {
 
     static inline
     void
-    apply(graph_basis_t& vertex) {
+    apply(graph_root_t& vertex) {
         vertex[traits_type::id] = std::make_tuple(event_type::alias(),
             std::is_same<typename traits_type::dispatch_type, typename event_type::tag>::value
               ? boost::none
-              : traverse<typename traits_type::dispatch_type, graph_point_t>(),
-            traverse<typename traits_type::upstream_type, graph_point_t>()
+              : traverse<typename traits_type::dispatch_type, graph_node_t>(),
+            traverse<typename traits_type::upstream_type, graph_node_t>()
         );
 
         traverse_impl<typename mpl::next<It>::type, End>::apply(vertex);
@@ -59,11 +59,11 @@ struct traverse_impl {
 
     static inline
     void
-    apply(graph_point_t& vertex) {
+    apply(graph_node_t& vertex) {
         vertex[traits_type::id] = std::make_tuple(event_type::alias(),
             std::is_same<typename traits_type::dispatch_type, typename event_type::tag>::value
               ? boost::none
-              : traverse<typename traits_type::dispatch_type, graph_point_t>()
+              : traverse<typename traits_type::dispatch_type, graph_node_t>()
         );
 
         traverse_impl<typename mpl::next<It>::type, End>::apply(vertex);
@@ -74,13 +74,13 @@ template<class End>
 struct traverse_impl<End, End> {
     static inline
     void
-    apply(graph_basis_t& COCAINE_UNUSED_(vertex)) {
+    apply(graph_root_t& COCAINE_UNUSED_(vertex)) {
         // Empty.
     }
 
     static inline
     void
-    apply(graph_point_t& COCAINE_UNUSED_(vertex)) {
+    apply(graph_node_t& COCAINE_UNUSED_(vertex)) {
         // Empty.
     }
 };

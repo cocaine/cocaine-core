@@ -60,7 +60,7 @@ struct resolve {
         unsigned int,
      /* A mapping between slot id numbers, message names and state transitions for both the message
         dispatch and upstream types to use in dynamic languages like Python, Ruby or JavaScript. */
-        graph_basis_t
+        graph_root_t
     >::tag upstream_type;
 };
 
