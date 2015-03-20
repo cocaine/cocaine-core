@@ -162,6 +162,9 @@ private:
     void
     on_message(const io::decoder_t::message_type& m_message);
 
+    void
+    process(const io::decoder_t::message_type& message);
+
     // On any socket error associated with worker.
     void
     on_failure(const std::error_code& ec);

@@ -270,6 +270,16 @@ void
 slave_t::on_message(const io::decoder_t::message_type& message) {
     COCAINE_LOG_DEBUG(m_log, "slave %s received type %d message in session %d", m_id, message.type(), message.span());
 
+    try {
+        process(message);
+    } catch (const std::bad_cast&) {
+        COCAINE_LOG_WARNING(m_log, "slave %s dropped unknown message in session %d: message is corrupted", m_id, message.span());
+        terminate(rpc::terminate::code::abnormal, "slave has detected session corruption");
+    }
+}
+
+void
+slave_t::process(const io::decoder_t::message_type& message) {
     switch(message.type()) {
     case event_traits<rpc::heartbeat>::id:
         on_ping();
