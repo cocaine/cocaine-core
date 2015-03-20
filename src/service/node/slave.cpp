@@ -334,7 +334,7 @@ slave_t::on_failure(const std::error_code& ec) {
 void
 slave_t::on_ping() {
     if(m_state == states::inactive) {
-        // Slate is already inactive, do nothing.
+        // Slave is already inactive, do nothing.
         return;
     }
 
