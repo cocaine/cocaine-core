@@ -170,4 +170,5 @@ INSTALL(
     DIRECTORY
         include/
     DESTINATION include
-    COMPONENT development)
+    COMPONENT development
+    PATTERN "detail" EXCLUDE)
