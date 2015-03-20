@@ -217,7 +217,10 @@ slave_t::on_read(const std::error_code& ec) {
         on_failure(ec);
     } else {
         on_message(m_message);
-        m_channel->reader->read(m_message, std::bind(&slave_t::on_read, shared_from_this(), ph::_1));
+
+        if(m_state != states::inactive) {
+            m_channel->reader->read(m_message, std::bind(&slave_t::on_read, shared_from_this(), ph::_1));
+        }
     }
 }
 
