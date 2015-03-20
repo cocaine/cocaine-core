@@ -1,3 +1,9 @@
+cocaine-core (0.12.0.3) unstable; urgency=low
+
+  * Bug fix: do not read/write from/to already deleted channel.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 20 Mar 2015 19:00:25 +0300
+
 cocaine-core (0.12.0.2) unstable; urgency=low
 
   * Fix --locator arg for a slave

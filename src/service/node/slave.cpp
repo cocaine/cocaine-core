@@ -216,7 +216,10 @@ slave_t::on_read(const std::error_code& ec) {
         on_failure(ec);
     } else {
         on_message(m_message);
-        m_channel->reader->read(m_message, std::bind(&slave_t::on_read, shared_from_this(), ph::_1));
+
+        if(m_state != states::inactive) {
+            m_channel->reader->read(m_message, std::bind(&slave_t::on_read, shared_from_this(), ph::_1));
+        }
     }
 }
 
@@ -329,6 +332,11 @@ slave_t::on_failure(const std::error_code& ec) {
 
 void
 slave_t::on_ping() {
+    if(m_state == states::inactive) {
+        // Slave is already inactive, do nothing.
+        return;
+    }
+
     COCAINE_LOG_DEBUG(m_log, "slave %s is resetting heartbeat timeout to %.02f seconds", m_id, m_profile.heartbeat_timeout);
 
     m_heartbeat_timer.expires_from_now(boost::posix_time::seconds(m_profile.heartbeat_timeout));
