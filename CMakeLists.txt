@@ -93,6 +93,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/cluster/multicast.cpp
     src/cluster/predefine.cpp
     src/context.cpp
+    src/context/config.cpp
+    src/context/mapper.cpp
     src/crypto.cpp
     src/defaults.cpp
     src/dispatch.cpp
@@ -135,6 +137,7 @@ SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 3)
 
 ADD_EXECUTABLE(cocaine-runtime
+    src/runtime/logging.cpp
     src/runtime/pid_file.cpp
     src/runtime/runtime.cpp)
 
@@ -167,4 +170,5 @@ INSTALL(
     DIRECTORY
         include/
     DESTINATION include
-    COMPONENT development)
+    COMPONENT development
+    PATTERN "detail" EXCLUDE)

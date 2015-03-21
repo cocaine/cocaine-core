@@ -21,6 +21,8 @@
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
 
+#include "cocaine/detail/runtime/logging.hpp"
+
 #if !defined(__APPLE__)
     #include "cocaine/detail/runtime/pid_file.hpp"
 #endif
@@ -30,6 +32,11 @@
 
 #include <asio/io_service.hpp>
 #include <asio/signal_set.hpp>
+
+#include <blackhole/formatter/json.hpp>
+#include <blackhole/frontend/files.hpp>
+#include <blackhole/frontend/syslog.hpp>
+#include <blackhole/sink/socket.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -177,6 +184,7 @@ main(int argc, char* argv[]) {
         ("bootstrap-raft", "create new raft cluster")
 #endif
         ("configuration,c", po::value<std::string>(), "location of the configuration file")
+        ("logging,l", po::value<std::string>()->default_value("core"), "logging backend")
 #if !defined(__APPLE__)
         ("daemonize,d", "daemonize on start")
         ("pidfile,p", po::value<std::string>(), "location of a pid file")
@@ -255,12 +263,72 @@ main(int argc, char* argv[]) {
     }
 #endif
 
+    // Logging
+
+    auto  logging_id = vm["logging"].as<std::string>();
+    auto& repository = blackhole::repository_t::instance();
+
+    std::cout << cocaine::format("[Runtime] Initializing the logging, backend: %s.", logging_id) << std::endl;
+
+    // Available logging sinks.
+    typedef boost::mpl::vector<
+        blackhole::sink::stream_t,
+        blackhole::sink::files_t<>,
+        blackhole::sink::syslog_t<logging::priorities>,
+        blackhole::sink::socket_t<boost::asio::ip::tcp>,
+        blackhole::sink::socket_t<boost::asio::ip::udp>
+    > sinks_t;
+
+    // Available logging formatters.
+    typedef boost::mpl::vector<
+        blackhole::formatter::string_t,
+        blackhole::formatter::json_t
+    > formatters_t;
+
+    // Register frontends with all combinations of formatters and sinks with the logging repository.
+    repository.registrate<sinks_t, formatters_t>();
+
+    std::unique_ptr<logging::logger_t> logger;
+
+    try {
+        using blackhole::keyword::tag::timestamp_t;
+        using blackhole::keyword::tag::severity_t;
+
+        // For each logging config define mappers. Then add them into the repository.
+        for(auto it = config->logging.loggers.begin(); it != config->logging.loggers.end(); ++it) {
+            // Configure some mappings for timestamps and severity attributes.
+            blackhole::mapping::value_t mapper;
+
+            mapper.add<severity_t<logging::priorities>>(&logging::map_severity);
+            mapper.add<timestamp_t>(it->second.timestamp);
+
+            // Attach them to the logging config.
+            auto  config    = it->second.config;
+            auto& frontends = config.frontends;
+
+            for(auto it = frontends.begin(); it != frontends.end(); ++it) {
+                it->formatter.mapper = mapper;
+            }
+
+            // Register logger configuration with the Blackhole's repository.
+            repository.add_config(config);
+        }
+
+        logger = std::make_unique<logging::logger_t>(
+            repository.create<logging::logger_t>(logging_id,
+                                                 config->logging.loggers.at(logging_id).verbosity)
+        );
+    } catch(const std::out_of_range& e) {
+        std::cerr << "ERROR: unable to initialize the logging - backend does not exist." << std::endl;
+        return EXIT_FAILURE;
+    }
+
     std::unique_ptr<context_t> context;
 
     std::cout << "[Runtime] Initializing the server." << std::endl;
 
     try {
-        context.reset(new context_t(*config, "core"));
+        context.reset(new context_t(*config, std::move(logger)));
     } catch(const cocaine::error_t& e) {
         std::cerr << cocaine::format("ERROR: unable to initialize the context - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;

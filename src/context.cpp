@@ -19,12 +19,10 @@
 */
 
 #include "cocaine/context.hpp"
-#include "cocaine/defaults.hpp"
 
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/detail/actor.hpp"
-#include "cocaine/detail/bootstrap/logging.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
 
@@ -36,475 +34,14 @@
 
 #include "cocaine/logging.hpp"
 
-#include <numeric>
-#include <random>
-
-#include <blackhole/formatter/json.hpp>
-#include <blackhole/frontend/files.hpp>
-#include <blackhole/frontend/syslog.hpp>
 #include <blackhole/scoped_attributes.hpp>
-#include <blackhole/sink/socket.hpp>
-
-#include <boost/filesystem/convenience.hpp>
-#include <boost/filesystem/fstream.hpp>
-#include <boost/filesystem/operations.hpp>
 
 #include <boost/spirit/include/karma_char.hpp>
 #include <boost/spirit/include/karma_generate.hpp>
 #include <boost/spirit/include/karma_list.hpp>
 #include <boost/spirit/include/karma_string.hpp>
 
-#include <asio/io_service.hpp>
-#include <asio/ip/host_name.hpp>
-#include <asio/ip/tcp.hpp>
-
-#include "rapidjson/reader.h"
-
 using namespace cocaine;
-
-namespace fs = boost::filesystem;
-
-namespace {
-
-struct dynamic_reader_t {
-    void
-    Null() {
-        m_stack.emplace(dynamic_t::null);
-    }
-
-    void
-    Bool(bool v) {
-        m_stack.emplace(v);
-    }
-
-    void
-    Int(int v) {
-        m_stack.emplace(v);
-    }
-
-    void
-    Uint(unsigned v) {
-        m_stack.emplace(dynamic_t::uint_t(v));
-    }
-
-    void
-    Int64(int64_t v) {
-        m_stack.emplace(v);
-    }
-
-    void
-    Uint64(uint64_t v) {
-        m_stack.emplace(dynamic_t::uint_t(v));
-    }
-
-    void
-    Double(double v) {
-        m_stack.emplace(v);
-    }
-
-    void
-    String(const char* data, size_t size, bool) {
-        m_stack.emplace(dynamic_t::string_t(data, size));
-    }
-
-    void
-    StartObject() {
-        // Empty.
-    }
-
-    void
-    EndObject(size_t size) {
-        dynamic_t::object_t object;
-
-        for(size_t i = 0; i < size; ++i) {
-            dynamic_t value = std::move(m_stack.top());
-            m_stack.pop();
-
-            std::string key = std::move(m_stack.top().as_string());
-            m_stack.pop();
-
-            object[key] = std::move(value);
-        }
-
-        m_stack.emplace(std::move(object));
-    }
-
-    void
-    StartArray() {
-        // Empty.
-    }
-
-    void
-    EndArray(size_t size) {
-        dynamic_t::array_t array(size);
-
-        for(size_t i = size; i != 0; --i) {
-            array[i - 1] = std::move(m_stack.top());
-            m_stack.pop();
-        }
-
-        m_stack.emplace(std::move(array));
-    }
-
-    dynamic_t
-    Result() {
-        return m_stack.top();
-    }
-
-private:
-    std::stack<dynamic_t> m_stack;
-};
-
-struct rapidjson_ifstream_t {
-    rapidjson_ifstream_t(fs::ifstream* backend) :
-        m_backend(backend)
-    { }
-
-    char
-    Peek() const {
-        int next = m_backend->peek();
-
-        if(next == std::char_traits<char>::eof()) {
-            return '\0';
-        } else {
-            return next;
-        }
-    }
-
-    char
-    Take() {
-        int next = m_backend->get();
-
-        if(next == std::char_traits<char>::eof()) {
-            return '\0';
-        } else {
-            return next;
-        }
-    }
-
-    size_t
-    Tell() const {
-        return m_backend->gcount();
-    }
-
-    char*
-    PutBegin() {
-        assert(false);
-        return 0;
-    }
-
-    void
-    Put(char) {
-        assert(false);
-    }
-
-    size_t
-    PutEnd(char*) {
-        assert(false);
-        return 0;
-    }
-
-private:
-    fs::ifstream* m_backend;
-};
-
-} // namespace
-
-namespace cocaine {
-
-template<>
-struct dynamic_converter<config_t::component_t> {
-    typedef config_t::component_t result_type;
-
-    static
-    result_type
-    convert(const dynamic_t& from) {
-        return config_t::component_t {
-            from.as_object().at("type", "unspecified").as_string(),
-            from.as_object().at("args", dynamic_t::object_t())
-        };
-    }
-};
-
-template<>
-struct dynamic_converter<config_t::logging_t> {
-    typedef config_t::logging_t result_type;
-
-    static
-    result_type
-    convert(const dynamic_t& from) {
-        result_type component;
-        const auto& logging = from.as_object();
-
-        for(auto it = logging.begin(); it != logging.end(); ++it) {
-            using namespace blackhole::repository;
-
-            const auto object = it->second.as_object();
-            const auto loggers = object.at("loggers", dynamic_t::array_t());
-
-            config_t::logging_t::logger_t log {
-                logmask(object.at("verbosity", defaults::log_verbosity).as_string()),
-                object.at("timestamp", defaults::log_timestamp).as_string(),
-                config::parser::adapter_t<dynamic_t, blackhole::log_config_t>::parse(it->first, loggers)
-            };
-
-            component.loggers[it->first] = log;
-        }
-
-        return component;
-    }
-
-    static inline
-    logging::priorities
-    logmask(const std::string& verbosity) {
-        if(verbosity == "debug") {
-            return logging::debug;
-        } else if(verbosity == "warning") {
-            return logging::warning;
-        } else if(verbosity == "error") {
-            return logging::error;
-        } else {
-            return logging::info;
-        }
-    }
-};
-
-} // namespace cocaine
-
-config_t::config_t(const std::string& source) {
-    const auto source_file_status = fs::status(source);
-
-    if(!fs::exists(source_file_status) || !fs::is_regular_file(source_file_status)) {
-        throw cocaine::error_t("configuration file path is invalid");
-    }
-
-    fs::ifstream stream(source);
-
-    if(!stream) {
-        throw cocaine::error_t("unable to read configuration file");
-    }
-
-    rapidjson::MemoryPoolAllocator<> json_allocator;
-    rapidjson::Reader json_reader(&json_allocator);
-    rapidjson_ifstream_t json_stream(&stream);
-
-    dynamic_reader_t configuration_constructor;
-
-    if(!json_reader.Parse<rapidjson::kParseDefaultFlags>(json_stream, configuration_constructor)) {
-        if(json_reader.HasParseError()) {
-            throw cocaine::error_t("configuration file is corrupted - %s", json_reader.GetParseError());
-        } else {
-            throw cocaine::error_t("configuration file is corrupted");
-        }
-    }
-
-    const auto root = configuration_constructor.Result();
-
-    // Version validation
-
-    if(root.as_object().at("version", 0).to<unsigned int>() != 3) {
-        throw cocaine::error_t("configuration file version is invalid");
-    }
-
-    const auto path_config    = root.as_object().at("paths",   dynamic_t::object_t()).as_object();
-    const auto network_config = root.as_object().at("network", dynamic_t::object_t()).as_object();
-
-    // Path configuration
-
-    path.plugins = path_config.at("plugins", defaults::plugins_path).as_string();
-    path.runtime = path_config.at("runtime", defaults::runtime_path).as_string();
-
-    const auto runtime_path_status = fs::status(path.runtime);
-
-    if(!fs::exists(runtime_path_status)) {
-        throw cocaine::error_t("directory %s does not exist", path.runtime);
-    } else if(!fs::is_directory(runtime_path_status)) {
-        throw cocaine::error_t("%s is not a directory", path.runtime);
-    }
-
-    // Network configuration
-
-    network.endpoint = asio::ip::address::from_string(
-        network_config.at("endpoint", defaults::endpoint).as_string()
-    );
-
-    asio::io_service asio;
-    asio::ip::tcp::resolver resolver(asio);
-    asio::ip::tcp::resolver::iterator it, end;
-
-    try {
-        it = resolver.resolve(asio::ip::tcp::resolver::query(
-            asio::ip::host_name(), std::string(),
-            asio::ip::tcp::resolver::query::canonical_name
-        ));
-    } catch(const asio::system_error& e) {
-#if defined(HAVE_GCC48)
-        std::throw_with_nested(cocaine::error_t("unable to determine local hostname"));
-#else
-        throw cocaine::error_t("unable to determine local hostname");
-#endif
-    }
-
-    network.hostname = network_config.at("hostname", it->host_name()).as_string();
-    network.pool     = network_config.at("pool", boost::thread::hardware_concurrency() * 2).as_uint();
-
-    if(network.pool <= 0) {
-        throw cocaine::error_t("network I/O pool size must be positive");
-    }
-
-    if(network_config.count("pinned")) {
-        network.ports.pinned = network_config.at("pinned").to<decltype(network.ports.pinned)>();
-    }
-
-    if(network_config.count("shared")) {
-        network.ports.shared = network_config.at("shared").to<decltype(network.ports.shared)>();
-    }
-
-    // Blackhole logging configuration
-    logging = root.as_object().at("logging",  dynamic_t::empty_object).to<config_t::logging_t>();
-
-    // Component configuration
-    services = root.as_object().at("services", dynamic_t::empty_object).to<config_t::component_map_t>();
-    storages = root.as_object().at("storages", dynamic_t::empty_object).to<config_t::component_map_t>();
-
-#ifdef COCAINE_ALLOW_RAFT
-    create_raft_cluster = false;
-#endif
-}
-
-int
-config_t::versions() {
-    return COCAINE_VERSION;
-}
-
-// Dynamic port mapper
-
-port_mapping_t::port_mapping_t(const config_t& config):
-    m_pinned(config.network.ports.pinned)
-{
-    port_t minimum, maximum;
-
-    std::tie(minimum, maximum) = config.network.ports.shared;
-
-    std::vector<port_t> seed;
-
-    if((minimum == 0 && maximum == 0) || maximum <= minimum) {
-        seed.resize(65535);
-        std::fill(seed.begin(), seed.end(), 0);
-    } else {
-        seed.resize(maximum - minimum);
-        std::iota(seed.begin(), seed.end(), minimum);
-    }
-
-    std::random_device device;
-    std::shuffle(seed.begin(), seed.end(), std::default_random_engine(device()));
-
-    // Populate the shared port queue.
-    m_shared = std::deque<port_t>(seed.begin(), seed.end());
-}
-
-port_t
-port_mapping_t::assign(const std::string& name) {
-    std::lock_guard<std::mutex> guard(m_mutex);
-
-    if(m_in_use.count(name)) {
-        throw cocaine::error_t("named port is already in use");
-    }
-
-    if(m_pinned.count(name)) {
-        return m_in_use.insert({name, m_pinned.at(name)}).first->second;
-    }
-
-    if(m_shared.empty()) {
-        throw cocaine::error_t("no ports left for allocation");
-    }
-
-    const auto port = m_shared.front(); m_shared.pop_front();
-
-    return m_in_use.insert({name, port}).first->second;
-}
-
-void
-port_mapping_t::retain(const std::string& name) {
-    std::lock_guard<std::mutex> guard(m_mutex);
-
-    if(!m_in_use.count(name)) {
-        throw cocaine::error_t("named port was never assigned");
-    }
-
-    if(!m_pinned.count(name)) {
-        m_shared.push_back(m_in_use.at(name));
-    }
-
-    m_in_use.erase(name);
-}
-
-// Context
-
-context_t::context_t(config_t config_, const std::string& logger_backend):
-    config(config_),
-    mapper(config_)
-{
-    auto& repository = blackhole::repository_t::instance();
-
-    // Available logging sinks.
-    typedef boost::mpl::vector<
-        blackhole::sink::stream_t,
-        blackhole::sink::files_t<>,
-        blackhole::sink::syslog_t<logging::priorities>,
-        blackhole::sink::socket_t<boost::asio::ip::tcp>,
-        blackhole::sink::socket_t<boost::asio::ip::udp>
-    > sinks_t;
-
-    // Available logging formatters.
-    typedef boost::mpl::vector<
-        blackhole::formatter::string_t,
-        blackhole::formatter::json_t
-    > formatters_t;
-
-    // Register frontends with all combinations of formatters and sinks with the logging repository.
-    repository.registrate<sinks_t, formatters_t>();
-
-    try {
-        using blackhole::keyword::tag::timestamp_t;
-        using blackhole::keyword::tag::severity_t;
-
-        // For each logging config define mappers. Then add them into the repository.
-        for(auto it = config.logging.loggers.begin(); it != config.logging.loggers.end(); ++it) {
-            // Configure some mappings for timestamps and severity attributes.
-            blackhole::mapping::value_t mapper;
-
-            mapper.add<severity_t<logging::priorities>>(&logging::map_severity);
-            mapper.add<timestamp_t>(it->second.timestamp);
-
-            // Attach them to the logging config.
-            auto config = it->second.config;
-            auto& frontends = config.frontends;
-
-            for(auto it = frontends.begin(); it != frontends.end(); ++it) {
-                it->formatter.mapper = mapper;
-            }
-
-            // Register logger configuration with the Blackhole's repository.
-            repository.add_config(config);
-        }
-
-        typedef logging::logger_t logger_type;
-
-        // Fetch 'core' configuration object.
-        auto logger = config.logging.loggers.at(logger_backend);
-
-        // Try to initialize the logger. If it fails, there's no way to report the failure, except
-        // printing it to the standart output.
-        m_logger = std::make_unique<logger_type>(
-            repository.create<logger_type>(logger_backend, logger.verbosity)
-        );
-    } catch(const std::out_of_range&) {
-        throw cocaine::error_t("logger '%s' is not configured", logger_backend);
-    }
-
-    bootstrap();
-}
 
 context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger):
     config(config_),
@@ -512,6 +49,25 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger
 {
     m_logger = std::move(logger);
 
+    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
+        logging::keyword::source() = "core"
+    }));
+
+    COCAINE_LOG_INFO(m_logger, "initializing the core");
+
+    m_repository = std::make_unique<api::repository_t>(*m_logger);
+
+#ifdef COCAINE_ALLOW_RAFT
+    m_raft = std::make_unique<raft::repository_t>(*this);
+#endif
+
+    // Load the builtin plugins.
+    essentials::initialize(*m_repository);
+
+    // Load the rest of plugins.
+    m_repository->load(config.path.plugins);
+
+    // Spin up the configured services.
     bootstrap();
 }
 
@@ -668,24 +224,6 @@ context_t::engine() {
 
 void
 context_t::bootstrap() {
-    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
-        logging::keyword::source() = "core"
-    }));
-
-    COCAINE_LOG_INFO(m_logger, "initializing the core");
-
-    m_repository = std::make_unique<api::repository_t>(*m_logger);
-
-#ifdef COCAINE_ALLOW_RAFT
-    m_raft = std::make_unique<raft::repository_t>(*this);
-#endif
-
-    // Load the builtin plugins.
-    essentials::initialize(*m_repository);
-
-    // Load the rest of plugins.
-    m_repository->load(config.path.plugins);
-
     COCAINE_LOG_INFO(m_logger, "starting %d execution unit(s)", config.network.pool);
 
     while(m_pool.size() != config.network.pool) {

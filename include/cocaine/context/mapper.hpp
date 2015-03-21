@@ -1,6 +1,6 @@
 /*
-    Copyright (c) 2011-2014 Andrey Sibiryov <me@kobology.ru>
-    Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
+    Copyright (c) 2011-2015 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2011-2015 Other contributors as noted in the AUTHORS file.
 
     This file is part of Cocaine.
 
@@ -18,27 +18,40 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_BOOTSTRAP_PIDFILE_HPP
-#define COCAINE_BOOTSTRAP_PIDFILE_HPP
+#ifndef COCAINE_CONTEXT_MAPPER_HPP
+#define COCAINE_CONTEXT_MAPPER_HPP
 
 #include "cocaine/common.hpp"
 
-#include <boost/filesystem/path.hpp>
+#include <deque>
+#include <mutex>
 
 namespace cocaine {
 
-class pid_file_t {
-    COCAINE_DECLARE_NONCOPYABLE(pid_file_t)
+// Dynamic port mapper
 
-    const boost::filesystem::path m_filepath;
+class port_mapping_t {
+    const
+    std::map<std::string, port_t> m_pinned;
+
+    // Ports available for dynamic allocation.
+    std::deque<port_t> m_shared;
+    std::mutex m_mutex;
+
+    // Ports currently in use.
+    std::map<std::string, port_t> m_in_use;
 
 public:
-    pid_file_t(const boost::filesystem::path& filepath);
-   ~pid_file_t();
+    explicit
+    port_mapping_t(const struct config_t& config);
 
-private:
+    // Modifiers
+
+    port_t
+    assign(const std::string& name);
+
     void
-    remove();
+    retain(const std::string& name);
 };
 
 } // namespace cocaine
