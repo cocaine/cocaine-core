@@ -41,6 +41,9 @@
 
 #if defined(__clang__) || defined(HAVE_GCC48)
     #define COCAINE_HAS_FEATURE_STEADY_CLOCK
+#endif
+
+#if defined(__clang__)
     #define COCAINE_HAS_FEATURE_PAIR_TO_TUPLE_CONVERSION
 #endif
 

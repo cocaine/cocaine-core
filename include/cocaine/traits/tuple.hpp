@@ -24,7 +24,6 @@
 #include "cocaine/traits.hpp"
 
 #include "cocaine/platform.hpp"
-
 #include "cocaine/rpc/tags.hpp"
 
 #include <tuple>
@@ -330,7 +329,7 @@ struct type_traits<std::tuple<Args...>> {
 
 #ifdef COCAINE_HAS_FEATURE_PAIR_TO_TUPLE_CONVERSION
 template<typename T, typename U>
-struct type_traits<std::pair<T, U>> : public type_traits<std::tuple<T, U>> {};
+struct type_traits<std::pair<T, U>>: public type_traits<std::tuple<T, U>> { };
 #else
 // Workaround for libraries, that violates the standard.
 template<typename T, typename U>
