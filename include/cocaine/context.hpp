@@ -65,10 +65,6 @@ class context_t {
     // because services are allowed to start and stop other services during their lifetime.
     synchronized<service_list_t> m_services;
 
-#ifdef COCAINE_ALLOW_RAFT
-    std::unique_ptr<raft::repository_t> m_raft;
-#endif
-
 public:
     const config_t config;
 
@@ -123,15 +119,6 @@ public:
 
     auto
     engine() -> execution_unit_t&;
-
-    // Raft
-
-#ifdef COCAINE_ALLOW_RAFT
-    auto
-    raft() -> raft::repository_t& {
-        return *m_raft;
-    }
-#endif
 
 private:
     void

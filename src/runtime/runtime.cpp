@@ -180,9 +180,6 @@ main(int argc, char* argv[]) {
 
     general_options.add_options()
         ("help,h", "show this message")
-#ifdef COCAINE_ALLOW_RAFT
-        ("bootstrap-raft", "create new raft cluster")
-#endif
         ("configuration,c", po::value<std::string>(), "location of the configuration file")
         ("logging,l", po::value<std::string>()->default_value("core"), "logging backend")
 #if !defined(__APPLE__)
@@ -230,12 +227,6 @@ main(int argc, char* argv[]) {
         std::cerr << cocaine::format("ERROR: unable to initialize the configuration - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
-
-#ifdef COCAINE_ALLOW_RAFT
-    if(vm.count("bootstrap-raft")) {
-        config->create_raft_cluster = true;
-    }
-#endif
 
 #if !defined(__APPLE__)
     std::unique_ptr<pid_file_t> pidfile;
