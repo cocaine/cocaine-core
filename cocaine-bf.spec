@@ -1,8 +1,8 @@
 %define cocaine_runtime_name cocaine-runtime
 
 Summary:	Cocaine - Core Libraries
-Name:		libcocaine-core2
-Version:	0.12.0.1
+Name:		libcocaine-core3
+Version:	0.12.0.3
 Release:	1%{?dist}
 
 
@@ -125,18 +125,12 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
-* Tue Oct 07 2014 Andrey Sibirev <me@kobology.ru> 0.12.0.1-1
+* Fri Mar 20 2015 Evgeny Safronov <division494@gmail.com> 0.12.0.3-1
+- Bugfix: do not read/write from/to already deleted channel.
+
+* Wed Mar 18 2015 Anton Tiurin <noxiouz@yandex.ru> 0.12.0.2-1
+- Bugfix: pass a valid local hostname in --locator arg for slaves.
+
+* Tue Mar 17 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.1-1
 - Release 0.12.
-
-* Mon Sep 22 2014 Evgeny Safronov <division494@gmail.com> 0.11.3.1-1
-- Feature: reopenable file logging service.
-
-* Fri Sep 05 2014 Evgeny Safronov <division494@gmail.com> 0.11.2.8-1
-- Bugfix: properly check platform macro definition.
-
-* Wed Jun 11 2014 Evgeniy Polyakov <zbr@ioremap.net> 0.11.2.3-1
-- Updated spec to the latest version to date.
-
-* Fri Jan 17 2014 Oleg Cherniy <oleg.cherniy@gmail.com> 0.11.2.0-2
-- Added support for Fedora 19, 20.
 
