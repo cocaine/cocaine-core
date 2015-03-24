@@ -235,13 +235,13 @@ session_t::inject(const dispatch_ptr_t& dispatch) {
     auto ptr = channels.synchronize();
 
     const auto channel_id = ++max_channel_id;
-    const auto upstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
+    const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
     if(dispatch) {
-        ptr->insert({channel_id, std::make_shared<channel_t>(dispatch, upstream)});
+        ptr->insert({channel_id, std::make_shared<channel_t>(dispatch, downstream)});
     }
 
-    return upstream;
+    return downstream;
 }
 
 void

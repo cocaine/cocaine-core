@@ -165,7 +165,7 @@ public:
 private:
     template<class Visitor>
     typename Visitor::result_type
-    visit(int id, const Visitor& visitor) const;
+    process(int id, const Visitor& visitor) const;
 };
 
 template<class Tag>
@@ -265,13 +265,13 @@ dispatch<Tag>::forget() {
 template<class Tag>
 io::transition_t
 dispatch<Tag>::process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const {
-    return visit(message.type(), aux::calling_visitor_t(message.args(), upstream));
+    return process(message.type(), aux::calling_visitor_t(message.args(), upstream));
 }
 
 template<class Tag>
 template<class Visitor>
 typename Visitor::result_type
-dispatch<Tag>::visit(int id, const Visitor& visitor) const {
+dispatch<Tag>::process(int id, const Visitor& visitor) const {
     typename slot_map_t::const_iterator lb, ub;
     typename slot_map_t::mapped_type slot;
 

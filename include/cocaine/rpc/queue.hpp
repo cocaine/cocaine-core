@@ -143,6 +143,8 @@ public:
 
         aux::frozen_visitor<upstream_type> visitor(m_upstream);
 
+        // For some weird reasons, boost::apply_visitor() only accepts lvalue-references to visitor
+        // objects, so there's no other choice but to actually bind it to a local variable.
         std::for_each(m_operations.begin(), m_operations.end(), boost::apply_visitor(visitor));
 
         m_operations.clear();
