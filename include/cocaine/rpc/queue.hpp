@@ -21,59 +21,18 @@
 #ifndef COCAINE_IO_MESSAGE_QUEUE_HPP
 #define COCAINE_IO_MESSAGE_QUEUE_HPP
 
-#include "cocaine/locked_ptr.hpp"
-
-#include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/slot.hpp"
+#include "cocaine/rpc/frozen.hpp"
+#include "cocaine/rpc/tags.hpp"
 #include "cocaine/rpc/upstream.hpp"
-
-#include <boost/mpl/lambda.hpp>
-#include <boost/mpl/transform.hpp>
 
 #include <boost/variant/apply_visitor.hpp>
 #include <boost/variant/static_visitor.hpp>
-#include <boost/variant/variant.hpp>
 
 namespace cocaine { namespace io {
 
 template<class Tag, class Upstream = basic_upstream_t> class message_queue;
 
 namespace mpl = boost::mpl;
-
-// Frozen events
-
-template<class Event>
-struct frozen {
-    typedef Event event_type;
-    typedef typename basic_slot<event_type>::tuple_type tuple_type;
-
-    frozen() = default;
-
-    template<typename... Args>
-    frozen(event_type, Args&&... args):
-        tuple(std::forward<Args>(args)...)
-    { }
-
-    // NOTE: If the message cannot be sent right away, then the message arguments are placed into a
-    // temporary storage until the upstream is attached.
-    tuple_type tuple;
-};
-
-template<class Event, typename... Args>
-frozen<Event>
-make_frozen(Args&&... args) {
-    return frozen<Event>(Event(), std::forward<Args>(args)...);
-}
-
-template<class Tag>
-struct frozen_over {
-    typedef typename mpl::transform<
-        typename messages<Tag>::type,
-        typename mpl::lambda<frozen<mpl::_1>>
-    >::type frozen_types;
-
-    typedef typename boost::make_variant_over<frozen_types>::type type;
-};
 
 namespace aux {
 
@@ -105,7 +64,7 @@ class message_queue {
     typedef Upstream upstream_type;
 
     // Operation log.
-    std::vector<typename frozen_over<Tag>::type> m_operations;
+    std::vector<typename make_frozen_over<Tag>::type> m_operations;
 
     // The upstream might be attached during message invocation, so it has to be synchronized for
     // thread safety - the atomicity guarantee of the shared_ptr<T> is not enough.

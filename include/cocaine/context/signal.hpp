@@ -24,7 +24,7 @@
 #include "cocaine/locked_ptr.hpp"
 
 #include "cocaine/rpc/dispatch.hpp"
-#include "cocaine/rpc/queue.hpp"
+#include "cocaine/rpc/frozen.hpp"
 
 #include <algorithm>
 #include <list>
@@ -94,7 +94,7 @@ private:
 
 template<class Tag>
 class retroactive_signal {
-    typedef typename io::frozen_over<Tag>::type variant_type;
+    typedef typename io::make_frozen_over<Tag>::type variant_type;
 
     struct subscriber_t {
         std::weak_ptr<dispatch<Tag>> slot;

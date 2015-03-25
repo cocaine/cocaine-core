@@ -23,7 +23,7 @@
 
 #include "cocaine/traits.hpp"
 
-#include "cocaine/rpc/queue.hpp"
+#include "cocaine/rpc/frozen.hpp"
 
 namespace cocaine { namespace io {
 
