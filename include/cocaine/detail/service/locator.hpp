@@ -28,7 +28,9 @@
 
 #include "cocaine/detail/service/locator/routing.hpp"
 
+#include "cocaine/idl/context.hpp"
 #include "cocaine/idl/locator.hpp"
+
 #include "cocaine/rpc/dispatch.hpp"
 
 #include "cocaine/locked_ptr.hpp"
@@ -69,7 +71,6 @@ class locator_t:
     public dispatch<io::locator_tag>
 {
     class connect_client_t;
-    class cleanup_action_t;
 
     context_t& m_context;
 
@@ -100,6 +101,9 @@ class locator_t:
 
     // Used to resolve service names against routing groups, based on weights and other metrics.
     std::map<std::string, continuum_t> m_groups;
+
+    // Slot for context signals.
+    std::shared_ptr<dispatch<io::context_tag>> m_signals;
 
 public:
     locator_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);
@@ -147,7 +151,7 @@ private:
     // Context signals
 
     void
-    on_service(const actor_t& actor);
+    on_service(const std::string& name, const results::resolve& meta, bool active);
 
     void
     on_context_shutdown();

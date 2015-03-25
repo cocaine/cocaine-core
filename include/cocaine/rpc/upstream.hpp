@@ -102,6 +102,8 @@ template<>
 class upstream<void>
 {
 public:
+    upstream() = default;
+
     template<class Stream>
     upstream(Stream&&, typename allowing<void, Stream>::type* = nullptr) {
         // Empty.

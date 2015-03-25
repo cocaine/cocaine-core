@@ -40,7 +40,7 @@ template<class Tag, class Upstream = basic_upstream_t> class message_queue;
 
 namespace mpl = boost::mpl;
 
-namespace aux {
+// Frozen events
 
 template<class Event>
 struct frozen {
@@ -64,6 +64,18 @@ frozen<Event>
 make_frozen(Args&&... args) {
     return frozen<Event>(Event(), std::forward<Args>(args)...);
 }
+
+template<class Tag>
+struct frozen_over {
+    typedef typename mpl::transform<
+        typename messages<Tag>::type,
+        typename mpl::lambda<frozen<mpl::_1>>
+    >::type frozen_types;
+
+    typedef typename boost::make_variant_over<frozen_types>::type type;
+};
+
+namespace aux {
 
 template<class Upstream>
 struct frozen_visitor:
@@ -92,15 +104,8 @@ template<class Tag, class Upstream>
 class message_queue {
     typedef Upstream upstream_type;
 
-    typedef typename mpl::transform<
-        typename messages<Tag>::type,
-        typename mpl::lambda<aux::frozen<mpl::_1>>
-    >::type frozen_types;
-
-    typedef typename boost::make_variant_over<frozen_types>::type variant_type;
-
     // Operation log.
-    std::vector<variant_type> m_operations;
+    std::vector<typename frozen_over<Tag>::type> m_operations;
 
     // The upstream might be attached during message invocation, so it has to be synchronized for
     // thread safety - the atomicity guarantee of the shared_ptr<T> is not enough.
@@ -116,7 +121,7 @@ public:
         );
 
         if(!m_upstream) {
-            return m_operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
+            return m_operations.emplace_back(make_frozen<Event>(std::forward<Args>(args)...));
         }
 
         m_upstream->template send<Event>(std::forward<Args>(args)...);

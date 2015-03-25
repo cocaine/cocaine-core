@@ -162,7 +162,8 @@ public:
         return io::protocol<Tag>::version::value;
     }
 
-private:
+    // Generic API
+
     template<class Visitor>
     typename Visitor::result_type
     process(int id, const Visitor& visitor) const;

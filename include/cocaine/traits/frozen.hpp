@@ -28,18 +28,18 @@
 namespace cocaine { namespace io {
 
 template<class Event>
-struct type_traits<aux::frozen<Event>> {
+struct type_traits<frozen<Event>> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& target, const aux::frozen<Event>& source) {
-        type_traits<typename aux::frozen<Event>::tuple_type>::pack(target, source.tuple);
+    pack(msgpack::packer<Stream>& target, const frozen<Event>& source) {
+        type_traits<typename frozen<Event>::tuple_type>::pack(target, source.tuple);
     }
 
     static inline
     void
-    unpack(const msgpack::object& source, aux::frozen<Event>& target) {
-        type_traits<typename aux::frozen<Event>::tuple_type>::unpack(source, target.tuple);
+    unpack(const msgpack::object& source, frozen<Event>& target) {
+        type_traits<typename frozen<Event>::tuple_type>::unpack(source, target.tuple);
     }
 };
 

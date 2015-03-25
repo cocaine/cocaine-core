@@ -72,16 +72,15 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger
 }
 
 context_t::~context_t() {
-    blackhole::scoped_attributes_t guard(
-       *m_logger,
-        blackhole::attribute::set_t({logging::keyword::source() = "core"})
-    );
+    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
+        logging::keyword::source() = "core"
+    }));
 
     COCAINE_LOG_INFO(m_logger, "stopping %d service(s)", m_services->size());
 
     // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
     // the outstanding connections are closed, so services have a chance to send their last wishes.
-    signals.shutdown();
+    m_signals.invoke<io::context::shutdown>();
 
     // Stop the service from accepting new clients or doing any processing. Pop them from the active
     // service list into this temporary storage, and then destroy them all at once. This is needed
@@ -157,7 +156,11 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
     }
 
     // Fire off the signal to alert concerned subscribers about the service removal event.
-    signals.service.exposed(actor);
+    m_signals.invoke<io::context::service::exposed>(actor.prototype().name(), std::make_tuple(
+        actor.endpoints(),
+        actor.prototype().version(),
+        actor.prototype().root()
+    ));
 }
 
 std::unique_ptr<actor_t>
@@ -170,7 +173,7 @@ context_t::remove(const std::string& name) {
 
     {
         auto ptr = m_services.synchronize();
-        auto it = std::find_if(ptr->begin(), ptr->end(), match{name});
+        auto it  = std::find_if(ptr->begin(), ptr->end(), match{name});
 
         if(it == ptr->end()) {
             throw cocaine::error_t("service '%s' doesn't exist", name);
@@ -186,8 +189,12 @@ context_t::remove(const std::string& name) {
         ptr->erase(it);
     }
 
-    // Fire off the signal to alert concerned subscribers about the service insertion event.
-    signals.service.removed(*service);
+    // Fire off the signal to alert concerned subscribers about the service termination event.
+    m_signals.invoke<io::context::service::removed>(service->prototype().name(), std::make_tuple(
+        service->endpoints(),
+        service->prototype().version(),
+        service->prototype().root()
+    ));
 
     return service;
 }
@@ -268,7 +275,7 @@ context_t::bootstrap() {
 
         COCAINE_LOG_ERROR(m_logger, "coudn't start %d service(s): %s", errored.size(), stream.str());
 
-        signals.shutdown();
+        m_signals.invoke<io::context::shutdown>();
 
         while(!m_services->empty()) {
             m_services->back().second->terminate();
