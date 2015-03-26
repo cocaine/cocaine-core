@@ -33,15 +33,11 @@ class basic_upstream_t {
     const std::shared_ptr<session_t> session;
     const uint64_t channel_id;
 
-    enum class states { active, sealed } state;
-
 public:
     basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_):
         session(session_),
         channel_id(channel_id_)
-    {
-        state = states::active;
-    }
+    { }
 
     template<class Event, typename... Args>
     void
@@ -54,16 +50,6 @@ public:
 template<class Event, typename... Args>
 void
 basic_upstream_t::send(Args&&... args) {
-    if(state != states::active) {
-        return;
-    }
-
-    if(std::is_same<typename io::event_traits<Event>::dispatch_type, void>::value) {
-        // NOTE: Sealed upstreams ignore any messages. At some point it might change to an explicit
-        // way to show that the operation won't be completed.
-        state = states::sealed;
-    }
-
     session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
 }
 
@@ -88,7 +74,7 @@ template<class Tag>
 class upstream {
     template<class, class> friend class io::message_queue;
 
-    // The original non-typed upstream.
+    // The original untyped upstream.
     io::upstream_ptr_t ptr;
 
 public:
