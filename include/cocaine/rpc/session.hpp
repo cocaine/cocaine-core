@@ -27,8 +27,6 @@
 #include "cocaine/rpc/asio/encoder.hpp"
 #include "cocaine/rpc/asio/decoder.hpp"
 
-#include <mutex>
-
 #include <asio/ip/tcp.hpp>
 
 #define BOOST_BIND_NO_PLACEHOLDERS

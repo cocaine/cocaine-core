@@ -23,8 +23,6 @@
 
 #include "cocaine/common.hpp"
 
-#include <list>
-
 #include <asio/io_service.hpp>
 #include <asio/ip/tcp.hpp>
 

@@ -24,8 +24,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
-#include "cocaine/rpc/graph.hpp"
-
 #include "cocaine/rpc/slot/blocking.hpp"
 #include "cocaine/rpc/slot/deferred.hpp"
 #include "cocaine/rpc/slot/streamed.hpp"

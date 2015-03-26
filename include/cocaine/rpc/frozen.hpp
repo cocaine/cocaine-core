@@ -21,11 +21,7 @@
 #ifndef COCAINE_IO_FROZEN_EVENTS_HPP
 #define COCAINE_IO_FROZEN_EVENTS_HPP
 
-#include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/slot.hpp"
-
-#include <boost/mpl/lambda.hpp>
-#include <boost/mpl/transform.hpp>
 
 #include <boost/variant/variant.hpp>
 

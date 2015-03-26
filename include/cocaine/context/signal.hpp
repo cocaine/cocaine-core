@@ -28,7 +28,6 @@
 
 #include <algorithm>
 #include <list>
-#include <mutex>
 
 namespace cocaine {
 
