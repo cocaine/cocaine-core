@@ -358,7 +358,7 @@ config_t::config_t(const std::string& source) {
             asio::ip::host_name(), std::string(),
             asio::ip::tcp::resolver::query::canonical_name
         ));
-    } catch(const asio::system_error& e) {
+    } catch(const std::system_error& e) {
 #if defined(HAVE_GCC48)
         std::throw_with_nested(cocaine::error_t("unable to determine local hostname"));
 #else

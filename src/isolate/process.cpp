@@ -155,7 +155,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     int rv = 0;
 
     if((rv = cgroup_init()) != 0) {
-        throw asio::system_error(rv, cgroup_category(), "unable to initialize cgroups");
+        throw std::system_error(rv, cgroup_category(), "unable to initialize cgroups");
     }
 
     m_cgroup = cgroup_new_cgroup(m_name.c_str());
@@ -188,7 +188,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
         cgroup_free(&m_cgroup);
 
-        throw asio::system_error(rv, cgroup_category(), "unable to create cgroup");
+        throw std::system_error(rv, cgroup_category(), "unable to create cgroup");
     }
 #endif
 }
@@ -217,7 +217,7 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
     std::array<int, 2> pipes;
 
     if(::pipe(pipes.data()) != 0) {
-        throw asio::system_error(errno, asio::system_category(), "unable to create an output pipe");
+        throw std::system_error(errno, std::system_category(), "unable to create an output pipe");
     }
 
     for(auto it = pipes.begin(); it != pipes.end(); ++it) {
@@ -229,7 +229,7 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
     if(pid < 0) {
         std::for_each(pipes.begin(), pipes.end(), ::close);
 
-        throw asio::system_error(errno, asio::system_category(), "unable to fork");
+        throw std::system_error(errno, std::system_category(), "unable to fork");
     }
 
     ::close(pipes[pid > 0]);

@@ -208,7 +208,7 @@ private:
         if(!ec) {
             try {
                 client.connect(std::move(socket));
-            } catch(const asio::system_error& e) {
+            } catch(const std::system_error& e) {
                 // The socket might already be disconnected by this time.
                 parent->m_asio.post(std::bind(handle, e.code()));
                 return;

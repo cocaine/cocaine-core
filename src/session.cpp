@@ -342,7 +342,7 @@ session_t::remote_endpoint() const {
 #endif
         try {
             endpoint = ptr->socket->remote_endpoint();
-        } catch(const asio::system_error& e) {
+        } catch(const std::system_error& e) {
             // TODO: Log this.
         }
     } else {

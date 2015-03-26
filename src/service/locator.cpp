@@ -426,7 +426,7 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
             values.insert({*it, storage->get<continuum_t::stored_type>("groups", *it)});
         }
     } catch(const storage_error_t& e) {
-        throw asio::system_error(error::routing_storage_error);
+        throw std::system_error(error::routing_storage_error);
     }
 
     for(auto it = groups.begin(); it != groups.end(); ++it) {
