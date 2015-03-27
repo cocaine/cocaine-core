@@ -24,8 +24,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
-#include "cocaine/rpc/graph.hpp"
-
 #include "cocaine/rpc/slot/blocking.hpp"
 #include "cocaine/rpc/slot/deferred.hpp"
 #include "cocaine/rpc/slot/streamed.hpp"
@@ -105,7 +103,9 @@ class dispatch:
 
     typedef typename mpl::transform<
         typename io::messages<Tag>::type,
-        typename mpl::lambda<std::shared_ptr<io::basic_slot<mpl::_1>>>::type
+        typename mpl::lambda<
+            std::shared_ptr<io::basic_slot<mpl::_1>>
+        >::type
     >::type slot_types;
 
     typedef std::map<
@@ -162,7 +162,8 @@ public:
         return io::protocol<Tag>::version::value;
     }
 
-private:
+    // Generic API
+
     template<class Visitor>
     typename Visitor::result_type
     process(int id, const Visitor& visitor) const;

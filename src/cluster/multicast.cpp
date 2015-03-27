@@ -31,8 +31,6 @@
 
 #include <asio/io_service.hpp>
 #include <asio/ip/multicast.hpp>
-#include <asio/ip/udp.hpp>
-#include <asio/ip/tcp.hpp>
 
 using namespace asio;
 using namespace asio::ip;

@@ -22,7 +22,6 @@
 #define COCAINE_IO_PROTOCOL_HPP
 
 #include "cocaine/rpc/sanitize.hpp"
-#include "cocaine/rpc/tags.hpp"
 
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>

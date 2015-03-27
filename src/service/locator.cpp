@@ -28,7 +28,6 @@
 
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/unique_id.hpp"
-#include "cocaine/detail/waitable.hpp"
 
 #include "cocaine/idl/streaming.hpp"
 
@@ -191,35 +190,6 @@ locator_t::connect_client_t::on_shutdown() {
     parent->drop_node(uuid);
 }
 
-class locator_t::cleanup_action_t: public waitable<cleanup_action_t> {
-    locator_t *const parent;
-
-public:
-    cleanup_action_t(locator_t *const parent_):
-        parent(parent_)
-    { }
-
-    void
-    execute();
-};
-
-void
-locator_t::cleanup_action_t::execute() {
-    COCAINE_LOG_DEBUG(parent->m_log, "cleaning up %d remote node client(s)", parent->m_remotes.size());
-
-    // Disconnect all the remote nodes.
-    parent->m_remotes.clear();
-
-    COCAINE_LOG_DEBUG(parent->m_log, "shutting down distributed components");
-
-    // Destroy the clustering stuff.
-    parent->m_gateway = nullptr;
-    parent->m_cluster = nullptr;
-
-    // Destroy the loopback locator connection.
-    parent->m_resolve = nullptr;
-}
-
 // Locator
 
 locator_cfg_t::locator_cfg_t(const std::string& name_, const dynamic_t& root):
@@ -246,6 +216,11 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     on<locator::refresh>(std::bind(&locator_t::on_refresh, this, _1));
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
 
+    // Context signals
+
+    m_signals = std::make_shared<dispatch<context_tag>>(name);
+    m_signals->on<context::shutdown>(std::bind(&locator_t::on_context_shutdown, this));
+
     // Service restrictions
 
     if(!m_cfg.restricted.empty()) {
@@ -256,13 +231,6 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
         COCAINE_LOG_INFO(m_log, "restricting %d service(s): %s", m_cfg.restricted.size(), stream.str());
     }
-
-    // Context shutdown signal is set to track 'm_resolve' because its lifetime essentially matches
-    // that of the Locator service itself
-
-    context.signals.shutdown.connect(context_t::signals_t::context_signals_t::slot_type(
-        std::bind(&locator_t::on_context_shutdown, this)
-    ).track_foreign(m_resolve));
 
     // Initialize clustering components
 
@@ -275,16 +243,8 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
         m_cluster = m_context.get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
 
-        // Connect service signals. Signals are set to track 'm_cluster' because it is responsible
-        // of handling them, so no cluster object - no service lifecycle signal handling
-
-        context.signals.service.exposed.connect(context_t::signals_t::service_signals_t::slot_type(
-            std::bind(&locator_t::on_service, this, _1)
-        ).track_foreign(m_cluster));
-
-        context.signals.service.removed.connect(context_t::signals_t::service_signals_t::slot_type(
-            std::bind(&locator_t::on_service, this, _1)
-        ).track_foreign(m_cluster));
+        m_signals->on<context::service::exposed>(std::bind(&locator_t::on_service, this, _1, _2, 1));
+        m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this, _1, _2, 0));
     }
 
     if(root.as_object().count("gateway")) {
@@ -296,6 +256,8 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
         m_gateway = m_context.get<api::gateway_t>(type, m_context, name + ":gateway", args);
     }
+
+    context.listen(m_signals, asio);
 
     // It's here to keep the reference alive.
     const auto storage = api::storage(m_context, "core");
@@ -499,28 +461,19 @@ locator_t::on_cluster() const -> results::cluster {
 }
 
 void
-locator_t::on_service(const actor_t& actor) {
-    if(m_cfg.restricted.count(actor.prototype().name())) {
+locator_t::on_service(const std::string& name, const results::resolve& meta, bool active) {
+    if(m_cfg.restricted.count(name)) {
         return;
     }
 
-    const auto metadata = results::resolve {
-        actor.endpoints(),
-        actor.prototype().version(),
-        actor.prototype().root()
-    };
-
     const auto response = results::connect {
-        m_cfg.uuid, {{
-            actor.prototype().name(),
-            metadata
-        }}
+        m_cfg.uuid, {{ name, meta }}
     };
 
     std::lock_guard<std::mutex> guard(m_mutex);
 
     COCAINE_LOG_DEBUG(m_log, "synchronizing service state with %d remote node(s)", m_streams.size())(
-        "service", actor.prototype().name()
+        "service", name
     );
 
     for(auto it = m_streams.begin(); it != m_streams.end();) {
@@ -535,10 +488,10 @@ locator_t::on_service(const actor_t& actor) {
         }
     }
 
-    if(actor.is_active()) {
-        m_snapshot[actor.prototype().name()] = metadata;
+    if(active) {
+        m_snapshot[name] = meta;
     } else {
-        m_snapshot.erase(actor.prototype().name());
+        m_snapshot.erase(name);
     }
 }
 
@@ -558,11 +511,22 @@ locator_t::on_context_shutdown() {
         it = m_streams.erase(it);
     }
 
-    cleanup_action_t action{this};
+    COCAINE_LOG_DEBUG(m_log, "cleaning up %d remote node client(s)", m_remotes.size());
 
-    // Schedule the rest of internal state cleanup inside the reactor's event loop and wait.
-    m_asio.post(std::bind(&cleanup_action_t::operator(), std::ref(action)));
-    action.wait();
+    // Disconnect all the remote nodes.
+    m_remotes.clear();
+
+    COCAINE_LOG_DEBUG(m_log, "shutting down distributed components");
+
+    // Destroy the clustering stuff.
+    m_gateway = nullptr;
+    m_cluster = nullptr;
+
+    // Destroy the loopback locator connection.
+    m_resolve = nullptr;
+
+    // Disconnect the signals.
+    m_signals = nullptr;
 }
 
 namespace {

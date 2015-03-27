@@ -21,7 +21,7 @@
 #ifndef COCAINE_UTILITY_HPP
 #define COCAINE_UTILITY_HPP
 
-#include <type_traits>
+#include <utility>
 
 #include <boost/mpl/deque.hpp>
 #include <boost/mpl/push_back.hpp>

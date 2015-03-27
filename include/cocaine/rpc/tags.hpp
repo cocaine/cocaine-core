@@ -23,8 +23,6 @@
 
 #include "cocaine/utility.hpp"
 
-#include <type_traits>
-
 #include <boost/mpl/equal.hpp>
 
 namespace cocaine { namespace io {

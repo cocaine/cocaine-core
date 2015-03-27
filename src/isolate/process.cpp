@@ -26,25 +26,17 @@
 #include <array>
 #include <iostream>
 
-#include <cerrno>
 #include <csignal>
-#include <cstdlib>
-#include <cstring>
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/system/system_error.hpp>
 
 #ifdef COCAINE_ALLOW_CGROUPS
     #include <boost/lexical_cast.hpp>
-#endif
-
-#include <fcntl.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
-#ifdef COCAINE_ALLOW_CGROUPS
     #include <libcgroup.h>
 #endif
+
+#include <sys/wait.h>
 
 using namespace cocaine;
 using namespace cocaine::isolate;

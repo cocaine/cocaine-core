@@ -21,72 +21,126 @@
 #ifndef COCAINE_CONTEXT_SIGNAL_HPP
 #define COCAINE_CONTEXT_SIGNAL_HPP
 
-#include "cocaine/tuple.hpp"
+#include "cocaine/locked_ptr.hpp"
+
+#include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/rpc/frozen.hpp"
 
 #include <algorithm>
 #include <list>
-#include <mutex>
-
-#define BOOST_BIND_NO_PLACEHOLDERS
-#include <boost/signals2/signal.hpp>
 
 namespace cocaine {
 
-namespace signals = boost::signals2;
+template<class Tag> class retroactive_signal;
 
-template<
-    class Signature,
-    class IndexSequence = typename make_index_sequence<signals::signal<Signature>::arity>::type
->
-class retroactive_signal;
+namespace aux {
 
-template<typename... Args, size_t... Indices>
-class retroactive_signal<void(Args...), index_sequence<Indices...>> {
-    typedef signals::signal<void(Args...)> signal_type;
+template<class Event>
+struct async_visitor:
+    public boost::static_visitor<void>
+{
+    typedef typename io::basic_slot<Event>::tuple_type tuple_type;
 
-    // The actual underlying signal object.
-    signal_type wrapped;
+    async_visitor(const tuple_type& args_, asio::io_service& asio_):
+        args(args_),
+        asio(asio_)
+    { }
 
-    // Deferred signal arguments.
-    std::list<std::tuple<Args...>> mutable history;
-    std::mutex mutable mutex;
+    template<class Other>
+    result_type
+    operator()(const std::shared_ptr<io::basic_slot<Other>>& COCAINE_UNUSED_(slot)) const {
+        __builtin_unreachable();
+    }
+
+    result_type
+    operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
+        auto args = this->args;
+
+        asio.post([slot, args]() mutable {
+            (*slot)(std::move(args), upstream<void>());
+        });
+    }
+
+    const tuple_type& args;
+    asio::io_service& asio;
+};
+
+template<class Tag>
+struct event_visitor:
+    public boost::static_visitor<void>
+{
+    event_visitor(const std::shared_ptr<dispatch<Tag>>& slot_, asio::io_service& asio_):
+        slot(slot_),
+        asio(asio_)
+    { }
+
+    template<class Event>
+    result_type
+    operator()(const io::frozen<Event>& event) const {
+        try {
+            slot->process(io::event_traits<Event>::id, async_visitor<Event>(event.tuple, asio));
+        } catch(const cocaine::error_t& e) {
+            // Ignore.
+        }
+    }
+
+private:
+    const std::shared_ptr<dispatch<Tag>>& slot;
+    asio::io_service& asio;
+};
+
+} // namespace aux
+
+template<class Tag>
+class retroactive_signal {
+    typedef typename io::make_frozen_over<Tag>::type variant_type;
+
+    struct subscriber_t {
+        std::weak_ptr<dispatch<Tag>> slot;
+        asio::io_service& asio;
+    };
+
+    // Separately synchronized to keep the boost::signals2 guarantees.
+    synchronized<std::list<variant_type>> history;
+    synchronized<std::list<subscriber_t>> subscribers;
 
 public:
-    typedef typename signal_type::slot_type slot_type;
+    void
+    listen(const std::shared_ptr<dispatch<Tag>>& slot, asio::io_service& asio) {
+        subscribers->push_back(subscriber_t{slot, asio});
 
-    auto
-    connect(const slot_type& slot) -> signals::connection {
-        try {
-            std::lock_guard<std::mutex> guard(mutex);
+        auto ptr = history.synchronize();
 
-            std::for_each(history.begin(), history.end(), [&slot](const std::tuple<Args...>& args) {
-                slot(std::get<Indices>(args)...);
-            });
-        } catch(const signals::expired_slot& e) {
-            return signals::connection();
-        }
-
-        return wrapped.connect(slot);
+        std::for_each(ptr->begin(), ptr->end(), [&](const variant_type& event) {
+            boost::apply_visitor(aux::event_visitor<Tag>(slot, asio), event);
+        });
     }
 
+    template<class Event, typename... Args>
     void
-    operator()(Args&&... args) {
-        {
-            std::lock_guard<std::mutex> guard(mutex);
-            history.emplace_back(std::forward<Args>(args)...);
+    invoke(Args&&... args) {
+        auto ptr = subscribers.synchronize();
+
+        for(auto it = ptr->begin(); it != ptr->end();) {
+            auto slot = it->slot.lock();
+
+            if(!slot) {
+                it = ptr->erase(it); continue;
+            }
+
+            try {
+                slot->process(io::event_traits<Event>::id, aux::async_visitor<Event>(
+                    typename io::basic_slot<Event>::tuple_type(std::forward<Args>(args)...),
+                    it->asio
+                ));
+            } catch(const cocaine::error_t& e) {
+                // Ignore.
+            }
+
+            ++it;
         }
 
-        wrapped(std::forward<Args>(args)...);
-    }
-
-    void
-    operator()(Args&&... args) const {
-        {
-            std::lock_guard<std::mutex> guard(mutex);
-            history.emplace_back(std::forward<Args>(args)...);
-        }
-
-        wrapped(std::forward<Args>(args)...);
+        history->emplace_back(io::make_frozen<Event>(std::forward<Args>(args)...));
     }
 };
 

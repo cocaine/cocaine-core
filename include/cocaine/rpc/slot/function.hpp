@@ -24,7 +24,6 @@
 #include "cocaine/idl/primitive.hpp"
 #include "cocaine/idl/streaming.hpp"
 
-#include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/result_of.hpp"
 #include "cocaine/rpc/slot.hpp"
 
