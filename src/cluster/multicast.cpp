@@ -178,7 +178,7 @@ multicast_t::on_publish(const std::error_code& ec) {
 
         try {
             m_socket.send_to(buffer(target.data(), target.size()), m_cfg.endpoint);
-        } catch(const asio::system_error& e) {
+        } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: [%d] %s",
                 e.code().value(), e.code().message()
             );

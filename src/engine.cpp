@@ -114,7 +114,7 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
 
         // Create the new inactive session.
         session = std::make_shared<session_t>(std::move(channel), dispatch);
-    } catch(const asio::system_error& e) {
+    } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session: [%d] %s",
             e.code().value(), e.code().message());
         return;
