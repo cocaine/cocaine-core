@@ -119,7 +119,8 @@ public:
     template<class Event, typename... Args>
     void
     invoke(Args&&... args) {
-        auto ptr = subscribers.synchronize();
+        auto event = variant_type(io::make_frozen<Event>(std::forward<Args>(args)...));
+        auto ptr   = subscribers.synchronize();
 
         for(auto it = ptr->begin(); it != ptr->end();) {
             auto slot = it->slot.lock();
@@ -128,19 +129,12 @@ public:
                 it = ptr->erase(it); continue;
             }
 
-            try {
-                slot->process(io::event_traits<Event>::id, aux::async_visitor<Event>(
-                    typename io::basic_slot<Event>::tuple_type(std::forward<Args>(args)...),
-                    it->asio
-                ));
-            } catch(const cocaine::error_t& e) {
-                // Ignore.
-            }
+            boost::apply_visitor(aux::event_visitor<Tag>(slot, it->asio), event);
 
             ++it;
         }
 
-        history->emplace_back(io::make_frozen<Event>(std::forward<Args>(args)...));
+        history->emplace_back(std::move(event));
     }
 };
 
