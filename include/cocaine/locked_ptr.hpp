@@ -131,13 +131,13 @@ struct synchronized {
 
     template<class F>
     auto
-    apply(const F& functor) -> typename result_of<F>::type {
+    apply(F&& functor) -> decltype(functor(std::declval<value_type&>())) {
         return functor(*synchronize());
     }
 
     template<class F>
     auto
-    apply(const F& functor) const -> typename result_of<F>::type {
+    apply(F&& functor) const -> decltype(functor(std::declval<const value_type&>())) {
         return functor(*synchronize());
     }
 
