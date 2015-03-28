@@ -36,7 +36,7 @@ namespace fs = boost::filesystem;
 files_t::files_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
     m_log(context.log(name)),
-    m_storage_path(args.as_object().at("path").as_string())
+    m_parent_path(args.as_object().at("path").as_string())
 { }
 
 files_t::~files_t() {
@@ -47,7 +47,7 @@ std::string
 files_t::read(const std::string& collection, const std::string& key) {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    const fs::path file_path(m_storage_path / collection / key);
+    const fs::path file_path(m_parent_path / collection / key);
 
     if(!fs::exists(file_path)) {
         throw storage_error_t("object '%s' has not been found in '%s'", key, collection);
@@ -76,7 +76,7 @@ files_t::write(const std::string& collection, const std::string& key, const std:
 {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    const fs::path store_path(m_storage_path / collection);
+    const fs::path store_path(m_parent_path / collection);
     const auto store_status = fs::status(store_path);
 
     if(!fs::exists(store_status)) {
@@ -140,8 +140,7 @@ void
 files_t::remove(const std::string& collection, const std::string& key) {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    const auto store_path(m_storage_path / collection);
-    const auto file_path(store_path / key);
+    const auto file_path(m_parent_path / collection / key);
 
     if(!fs::exists(file_path)) {
         return;
@@ -182,7 +181,7 @@ std::vector<std::string>
 files_t::find(const std::string& collection, const std::vector<std::string>& tags) {
     std::lock_guard<std::mutex> guard(m_mutex);
 
-    const fs::path store_path(m_storage_path / collection);
+    const fs::path store_path(m_parent_path / collection);
 
     if(!fs::exists(store_path) || tags.empty()) {
         return std::vector<std::string>();

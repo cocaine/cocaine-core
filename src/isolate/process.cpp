@@ -160,7 +160,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
 
     m_cgroup = cgroup_new_cgroup(m_name.c_str());
 
-    // TODO: Check if it changes anything.
+    // NOTE: Looks like if this is not done, then libcgroup will chown everything as root.
     cgroup_set_uid_gid(m_cgroup, getuid(), getgid(), getuid(), getgid());
 
     for(auto type = args.as_object().begin(); type != args.as_object().end(); ++type) {

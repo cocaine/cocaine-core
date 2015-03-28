@@ -32,10 +32,11 @@ class files_t:
 {
     const std::unique_ptr<logging::log_t> m_log;
 
-    // TODO: Drop this, switch to atomic writes.
+    // Underlying storage access synchronization. Note that two or more runtime instances probably
+    // will trash the file storage if pointed to the same location.
     std::mutex m_mutex;
 
-    const boost::filesystem::path m_storage_path;
+    const boost::filesystem::path m_parent_path;
 
 public:
     files_t(context_t& context, const std::string& name, const dynamic_t& args);
