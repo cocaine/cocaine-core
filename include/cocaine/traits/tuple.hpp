@@ -292,6 +292,30 @@ private:
     }
 };
 
+// Pair serialization
+
+template<typename T, typename U>
+struct type_traits<std::pair<T, U>> {
+    typedef typename itemize<T, U>::type sequence_type;
+
+    typedef aux::tuple_type_traits_impl<
+        typename make_index_sequence<2>::type
+    > traits_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const std::pair<T, U>& source) {
+        traits_type::template pack<sequence_type>(target, source);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, std::pair<T, U>& target) {
+        traits_type::template unpack<sequence_type>(source, target);
+    }
+};
+
 // Tuple serialization
 
 template<typename... Args>
