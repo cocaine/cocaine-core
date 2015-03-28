@@ -88,6 +88,6 @@ struct type_traits<blackhole::attribute_t> {
     }
 };
 
- }} // namespace cocaine::io
+}} // namespace cocaine::io
 
 #endif

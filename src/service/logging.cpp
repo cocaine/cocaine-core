@@ -21,7 +21,6 @@
 #include "cocaine/detail/service/logging.hpp"
 
 #include "cocaine/context.hpp"
-
 #include "cocaine/logging.hpp"
 
 #include "cocaine/traits/attributes.hpp"
