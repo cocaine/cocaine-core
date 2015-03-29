@@ -158,6 +158,10 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
             socket
         ));
 
+        // Disable Nagle's algorithm, since most of the service clients do not send or receive more
+        // than a couple of kilobytes of data.
+        channel->socket->set_option(tcp::no_delay(true));
+
         auto session_log = std::make_unique<logging::log_t>(*m_log, attribute::set_t({
             attribute::make("endpoint", boost::lexical_cast<std::string>(ptr->remote_endpoint())),
             attribute::make("service",  dispatch->name()),
