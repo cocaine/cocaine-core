@@ -166,41 +166,34 @@ session_t::session_t(std::unique_ptr<logging::log_t> log_,
 
 void
 session_t::invoke(const decoder_t::message_type& message) {
-    channel_map_t::const_iterator lb, ub;
-    channel_map_t::key_type channel_id = message.span();
+    const channel_map_t::key_type channel_id = message.span();
 
-    std::shared_ptr<channel_t> channel;
+    const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {
+        channel_map_t::const_iterator lb, ub;
 
-    {
-        auto ptr = channels.synchronize();
-
-        std::tie(lb, ub) = ptr->equal_range(channel_id);
+        std::tie(lb, ub) = mapping.equal_range(channel_id);
 
         if(lb == ub) {
             if(channel_id <= max_channel_id) {
-                COCAINE_LOG_WARNING(log, "ignoring invocation due to invalid channel id");
-
                 // NOTE: Checking whether channel number is always higher than the previous channel
                 // number is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be
-                // not the best approach, but since we have 2^64 possible channels, and it is a lot
-                // more than 2^16 ports for sockets, it is fit to avoid stray messages.
-                return;
+                // not the best approach, but since we have 2^64 possible channels it's good enough.
+                throw cocaine::error_t("specified channel id was revoked");
             }
 
-            max_channel_id = channel_id;
-
-            std::tie(lb, std::ignore) = ptr->insert({channel_id, std::make_shared<channel_t>(
+            std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
                 prototype,
                 std::make_shared<basic_upstream_t>(shared_from_this(), channel_id)
             )});
+
+            max_channel_id = channel_id;
         }
 
         // NOTE: The virtual channel pointer is copied here so that if the slot decides to close the
-        // virtual channel, it won't destroy it inside the channel_t::process(). Instead, it will be
-        // destroyed when this function scope is exited, liberating us from thinking of some voodoo
-        // workaround magic.
-        channel = lb->second;
-    }
+        // virtual channel, it won't destroy it inside this function. Instead, it will be destroyed
+        // when this function scope is exited.
+        return lb->second;
+    });
 
     if(!channel->dispatch) {
         throw cocaine::error_t("no dispatch has been assigned");
@@ -221,24 +214,26 @@ session_t::invoke(const decoder_t::message_type& message) {
 
 upstream_ptr_t
 session_t::inject(const dispatch_ptr_t& dispatch) {
-    auto ptr = channels.synchronize();
+    return channels.apply([&](channel_map_t& mapping) -> upstream_ptr_t {
+        const auto channel_id = ++max_channel_id;
+        const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
-    const auto channel_id = ++max_channel_id;
-    const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
+        COCAINE_LOG_DEBUG(log, "processing injection in channel %llu, dispatch: '%s'", channel_id,
+            dispatch ? dispatch->name() : "<none>");
 
-    COCAINE_LOG_DEBUG(log, "processing injection in channel %llu, dispatch: '%s'", channel_id,
-        dispatch ? dispatch->name() : "<none>");
+        if(dispatch) {
+            // NOTE: For mute slots, creating a new channel will essentially leak memory, since no
+            // response will ever be sent back, therefore the channel will never be revoked at all.
+            mapping.insert({channel_id, std::make_shared<channel_t>(dispatch, downstream)});
+        }
 
-    if(dispatch) {
-        ptr->insert({channel_id, std::make_shared<channel_t>(dispatch, downstream)});
-    }
-
-    return downstream;
+        return downstream;
+    });
 }
 
 void
 session_t::revoke(uint64_t channel_id) {
-    channels.apply([=](channel_map_t& mapping) {
+    channels.apply([&](channel_map_t& mapping) {
         auto it = mapping.find(channel_id);
 
         // NOTE: Not sure if that can ever happen, but that's why people use asserts, right?
@@ -255,7 +250,7 @@ void
 session_t::detach(const std::error_code& ec) {
     COCAINE_LOG_DEBUG(log, "detaching session from the transport");
 
-    channels.apply([=](channel_map_t& mapping) {
+    channels.apply([&](channel_map_t& mapping) {
         if(mapping.empty()) {
             return;
         } else {
@@ -316,15 +311,15 @@ session_t::push(encoder_t::message_type&& message) {
 
 std::map<uint64_t, std::string>
 session_t::active_channels() const {
-    std::map<uint64_t, std::string> result;
+    return channels.apply([](const channel_map_t& mapping) -> std::map<uint64_t, std::string> {
+        std::map<uint64_t, std::string> result;
 
-    auto ptr = channels.synchronize();
+        for(auto it = mapping.begin(); it != mapping.end(); ++it) {
+            result[it->first] = it->second->dispatch ? it->second->dispatch->name() : "<none>";
+        }
 
-    for(auto it = ptr->begin(); it != ptr->end(); ++it) {
-        result[it->first] = it->second->dispatch ? it->second->dispatch->name() : "<none>";
-    }
-
-    return result;
+        return result;
+    });
 }
 
 size_t

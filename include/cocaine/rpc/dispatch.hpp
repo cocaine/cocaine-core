@@ -273,24 +273,23 @@ template<class Tag>
 template<class Visitor>
 typename Visitor::result_type
 dispatch<Tag>::process(int id, const Visitor& visitor) const {
-    typename slot_map_t::const_iterator lb, ub;
-    typename slot_map_t::mapped_type slot;
+    typedef typename slot_map_t::mapped_type slot_ptr_type;
 
-    {
-        auto ptr = m_slots.synchronize();
+    const auto slot = m_slots.apply([&](const slot_map_t& mapping) -> slot_ptr_type {
+        typename slot_map_t::const_iterator lb, ub;
 
         // NOTE: Using equal_range() here, instead of find() to check for slot existence and get the
         // slot pointer in one call instead of two.
-        std::tie(lb, ub) = ptr->equal_range(id);
+        std::tie(lb, ub) = mapping.equal_range(id);
 
         if(lb != ub) {
             // NOTE: The slot pointer is copied here, allowing the handling code to unregister slots
             // via dispatch<T>::forget() without pulling the object from underneath itself.
-            slot = lb->second;
+            return lb->second;
         } else {
-            throw cocaine::error_t("unbound type %d slot", id);
+            throw cocaine::error_t("type %d slot wasn't bound to this dispatch", id);
         }
-    }
+    });
 
     return boost::apply_visitor(visitor, slot);
 }

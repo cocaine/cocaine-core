@@ -139,10 +139,8 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
     const actor_t& actor = *service;
 
-    {
-        auto ptr = m_services.synchronize();
-
-        if(std::count_if(ptr->begin(), ptr->end(), match{name})) {
+    m_services.apply([&](service_list_t& list) {
+        if(std::count_if(list.begin(), list.end(), match{name})) {
             throw cocaine::error_t("service '%s' already exists", name);
         }
 
@@ -152,8 +150,8 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
             "service", name
         );
 
-        ptr->emplace_back(name, std::move(service));
-    }
+        list.emplace_back(name, std::move(service));
+    });
 
     // Fire off the signal to alert concerned subscribers about the service removal event.
     m_signals.invoke<io::context::service::exposed>(actor.prototype().name(), std::make_tuple(
@@ -171,11 +169,10 @@ context_t::remove(const std::string& name) {
 
     std::unique_ptr<actor_t> service;
 
-    {
-        auto ptr = m_services.synchronize();
-        auto it  = std::find_if(ptr->begin(), ptr->end(), match{name});
+    m_services.apply([&](service_list_t& list) {
+        auto it = std::find_if(list.begin(), list.end(), match{name});
 
-        if(it == ptr->end()) {
+        if(it == list.end()) {
             throw cocaine::error_t("service '%s' doesn't exist", name);
         }
 
@@ -186,8 +183,8 @@ context_t::remove(const std::string& name) {
             "service", name
         );
 
-        ptr->erase(it);
-    }
+        list.erase(it);
+    });
 
     // Fire off the signal to alert concerned subscribers about the service termination event.
     m_signals.invoke<io::context::service::removed>(service->prototype().name(), std::make_tuple(
