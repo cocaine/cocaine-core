@@ -151,25 +151,11 @@ chamber_t::chamber_t(const std::string& name_, const std::shared_ptr<asio::io_se
     thread = std::make_unique<boost::thread>(named_runnable_t(name, asio));
 }
 
-namespace {
-
-struct cancel_action_t {
-    void
-    operator()();
-
-    // Never becomes a dangling reference.
-    asio::deadline_timer& cron;
-};
-
-void
-cancel_action_t::operator()() {
-    cron.cancel();
-}
-
-} // namespace
-
 chamber_t::~chamber_t() {
-    asio->post(cancel_action_t{cron});
+    asio->post([this] {
+        // This is supposed to be the only operation blocking the thread from stopping.
+        cron.cancel();
+    });
 
     // NOTE: This might hang forever if io_service users have failed to abort their async operations
     // upon context.signals.shutdown signal (or haven't connected to it at all).

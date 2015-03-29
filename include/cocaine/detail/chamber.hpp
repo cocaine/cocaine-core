@@ -27,8 +27,8 @@
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics/rolling_mean.hpp>
 
-#include <asio/io_service.hpp>
 #include <asio/deadline_timer.hpp>
+#include <asio/io_service.hpp>
 
 #define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/thread/thread.hpp>

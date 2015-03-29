@@ -41,6 +41,8 @@
 using namespace asio;
 using namespace asio::ip;
 
+using namespace blackhole;
+
 // Connect
 
 namespace cocaine { namespace api { namespace details {
@@ -51,27 +53,19 @@ basic_client_t::basic_client_t(basic_client_t&& other) {
 
 basic_client_t::~basic_client_t() {
     if(m_session) {
-        m_session->detach();
+        // No error.
+        m_session->detach(std::error_code());
     }
 }
 
 basic_client_t&
 basic_client_t::operator=(basic_client_t&& rhs) {
     if(m_session && m_session != rhs.m_session) {
-        m_session->detach();
+        // No error.
+        m_session->detach(std::error_code());
     }
 
-    if((m_session = std::move(rhs.m_session)) == nullptr) {
-        return *this;
-    }
-
-    m_session_signals = m_session->signals.shutdown.connect(std::bind(&basic_client_t::cleanup,
-        this,
-        std::placeholders::_1
-    ));
-
-    // Unsubscribe the other client from session signals.
-    rhs.m_session_signals.disconnect();
+    m_session = std::move(rhs.m_session);
 
     return *this;
 }
@@ -82,30 +76,18 @@ basic_client_t::session() const {
 }
 
 void
-basic_client_t::connect(std::unique_ptr<tcp::socket> socket) {
+basic_client_t::connect(std::unique_ptr<logging::log_t> log, std::unique_ptr<tcp::socket> socket) {
     if(m_session) {
         throw cocaine::error_t("client is already connected");
     }
 
     m_session = std::make_shared<session_t>(
+        std::move(log),
         std::make_unique<io::channel<tcp>>(std::move(socket)),
         nullptr
     );
 
-    m_session_signals = m_session->signals.shutdown.connect(std::bind(&basic_client_t::cleanup,
-        this,
-        std::placeholders::_1
-    ));
-
     m_session->pull();
-}
-
-void
-basic_client_t::cleanup(const std::error_code& COCAINE_UNUSED_(ec)) {
-    if(m_session) {
-        m_session->detach();
-        m_session = nullptr;
-    }
 }
 
 }}} // namespace cocaine::api::details
@@ -204,10 +186,14 @@ public:
 
 private:
     void
-    finalize(const std::error_code& ec, iterator_type COCAINE_UNUSED_(endpoint)) {
+    finalize(const std::error_code& ec, iterator_type endpoint) {
         if(!ec) {
+            auto client_log = std::make_unique<logging::log_t>(*parent->m_log, attribute::set_t({
+                attribute::make("endpoint", boost::lexical_cast<std::string>(*endpoint))
+            }));
+
             try {
-                client.connect(std::move(socket));
+                client.connect(std::move(client_log), std::move(socket));
             } catch(const std::system_error& e) {
                 // The socket might already be disconnected by this time.
                 parent->m_asio.post(std::bind(handle, e.code()));

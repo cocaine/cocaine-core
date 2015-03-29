@@ -148,7 +148,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
         service->run();
 
-        COCAINE_LOG_INFO(m_logger, "service has been started")(
+        COCAINE_LOG_DEBUG(m_logger, "service has been started")(
             "service", name
         );
 
@@ -182,7 +182,7 @@ context_t::remove(const std::string& name) {
         service = std::move(it->second);
         service->terminate();
 
-        COCAINE_LOG_INFO(m_logger, "service has been stopped")(
+        COCAINE_LOG_DEBUG(m_logger, "service has been stopped")(
             "service", name
         );
 
@@ -248,7 +248,7 @@ context_t::bootstrap() {
 
         const auto asio = std::make_shared<asio::io_service>();
 
-        COCAINE_LOG_INFO(m_logger, "starting service");
+        COCAINE_LOG_DEBUG(m_logger, "starting service");
 
         try {
             insert(it->first, std::make_unique<actor_t>(*this, asio, get<api::service_t>(

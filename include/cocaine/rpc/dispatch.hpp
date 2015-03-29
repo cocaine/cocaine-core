@@ -215,7 +215,7 @@ struct calling_visitor_t:
             io::type_traits<typename io::event_traits<Event>::argument_type>::unpack(unpacked, args);
         } catch(const msgpack::type_error& e) {
             // TODO: Throw a system_error with some meaningful error code.
-            throw cocaine::error_t("unable to unpack message arguments");
+            throw cocaine::error_t("unable to unpack message arguments - %s", e.what());
         }
 
         // Call the slot with the upstream constrained with the event's upstream protocol type tag.

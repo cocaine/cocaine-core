@@ -30,8 +30,6 @@
 
 namespace cocaine { namespace api {
 
-namespace signals = boost::signals2;
-
 template<class Tag> class client;
 
 namespace details {
@@ -40,9 +38,6 @@ class basic_client_t {
     // Even though it's a shared pointer, clients do not share session ownership. The reason behind
     // this is to avoid multiple clients being notified on session shutdown and trying to detach it.
     std::shared_ptr<session_t> m_session;
-
-    // Used to unsubscribe this client from session signals on destruction or move.
-    signals::connection m_session_signals;
 
 public:
     template<typename> friend class api::client;
@@ -68,11 +63,7 @@ public:
     // Modifiers
 
     void
-    connect(std::unique_ptr<asio::ip::tcp::socket> socket);
-
-private:
-    void
-    cleanup(const std::error_code& ec);
+    connect(std::unique_ptr<logging::log_t> log, std::unique_ptr<asio::ip::tcp::socket> socket);
 };
 
 } // namespace details

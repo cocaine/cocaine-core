@@ -37,43 +37,89 @@ using namespace asio::ip;
 
 using namespace cocaine;
 
+class execution_unit_t::gc_action_t:
+    public std::enable_shared_from_this<gc_action_t>
+{
+    execution_unit_t *const parent;
+    const boost::posix_time::seconds repeat;
+
+public:
+    template<class Interval>
+    gc_action_t(execution_unit_t *const parent_, Interval repeat_):
+        parent(parent_),
+        repeat(repeat_)
+    { }
+
+    void
+    operator()();
+
+private:
+    void
+    finalize(const std::error_code& ec);
+};
+
+void
+execution_unit_t::gc_action_t::operator()() {
+    parent->m_cron.expires_from_now(repeat);
+
+    parent->m_cron.async_wait(std::bind(&gc_action_t::finalize,
+        shared_from_this(),
+        std::placeholders::_1
+    ));
+}
+
+void
+execution_unit_t::gc_action_t::finalize(const std::error_code& ec) {
+    if(ec == asio::error::operation_aborted) {
+        return;
+    }
+
+    size_t recycled = 0;
+
+    for(auto it = parent->m_sessions.begin(); it != parent->m_sessions.end();) {
+        if(!it->second->memory_pressure()) {
+            recycled++;
+            it = parent->m_sessions.erase(it);
+            continue;
+        }
+
+        ++it;
+    }
+
+    if(recycled) {
+        COCAINE_LOG_DEBUG(parent->m_log, "recycled %llu session(s)", recycled);
+    }
+
+    operator()();
+}
+
 execution_unit_t::execution_unit_t(context_t& context):
     m_asio(new io_service()),
-    m_chamber(new io::chamber_t("core:asio", m_asio))
+    m_chamber(new io::chamber_t("core:asio", m_asio)),
+    m_cron(*m_asio)
 {
     m_log = context.log("core:asio", {
         attribute::make("engine", boost::lexical_cast<std::string>(m_chamber->thread_id()))
     });
 
+    m_asio->post(std::bind(&gc_action_t::operator(),
+        std::make_shared<gc_action_t>(this, boost::posix_time::seconds(kCollectionInterval))
+    ));
+
     COCAINE_LOG_DEBUG(m_log, "engine started");
 }
 
-namespace {
-
-struct detach_action_t {
-    void
-    operator()();
-
-    // Never becomes a dangling reference.
-    std::map<int, std::shared_ptr<session_t>>& sessions;
-};
-
-void
-detach_action_t::operator()() {
-    for(auto it = sessions.begin(); it != sessions.end(); ++it) {
-        it->second->detach();
-    }
-}
-
-} // namespace
-
 execution_unit_t::~execution_unit_t() {
-    if(!m_sessions.empty()) {
-        COCAINE_LOG_DEBUG(m_log, "engine waiting for outstanding operations to complete");
+    m_asio->post([this] {
+        COCAINE_LOG_DEBUG(m_log, "stopping engine");
 
-        // Asynchronously close the connections.
-        m_asio->post(detach_action_t{m_sessions});
-    }
+        for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
+            // Close the connections.
+            it->second->detach(std::error_code());
+        }
+
+        m_cron.cancel();
+    });
 
     // NOTE: This will block until all the outstanding operations are complete.
     m_chamber = nullptr;
@@ -103,28 +149,27 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
 
     try {
         // Local endpoint address of the socket to be cloned.
-        const auto protocol = ptr->local_endpoint().protocol();
+        const auto endpoint = ptr->local_endpoint();
 
         // Copy the socket into the new reactor.
         auto channel = std::make_unique<io::channel<tcp>>(std::make_unique<tcp::socket>(
            *m_asio,
-            protocol,
+            endpoint.protocol(),
             socket
         ));
 
+        auto session_log = std::make_unique<logging::log_t>(*m_log, attribute::set_t({
+            attribute::make("endpoint", boost::lexical_cast<std::string>(ptr->remote_endpoint())),
+            attribute::make("service",  dispatch->name()),
+        }));
+
         // Create the new inactive session.
-        session = std::make_shared<session_t>(std::move(channel), dispatch);
+        session = std::make_shared<session_t>(std::move(session_log), std::move(channel), dispatch);
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session: [%d] %s",
             e.code().value(), e.code().message());
         return;
     }
-
-    session->signals.shutdown.connect(std::bind(&execution_unit_t::on_shutdown,
-        this,
-        std::placeholders::_1,
-        socket
-    ));
 
     // Register the new session with this engine.
     m_sessions[socket] = session;
@@ -136,25 +181,4 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
 
     // Start the message dispatching.
     session->pull();
-}
-
-void
-execution_unit_t::on_shutdown(const std::error_code& ec, int socket) {
-    auto it = m_sessions.find(socket);
-
-    BOOST_ASSERT(ec && it != m_sessions.end());
-
-    scoped_attributes_t attributes(*m_log, {
-        attribute::make("endpoint", boost::lexical_cast<std::string>(it->second->remote_endpoint())),
-        attribute::make("service",  it->second->name())
-    });
-
-    if(ec != asio::error::eof) {
-        COCAINE_LOG_ERROR(m_log, "client has disconnected: [%d] %s", ec.value(), ec.message());
-    } else {
-        COCAINE_LOG_DEBUG(m_log, "client has disconnected");
-    }
-
-    it->second->detach();
-    m_sessions.erase(it);
 }
