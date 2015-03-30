@@ -23,6 +23,8 @@
 
 #include "cocaine/traits.hpp"
 
+#include "cocaine/platform.hpp"
+
 #include "cocaine/rpc/tags.hpp"
 
 #include <tuple>
@@ -326,8 +328,33 @@ struct type_traits<std::tuple<Args...>> {
 
 // Pair serialization
 
+#ifdef COCAINE_HAS_FEATURE_PAIR_TO_TUPLE_CONVERSION
 template<typename T, typename U>
-struct type_traits<std::pair<T, U>> : type_traits<std::tuple<T, U>> {};
+struct type_traits<std::pair<T, U>> : public type_traits<std::tuple<T, U>> {};
+#else
+// Workaround for libraries, that violates the standard.
+template<typename T, typename U>
+struct type_traits<std::pair<T, U>> {
+    typedef typename itemize<T, U>::type sequence_type;
+
+    typedef aux::tuple_type_traits_impl<
+        typename make_index_sequence<2>::type
+    > traits_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const std::pair<T, U>& source) {
+        traits_type::template pack<sequence_type>(target, source);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, std::pair<T, U>& target) {
+        traits_type::template unpack<sequence_type>(source, target);
+    }
+};
+#endif
 
 }} // namespace cocaine::io
 

@@ -74,17 +74,13 @@ struct type_traits<blackhole::attribute_t> {
     static inline
     void
     pack(msgpack::packer<Stream>& packer, const blackhole::attribute_t& source) {
-        type_traits<
-            blackhole::attribute::value_t
-        >::pack(packer, source.value);
+        type_traits<blackhole::attribute::value_t>::pack(packer, source.value);
     }
 
     static inline
     void
     unpack(const msgpack::object& source, blackhole::attribute_t& target) {
-        type_traits<
-            blackhole::attribute::value_t
-        >::unpack(source, target.value);
+        type_traits<blackhole::attribute::value_t>::unpack(source, target.value);
     }
 };
 
