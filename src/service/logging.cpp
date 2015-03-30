@@ -25,6 +25,7 @@
 
 #include "cocaine/traits/attributes.hpp"
 #include "cocaine/traits/enum.hpp"
+#include "cocaine/traits/vector.hpp"
 
 using namespace blackhole;
 
