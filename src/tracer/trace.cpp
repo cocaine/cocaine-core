@@ -26,6 +26,35 @@ trace_context_t::push(const char* message) {
 }
 
 const trace_context_t::trace_t&
+trace_context_t::push(const char* message, uint64_t trace_id, uint64_t parent_id) {
+    auto& ctx = get_context();
+    return ctx.push_impl(message, trace_id, parent_id);
+}
+
+const trace_context_t::trace_t&
+trace_context_t::push_impl(const char* message, uint64_t trace_id, uint64_t parent_id) {
+    assert(current_trace == nullptr);
+    if(trace_id == 0) {
+        trace_id = generate_id();
+    }
+    current_trace = new trace_t();
+    uint64_t new_id = generate_id();
+
+    current_trace->message = message;
+    current_trace->trace_id = trace_id;
+    current_trace->span_id = new_id;
+    if(parent_id != 0) {
+        current_trace->parent = new trace_t();
+        current_trace->parent->trace_id = trace_id;
+        current_trace->parent->span_id = parent_id;
+    }
+
+    blackhole::scoped_attributes_t scope(*log, current_trace->attributes());
+    COCAINE_LOG_INFO(log, "Trace: %s", message)("event", "start");
+    return *current_trace;
+}
+
+const trace_context_t::trace_t&
 trace_context_t::push_impl(const char* message) {
 //    std::cerr << "PUSH_IMPL. THIS: " << this << ", thread:" << std::this_thread::get_id() << std::endl;
     depth++;

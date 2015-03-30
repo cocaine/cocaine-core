@@ -77,7 +77,7 @@ public:
             if(!ec) {
                 m_rx_offset += bytes_decoded;
             }
-            TRACE_PUSH("message read");
+            TRACE_RESTORE("message read", message.trace_id(), message.parent_id());
             return m_channel->get_io_service().post(TRACE_MOVE_TO_CALLABLE(handle, ec));
         }
 

@@ -26,12 +26,20 @@
     (cocaine::tracer::trace_context_t::get_logger(), cocaine::tracer::trace_context_t::push(event_name).attributes())
 
 //TODO: comment
+#define TRACE_RESTORE(event_name, trace_id, parent_id) \
+    blackhole::scoped_attributes_t TRACE_PP_CAT(tracer_attributes, __LINE__) \
+    (cocaine::tracer::trace_context_t::get_logger(), cocaine::tracer::trace_context_t::push(event_name, trace_id, parent_id).attributes())
+
+//TODO: comment
 #define TRACE_POP() cocaine::tracer::trace_context_t::pop()
 
 //TODO: comment
 #define TRACE_MOVE_TO_CALLABLE(...) cocaine::tracer::make_callable(__VA_ARGS__)
 
 #define TRACE_LINKED_CALLABLE(callable, ...) cocaine::tracer::make_linked_callable(callable, __VA_ARGS__)
+
+
+//#define TRACE_SET(trace_id)
 
 namespace cocaine { namespace tracer {
     uint64_t generate_id();
@@ -67,6 +75,9 @@ namespace cocaine { namespace tracer {
         static const trace_t&
         push(const char* message);
 
+        static const trace_t&
+        push(const char* message, uint64_t trace_id, uint64_t parent_id);
+
         static void
         pop();
 
@@ -80,6 +91,9 @@ namespace cocaine { namespace tracer {
 
         const trace_t&
         push_impl(const char* message);
+
+        const trace_t&
+        push_impl(const char* message, uint64_t trace_id, uint64_t parent_id);
 
         void
         pop_impl();

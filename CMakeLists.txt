@@ -87,6 +87,7 @@ LINK_DIRECTORIES(
     ${LIBLTDL_LIBRARY_DIRS})
 
 ADD_LIBRARY(cocaine-core SHARED
+    ${HEADERS}
     src/actor.cpp
     src/api.cpp
     src/chamber.cpp
@@ -138,6 +139,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/storage.cpp
     src/session.cpp
     src/storage/files.cpp
+    src/tracer/trace.cpp
     src/unique_id.cpp)
 
 ADD_SUBDIRECTORY(foreign/hpack-headers)
