@@ -42,21 +42,12 @@ public:
     template<class Event, typename... Args>
     void
     send(Args&&... args);
-
-    void
-    drop();
 };
 
 template<class Event, typename... Args>
 void
 basic_upstream_t::send(Args&&... args) {
     session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
-}
-
-inline
-void
-basic_upstream_t::drop() {
-    session->revoke(channel_id);
 }
 
 // Forwards for the upstream<T> class

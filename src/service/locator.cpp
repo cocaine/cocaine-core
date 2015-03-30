@@ -137,6 +137,8 @@ locator_t::connect_client_t::on_link(const std::error_code& ec) {
 
 void
 locator_t::connect_client_t::discard(const std::error_code& ec) const {
+    if(ec.value() == 0) return;
+
     COCAINE_LOG_ERROR(parent->m_log, "remote node has been discarded: [%d] %s", ec.value(), ec.message())(
         "uuid", uuid
     );

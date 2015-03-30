@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 
+#include <asio/deadline_timer.hpp>
 #include <asio/io_service.hpp>
 #include <asio/ip/tcp.hpp>
 
@@ -32,6 +33,8 @@ class session_t;
 
 class execution_unit_t {
     COCAINE_DECLARE_NONCOPYABLE(execution_unit_t)
+
+    class gc_action_t;
 
     std::unique_ptr<logging::log_t> m_log;
 
@@ -43,6 +46,12 @@ class execution_unit_t {
 
     std::shared_ptr<asio::io_service> m_asio;
     std::unique_ptr<io::chamber_t> m_chamber;
+
+    static const unsigned int kCollectionInterval = 60;
+
+    // Collects detached sessions every kCollectionInterval seconds. Normally, session slots will be
+    // reused because of system fd rotation, but for low loads this will help a bit.
+    asio::deadline_timer m_cron;
 
 public:
     explicit
@@ -59,9 +68,6 @@ public:
 private:
     void
     attach_impl(const std::shared_ptr<asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
-
-    void
-    on_shutdown(const std::error_code& ec, int socket);
 };
 
 } // namespace cocaine

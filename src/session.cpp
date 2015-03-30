@@ -20,6 +20,8 @@
 
 #include "cocaine/rpc/session.hpp"
 
+#include "cocaine/logging.hpp"
+
 #include "cocaine/rpc/asio/channel.hpp"
 
 #include "cocaine/rpc/dispatch.hpp"
@@ -32,36 +34,6 @@ using namespace cocaine;
 using namespace cocaine::io;
 
 // Session internals
-
-class session_t::channel_t {
-    friend class session_t;
-
-    dispatch_ptr_t dispatch;
-    upstream_ptr_t upstream;
-
-public:
-    channel_t(const dispatch_ptr_t& dispatch_, const upstream_ptr_t& upstream_):
-        dispatch(dispatch_),
-        upstream(upstream_)
-    { }
-
-    void
-    process(const decoder_t::message_type& message);
-};
-
-void
-session_t::channel_t::process(const decoder_t::message_type& message) {
-    if(!dispatch) {
-        throw cocaine::error_t("no dispatch has been assigned");
-    }
-
-    if((dispatch = dispatch->process(message, upstream).get_value_or(dispatch)) == nullptr) {
-        // NOTE: If the client has sent us the last message according to our dispatch graph, then
-        // revoke the channel.
-        upstream->drop();
-        upstream = nullptr;
-    }
-}
 
 class session_t::pull_action_t:
     public std::enable_shared_from_this<pull_action_t>
@@ -77,7 +49,7 @@ public:
     { }
 
     void
-    operator()(std::shared_ptr<channel<tcp>> ptr);
+    operator()(const std::shared_ptr<channel<tcp>> ptr);
 
 private:
     void
@@ -85,7 +57,7 @@ private:
 };
 
 void
-session_t::pull_action_t::operator()(std::shared_ptr<channel<tcp>> ptr) {
+session_t::pull_action_t::operator()(const std::shared_ptr<channel<tcp>> ptr) {
     ptr->reader->read(message, std::bind(&pull_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
@@ -95,8 +67,13 @@ session_t::pull_action_t::operator()(std::shared_ptr<channel<tcp>> ptr) {
 void
 session_t::pull_action_t::finalize(const std::error_code& ec) {
     if(ec) {
-        session->signals.shutdown(ec);
-        return;
+        if(ec != asio::error::eof) {
+            COCAINE_LOG_ERROR(session->log, "client disconnected: [%d] %s", ec.value(), ec.message());
+        } else {
+            COCAINE_LOG_DEBUG(session->log, "client disconnected");
+        }
+
+        return session->detach(ec);
     }
 
 #if defined(__clang__)
@@ -106,16 +83,17 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
 #endif
         try {
             session->invoke(message);
-        } catch(...) {
-            // TODO: Show the actual error message. The best sink would probably be the prototype's
-            // log, but for client sessions it's not available, so think about it a bit more.
+        } catch(const std::exception& e) {
+            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception - %s", e.what());
+
             // NOTE: This happens only when the underlying slot has miserably failed to handle its
             // exceptions. In such case, the client is disconnected to prevent any further damage.
-            session->signals.shutdown(error::uncaught_error);
-            return;
+            return session->detach(error::uncaught_error);
         }
 
         operator()(std::move(ptr));
+    } else {
+        COCAINE_LOG_DEBUG(session->log, "ignoring invocation due to detached session");
     }
 }
 
@@ -134,7 +112,7 @@ public:
     { }
 
     void
-    operator()(std::shared_ptr<channel<tcp>> ptr);
+    operator()(const std::shared_ptr<channel<tcp>> ptr);
 
 private:
     void
@@ -142,7 +120,7 @@ private:
 };
 
 void
-session_t::push_action_t::operator()(std::shared_ptr<channel<tcp>> ptr) {
+session_t::push_action_t::operator()(const std::shared_ptr<channel<tcp>> ptr) {
     ptr->writer->write(message, std::bind(&push_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
@@ -151,115 +129,146 @@ session_t::push_action_t::operator()(std::shared_ptr<channel<tcp>> ptr) {
 
 void
 session_t::push_action_t::finalize(const std::error_code& ec) {
-    if(ec) {
-        session->signals.shutdown(ec);
+    if(ec.value() == 0) return;
+
+    if(ec != asio::error::eof) {
+        COCAINE_LOG_ERROR(session->log, "client disconnected: [%d] %s", ec.value(), ec.message());
+    } else {
+        COCAINE_LOG_DEBUG(session->log, "client disconnected");
     }
+
+    return session->detach(ec);
 }
 
-class session_t::discard_action_t {
-    synchronized<channel_map_t>& channels;
-
+class session_t::channel_t
+{
 public:
-    discard_action_t(synchronized<channel_map_t>& channels_):
-        channels(channels_)
+    channel_t(const dispatch_ptr_t& dispatch_, const upstream_ptr_t& upstream_):
+        dispatch(dispatch_),
+        upstream(upstream_)
     { }
 
-    void
-    operator()(const std::error_code& ec);
+    dispatch_ptr_t dispatch;
+    upstream_ptr_t upstream;
 };
-
-void
-session_t::discard_action_t::operator()(const std::error_code& ec) {
-    auto ptr = channels.synchronize();
-
-    for(auto it = ptr->begin(); it != ptr->end(); ++it) {
-        if(it->second->dispatch) it->second->dispatch->discard(ec);
-    }
-
-    ptr->clear();
-}
 
 // Session
 
-session_t::session_t(std::unique_ptr<channel<tcp>> transport_, const dispatch_ptr_t& prototype_):
+session_t::session_t(std::unique_ptr<logging::log_t> log_,
+                     std::unique_ptr<channel<tcp>> transport_, const dispatch_ptr_t& prototype_):
+    log(std::move(log_)),
     transport(std::shared_ptr<channel<tcp>>(std::move(transport_))),
     prototype(prototype_),
     max_channel_id(0)
-{
-    signals.shutdown.connect(0, discard_action_t(channels));
-}
+{ }
 
 // Operations
 
 void
 session_t::invoke(const decoder_t::message_type& message) {
-    channel_map_t::const_iterator lb, ub;
-    channel_map_t::key_type channel_id = message.span();
+    const channel_map_t::key_type channel_id = message.span();
 
-    std::shared_ptr<channel_t> channel;
+    const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {
+        channel_map_t::const_iterator lb, ub;
 
-    {
-        auto ptr = channels.synchronize();
-
-        std::tie(lb, ub) = ptr->equal_range(channel_id);
+        std::tie(lb, ub) = mapping.equal_range(channel_id);
 
         if(lb == ub) {
             if(channel_id <= max_channel_id) {
                 // NOTE: Checking whether channel number is always higher than the previous channel
                 // number is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be
-                // not the best approach, but since we have 2^64 possible channels, and it is a lot
-                // more than 2^16 ports for sockets, it is fit to avoid stray messages.
-                return;
+                // not the best approach, but since we have 2^64 possible channels it's good enough.
+                throw cocaine::error_t("specified channel id was revoked");
             }
 
-            max_channel_id = channel_id;
-
-            std::tie(lb, std::ignore) = ptr->insert({channel_id, std::make_shared<channel_t>(
+            std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
                 prototype,
                 std::make_shared<basic_upstream_t>(shared_from_this(), channel_id)
             )});
+
+            max_channel_id = channel_id;
         }
 
         // NOTE: The virtual channel pointer is copied here so that if the slot decides to close the
-        // virtual channel, it won't destroy it inside the channel_t::process(). Instead, it will be
-        // destroyed when this function scope is exited, liberating us from thinking of some voodoo
-        // workaround magic.
-        channel = lb->second;
+        // virtual channel, it won't destroy it inside this function. Instead, it will be destroyed
+        // when this function scope is exited.
+        return lb->second;
+    });
+
+    if(!channel->dispatch) {
+        throw cocaine::error_t("no dispatch has been assigned");
     }
 
-    channel->process(message);
+    COCAINE_LOG_DEBUG(log, "processing invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
+        message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
+        channel->dispatch->name());
+
+    if((channel->dispatch = channel->dispatch->process(message, channel->upstream)
+        .get_value_or(channel->dispatch)) == nullptr)
+    {
+        // NOTE: If the client has sent us the last message according to our dispatch graph, revoke
+        // the channel. No-op if the channel is no longer in the mapping (e.g., was discarded).
+        if(!channel.unique()) revoke(channel_id);
+    }
 }
 
 upstream_ptr_t
 session_t::inject(const dispatch_ptr_t& dispatch) {
-    auto ptr = channels.synchronize();
+    return channels.apply([&](channel_map_t& mapping) -> upstream_ptr_t {
+        const auto channel_id = ++max_channel_id;
+        const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
-    const auto channel_id = ++max_channel_id;
-    const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
+        COCAINE_LOG_DEBUG(log, "processing injection in channel %llu, dispatch: '%s'", channel_id,
+            dispatch ? dispatch->name() : "<none>");
 
-    if(dispatch) {
-        ptr->insert({channel_id, std::make_shared<channel_t>(dispatch, downstream)});
-    }
+        if(dispatch) {
+            // NOTE: For mute slots, creating a new channel will essentially leak memory, since no
+            // response will ever be sent back, therefore the channel will never be revoked at all.
+            mapping.insert({channel_id, std::make_shared<channel_t>(dispatch, downstream)});
+        }
 
-    return downstream;
+        return downstream;
+    });
 }
 
 void
 session_t::revoke(uint64_t channel_id) {
-    channels->erase(channel_id);
+    channels.apply([&](channel_map_t& mapping) {
+        auto it = mapping.find(channel_id);
+
+        // NOTE: Not sure if that can ever happen, but that's why people use asserts, right?
+        BOOST_ASSERT(it != mapping.end());
+
+        COCAINE_LOG_DEBUG(log, "processing revocation of channel %llu, dispatch: '%s'", channel_id,
+            it->second->dispatch ? it->second->dispatch->name() : "<none>");
+
+        mapping.erase(it);
+    });
 }
 
 void
-session_t::detach() {
+session_t::detach(const std::error_code& ec) {
+    COCAINE_LOG_DEBUG(log, "detaching session from the transport");
+
+    channels.apply([&](channel_map_t& mapping) {
+        if(mapping.empty()) {
+            return;
+        } else {
+            COCAINE_LOG_DEBUG(log, "discarding %llu channel dispatch(es)", mapping.size());
+        }
+
+        for(auto it = mapping.begin(); it != mapping.end(); ++it) {
+            if(it->second->dispatch) it->second->dispatch->discard(ec);
+        }
+
+        mapping.clear();
+    });
+
 #if defined(__clang__)
     std::atomic_store(&transport, std::shared_ptr<channel<tcp>>());
 #else
     *transport.synchronize() = nullptr;
 #endif
-
-    // Detach all the signal handlers, because the session will be in detached state and triggering
-    // more signals will result in an undefined behavior.
-    signals.shutdown.disconnect_all_slots();
 }
 
 // Channel I/O
@@ -302,15 +311,15 @@ session_t::push(encoder_t::message_type&& message) {
 
 std::map<uint64_t, std::string>
 session_t::active_channels() const {
-    std::map<uint64_t, std::string> result;
+    return channels.apply([](const channel_map_t& mapping) -> std::map<uint64_t, std::string> {
+        std::map<uint64_t, std::string> result;
 
-    auto ptr = channels.synchronize();
+        for(auto it = mapping.begin(); it != mapping.end(); ++it) {
+            result[it->first] = it->second->dispatch ? it->second->dispatch->name() : "<none>";
+        }
 
-    for(auto it = ptr->begin(); it != ptr->end(); ++it) {
-        result[it->first] = it->second->dispatch ? it->second->dispatch->name() : "<unassigned>";
-    }
-
-    return result;
+        return result;
+    });
 }
 
 size_t
@@ -328,7 +337,7 @@ session_t::memory_pressure() const {
 
 std::string
 session_t::name() const {
-    return prototype ? prototype->name() : "<unassigned>";
+    return prototype ? prototype->name() : "<none>";
 }
 
 tcp::endpoint
@@ -343,10 +352,8 @@ session_t::remote_endpoint() const {
         try {
             endpoint = ptr->socket->remote_endpoint();
         } catch(const std::system_error& e) {
-            // TODO: Log this.
+            // Ignore.
         }
-    } else {
-        // TODO: Log this.
     }
 
     return endpoint;

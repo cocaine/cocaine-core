@@ -73,14 +73,17 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
     // heap-allocated object, which in turn might be attached to an engine.
     auto ptr = std::make_shared<tcp::socket>(std::move(socket));
 
-    if(ec) {
-        if(ec == asio::error::operation_aborted) return;
-
-        COCAINE_LOG_ERROR(parent->m_log, "unable to accept a connection: [%d] %s",
-            ec.value(), ec.message()
-        );
-    } else {
+    switch(ec.value()) {
+      case 0:
+        COCAINE_LOG_DEBUG(parent->m_log, "accepted remote client on fd %d", ptr->native_handle());
         parent->m_context.engine().attach(ptr, parent->m_prototype);
+        break;
+
+      case asio::error::operation_aborted:
+        return;
+
+      default:
+        COCAINE_LOG_ERROR(parent->m_log, "dropped remote client: [%d] %s", ec.value(), ec.message());
     }
 
     // TODO: Find out if it's always a good idea to continue accepting connections no matter what.
