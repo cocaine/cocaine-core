@@ -30,10 +30,10 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
-using namespace blackhole;
-
 using namespace asio;
 using namespace asio::ip;
+
+using namespace blackhole;
 
 using namespace cocaine;
 
@@ -61,10 +61,16 @@ private:
 
 void
 actor_t::accept_action_t::operator()() {
-    parent->m_acceptor->async_accept(socket, std::bind(&accept_action_t::finalize,
-        shared_from_this(),
-        std::placeholders::_1
-    ));
+    parent->m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
+        if(!ptr) {
+            COCAINE_LOG_ERROR(parent->m_log, "abnormal termination of actor remote client pump");
+            return;
+        }
+
+        using namespace std::placeholders;
+
+        ptr->async_accept(socket, std::bind(&accept_action_t::finalize, shared_from_this(), _1));
+    });
 }
 
 void
@@ -83,7 +89,9 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
         return;
 
       default:
-        COCAINE_LOG_ERROR(parent->m_log, "dropped remote client: [%d] %s", ec.value(), ec.message());
+        COCAINE_LOG_ERROR(parent->m_log, "unable to accept remote client: [%d] %s", ec.value(),
+            ec.message());
+        break;
     }
 
     // TODO: Find out if it's always a good idea to continue accepting connections no matter what.
@@ -128,14 +136,18 @@ actor_t::~actor_t() {
 
 std::vector<tcp::endpoint>
 actor_t::endpoints() const {
-    if(!m_chamber || !m_acceptor) {
-        return std::vector<tcp::endpoint>();
-    }
-
     tcp::resolver::iterator begin;
 
     try {
-        const auto local = m_acceptor->local_endpoint();
+        const auto local = m_acceptor.apply(
+            [](const std::unique_ptr<tcp::acceptor>& ptr) -> tcp::endpoint
+        {
+            if(ptr) {
+                return ptr->local_endpoint();
+            } else {
+                throw std::system_error(asio::error::not_connected);
+            }
+        });
 
         if(!local.address().is_unspecified()) {
             return std::vector<tcp::endpoint>({local});
@@ -168,7 +180,7 @@ actor_t::endpoints() const {
 
 bool
 actor_t::is_active() const {
-    return m_chamber && m_acceptor;
+    return static_cast<bool>(*m_acceptor.synchronize());
 }
 
 const io::basic_dispatch_t&
@@ -178,23 +190,24 @@ actor_t::prototype() const {
 
 void
 actor_t::run() {
-    BOOST_ASSERT(!m_chamber);
+    m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
+        try {
+            ptr = std::make_unique<tcp::acceptor>(*m_asio, tcp::endpoint {
+                m_context.config.network.endpoint,
+                m_context.mapper.assign(m_prototype->name())
+            });
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
+                e.code().value(),
+                e.code().message());
+            throw;
+        }
 
-    try {
-        m_acceptor = std::make_unique<tcp::acceptor>(*m_asio, tcp::endpoint {
-            m_context.config.network.endpoint,
-            m_context.mapper.assign(m_prototype->name())
-        });
-    } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
-            e.code().value(), e.code().message());
-        throw;
-    }
+        std::error_code ec;
+        const auto endpoint = ptr->local_endpoint(ec);
 
-    std::error_code ec;
-    const auto endpoint = m_acceptor->local_endpoint(ec);
-
-    COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", endpoint);
+        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", endpoint);
+    });
 
     m_asio->post(std::bind(&accept_action_t::operator(),
         std::make_shared<accept_action_t>(this)
@@ -206,20 +219,20 @@ actor_t::run() {
 
 void
 actor_t::terminate() {
-    BOOST_ASSERT(m_chamber);
-
     // Do not wait for the service to finish all its stuff (like timers, etc). Graceful termination
     // happens only in engine chambers, because that's where client connections are being handled.
     m_asio->stop();
 
-    std::error_code ec;
-    const auto endpoint = m_acceptor->local_endpoint(ec);
+    m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
+        std::error_code ec;
+        const auto endpoint = ptr->local_endpoint(ec);
 
-    COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
+        COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
 
-    // Does not block, unlike the one in execution_unit_t's destructors.
-    m_chamber  = nullptr;
-    m_acceptor = nullptr;
+        // Does not block, unlike the one in execution_unit_t's destructors.
+        m_chamber = nullptr;
+        ptr       = nullptr;
+    });
 
     // Be ready to restart the actor.
     m_asio->reset();

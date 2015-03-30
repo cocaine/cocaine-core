@@ -47,10 +47,10 @@
 #include <boost/spirit/include/karma_list.hpp>
 #include <boost/spirit/include/karma_string.hpp>
 
-using namespace blackhole;
-
 using namespace asio;
 using namespace asio::ip;
+
+using namespace blackhole;
 
 using namespace cocaine::io;
 using namespace cocaine::service;
