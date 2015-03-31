@@ -19,7 +19,7 @@
 */
 
 #include "cocaine/detail/service/node.hpp"
-#include "cocaine/detail/service/node/app.hpp"
+#include "cocaine/detail/service/node.v2/app.hpp"
 
 #include "cocaine/api/storage.hpp"
 
@@ -37,40 +37,39 @@
 #include <boost/spirit/include/karma_list.hpp>
 #include <boost/spirit/include/karma_string.hpp>
 
-using namespace cocaine::io;
 using namespace cocaine::service;
+
+using namespace blackhole;
+
+namespace ph = std::placeholders;
 
 node_t::node_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),
-    dispatch<node_tag>(name),
+    dispatch<io::node_tag>(name),
     m_context(context),
     m_log(context.log(name))
 {
-    using namespace std::placeholders;
+    on<io::node::start_app>(std::bind(&node_t::start_app, this, ph::_1, ph::_2));
+    on<io::node::pause_app>(std::bind(&node_t::pause_app, this, ph::_1));
+    on<io::node::list>     (std::bind(&node_t::list, this));
 
-    on<node::start_app>(std::bind(&node_t::on_start_app, this, _1, _2));
-    on<node::pause_app>(std::bind(&node_t::on_pause_app, this, _1));
-    on<node::list>(std::bind(&node_t::on_list, this));
+    const auto runname = args.as_object().at("runlist", "").as_string();
 
-    const auto runlist_id = args.as_object().at("runlist", "default").as_string();
-    const auto storage = api::storage(m_context, "core");
+    if(runname.empty()) {
+        return;
+    }
+
+    COCAINE_LOG_INFO(m_log, "reading '%s' runlist", runname);
 
     typedef std::map<std::string, std::string> runlist_t;
-
     runlist_t runlist;
 
-    {
-        blackhole::scoped_attributes_t attributes(*m_log, {
-            blackhole::attribute::make("runlist", runlist_id)
-        });
-
-        COCAINE_LOG_INFO(m_log, "reading runlist");
-
-        try {
-            runlist = storage->get<runlist_t>("runlists", runlist_id);
-        } catch(const storage_error_t& e) {
-            COCAINE_LOG_WARNING(m_log, "unable to read runlist: %s", e.what());
-        }
+    try {
+        const auto storage = api::storage(context, "core");
+        // TODO: Perform request to a special service, like "storage->runlist(runname)".
+        runlist = storage->get<runlist_t>("runlists", runname);
+    } catch(const storage_error_t& err) {
+        COCAINE_LOG_WARNING(m_log, "unable to read '%s' runlist: %s", runname, err.what());
     }
 
     if(runlist.empty()) {
@@ -82,17 +81,12 @@ node_t::node_t(context_t& context, asio::io_service& asio, const std::string& na
     std::vector<std::string> errored;
 
     for(auto it = runlist.begin(); it != runlist.end(); ++it) {
-        blackhole::scoped_attributes_t attributes(*m_log, {
-            blackhole::attribute::make("app", it->first)
-        });
+        scoped_attributes_t scope(*m_log, { attribute::make("app", it->first) });
 
         try {
-            on_start_app(it->first, it->second);
+            start_app(it->first, it->second);
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize app: %s", e.what());
-            errored.push_back(it->first);
-        } catch(...) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize app");
+            COCAINE_LOG_WARNING(m_log, "unable to initialize app: %s", e.what());
             errored.push_back(it->first);
         }
     }
@@ -103,26 +97,11 @@ node_t::node_t(context_t& context, asio::io_service& asio, const std::string& na
 
         boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
 
-        COCAINE_LOG_ERROR(m_log, "couldn't start %d app(s): %s", errored.size(), stream.str());
+        COCAINE_LOG_WARNING(m_log, "couldn't start %d app(s): %s", errored.size(), stream.str());
     }
 }
 
-node_t::~node_t() {
-    auto ptr = m_apps.synchronize();
-
-    if(ptr->empty()) {
-        return;
-    }
-
-    COCAINE_LOG_INFO(m_log, "stopping %d apps", ptr->size());
-
-    for(auto it = ptr->begin(); it != ptr->end(); ++it) {
-        COCAINE_LOG_INFO(m_log, "trying to stop app '%s'", it->first);
-        it->second->pause();
-    }
-
-    ptr->clear();
-}
+node_t::~node_t() {}
 
 const basic_dispatch_t&
 node_t::prototype() const {
@@ -130,47 +109,46 @@ node_t::prototype() const {
 }
 
 void
-node_t::on_start_app(const std::string& name, const std::string& profile) {
-    auto ptr = m_apps.synchronize();
-    auto it = ptr->find(name);
+node_t::start_app(const std::string& name, const std::string& profile) {
+    COCAINE_LOG_DEBUG(m_log, "performing `start '%s' app` request", name);
 
-    COCAINE_LOG_INFO(m_log, "trying to start app '%s'", name);
+    m_apps.apply([this, &name, &profile](std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
+        auto it = apps.find(name);
 
-    if(it != ptr->end()) {
-        throw cocaine::error_t("app '%s' is already running", name);
-    }
+        if(it != apps.end()) {
+            throw cocaine::error_t("app '%s' is already running", name);
+        }
 
-    std::tie(it, std::ignore) = ptr->insert({
-        name,
-        std::make_shared<app_t>(m_context, name, profile)
+        auto app = std::make_shared<v2::app_t>(m_context, name, profile);
+        app->start();
+
+        apps.insert({ name, std::move(app) });
     });
-
-    it->second->start();
 }
 
 void
-node_t::on_pause_app(const std::string& name) {
-    auto ptr = m_apps.synchronize();
-    auto it = ptr->find(name);
+node_t::pause_app(const std::string& name) {
+    COCAINE_LOG_DEBUG(m_log, "performing `pause '%s' app` request", name);
 
-    COCAINE_LOG_INFO(m_log, "trying to stop app '%s'", name);
+    m_apps.apply([&name](std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
+        auto it = apps.find(name);
 
-    if(it == ptr->end()) {
-        throw cocaine::error_t("app '%s' is not running", name);
-    }
+        if(it == apps.end()) {
+            throw cocaine::error_t("app '%s' is not running", name);
+        }
 
-    it->second->pause();
-    ptr->erase(it);
+        apps.erase(it);
+    });
 }
 
-results::list
-node_t::on_list() const {
+auto
+node_t::list() const -> dynamic_t {
     dynamic_t::array_t result;
-
-    auto ptr = m_apps.synchronize();
     auto builder = std::back_inserter(result);
 
-    std::transform(ptr->begin(), ptr->end(), builder, tuple::nth_element<0>());
+    m_apps.apply([&builder](const std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
+        std::transform(apps.begin(), apps.end(), builder, tuple::nth_element<0>());
+    });
 
     return result;
 }

@@ -26,19 +26,12 @@
 #include "cocaine/detail/service/node/forwards.hpp"
 
 #include "cocaine/idl/node.hpp"
-#include "cocaine/rpc/dispatch.hpp"
 
 #include "cocaine/locked_ptr.hpp"
 
+#include "cocaine/rpc/dispatch.hpp"
+
 namespace cocaine { namespace service {
-
-class node_t;
-
-namespace results {
-
-typedef result_of<io::node::list>::type list;
-
-} // namespace results
 
 class node_t:
     public api::service_t,
@@ -48,7 +41,7 @@ class node_t:
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    synchronized<std::map<std::string, std::shared_ptr<app_t>>> m_apps;
+    synchronized<std::map<std::string, std::shared_ptr<v2::app_t>>> m_apps;
 
 public:
     node_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);
@@ -62,13 +55,13 @@ public:
 
 private:
     void
-    on_start_app(const std::string& name, const std::string& profile);
+    start_app(const std::string& name, const std::string& profile);
 
     void
-    on_pause_app(const std::string& name);
+    pause_app(const std::string& name);
 
     auto
-    on_list() const -> results::list;
+    list() const -> dynamic_t;
 };
 
 }} // namespace cocaine::service

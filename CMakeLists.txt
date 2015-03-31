@@ -110,6 +110,9 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/locator.cpp
     src/service/locator/routing.cpp
     src/service/logging.cpp
+
+    src/service/node.v2/app.cpp
+
     src/service/node.cpp
     src/service/node/app.cpp
     src/service/node/engine.cpp

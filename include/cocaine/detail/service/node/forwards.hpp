@@ -27,6 +27,12 @@ class app_t;
 
 } // namespace cocaine
 
+namespace cocaine { namespace service { namespace v2 {
+
+class app_t;
+
+}}} // namespace cocaine::service::v2
+
 namespace cocaine { namespace api {
 
 struct event_t;
