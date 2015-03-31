@@ -249,7 +249,7 @@ session_t::revoke(uint64_t channel_id) {
 void
 session_t::detach(const std::error_code& ec) {
 #if defined(__clang__)
-    if(auto channel = std::atomic_exchange(&transport, std::shared_ptr<channel<tcp>>())) {
+    if(auto channel = std::atomic_exchange(&transport, std::shared_ptr<io::channel<tcp>>())) {
 #else
     if(auto channel = std::move(*transport.synchronize())) {
 #endif
