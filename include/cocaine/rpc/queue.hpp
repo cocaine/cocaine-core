@@ -49,8 +49,8 @@ struct frozen_visitor:
 
     template<class Event>
     void
-    operator()(const frozen<Event>& frozen) const {
-        upstream->template send<Event>(frozen.tuple);
+    operator()(frozen<Event>& frozen) const {
+        upstream->template send<Event>(std::move(frozen.tuple));
     }
 
 private:
@@ -99,19 +99,17 @@ public:
 
     void
     attach(std::shared_ptr<upstream_type> upstream) {
-        m_upstream = std::move(upstream);
+        if(!m_operations.empty()) {
+            aux::frozen_visitor<upstream_type> visitor(upstream);
 
-        if(m_operations.empty()) {
-            return;
+            // For some weird reasons, boost::apply_visitor() only accepts lvalue-references to the
+            // visitor object, so there's no other choice but to actually bind it to a variable.
+            std::for_each(m_operations.begin(), m_operations.end(), boost::apply_visitor(visitor));
+
+            m_operations.clear();
         }
 
-        aux::frozen_visitor<upstream_type> visitor(m_upstream);
-
-        // For some weird reasons, boost::apply_visitor() only accepts lvalue-references to visitor
-        // objects, so there's no other choice but to actually bind it to a local variable.
-        std::for_each(m_operations.begin(), m_operations.end(), boost::apply_visitor(visitor));
-
-        m_operations.clear();
+        m_upstream = std::move(upstream);
     }
 };
 
