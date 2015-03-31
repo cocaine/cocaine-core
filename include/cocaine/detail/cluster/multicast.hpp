@@ -23,6 +23,8 @@
 
 #include "cocaine/api/cluster.hpp"
 
+#include "cocaine/idl/context.hpp"
+
 #include <asio/deadline_timer.hpp>
 
 #include <asio/ip/tcp.hpp>
@@ -60,6 +62,9 @@ class multicast_t:
 
     // Announce expiration timeouts.
     std::map<std::string, std::unique_ptr<asio::deadline_timer>> m_expirations;
+
+    // Signal to handle context ready event
+    std::shared_ptr<dispatch<io::context_tag>> m_signals;
 
 public:
     multicast_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args);
