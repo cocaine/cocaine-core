@@ -248,7 +248,16 @@ session_t::revoke(uint64_t channel_id) {
 
 void
 session_t::detach(const std::error_code& ec) {
-    COCAINE_LOG_DEBUG(log, "detaching session from the transport");
+#if defined(__clang__)
+    if(std::atomic_exchange(&transport, std::shared_ptr<channel<tcp>>())) {
+#else
+    if(auto ptr = *transport.synchronize()) {
+        ptr = nullptr;
+#endif
+        COCAINE_LOG_DEBUG(log, "detached session from the transport");
+    } else {
+        return;
+    }
 
     channels.apply([&](channel_map_t& mapping) {
         if(mapping.empty()) {
@@ -263,12 +272,6 @@ session_t::detach(const std::error_code& ec) {
 
         mapping.clear();
     });
-
-#if defined(__clang__)
-    std::atomic_store(&transport, std::shared_ptr<channel<tcp>>());
-#else
-    *transport.synchronize() = nullptr;
-#endif
 }
 
 // Channel I/O
