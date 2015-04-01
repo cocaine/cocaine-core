@@ -116,7 +116,7 @@ public:
         });
     }
 
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     void
     invoke(Args&&... args) {
         auto event = variant_type(io::make_frozen<Event>(std::forward<Args>(args)...));

@@ -81,7 +81,7 @@ public:
         m_downstream(downstream)
     { }
 
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     void
     send(Args&&... args) {
         auto push = std::make_shared<push_action_t>(

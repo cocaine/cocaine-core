@@ -76,7 +76,7 @@ class client:
     };
 
 public:
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     typename traits<Event>::upstream_type
     invoke(const std::shared_ptr<typename traits<Event>::dispatch_type>& dispatch, Args&&... args) {
         if(!m_session) {

@@ -38,7 +38,7 @@ struct frozen {
 
     frozen() = default;
 
-    template<typename... Args>
+    template<class... Args>
     frozen(event_type, Args&&... args):
         tuple(std::forward<Args>(args)...)
     { }
@@ -48,7 +48,7 @@ struct frozen {
     tuple_type tuple;
 };
 
-template<class Event, typename... Args>
+template<class Event, class... Args>
 frozen<Event>
 make_frozen(Args&&... args) {
     return frozen<Event>(Event(), std::forward<Args>(args)...);

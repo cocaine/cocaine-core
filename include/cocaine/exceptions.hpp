@@ -87,7 +87,7 @@ make_error_code(dispatch_errors code) -> std::error_code {
 struct error_t:
     public std::exception
 {
-    template<typename... Args>
+    template<class... Args>
     error_t(const std::string& format, const Args&... args):
         m_message(cocaine::format(format, args...))
     { }

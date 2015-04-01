@@ -40,7 +40,7 @@ struct optional_with_default;
 template<class T>
 struct primitive_tag;
 
-template<typename... Types>
+template<class... Types>
 struct option_of {
     typedef primitive_tag<typename itemize<Types...>::type> tag;
 };
@@ -48,7 +48,7 @@ struct option_of {
 template<class T>
 struct streaming_tag;
 
-template<typename... Types>
+template<class... Types>
 struct stream_of {
     typedef streaming_tag<typename itemize<Types...>::type> tag;
 };

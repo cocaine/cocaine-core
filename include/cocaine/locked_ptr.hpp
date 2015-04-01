@@ -87,7 +87,7 @@ struct synchronized {
 
     // Forwarding construction
 
-    template<typename... Args>
+    template<class... Args>
     synchronized(Args&&... args): m_value(std::forward<Args>(args)...) { }
 
     // Safe getters

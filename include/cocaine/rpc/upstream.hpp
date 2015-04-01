@@ -39,12 +39,12 @@ public:
         channel_id(channel_id_)
     { }
 
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     void
     send(Args&&... args);
 };
 
-template<class Event, typename... Args>
+template<class Event, class... Args>
 void
 basic_upstream_t::send(Args&&... args) {
     session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
@@ -74,7 +74,7 @@ public:
              typename allowing<Tag, Stream>::type* = nullptr): ptr(std::forward<Stream>(ptr))
     { }
 
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     upstream<typename io::event_traits<Event>::dispatch_type>
     send(Args&&... args) {
         static_assert(

@@ -71,7 +71,7 @@ class message_queue {
     std::shared_ptr<upstream_type> m_upstream;
 
 public:
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     void
     append(Args&&... args) {
         static_assert(

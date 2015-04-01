@@ -43,7 +43,7 @@ struct nth_element {
 
 namespace aux {
 
-template<class It, class End, typename... Args>
+template<class It, class End, class... Args>
 struct fold_impl {
     typedef typename fold_impl<
         typename boost::mpl::next<It>::type,
@@ -53,7 +53,7 @@ struct fold_impl {
     >::type type;
 };
 
-template<class End, typename... Args>
+template<class End, class... Args>
 struct fold_impl<End, End, Args...> {
     typedef std::tuple<Args...> type;
 };
@@ -63,7 +63,7 @@ struct invoke_impl;
 
 template<size_t... Indices>
 struct invoke_impl<index_sequence<Indices...>> {
-    template<class F, typename... Args>
+    template<class F, class... Args>
     static inline
     auto
     apply(std::tuple<Args...>&& args, F&& callable)
@@ -85,7 +85,7 @@ struct fold {
 
 // Function invocation with arguments provided as a tuple
 
-template<class F, typename... Args>
+template<class F, class... Args>
 inline
 auto
 invoke(std::tuple<Args...>&& args, F&& callable)

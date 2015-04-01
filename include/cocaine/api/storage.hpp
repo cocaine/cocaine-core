@@ -36,7 +36,7 @@ namespace cocaine {
 struct storage_error_t:
     public error_t
 {
-    template<typename... Args>
+    template<class... Args>
     storage_error_t(const std::string& format, const Args&... args):
         error_t(format, args...)
     { }

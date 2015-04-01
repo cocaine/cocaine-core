@@ -88,7 +88,7 @@ struct reconstruct<T, typename std::enable_if<boost::mpl::is_sequence<T>::value>
     typedef T type;
 };
 
-template<typename... Args>
+template<class... Args>
 struct reconstruct<std::tuple<Args...>> {
     typedef typename itemize<Args...>::type type;
 };
