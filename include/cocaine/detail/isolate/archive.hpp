@@ -27,13 +27,6 @@ struct archive;
 
 namespace cocaine { namespace isolate {
 
-struct archive_error_t:
-    public std::runtime_error
-{
-    explicit
-    archive_error_t(archive* source);
-};
-
 class archive_t {
     const std::unique_ptr<logging::log_t> m_log;
 
@@ -57,5 +50,12 @@ private:
 };
 
 }} // namespace cocaine::isolate
+
+namespace cocaine { namespace error {
+
+auto
+archive_category() -> const std::error_category&;
+
+}} // namespace cocaine::error
 
 #endif

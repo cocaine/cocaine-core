@@ -28,6 +28,7 @@
 #include "cocaine/rpc/slot.hpp"
 
 #include "cocaine/traits/enum.hpp"
+#include "cocaine/traits/error_code.hpp"
 
 #include "cocaine/tuple.hpp"
 

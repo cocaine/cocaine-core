@@ -57,10 +57,10 @@ struct error {
     }
 
     typedef boost::mpl::list<
-     /* Error code. */
-        int,
-     /* Human-readable error description. */
-        std::string
+     /* Serialized error category and error code. */
+        std::error_code,
+     /* Specially crafted personal error message. */
+        optional<std::string>
     > argument_type;
 
     // Terminal message.

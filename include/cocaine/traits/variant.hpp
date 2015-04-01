@@ -26,9 +26,9 @@
 #include <boost/mpl/at.hpp>
 #include <boost/mpl/size.hpp>
 
-#include <boost/variant/variant.hpp>
 #include <boost/variant/apply_visitor.hpp>
 #include <boost/variant/static_visitor.hpp>
+#include <boost/variant/variant.hpp>
 
 namespace cocaine { namespace io {
 
@@ -56,36 +56,32 @@ private:
     msgpack::packer<Stream>& m_target;
 };
 
-template<class Variant, int N, class = void>
+template<class T, int N, class = void>
 struct unpack_variant {
     static inline
     void
-    unpack(int which, const msgpack::object& source, Variant& target) {
+    unpack(int which, const msgpack::object& source, T& target) {
         if(which != N) {
             unpack_variant<Variant, N + 1>::unpack(which, source, target);
             return;
         }
 
-        typedef typename boost::mpl::at<
-            typename Variant::types, boost::mpl::int_<N>
-        >::type result_type;
+        typedef typename boost::mpl::at<typename T::types, boost::mpl::int_<N>>::type result_type;
 
-        result_type result;
-
-        type_traits<result_type>::unpack(source, result);
-        target = result;
+        target = result_type();
+        type_traits<result_type>::unpack(source, target);
     }
 };
 
-template<class Variant, int N>
+template<class T, int N>
 struct unpack_variant<
-    Variant,
+    T,
     N,
-    typename std::enable_if<N == boost::mpl::size<typename Variant::types>::type::value>::type
+    typename std::enable_if<N == boost::mpl::size<typename T::types>::type::value>::type
 > {
     static inline
     void
-    unpack(int, const msgpack::object&, Variant&) {
+    unpack(int, const msgpack::object&, T&) {
         throw msgpack::type_error();
     }
 };

@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_BUFFERED_READABLE_STREAM_HPP
 #define COCAINE_IO_BUFFERED_READABLE_STREAM_HPP
 
-#include "cocaine/rpc/asio/errors.hpp"
+#include "cocaine/exceptions.hpp"
 
 #include <functional>
 

@@ -58,6 +58,7 @@ using namespace blackhole;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
+namespace ph = std::placeholders;
 // Locator internals
 
 class locator_t::remote_t:
@@ -78,9 +79,7 @@ public:
     {
         typedef io::protocol<event_traits<locator::connect>::upstream_type>::scope protocol;
 
-        using namespace std::placeholders;
-
-        on<protocol::chunk>(std::bind(&remote_t::on_announce, this, _1, _2));
+        on<protocol::chunk>(std::bind(&remote_t::on_announce, this, ph::_1, ph::_2));
         on<protocol::choke>(std::bind(&remote_t::on_shutdown, this));
     }
 
@@ -183,9 +182,9 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 {
     using namespace std::placeholders;
 
-    on<locator::resolve>(std::bind(&locator_t::on_resolve, this, _1, _2));
-    on<locator::connect>(std::bind(&locator_t::on_connect, this, _1));
-    on<locator::refresh>(std::bind(&locator_t::on_refresh, this, _1));
+    on<locator::resolve>(std::bind(&locator_t::on_resolve, this, ph::_1, ph::_2));
+    on<locator::connect>(std::bind(&locator_t::on_connect, this, ph::_1));
+    on<locator::refresh>(std::bind(&locator_t::on_refresh, this, ph::_1));
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
 
     // Service restrictions
@@ -215,8 +214,10 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
         m_cluster = m_context.get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
 
-        m_signals->on<context::service::exposed>(std::bind(&locator_t::on_service, this, _1, _2, 1));
-        m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this, _1, _2, 0));
+        m_signals->on<context::service::exposed>(std::bind(&locator_t::on_service, this, ph::_1,
+            ph::_2, modes::exposed));
+        m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this, ph::_1,
+            ph::_2, modes::removed));
     }
 
     if(root.as_object().count("gateway")) {
@@ -259,12 +260,8 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
                 continuum_t(std::move(log), storage->get<continuum_t::stored_type>("groups", *it))
             });
         }
-    } catch(const storage_error_t& e) {
-#if defined(HAVE_GCC48)
-        std::throw_with_nested(cocaine::error_t("unable to initialize routing groups"));
-#else
-        throw cocaine::error_t("unable to initialize routing groups");
-#endif
+    } catch(const std::system_error& e) {
+        throw std::system_error(e.code(), "unable to initialize routing groups");
     }
 }
 
@@ -420,7 +417,9 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
 
             values.insert({*it, storage->get<continuum_t::stored_type>("groups", *it)});
         }
-    } catch(const storage_error_t& e) {
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to preload routing groups from the storage: [%d] %s",
+            e.code().value(), e.code().message());
         throw std::system_error(error::routing_storage_error);
     }
 
@@ -459,7 +458,7 @@ locator_t::on_cluster() const {
 }
 
 void
-locator_t::on_service(const std::string& name, const results::resolve& meta, bool active) {
+locator_t::on_service(const std::string& name, const results::resolve& meta, modes mode) {
     if(m_cfg.restricted.count(name)) {
         return;
     }
@@ -474,6 +473,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, boo
                 it->second.write(response);
                 it++;
             } catch(...) {
+                // Session is detached, erase the upstream.
                 it = mapping->erase(it);
             }
         }
@@ -483,7 +483,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, boo
         );
     }
 
-    if(active) {
+    if(mode == modes::exposed) {
         m_snapshot[name] = meta;
     } else {
         m_snapshot.erase(name);
@@ -543,26 +543,24 @@ struct locator_category_t:
     virtual
     auto
     message(int code) const -> std::string {
-        switch(code) {
-          case cocaine::error::locator_errors::service_not_available:
+        if(code == cocaine::error::locator_errors::service_not_available)
             return "service is not available";
-          case cocaine::error::locator_errors::routing_storage_error:
+        if(code == cocaine::error::locator_errors::routing_storage_error)
             return "routing storage is unavailable";
-        }
 
         return "cocaine.service.locator error";
     }
 };
+
+} // namespace
+
+namespace cocaine { namespace error {
 
 auto
 locator_category() -> const std::error_category& {
     static locator_category_t instance;
     return instance;
 }
-
-} // namespace
-
-namespace cocaine { namespace error {
 
 auto
 make_error_code(locator_errors code) -> std::error_code {

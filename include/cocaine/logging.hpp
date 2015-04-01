@@ -23,7 +23,6 @@
 
 #include "cocaine/common.hpp"
 
-#define BOOST_BIND_NO_PLACEHOLDERS
 #include <blackhole/blackhole.hpp>
 #include <blackhole/keyword.hpp>
 #include <blackhole/logger/wrapper.hpp>

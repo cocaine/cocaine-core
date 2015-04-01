@@ -31,18 +31,7 @@
 #include <mutex>
 #include <sstream>
 
-namespace cocaine {
-
-struct storage_error_t:
-    public error_t
-{
-    template<class... Args>
-    storage_error_t(const std::string& format, const Args&... args):
-        error_t(format, args...)
-    { }
-};
-
-namespace api {
+namespace cocaine { namespace api {
 
 struct storage_t {
     typedef storage_t category_type;
@@ -97,13 +86,13 @@ storage_t::get(const std::string& collection, const std::string& key) {
     try {
         msgpack::unpack(&unpacked, blob.data(), blob.size());
     } catch(const msgpack::unpack_error& e) {
-        throw storage_error_t("object is corrupted");
+        throw std::system_error(std::make_error_code(std::errc::invalid_argument));
     }
 
     try {
         io::type_traits<T>::unpack(unpacked.get(), result);
     } catch(const msgpack::type_error& e) {
-        throw storage_error_t("invalid object type");
+        throw std::system_error(std::make_error_code(std::errc::invalid_argument));
     }
 
     return result;

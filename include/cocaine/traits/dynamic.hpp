@@ -34,7 +34,7 @@ namespace aux {
 
 template<class Stream>
 struct pack_dynamic:
-    public boost::static_visitor<>
+    public boost::static_visitor<void>
 {
     pack_dynamic(msgpack::packer<Stream>& target):
         m_target(target)
@@ -42,7 +42,7 @@ struct pack_dynamic:
 
     void
     operator()(const dynamic_t::null_t& COCAINE_UNUSED_(source)) const {
-        m_target << msgpack::type::nil();
+        m_target.pack_nil();
     }
 
     void
@@ -116,7 +116,7 @@ struct type_traits<dynamic_t> {
 
             for(; ptr < end; ++ptr) {
                 if(ptr->key.type != msgpack::type::RAW) {
-                    // NOTE: The keys should be strings.
+                    // NOTE: All the keys should be strings.
                     throw msgpack::type_error();
                 }
 

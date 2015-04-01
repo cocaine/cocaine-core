@@ -20,11 +20,14 @@
 
 #include "cocaine/repository.hpp"
 
+#include <blackhole/scoped_attributes.hpp>
+
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/path.hpp>
 
 #include <boost/iterator/filter_iterator.hpp>
 
+using namespace cocaine;
 using namespace cocaine::api;
 
 namespace fs = boost::filesystem;
@@ -61,9 +64,7 @@ repository_t::repository_t(logging::logger_t& logger):
         logging::keyword::source() = "repository"
     })))
 {
-    if(lt_dlinit() != 0) {
-        throw repository_error_t("unable to initialize the dynamic loader");
-    }
+    if(lt_dlinit() != 0) throw std::system_error(error::ltdl_error);
 }
 
 repository_t::~repository_t() {
@@ -100,9 +101,11 @@ repository_t::open(const std::string& target) {
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
 
-    COCAINE_LOG_INFO(m_log, "loading plugin")(
-        "plugin", target
-    );
+    using namespace blackhole;
+
+    scoped_attributes_t attributes(*m_log, { attribute::make("plugin", target) });
+
+    COCAINE_LOG_INFO(m_log, "loading plugin");
 
     std::unique_ptr<handle_type, lt_dlclose_action_t> plugin(
         lt_dlopenadvise(target.c_str(), advice),
@@ -112,7 +115,7 @@ repository_t::open(const std::string& target) {
     lt_dladvise_destroy(&advice);
 
     if(!plugin) {
-        throw repository_error_t("unable to load '%s' - %s", target, lt_dlerror());
+        throw std::system_error(error::ltdl_error, lt_dlerror());
     }
 
     // According to the standard, it is neither defined nor undefined to access
@@ -129,22 +132,24 @@ repository_t::open(const std::string& target) {
         const auto preconditions = validation.call();
 
         if(preconditions.version > COCAINE_VERSION) {
-            throw repository_error_t("'%s' version requirements are not met", target);
+            throw std::system_error(error::version_mismatch);
         }
     }
 
     if(initialize.ptr) {
         try {
             initialize.call(*this);
-        } catch(...) {
-#if defined(HAVE_GCC48)
-           std::throw_with_nested(repository_error_t("unable to initialize '%s'", target));
-#else
-           throw repository_error_t("unable to initialize '%s'", target);
-#endif
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: [%d] %s", e.code().value(),
+                e.code().message());
+            throw std::system_error(error::initialization_error);
+        } catch(const std::exception& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: %s",
+                e.what());
+            throw std::system_error(error::initialization_error);
         }
     } else {
-        throw repository_error_t("unable to initialize '%s' - initialize() is missing", target);
+        throw std::system_error(error::invalid_interface);
     }
 
     m_plugins.emplace_back(plugin.release());

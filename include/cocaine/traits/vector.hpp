@@ -47,6 +47,7 @@ struct type_traits<std::vector<T>> {
             throw msgpack::type_error();
         }
 
+        // Replace the contents of the vector with the required number of copies of T.
         target.assign(source.via.array.size, T());
 
         for(size_t i = 0; i < source.via.array.size; ++i) {

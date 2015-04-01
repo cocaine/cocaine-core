@@ -27,18 +27,18 @@
 using namespace cocaine::io;
 using namespace cocaine::service;
 
+namespace ph = std::placeholders;
+
 storage_t::storage_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),
     dispatch<storage_tag>(name)
 {
     const auto storage = api::storage(context, args.as_object().at("backend", "core").as_string());
 
-    using namespace std::placeholders;
-
-    on<storage::read>(std::bind(&api::storage_t::read, storage, _1, _2));
-    on<storage::write>(std::bind(&api::storage_t::write, storage, _1, _2, _3, _4));
-    on<storage::remove>(std::bind(&api::storage_t::remove, storage, _1, _2));
-    on<storage::find>(std::bind(&api::storage_t::find, storage, _1, _2));
+    on<storage::read>(std::bind(&api::storage_t::read, storage, ph::_1, ph::_2));
+    on<storage::write>(std::bind(&api::storage_t::write, storage, ph::_1, ph::_2, ph::_3, ph::_4));
+    on<storage::remove>(std::bind(&api::storage_t::remove, storage, ph::_1, ph::_2));
+    on<storage::find>(std::bind(&api::storage_t::find, storage, ph::_1, ph::_2));
 }
 
 const basic_dispatch_t&

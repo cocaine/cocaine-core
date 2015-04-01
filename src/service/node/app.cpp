@@ -84,8 +84,8 @@ private:
     }
 
     void
-    error(int code, const std::string& reason) {
-        downstream->error(code, reason);
+    error(const std::error_code& ec, const std::string& reason) {
+        downstream->error(ec.value(), reason);
         downstream->close();
     }
 
@@ -143,7 +143,7 @@ private:
         virtual
         void
         error(int code, const std::string& reason) {
-            upstream.send<protocol::error>(code, reason);
+            upstream.send<protocol::error>(std::error_code(code, std::system_category()), reason);
         }
 
         virtual
@@ -258,7 +258,7 @@ public:
     write(U&& value) {
         try {
             deferred.write(std::forward<U>(value));
-        } catch (const cocaine::error_t&) {
+        } catch (const std::system_error&) {
             // The client has disconnected. We can do nothing yet, except logging a message.
         }
 
@@ -266,10 +266,10 @@ public:
     }
 
     deferred_type&
-    abort(int code, const std::string& reason) {
+    abort(const std::error_code& ec, const std::string& reason) {
         try {
-            deferred.abort(code, reason);
-        } catch (const cocaine::error_t&) {
+            deferred.abort(ec, reason);
+        } catch (const std::system_error&) {
             // The client has disconnected. We can do nothing yet, except logging a message.
         }
 
@@ -308,7 +308,7 @@ public:
             deferred.reset();
         } else {
             // TODO: Error categories should help to get rid of that magic error codes.
-            deferred->abort(-1, "engine is unresponsive");
+            deferred->abort(std::make_error_code(std::errc::device_or_resource_busy), "engine is unresponsive");
         }
     }
 };

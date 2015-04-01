@@ -79,8 +79,8 @@ struct event_visitor:
     operator()(const io::frozen<Event>& event) const {
         try {
             slot->process(io::event_traits<Event>::id, async_visitor<Event>(event.tuple, asio));
-        } catch(const cocaine::error_t& e) {
-            // Ignore.
+        } catch(const std::system_error& e) {
+            if(e.code() != error::slot_not_found) throw;
         }
     }
 

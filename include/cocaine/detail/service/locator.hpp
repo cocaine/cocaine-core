@@ -150,13 +150,22 @@ private:
 
     // Context signals
 
+    enum class modes { exposed, removed };
+
     void
-    on_service(const std::string& name, const results::resolve& meta, bool active);
+    on_service(const std::string& name, const results::resolve& meta, modes mode);
 
     void
     on_context_shutdown();
 };
 
 }} // namespace cocaine::service
+
+namespace cocaine { namespace error {
+
+auto
+locator_category() -> const std::error_category&;
+
+}} // namespace cocaine::error
 
 #endif

@@ -54,9 +54,9 @@ struct deferred_slot:
         try {
             this->call(std::move(args)).attach(std::move(upstream));
         } catch(const std::system_error& e) {
-            upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
+            upstream.template send<typename protocol::error>(e.code(), std::string(e.what()));
         } catch(const std::exception& e) {
-            upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
+            upstream.template send<typename protocol::error>(error::uncaught_error, std::string(e.what()));
         }
 
         if(is_recursive<Event>::value) {
@@ -119,10 +119,18 @@ struct deferred {
     }
 
     deferred&
-    abort(int code, const std::string& reason) {
-        outbox->synchronize()->template append<typename protocol::error>(code, reason);
+    abort(const std::error_code& ec, const std::string& reason) {
+        outbox->synchronize()->template append<typename protocol::error>(ec, reason);
         return *this;
     }
+
+#if defined(__clang__)
+    deferred&
+    abort(const std::error_code& ec) {
+        outbox->synchronize()->template append<typename protocol::error>(ec);
+        return *this;
+    }
+#endif
 
     template<class UpstreamType>
     void
@@ -148,10 +156,18 @@ struct deferred<void> {
     { }
 
     deferred&
-    abort(int code, const std::string& reason) {
-        outbox->synchronize()->append<protocol::error>(code, reason);
+    abort(const std::error_code& ec, const std::string& reason) {
+        outbox->synchronize()->append<protocol::error>(ec, reason);
         return *this;
     }
+
+#if defined(__clang__)
+    deferred&
+    abort(const std::error_code& ec) {
+        outbox->synchronize()->append<protocol::error>(ec);
+        return *this;
+    }
+#endif
 
     deferred&
     close() {

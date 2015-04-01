@@ -73,4 +73,11 @@ private:
 
 }} // namespace cocaine::service
 
+namespace cocaine { namespace error {
+
+auto
+node_category() -> const std::error_category&;
+
+}} // namespace cocaine::error
+
 #endif

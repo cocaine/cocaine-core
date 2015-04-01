@@ -22,89 +22,86 @@
 #define COCAINE_EXCEPTIONS_HPP
 
 #include "cocaine/format.hpp"
+#include "cocaine/locked_ptr.hpp"
 
 #include <system_error>
 
 namespace cocaine { namespace error {
 
+enum transport_errors {
+    frame_format_error = 1,
+    insufficient_bytes,
+    parse_error
+};
+
 enum dispatch_errors {
-    service_error = 1,
-    uncaught_error,
-    resource_error,
-    timeout_error,
-    deadline_error
+    duplicate_slot = 1,
+    invalid_argument,
+    not_connected,
+    revoked_channel,
+    slot_not_found,
+    unbound_dispatch,
+    uncaught_error
 };
 
-namespace aux {
-
-class dispatch_category_t:
-    public std::error_category
-{
-    virtual
-    auto
-    name() const throw() -> const char* {
-        return "cocaine.rpc.dispatch";
-    }
-
-    virtual
-    auto
-    message(int code) const -> std::string {
-        switch(code) {
-          case dispatch_errors::uncaught_error:
-            return "uncaught invocation exception";
-
-          case dispatch_errors::resource_error:
-            return "no resources available to complete invocation";
-
-          case dispatch_errors::timeout_error:
-            return "invocation has timed out";
-
-          case dispatch_errors::deadline_error:
-            return "invocation deadline has passed";
-        }
-
-        return "cocaine.rpc.dispatch error";
-    }
+enum repository_errors {
+    component_not_found = 1,
+    duplicate_component,
+    initialization_error,
+    invalid_interface,
+    ltdl_error,
+    version_mismatch
 };
 
-} // namespace aux
+enum security_errors {
+    token_not_found = 1
+};
 
-inline
 auto
-dispatch_category() -> const std::error_category& {
-    static aux::dispatch_category_t instance;
-    return instance;
-}
+make_error_code(transport_errors code) -> std::error_code;
 
-inline
 auto
-make_error_code(dispatch_errors code) -> std::error_code {
-    return std::error_code(static_cast<int>(code), dispatch_category());
-}
+make_error_code(dispatch_errors code) -> std::error_code;
+
+auto
+make_error_code(repository_errors code) -> std::error_code;
+
+auto
+make_error_code(security_errors code) -> std::error_code;
+
+// Error categories registrar
+
+struct registrar {
+    struct impl_type;
+
+    static
+    auto
+    map(const std::error_category& ec) -> size_t;
+
+    static
+    auto
+    map(size_t id) -> const std::error_category&;
+
+    // Modifiers
+
+    static
+    bool
+    add(const std::error_category& ec);
+
+private:
+    static
+    synchronized<std::unique_ptr<impl_type>> ptr;
+};
 
 } // namespace error
 
 struct error_t:
-    public std::exception
+    public std::system_error
 {
     template<class... Args>
-    error_t(const std::string& format, const Args&... args):
-        m_message(cocaine::format(format, args...))
+    error_t(const std::string& e, const Args&... args):
+        std::system_error(std::make_error_code(std::errc::invalid_argument), format(e, args...))
     { }
-
-    virtual
-   ~error_t() throw() {
-        // Empty.
-    }
-
-    virtual
-    auto
-    what() const throw() -> const char* {
-        return m_message.c_str();
-    }
-
-private:
-    const std::string m_message;
 };
 
 } // namespace cocaine
@@ -112,7 +109,22 @@ private:
 namespace std {
 
 template<>
+struct is_error_code_enum<cocaine::error::transport_errors>:
+    public true_type
+{ };
+
+template<>
 struct is_error_code_enum<cocaine::error::dispatch_errors>:
+    public true_type
+{ };
+
+template<>
+struct is_error_code_enum<cocaine::error::repository_errors>:
+    public true_type
+{ };
+
+template<>
+struct is_error_code_enum<cocaine::error::security_errors>:
     public true_type
 { };
 

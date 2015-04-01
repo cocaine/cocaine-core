@@ -31,36 +31,15 @@ using namespace cocaine::isolate;
 
 void
 process_t::spool() {
-    std::string blob;
-
     COCAINE_LOG_INFO(m_log, "deploying app to %s", m_working_directory);
 
     const auto storage = api::storage(m_context, "core");
-
-    try {
-        blob = storage->get<std::string>("apps", m_name);
-    } catch(const storage_error_t& e) {
-#if defined(HAVE_GCC48)
-        std::throw_with_nested(cocaine::error_t("app '%s' is not available", m_name));
-#else
-        throw cocaine::error_t("app '%s' is not available", m_name);
-#endif
-    }
-
-    try {
-        archive_t archive(m_context, blob);
+    const auto archive = storage->get<std::string>("apps", m_name);
 
 #if BOOST_VERSION >= 104600
-        archive.deploy(m_working_directory.native());
+    archive_t(m_context, archive).deploy(m_working_directory.native());
 #else
-        archive.deploy(m_working_directory.string());
+    archive_t(m_context, archive).deploy(m_working_directory.string());
 #endif
-    } catch(const archive_error_t& e) {
-#if defined(HAVE_GCC48)
-        std::throw_with_nested(cocaine::error_t("app '%s' is not available", m_name));
-#else
-        throw cocaine::error_t("app '%s' is not available", m_name);
-#endif
-    }
 }
 

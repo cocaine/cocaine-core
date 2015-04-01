@@ -69,15 +69,6 @@ struct plugin_traits {
 
 // Component repository
 
-struct repository_error_t:
-    public cocaine::error_t
-{
-    template<class... Args>
-    repository_error_t(const std::string& format, const Args&... args):
-        cocaine::error_t(format, args...)
-    { }
-};
-
 class repository_t {
     COCAINE_DECLARE_NONCOPYABLE(repository_t)
 
@@ -120,7 +111,7 @@ repository_t::get(const std::string& name, Args&&... args) const {
     const auto id = typeid(Category).name();
 
     if(!m_categories.count(id) || !m_categories.at(id).count(name)) {
-        throw repository_error_t("component '%s' is not available", name);
+        throw std::system_error(error::component_not_found);
     }
 
     auto it = m_categories.at(id).find(name);
@@ -152,7 +143,7 @@ repository_t::insert(const std::string& name) {
     const auto id = typeid(category_type).name();
 
     if(m_categories.count(id) && m_categories.at(id).count(name)) {
-        throw repository_error_t("component '%s' is a duplicate", name);
+        throw std::system_error(error::duplicate_component);
     }
 
     COCAINE_LOG_DEBUG(m_log, "registering component '%s' in category '%s'",
