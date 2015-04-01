@@ -30,10 +30,10 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
-using namespace blackhole;
-
 using namespace asio;
 using namespace asio::ip;
+
+using namespace blackhole;
 
 using namespace cocaine;
 

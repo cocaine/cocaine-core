@@ -22,7 +22,6 @@
 
 #include "cocaine/api/service.hpp"
 
-#include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
 
@@ -33,6 +32,8 @@
 #endif
 
 #include "cocaine/logging.hpp"
+
+#include "cocaine/rpc/actor.hpp"
 
 #include <blackhole/scoped_attributes.hpp>
 
@@ -186,9 +187,12 @@ context_t::remove(const std::string& name) {
         list.erase(it);
     });
 
+    // Service is already terminated, so there's no reason to try to get its endpoints.
+    std::vector<asio::ip::tcp::endpoint> nothing;
+
     // Fire off the signal to alert concerned subscribers about the service termination event.
     m_signals.invoke<io::context::service::removed>(service->prototype().name(), std::make_tuple(
-        service->endpoints(),
+        nothing,
         service->prototype().version(),
         service->prototype().root()
     ));

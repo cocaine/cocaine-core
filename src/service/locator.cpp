@@ -26,12 +26,13 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/idl/streaming.hpp"
 
 #include "cocaine/logging.hpp"
+
+#include "cocaine/rpc/actor.hpp"
 
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"
@@ -47,10 +48,10 @@
 #include <boost/spirit/include/karma_list.hpp>
 #include <boost/spirit/include/karma_string.hpp>
 
-using namespace blackhole;
-
 using namespace asio;
 using namespace asio::ip;
+
+using namespace blackhole;
 
 using namespace cocaine::io;
 using namespace cocaine::service;
