@@ -110,27 +110,24 @@ node_t::prototype() const {
 
 void
 node_t::start_app(const std::string& name, const std::string& profile) {
-    COCAINE_LOG_DEBUG(m_log, "performing `start '%s' app` request", name);
+    COCAINE_LOG_DEBUG(m_log, "processing `start_app` request, app: '%s'", name);
 
-    m_apps.apply([this, &name, &profile](std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
+    m_apps.apply([&](std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
         auto it = apps.find(name);
 
         if(it != apps.end()) {
             throw cocaine::error_t("app '%s' is already running", name);
         }
 
-        auto app = std::make_shared<v2::app_t>(m_context, name, profile);
-        app->start();
-
-        apps.insert({ name, std::move(app) });
+        apps.insert({ name, std::make_shared<v2::app_t>(m_context, name, profile) });
     });
 }
 
 void
 node_t::pause_app(const std::string& name) {
-    COCAINE_LOG_DEBUG(m_log, "performing `pause '%s' app` request", name);
+    COCAINE_LOG_DEBUG(m_log, "processing `pause_app` request, app: '%s' ", name);
 
-    m_apps.apply([&name](std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
+    m_apps.apply([&](std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
         auto it = apps.find(name);
 
         if(it == apps.end()) {
@@ -146,7 +143,7 @@ node_t::list() const -> dynamic_t {
     dynamic_t::array_t result;
     auto builder = std::back_inserter(result);
 
-    m_apps.apply([&builder](const std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
+    m_apps.apply([&](const std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
         std::transform(apps.begin(), apps.end(), builder, tuple::nth_element<0>());
     });
 
