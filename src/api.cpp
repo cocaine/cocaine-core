@@ -25,10 +25,9 @@
 
 #include "cocaine/rpc/asio/channel.hpp"
 
-using namespace cocaine;
-using namespace cocaine::api::details;
-
 using namespace asio::ip;
+
+using namespace cocaine::api::details;
 
 // Connect
 
