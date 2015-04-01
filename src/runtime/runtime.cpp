@@ -54,7 +54,8 @@ namespace po = boost::program_options;
 
 namespace {
 
-void stacktrace(int signum, siginfo_t* COCAINE_UNUSED_(info), void* context) {
+void
+stacktrace(int signum, siginfo_t* COCAINE_UNUSED_(info), void* context) {
     ucontext_t* uctx = static_cast<ucontext_t*>(context);
 
     backward::StackTrace trace;

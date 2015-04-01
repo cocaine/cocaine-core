@@ -272,8 +272,8 @@ locator_t::~locator_t() {
     // Empty.
 }
 
-auto
-locator_t::prototype() const -> const basic_dispatch_t& {
+const basic_dispatch_t&
+locator_t::prototype() const {
     return *this;
 }
 
@@ -345,8 +345,8 @@ locator_t::uuid() const {
     return m_cfg.uuid;
 }
 
-auto
-locator_t::on_resolve(const std::string& name, const std::string& seed) const -> results::resolve {
+results::resolve
+locator_t::on_resolve(const std::string& name, const std::string& seed) const {
     const auto remapped = m_routers.apply([&](const router_map_t& mapping) -> std::string {
         if(!mapping.count(name)) {
             return name;
@@ -445,8 +445,8 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
     };
 }
 
-auto
-locator_t::on_cluster() const -> results::cluster {
+results::cluster
+locator_t::on_cluster() const {
     results::cluster result;
 
     auto mapping = m_remotes.synchronize();

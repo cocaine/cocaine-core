@@ -55,8 +55,8 @@ basic_client_t::operator=(basic_client_t&& rhs) {
     return *this;
 }
 
-auto
-basic_client_t::remote_endpoint() const -> tcp::endpoint {
+tcp::endpoint
+basic_client_t::remote_endpoint() const {
     if(!m_session) {
         return tcp::endpoint();
     } else {
