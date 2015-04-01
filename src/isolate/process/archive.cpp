@@ -29,7 +29,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 
-using namespace cocaine;
+using namespace cocaine::isolate;
 
 namespace fs = boost::filesystem;
 

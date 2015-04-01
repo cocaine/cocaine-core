@@ -35,8 +35,6 @@ template<class Tag> class client;
 namespace details {
 
 class basic_client_t {
-    // Even though it's a shared pointer, clients do not share session ownership. The reason behind
-    // this is to avoid multiple clients being notified on session shutdown and trying to detach it.
     std::shared_ptr<session_t> m_session;
 
 public:
@@ -54,16 +52,12 @@ public:
     // Observers
 
     auto
-    session() const -> boost::optional<const session_t&>;
-
-    virtual
-    int
-    version() const = 0;
+    remote_endpoint() const -> asio::ip::tcp::endpoint;
 
     // Modifiers
 
     void
-    connect(std::unique_ptr<logging::log_t> log, std::unique_ptr<asio::ip::tcp::socket> socket);
+    attach(std::unique_ptr<logging::log_t> log, std::unique_ptr<asio::ip::tcp::socket> socket);
 };
 
 } // namespace details
@@ -72,8 +66,11 @@ template<class Tag>
 class client:
     public details::basic_client_t
 {
+    template<class Event, bool = std::is_same<typename Event::tag, Tag>::value>
+    struct traits;
+
     template<class Event>
-    struct traits {
+    struct traits<Event, true> {
         typedef upstream<typename io::event_traits<Event>::dispatch_type>       upstream_type;
         typedef dispatch<typename io::event_traits<Event>::upstream_type> const dispatch_type;
     };
@@ -82,11 +79,6 @@ public:
     template<class Event, typename... Args>
     typename traits<Event>::upstream_type
     invoke(const std::shared_ptr<typename traits<Event>::dispatch_type>& dispatch, Args&&... args) {
-        static_assert(
-            std::is_same<typename Event::tag, Tag>::value,
-            "message protocol is not compatible with this client"
-        );
-
         if(!m_session) {
             throw cocaine::error_t("client is not connected");
         }
@@ -95,20 +87,12 @@ public:
             throw cocaine::error_t("callee has no upstreams specified");
         }
 
-        // Get an untagged upstream. The message will be send directly using this upstream avoiding
-        // duplicate static validations in upstream<Tag>, because it's a little bit faster this way.
-        const io::upstream_ptr_t ptr = m_session->inject(dispatch);
+        const auto ptr = m_session->inject(dispatch);
 
-        // TODO: Locking?
+        // NOTE: No locking required: session synchronizes channels, hence no races.
         ptr->template send<Event>(std::forward<Args>(args)...);
 
         return ptr;
-    }
-
-    virtual
-    int
-    version() const {
-        return io::protocol<Tag>::version::value;
     }
 };
 

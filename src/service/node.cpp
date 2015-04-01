@@ -124,8 +124,8 @@ node_t::~node_t() {
     ptr->clear();
 }
 
-auto
-node_t::prototype() const -> const basic_dispatch_t& {
+const basic_dispatch_t&
+node_t::prototype() const {
     return *this;
 }
 
@@ -163,8 +163,8 @@ node_t::on_pause_app(const std::string& name) {
     ptr->erase(it);
 }
 
-auto
-node_t::on_list() const -> results::list {
+results::list
+node_t::on_list() const {
     dynamic_t::array_t result;
 
     auto ptr = m_apps.synchronize();

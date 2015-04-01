@@ -23,7 +23,7 @@
 #define COCAINE_LOCATOR_SERVICE_HPP
 
 #include "cocaine/api/cluster.hpp"
-#include "cocaine/api/resolve.hpp"
+#include "cocaine/api/connect.hpp"
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/detail/service/locator/routing.hpp"
@@ -70,7 +70,12 @@ class locator_t:
     public api::cluster_t::interface,
     public dispatch<io::locator_tag>
 {
-    class connect_client_t;
+    class remote_t;
+
+    typedef std::map<std::string, continuum_t> router_map_t;
+
+    typedef std::map<std::string, api::client<io::locator_tag>> remote_map_t;
+    typedef std::map<std::string, streamed<results::connect>>   stream_map_t;
 
     context_t& m_context;
 
@@ -80,30 +85,25 @@ class locator_t:
     // Cluster interconnections.
     asio::io_service& m_asio;
 
-    // Remote sessions are created using this resolve.
-    // TODO: Since we don't resolve any remote services, drop this as a permanent member.
-    std::shared_ptr<api::resolve_t> m_resolve;
-
-    // Incoming sessions indexed by uuid. It is required to disambiguate between multiple different
-    // instances on the same host, even if the instance was restarted on the same port.
-    std::map<std::string, api::client<io::locator_tag>> m_remotes;
-
-    // Outgoing sessions indexed by uuid.
-    std::map<std::string, streamed<results::connect>>   m_streams;
-    std::mutex m_mutex;
-
-    // Snapshot of the local service disposition.
-    std::map<std::string, results::resolve> m_snapshot;
+    // Slot for context signals.
+    std::shared_ptr<dispatch<io::context_tag>> m_signals;
 
     // Clustering components.
     std::unique_ptr<api::gateway_t> m_gateway;
     std::shared_ptr<api::cluster_t> m_cluster;
 
     // Used to resolve service names against routing groups, based on weights and other metrics.
-    std::map<std::string, continuum_t> m_groups;
+    synchronized<router_map_t> m_routers;
 
-    // Slot for context signals.
-    std::shared_ptr<dispatch<io::context_tag>> m_signals;
+    // Incoming sessions indexed by uuid. It is required to disambiguate between multiple different
+    // instances on the same host, even if the instance was restarted on the same port.
+    synchronized<remote_map_t> m_remotes;
+
+    // Outgoing sessions indexed by uuid.
+    synchronized<stream_map_t> m_streams;
+
+    // Snapshot of the local service disposition. Synchronized with outgoing streams.
+    std::map<std::string, results::resolve> m_snapshot;
 
 public:
     locator_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);

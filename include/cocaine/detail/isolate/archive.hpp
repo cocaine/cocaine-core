@@ -25,7 +25,7 @@
 
 struct archive;
 
-namespace cocaine {
+namespace cocaine { namespace isolate {
 
 struct archive_error_t:
     public std::runtime_error
@@ -56,6 +56,6 @@ private:
     extract(archive* source, archive* target);
 };
 
-} // namespace cocaine
+}} // namespace cocaine::isolate
 
 #endif
