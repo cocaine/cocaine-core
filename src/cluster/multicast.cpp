@@ -23,7 +23,7 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/detail/actor.hpp"
+#include "cocaine/rpc/actor.hpp"
 
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/tuple.hpp"

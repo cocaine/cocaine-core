@@ -22,8 +22,6 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/detail/actor.hpp"
-
 #include "cocaine/detail/service/node/engine.hpp"
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/manifest.hpp"
@@ -34,6 +32,8 @@
 #include "cocaine/idl/rpc.hpp"
 
 #include "cocaine/logging.hpp"
+
+#include "cocaine/rpc/actor.hpp"
 
 #include "cocaine/traits/enum.hpp"
 #include "cocaine/traits/literal.hpp"

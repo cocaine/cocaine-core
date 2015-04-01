@@ -22,7 +22,6 @@
 
 #include "cocaine/api/service.hpp"
 
-#include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
 
@@ -33,6 +32,8 @@
 #endif
 
 #include "cocaine/logging.hpp"
+
+#include "cocaine/rpc/actor.hpp"
 
 #include <blackhole/scoped_attributes.hpp>
 

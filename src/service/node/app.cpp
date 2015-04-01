@@ -25,8 +25,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/defaults.hpp"
 
-#include "cocaine/detail/actor.hpp"
-
 #include "cocaine/detail/service/node/engine.hpp"
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/manifest.hpp"
@@ -38,8 +36,8 @@
 
 #include "cocaine/logging.hpp"
 
+#include "cocaine/rpc/actor.hpp"
 #include "cocaine/rpc/asio/channel.hpp"
-
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 

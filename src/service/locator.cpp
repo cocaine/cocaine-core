@@ -26,12 +26,13 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/idl/streaming.hpp"
 
 #include "cocaine/logging.hpp"
+
+#include "cocaine/rpc/actor.hpp"
 
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"
