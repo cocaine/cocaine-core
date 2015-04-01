@@ -118,8 +118,8 @@ private:
         boost::optional<std::shared_ptr<const dispatch_type>>
         operator()(tuple_type&& args, upstream_type&& upstream) {
             return tuple::invoke(
-                std::bind(&app_service_t::enqueue, parent, std::ref(upstream), ph::_1, ph::_2),
-                std::move(args)
+                std::move(args),
+                std::bind(&app_service_t::enqueue, parent, std::ref(upstream), ph::_1, ph::_2)
             );
         }
 

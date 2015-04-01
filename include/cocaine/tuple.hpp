@@ -65,15 +65,10 @@ template<size_t... Indices>
 struct invoke_impl<index_sequence<Indices...>> {
     template<class F, typename... Args>
     static inline
-    typename result_of<F>::type
-    apply(F&& callable, std::tuple<Args...>&& args) {
-        return callable(std::get<Indices>(args)...);
-    }
-
-    template<class F, typename... Args>
-    static inline
-    typename result_of<F>::type
-    apply(const F& callable, std::tuple<Args...>&& args) {
+    auto
+    apply(std::tuple<Args...>&& args, F&& callable)
+        -> decltype(callable(std::declval<Args>()...))
+    {
         return callable(std::get<Indices>(args)...);
     }
 };
@@ -92,20 +87,13 @@ struct fold {
 
 template<class F, typename... Args>
 inline
-typename result_of<F>::type
-invoke(F&& callable, std::tuple<Args...>&& args) {
+auto
+invoke(std::tuple<Args...>&& args, F&& callable)
+    -> decltype(callable(std::declval<Args>()...))
+{
     return aux::invoke_impl<
         typename make_index_sequence<sizeof...(Args)>::type
-    >::apply(std::move(callable), std::move(args));
-}
-
-template<class F, typename... Args>
-inline
-typename result_of<F>::type
-invoke(const F& callable, std::tuple<Args...>&& args) {
-    return aux::invoke_impl<
-        typename make_index_sequence<sizeof...(Args)>::type
-    >::apply(callable, std::move(args));
+    >::apply(std::move(args), std::forward<F>(callable));
 }
 
 }} // namespace cocaine::tuple

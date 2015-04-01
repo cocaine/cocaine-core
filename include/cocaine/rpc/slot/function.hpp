@@ -100,7 +100,7 @@ struct function_slot:
 
     R
     call(tuple_type&& args) const {
-        return tuple::invoke(callable, std::move(args));
+        return tuple::invoke(std::move(args), callable);
     }
 
 private:
