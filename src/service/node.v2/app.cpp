@@ -4,63 +4,105 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/idl/node.hpp"
-
 #include "cocaine/detail/actor.hpp"
+#include "cocaine/detail/chamber.hpp"
+#include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
 
+#include "cocaine/idl/node.hpp"
 #include "cocaine/idl/rpc.hpp"
-#include "cocaine/idl/streaming.hpp"
 
 #include <tuple>
 
 using namespace cocaine;
 using namespace cocaine::service::v2;
 
-namespace ph = std::placeholders;
+using namespace blackhole;
 
-//class engine_t {
-//    // create new session.
-//    auto invoke(name, upstream) -> downstream ;
-//};
+namespace ph = std::placeholders;
 
 #include <asio/local/stream_protocol.hpp>
 
-//class unix_actor_t {
-//    typedef asio::local::stream_protocol protocol_type;
+class unix_actor_t {
+    typedef asio::local::stream_protocol protocol_type;
 
-//    class accept_action_t;
+    class accept_action_t:
+        public std::enable_shared_from_this<accept_action_t>
+    {
+        unix_actor_t *const   parent;
+        protocol_type::socket socket;
 
-//    context_t& m_context;
+    public:
+        accept_action_t(unix_actor_t *const parent):
+            parent(parent),
+            socket(*parent->m_asio)
+        {}
 
-//    const std::unique_ptr<logging::log_t> m_log;
-//    const std::shared_ptr<asio::io_service> m_asio;
+        void
+        operator()() {
+            parent->m_acceptor->async_accept(socket, std::bind(&accept_action_t::finalize,
+                shared_from_this(),
+                std::placeholders::_1
+            ));
+        }
 
-//    // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
-//    // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
-//    // after the authentication process completes successfully.
-//    io::dispatch_ptr_t m_prototype;
+    private:
+        void
+        finalize(const std::error_code& ec) {
+            // Prepare the internal socket object for consequential operations by moving its contents to a
+            // heap-allocated object, which in turn might be attached to an engine.
+            auto ptr = std::make_shared<protocol_type::socket>(std::move(socket));
 
-//    // I/O acceptor. Actors have a separate thread to accept new connections. After a connection is
-//    // is accepted, it is assigned to a carefully choosen thread from the main thread pool.
-//    std::unique_ptr<protocol_type::acceptor> m_acceptor;
+            switch(ec.value()) {
+              case 0:
+                COCAINE_LOG_DEBUG(parent->m_log, "accepted remote client on fd %d", ptr->native_handle());
+                parent->m_context.engine().attach(ptr, parent->m_prototype);
+                break;
 
-//    // I/O authentication & processing.
-//    std::unique_ptr<io::chamber_t> m_chamber;
+              case asio::error::operation_aborted:
+                return;
 
-//public:
-//    unix_actor_t(context_t& context, const std::shared_ptr<asio::io_service>& asio,
-//                 std::unique_ptr<io::basic_dispatch_t> prototype) :
-//        m_context(context),
-//        m_log(context.log("core::io", { attribute::make("service", prototype->name()) })),
-//        m_asio(asio),
-//        m_prototype(std::move(prototype))
-//    {}
+              default:
+                COCAINE_LOG_ERROR(parent->m_log, "dropped remote client: [%d] %s", ec.value(), ec.message());
+            }
 
-//    unix_actor_t(context_t& context, const std::shared_ptr<asio::io_service>& asio,
-//                 std::unique_ptr<api::service_t> service);
+            // TODO: Find out if it's always a good idea to continue accepting connections no matter what.
+            // For example, destroying a socket from outside this thread will trigger weird stuff on Linux.
+            operator()();
+        }
+    };
+
+    context_t& m_context;
+
+    protocol_type::endpoint endpoint;
+
+    const std::unique_ptr<logging::log_t> m_log;
+    const std::shared_ptr<asio::io_service> m_asio;
+
+    // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
+    // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
+    // after the authentication process completes successfully.
+    io::dispatch_ptr_t m_prototype;
+
+    // I/O acceptor. Actors have a separate thread to accept new connections. After a connection is
+    // is accepted, it is assigned to a carefully choosen thread from the main thread pool.
+    std::unique_ptr<protocol_type::acceptor> m_acceptor;
+
+    // I/O authentication & processing.
+    std::unique_ptr<io::chamber_t> m_chamber;
+
+public:
+    unix_actor_t(context_t& context, protocol_type::endpoint endpoint,
+                 const std::shared_ptr<asio::io_service>& asio,
+                 std::unique_ptr<io::basic_dispatch_t> prototype) :
+        m_context(context),
+        endpoint(std::move(endpoint)),
+        m_log(context.log("core::io", { attribute::make("app", prototype->name()) })),
+        m_asio(asio),
+        m_prototype(std::move(prototype))
+    {}
 
 //   ~unix_actor_t();
 
@@ -77,12 +119,34 @@ namespace ph = std::placeholders;
 
 //    // Modifiers
 
-//    void
-//    run();
+    void
+    run() {
+        BOOST_ASSERT(!m_chamber);
+
+        try {
+            m_acceptor = std::make_unique<protocol_type::acceptor>(*m_asio, this->endpoint);
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
+                e.code().value(), e.code().message());
+            throw;
+        }
+
+        std::error_code ec;
+        const auto endpoint = m_acceptor->local_endpoint(ec);
+
+        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", endpoint);
+
+        m_asio->post(std::bind(&accept_action_t::operator(),
+            std::make_shared<accept_action_t>(this)
+        ));
+
+        // The post() above won't be executed until this thread is started.
+        m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_asio);
+    }
 
 //    void
 //    terminate();
-//};
+};
 
 template<class T> class deduce;
 
@@ -151,60 +215,81 @@ public:
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) override {
-        return tuple::invoke(fn, std::tuple_cat(std::tie(upstream), std::move(args)));
+        return cocaine::tuple::invoke(fn, std::tuple_cat(std::tie(upstream), std::move(args)));
     }
 };
 
+class app_service_t;
+class worker_service_t:
+    public dispatch<io::rpc_tag>
+{
+public:
+    worker_service_t(app_service_t*) :
+        dispatch<io::rpc_tag>("name/uuid")
+    {}
+};
+
+/// App service actor owns it.
 class app_service_t:
     public dispatch<io::app_tag>
 {
     typedef streaming_slot<io::app::enqueue> slot_type;
 
     std::unique_ptr<logging::log_t> log;
+    std::unique_ptr<unix_actor_t> actor;
 
 public:
-    app_service_t(context_t& context, const std::string& name) :
-        dispatch<io::app_tag>(name),
-        log(context.log(cocaine::format("app/%s", name)))
+    app_service_t(context_t& context, const engine::manifest_t& manifest) :
+        dispatch<io::app_tag>(manifest.name),
+        log(context.log(cocaine::format("app/%s", manifest.name)))
     {
         on<io::app::enqueue>(std::make_shared<slot_type>(
             std::bind(&app_service_t::on_enqueue, this, ph::_1, ph::_2, ph::_3)
         ));
+
+        // Create unix actor and bind to {name}.sock. Owns: 1:1.
+        actor.reset(new unix_actor_t(
+            context,
+            manifest.endpoint,
+            std::make_shared<asio::io_service>(),
+            std::make_unique<worker_service_t>(this)
+        ));
+        actor->run();
     }
 
+private:
     std::shared_ptr<const slot_type::dispatch_type>
     on_enqueue(slot_type::upstream_type&, const std::string& event, const std::string& tag) {
-        /// If pool.get() == none => spawn and put event in the queue.
-        /// Else put in the client.
-
         if(tag.empty()) {
             COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event", event);
-//            downstream = enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream));
+            // Create message queue and cache `invoke` event immediately.
+            // Create dispatch and pass `queue` there. This will be user -> worker channel.
+            // Get client from the pool (by magic or some statistics). Create if necessary and inject session into message queue.
+            // Invoke `client.invoke(dispatch, args...) -> stream`. This will be invoke + user -> worker channel.
+            return std::make_shared<const streaming_service_t>(name());
         } else {
             COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event with tag '%s'", event, tag);
             // TODO: Complete!
             throw cocaine::error_t("on_enqueue: not implemented yet");
         }
-
-        return std::make_shared<const streaming_service_t>(name());
     }
 };
 
-app_t::app_t(context_t& context, const std::string& manifest_, const std::string& profile_) :
+app_t::app_t(context_t& context, const std::string& manifest, const std::string& profile) :
     context(context),
-    manifest(new engine::manifest_t(context, manifest_)),
-    profile(new engine::profile_t(context, profile_))
+    manifest(new engine::manifest_t(context, manifest)),
+    profile(new engine::profile_t(context, profile))
 {
     auto isolate = context.get<api::isolate_t>(
-        profile->isolate.type,
+        this->profile->isolate.type,
         context,
-        manifest->name,
-        profile->isolate.args
+        this->manifest->name,
+        this->profile->isolate.args
     );
 
     // TODO: Start the service immediately, but set its state to `spooling` or somethinh else.
     // While in this state it can serve requests, but always return `invalid state` error.
-    if(manifest->source() != cached<dynamic_t>::sources::cache) {
+    if(this->manifest->source() != cached<dynamic_t>::sources::cache) {
         isolate->spool();
     }
 
@@ -220,6 +305,6 @@ void app_t::start() {
     context.insert(manifest->name, std::make_unique<actor_t>(
         context,
         std::make_shared<asio::io_service>(),
-        std::make_unique<app_service_t>(context, manifest->name))
+        std::make_unique<app_service_t>(context, *manifest))
     );
 }
