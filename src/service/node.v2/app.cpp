@@ -10,6 +10,7 @@
 #include "cocaine/detail/service/node/profile.hpp"
 
 #include "cocaine/detail/service/node.v2/actor.hpp"
+#include "cocaine/detail/service/node.v2/slot.hpp"
 
 #include "cocaine/idl/node.hpp"
 #include "cocaine/idl/rpc.hpp"
@@ -54,46 +55,6 @@ private:
     }
 };
 
-template<class Event>
-class streaming_slot:
-    public io::basic_slot<Event>
-{
-public:
-    typedef Event event_type;
-
-    typedef typename io::basic_slot<event_type>::tuple_type    tuple_type;
-    typedef typename io::basic_slot<event_type>::dispatch_type dispatch_type;
-    typedef typename io::basic_slot<event_type>::upstream_type upstream_type;
-
-    typedef typename boost::function_types::function_type<
-        typename mpl::copy<
-            typename io::basic_slot<Event>::sequence_type,
-            mpl::back_inserter<
-                mpl::vector<
-                    std::shared_ptr<const dispatch_type>,
-                    typename std::add_lvalue_reference<upstream_type>::type
-                >
-            >
-        >::type
-    >::type function_type;
-
-    typedef std::function<function_type> callable_type;
-
-private:
-    const callable_type fn;
-
-public:
-    streaming_slot(callable_type fn):
-        fn(std::move(fn))
-    {}
-
-    virtual
-    boost::optional<std::shared_ptr<const dispatch_type>>
-    operator()(tuple_type&& args, upstream_type&& upstream) override {
-        return cocaine::tuple::invoke(fn, std::tuple_cat(std::tie(upstream), std::move(args)));
-    }
-};
-
 class app_service_t;
 class overlord_t:
     public dispatch<io::rpc_tag>
@@ -108,7 +69,7 @@ public:
 class app_service_t:
     public dispatch<io::app_tag>
 {
-    typedef streaming_slot<io::app::enqueue> slot_type;
+    typedef io::streaming_slot<io::app::enqueue> slot_type;
 
     std::unique_ptr<logging::log_t> log;
     std::unique_ptr<unix_actor_t> actor;
