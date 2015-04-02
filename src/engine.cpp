@@ -25,6 +25,8 @@
 
 #include "cocaine/detail/chamber.hpp"
 
+#include "cocaine/net.hpp"
+
 #include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/session.hpp"
 
