@@ -113,6 +113,7 @@ ADD_LIBRARY(cocaine-core SHARED
 
     src/service/node.cpp
     src/service/node.v2/app.cpp
+    src/service/node.v2/actor.cpp
 #    src/service/node/app.cpp
 #    src/service/node/engine.cpp
     src/service/node/manifest.cpp
