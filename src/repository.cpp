@@ -30,6 +30,7 @@
 using namespace cocaine;
 using namespace cocaine::api;
 
+namespace bh = blackhole;
 namespace fs = boost::filesystem;
 
 namespace {
@@ -43,7 +44,7 @@ struct lt_dlclose_action_t {
     }
 };
 
-struct validate_t {
+struct is_cocaine_plugin_t {
     template<typename T>
     bool
     operator()(const T& entry) const {
@@ -87,25 +88,35 @@ repository_t::load(const std::string& path) {
         return;
     }
 
-    typedef boost::filter_iterator<validate_t, fs::directory_iterator> filter_t;
+    boost::filter_iterator<is_cocaine_plugin_t, fs::directory_iterator>
+        begin((is_cocaine_plugin_t()), fs::directory_iterator(path)),
+        end;
 
-    for(filter_t it = filter_t(validate_t(), fs::directory_iterator(path)), end; it != end; ++it) {
-        // Try to load the plugin.
-        open(it->path().string());
-    }
+    std::vector<std::string> paths;
+    std::back_insert_iterator<std::vector<std::string>> builder(paths);
+
+    std::transform(begin, end, builder, [](const fs::directory_entry& entry) -> std::string {
+        return entry.path().string();
+    });
+
+    // Make sure that we always load plugins in the same order, to keep their error categories in a
+    // proper order as well, if they add any to the error registrar.
+    std::sort(paths.begin(), paths.end());
+
+    std::for_each(paths.begin(), paths.end(), [&](const std::string& plugin) {
+        open(plugin);
+    });
 }
 
 void
 repository_t::open(const std::string& target) {
+    bh::scoped_attributes_t attributes(*m_log, { bh::attribute::make("plugin", target)});
+
+    COCAINE_LOG_INFO(m_log, "loading plugin");
+
     lt_dladvise advice;
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
-
-    using namespace blackhole;
-
-    scoped_attributes_t attributes(*m_log, { attribute::make("plugin", target) });
-
-    COCAINE_LOG_INFO(m_log, "loading plugin");
 
     std::unique_ptr<handle_type, lt_dlclose_action_t> plugin(
         lt_dlopenadvise(target.c_str(), advice),
@@ -140,8 +151,8 @@ repository_t::open(const std::string& target) {
         try {
             initialize.call(*this);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: [%d] %s", e.code().value(),
-                e.code().message());
+            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: [%d] %s - %s", e.code().value(),
+                e.code().message(), e.what());
             throw std::system_error(error::initialization_error);
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: %s",
