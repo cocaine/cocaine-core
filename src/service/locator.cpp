@@ -453,7 +453,7 @@ locator_t::on_cluster() const {
     auto mapping = m_remotes.synchronize();
 
     for(auto it = mapping->begin(); it != mapping->end(); ++it) {
-        result[it->first] = it->second.remote_endpoint();
+        result[it->first] = endpoint_traits<asio::ip::tcp::endpoint>::cast(it->second.remote_endpoint());
     }
 
     return result;
