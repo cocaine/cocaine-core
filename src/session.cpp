@@ -199,7 +199,7 @@ session_t::invoke(const decoder_t::message_type& message) {
         throw cocaine::error_t("no dispatch has been assigned");
     }
 
-    COCAINE_LOG_DEBUG(log, "processing invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
+    COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
         message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
         channel->dispatch->name());
 
@@ -218,7 +218,7 @@ session_t::inject(const dispatch_ptr_t& dispatch) {
         const auto channel_id = ++max_channel_id;
         const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
-        COCAINE_LOG_DEBUG(log, "processing injection in channel %llu, dispatch: '%s'", channel_id,
+        COCAINE_LOG_DEBUG(log, "injection in channel %llu, dispatch: '%s'", channel_id,
             dispatch ? dispatch->name() : "<none>");
 
         if(dispatch) {
@@ -239,7 +239,7 @@ session_t::revoke(uint64_t channel_id) {
         // NOTE: Not sure if that can ever happen, but that's why people use asserts, right?
         BOOST_ASSERT(it != mapping.end());
 
-        COCAINE_LOG_DEBUG(log, "processing revocation of channel %llu, dispatch: '%s'", channel_id,
+        COCAINE_LOG_DEBUG(log, "revocation of channel %llu, dispatch: '%s'", channel_id,
             it->second->dispatch ? it->second->dispatch->name() : "<none>");
 
         mapping.erase(it);
