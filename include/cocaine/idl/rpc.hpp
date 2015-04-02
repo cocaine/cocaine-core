@@ -32,6 +32,10 @@ struct rpc {
 struct handshake {
     typedef rpc_tag tag;
 
+    static const char* alias() noexcept {
+        return "handshake";
+    }
+
     typedef boost::mpl::list<
         /* peer id */ std::string
     > argument_type;
@@ -39,10 +43,18 @@ struct handshake {
 
 struct heartbeat {
     typedef rpc_tag tag;
+
+    static const char* alias() noexcept {
+        return "heartbeat";
+    }
 };
 
 struct terminate {
     typedef rpc_tag tag;
+
+    static const char* alias() noexcept {
+        return "terminate";
+    }
 
     enum code: int {
         normal = 1,
@@ -58,6 +70,10 @@ struct terminate {
 struct invoke {
     typedef rpc_tag tag;
 
+    static const char* alias() noexcept {
+        return "invoke";
+    }
+
     typedef boost::mpl::list<
         /* event */ std::string
     > argument_type;
@@ -65,6 +81,10 @@ struct invoke {
 
 struct chunk {
     typedef rpc_tag tag;
+
+    static const char* alias() noexcept {
+        return "chunk";
+    }
 
     typedef boost::mpl::list<
         /* chunk */ std::string
@@ -74,6 +94,10 @@ struct chunk {
 struct error {
     typedef rpc_tag tag;
 
+    static const char* alias() noexcept {
+        return "error";
+    }
+
     typedef boost::mpl::list<
         /* code */   int,
         /* reason */ std::string
@@ -82,6 +106,10 @@ struct error {
 
 struct choke {
     typedef rpc_tag tag;
+
+    static const char* alias() noexcept {
+        return "choke";
+    }
 };
 
 }; // struct rpc
