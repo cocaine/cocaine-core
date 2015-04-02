@@ -177,7 +177,7 @@ node_t::on_list() const {
 
 namespace {
 
-// Node errors
+// Node Service errors
 
 struct node_category_t:
     public std::error_category

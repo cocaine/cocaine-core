@@ -529,7 +529,7 @@ locator_t::on_context_shutdown() {
 
 namespace {
 
-// Locator errors
+// Locator Service errors
 
 struct locator_category_t:
     public std::error_category

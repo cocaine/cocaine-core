@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_DECODER_HPP
 #define COCAINE_IO_DECODER_HPP
 
-#include "cocaine/exceptions.hpp"
+#include "cocaine/errors.hpp"
 
 #include "cocaine/traits.hpp"
 

@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/exceptions.hpp"
+#include "cocaine/errors.hpp"
 
 #include "cocaine/detail/service/locator.hpp"
 #include "cocaine/detail/service/node.hpp"

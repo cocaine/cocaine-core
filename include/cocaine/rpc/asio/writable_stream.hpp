@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 #define COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 
-#include "cocaine/exceptions.hpp"
+#include "cocaine/errors.hpp"
 
 #include <functional>
 

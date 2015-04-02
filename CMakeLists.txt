@@ -100,8 +100,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/dispatch.cpp
     src/dynamic.cpp
     src/engine.cpp
+    src/errors.cpp
     src/essentials.cpp
-    src/exceptions.cpp
     src/gateway/adhoc.cpp
     src/isolate/process.cpp
     src/isolate/process/archive.cpp
