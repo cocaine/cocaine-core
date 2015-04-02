@@ -60,21 +60,21 @@ namespace fs = boost::filesystem;
 
 namespace {
 
-class streaming_service_t:
+class streaming_dispatch_t:
     public dispatch<event_traits<app::enqueue>::dispatch_type>
 {
     const api::stream_ptr_t downstream;
 
 public:
-    streaming_service_t(const std::string& name, const api::stream_ptr_t& downstream_):
+    streaming_dispatch_t(const std::string& name, const api::stream_ptr_t& downstream_):
         dispatch<event_traits<app::enqueue>::dispatch_type>(name),
         downstream(downstream_)
     {
         typedef io::protocol<event_traits<app::enqueue>::dispatch_type>::scope protocol;
 
-        on<protocol::chunk>(std::bind(&streaming_service_t::write, this, ph::_1));
-        on<protocol::error>(std::bind(&streaming_service_t::error, this, ph::_1, ph::_2));
-        on<protocol::choke>(std::bind(&streaming_service_t::close, this));
+        on<protocol::chunk>(std::bind(&streaming_dispatch_t::write, this, ph::_1));
+        on<protocol::error>(std::bind(&streaming_dispatch_t::error, this, ph::_1, ph::_2));
+        on<protocol::choke>(std::bind(&streaming_dispatch_t::close, this));
     }
 
 private:
@@ -166,7 +166,7 @@ private:
             downstream = parent->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
         }
 
-        return std::make_shared<const streaming_service_t>(name(), downstream);
+        return std::make_shared<const streaming_dispatch_t>(name(), downstream);
     }
 
 public:

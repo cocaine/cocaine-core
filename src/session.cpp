@@ -28,7 +28,6 @@
 #include "cocaine/rpc/upstream.hpp"
 
 using namespace asio;
-using namespace asio::ip;
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -49,7 +48,7 @@ public:
     { }
 
     void
-    operator()(const std::shared_ptr<channel<tcp>> ptr);
+    operator()(const std::shared_ptr<channel<protocol_type>> ptr);
 
 private:
     void
@@ -57,7 +56,7 @@ private:
 };
 
 void
-session_t::pull_action_t::operator()(const std::shared_ptr<channel<tcp>> ptr) {
+session_t::pull_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
     ptr->reader->read(message, std::bind(&pull_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
@@ -112,7 +111,7 @@ public:
     { }
 
     void
-    operator()(const std::shared_ptr<channel<tcp>> ptr);
+    operator()(const std::shared_ptr<channel<protocol_type>> ptr);
 
 private:
     void
@@ -120,7 +119,7 @@ private:
 };
 
 void
-session_t::push_action_t::operator()(const std::shared_ptr<channel<tcp>> ptr) {
+session_t::push_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
     ptr->writer->write(message, std::bind(&push_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
@@ -155,9 +154,10 @@ public:
 // Session
 
 session_t::session_t(std::unique_ptr<logging::log_t> log_,
-                     std::unique_ptr<channel<tcp>> transport_, const dispatch_ptr_t& prototype_):
+                     std::unique_ptr<io::channel<protocol_type>> transport_,
+                     const dispatch_ptr_t& prototype_):
     log(std::move(log_)),
-    transport(std::shared_ptr<channel<tcp>>(std::move(transport_))),
+    transport(std::shared_ptr<channel<protocol_type>>(std::move(transport_))),
     prototype(prototype_),
     max_channel_id(0)
 { }
@@ -249,7 +249,7 @@ session_t::revoke(uint64_t channel_id) {
 void
 session_t::detach(const std::error_code& ec) {
 #if defined(__clang__)
-    if(auto channel = std::atomic_exchange(&transport, std::shared_ptr<io::channel<tcp>>())) {
+    if(auto channel = std::atomic_exchange(&transport, std::shared_ptr<io::channel<protocol_type>>())) {
 #else
     if(auto channel = std::move(*transport.synchronize())) {
 #endif
@@ -343,9 +343,9 @@ session_t::name() const {
     return prototype ? prototype->name() : "<none>";
 }
 
-tcp::endpoint
+session_t::protocol_type::endpoint
 session_t::remote_endpoint() const {
-    tcp::endpoint endpoint;
+    protocol_type::endpoint endpoint;
 
 #if defined(__clang__)
     if(const auto ptr = std::atomic_load(&transport)) {

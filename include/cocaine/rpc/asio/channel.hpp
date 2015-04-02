@@ -45,6 +45,17 @@ struct channel {
         socket->non_blocking(true);
     }
 
+    template<class OtherSocket>
+    explicit
+    channel(std::unique_ptr<OtherSocket> socket_,
+            typename std::enable_if<std::is_convertible<typename OtherSocket::protocol_type, Protocol>::value>::type* = 0):
+        socket(new socket_type(std::move(*socket_))),
+        reader(new readable_stream<protocol_type, decoder_type>(socket)),
+        writer(new writable_stream<protocol_type, encoder_type>(socket))
+    {
+        socket->non_blocking(true);
+    }
+
    ~channel() {
         try {
             socket->shutdown(socket_type::shutdown_both);

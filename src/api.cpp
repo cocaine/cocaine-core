@@ -71,7 +71,7 @@ basic_client_t::attach(std::unique_ptr<logging::log_t> log, std::unique_ptr<tcp:
 
     m_session = std::make_shared<session_t>(
         std::move(log),
-        std::make_unique<io::channel<tcp>>(std::move(socket)),
+        std::make_unique<io::channel<generic::stream_protocol>>(std::move(socket)),
         nullptr
     );
 

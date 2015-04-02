@@ -59,8 +59,9 @@ public:
 
    ~execution_unit_t();
 
+    template<class Socket>
     std::shared_ptr<session_t>
-    attach(const std::shared_ptr<asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
+    attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
     double
     utilization() const;

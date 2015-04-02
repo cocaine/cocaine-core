@@ -125,8 +125,9 @@ execution_unit_t::~execution_unit_t() {
     m_chamber = nullptr;
 }
 
+template<class Socket>
 std::shared_ptr<session_t>
-execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
+execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_ptr_t& dispatch) {
     int socket;
 
     if((socket = ::dup(ptr->native_handle())) == -1) {
@@ -140,11 +141,13 @@ execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::disp
         const auto endpoint = ptr->local_endpoint();
 
         // Copy the socket into the new reactor.
-        auto channel = std::make_unique<io::channel<tcp>>(std::make_unique<tcp::socket>(
-           *m_asio,
-            endpoint.protocol(),
-            socket
-        ));
+        auto channel = std::make_unique<io::channel<generic::stream_protocol>>(
+            std::make_unique<generic::stream_protocol::socket>(
+               *m_asio,
+                endpoint.protocol(),
+                socket
+            )
+        );
 
         // Disable Nagle's algorithm, since most of the service clients do not send or receive more
         // than a couple of kilobytes of data.
@@ -174,3 +177,12 @@ double
 execution_unit_t::utilization() const {
     return m_chamber->load_avg1();
 }
+
+template
+void
+execution_unit_t::attach(const std::shared_ptr<tcp::socket>&, const io::dispatch_ptr_t&);
+
+#include <asio/local/stream_protocol.hpp>
+template
+void
+execution_unit_t::attach(const std::shared_ptr<local::stream_protocol::socket>&, const io::dispatch_ptr_t&);

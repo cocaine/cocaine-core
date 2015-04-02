@@ -6,6 +6,7 @@
 
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/chamber.hpp"
+#undef args
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/manifest.hpp"
@@ -144,25 +145,43 @@ public:
         m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_asio);
     }
 
-//    void
-//    terminate();
+    void
+    terminate() {
+        BOOST_ASSERT(m_chamber);
+
+        // Do not wait for the service to finish all its stuff (like timers, etc). Graceful termination
+        // happens only in engine chambers, because that's where client connections are being handled.
+        m_asio->stop();
+
+        std::error_code ec;
+        const auto endpoint = m_acceptor->local_endpoint(ec);
+
+        COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
+
+        // Does not block, unlike the one in execution_unit_t's destructors.
+        m_chamber  = nullptr;
+        m_acceptor = nullptr;
+
+        // Be ready to restart the actor.
+        m_asio->reset();
+    }
 };
 
 template<class T> class deduce;
 
 // From client to worker.
-class streaming_service_t:
+class streaming_dispatch_t:
     public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
 {
 public:
-    explicit streaming_service_t(const std::string& name):
+    explicit streaming_dispatch_t(const std::string& name):
         dispatch<io::event_traits<io::app::enqueue>::dispatch_type>(name)
     {
         typedef io::protocol<io::event_traits<io::app::enqueue>::dispatch_type>::scope protocol;
 
-        on<protocol::chunk>(std::bind(&streaming_service_t::write, this, ph::_1));
-        on<protocol::error>(std::bind(&streaming_service_t::error, this, ph::_1, ph::_2));
-        on<protocol::choke>(std::bind(&streaming_service_t::close, this));
+        on<protocol::chunk>(std::bind(&streaming_dispatch_t::write, this, ph::_1));
+        on<protocol::error>(std::bind(&streaming_dispatch_t::error, this, ph::_1, ph::_2));
+        on<protocol::choke>(std::bind(&streaming_dispatch_t::close, this));
     }
 
 private:
@@ -220,11 +239,11 @@ public:
 };
 
 class app_service_t;
-class worker_service_t:
+class overlord_t:
     public dispatch<io::rpc_tag>
 {
 public:
-    worker_service_t(app_service_t*) :
+    overlord_t(app_service_t*) :
         dispatch<io::rpc_tag>("name/uuid")
     {}
 };
@@ -252,9 +271,13 @@ public:
             context,
             manifest.endpoint,
             std::make_shared<asio::io_service>(),
-            std::make_unique<worker_service_t>(this)
+            std::make_unique<overlord_t>(this)
         ));
         actor->run();
+    }
+
+    ~app_service_t() {
+        actor->terminate();
     }
 
 private:
@@ -266,7 +289,7 @@ private:
             // Create dispatch and pass `queue` there. This will be user -> worker channel.
             // Get client from the pool (by magic or some statistics). Create if necessary and inject session into message queue.
             // Invoke `client.invoke(dispatch, args...) -> stream`. This will be invoke + user -> worker channel.
-            return std::make_shared<const streaming_service_t>(name());
+            return std::make_shared<const streaming_dispatch_t>(name());
         } else {
             COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event with tag '%s'", event, tag);
             // TODO: Complete!
