@@ -1,6 +1,1 @@
-usr/include/cocaine/*.hpp
-usr/include/cocaine/api
-usr/include/cocaine/dynamic
-usr/include/cocaine/idl
-usr/include/cocaine/rpc
-usr/include/cocaine/traits
+usr/include/cocaine/*
