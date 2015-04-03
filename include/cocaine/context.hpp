@@ -49,7 +49,7 @@ class context_t {
     typedef std::deque<std::pair<std::string, std::unique_ptr<actor_t>>> service_list_t;
 
     // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
-    // for the Blackhole, when all the common stuff is extracted to a separate library.
+    // the Blackhole, when all the common stuff is extracted to a separate library.
     std::unique_ptr<logging::logger_t> m_logger;
 
     // NOTE: This is the first object in the component tree, all the other dynamic components, be it

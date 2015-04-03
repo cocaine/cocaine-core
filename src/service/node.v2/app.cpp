@@ -10,6 +10,7 @@
 #include "cocaine/detail/service/node/profile.hpp"
 
 #include "cocaine/detail/service/node.v2/actor.hpp"
+#include "cocaine/detail/service/node.v2/drone.hpp"
 #include "cocaine/detail/service/node.v2/slot.hpp"
 
 #include "cocaine/idl/node.hpp"
@@ -61,19 +62,39 @@ private:
 ///  - can get statistics.
 ///  - lives until process lives and vise versa.
 ///
-/// Overlord - single drone communicator and multiplexor.
+/// Overlord - multiple drone communicator and multiplexor.
 ///  - dispatches control messages.
 ///
 /// Overseer - drone spawner.
 
+class handshake_dispatch : public dispatch<io::rpc_tag> {
+    std::shared_ptr<session_t> session;
+
+public:
+    handshake_dispatch(std::shared_ptr<session_t> session) :
+        dispatch<io::rpc_tag>("[app]/handshake"),
+        session(session)
+    {
+        on<io::rpc::handshake>([](std::string){
+        });
+    }
+};
+
 class app_dispatch_t;
-class overlord_t:
+class cocaine::overlord_t:
     public dispatch<io::rpc_tag>
 {
+    std::unordered_map<std::string, std::shared_ptr<session_t>> sessions;
+
 public:
-    overlord_t(app_dispatch_t*) :
-        dispatch<io::rpc_tag>("name/uuid")
+    overlord_t() :
+        dispatch<io::rpc_tag>("[app]/overlord")
     {}
+
+    void
+    on_session(std::shared_ptr<session_t> session) {
+        session->inject(std::make_shared<handshake_dispatch>(session));
+    }
 };
 
 /// App dispatch, manages incoming enqueue requests. Adds them to the queue.
@@ -83,7 +104,6 @@ class app_dispatch_t:
     typedef io::streaming_slot<io::app::enqueue> slot_type;
 
     std::unique_ptr<logging::log_t> log;
-    std::unique_ptr<unix_actor_t> actor;
 
 public:
     app_dispatch_t(context_t& context, const engine::manifest_t& manifest) :
@@ -93,20 +113,9 @@ public:
         on<io::app::enqueue>(std::make_shared<slot_type>(
             std::bind(&app_dispatch_t::on_enqueue, this, ph::_1, ph::_2, ph::_3)
         ));
-
-        // Create unix actor and bind to {name}.sock. Owns: 1:1.
-        actor.reset(new unix_actor_t(
-            context,
-            manifest.endpoint,
-            std::make_shared<asio::io_service>(),
-            std::make_unique<overlord_t>(this)
-        ));
-        actor->run();
     }
 
-    ~app_dispatch_t() {
-        actor->terminate();
-    }
+    ~app_dispatch_t() {}
 
 private:
     std::shared_ptr<const slot_type::dispatch_type>
@@ -130,7 +139,8 @@ private:
 app_t::app_t(context_t& context, const std::string& manifest, const std::string& profile) :
     context(context),
     manifest(new engine::manifest_t(context, manifest)),
-    profile(new engine::profile_t(context, profile))
+    profile(new engine::profile_t(context, profile)),
+    loop(std::make_shared<asio::io_service>())
 {
     auto isolate = context.get<api::isolate_t>(
         this->profile->isolate.type,
@@ -149,14 +159,34 @@ app_t::app_t(context_t& context, const std::string& manifest, const std::string&
 }
 
 app_t::~app_t() {
+    drone.reset();
+
     // TODO: Anounce all opened sessions to be closed (and sockets).
+    engine->terminate();
     context.remove(manifest->name);
 }
 
 void app_t::start() {
     context.insert(manifest->name, std::make_unique<actor_t>(
         context,
-        std::make_shared<asio::io_service>(),
+        loop,
         std::make_unique<app_dispatch_t>(context, *manifest))
     );
+
+    // Create unix actor and bind to {name}.sock. Owns: 1:1.
+    auto overlord = std::make_unique<overlord_t>();
+    engine.reset(new unix_actor_t(
+        context,
+        manifest->endpoint,
+        std::bind(&overlord_t::on_session, overlord.get(), ph::_1),
+        loop,
+        std::move(overlord)
+    ));
+    engine->run();
+
+    // TODO: Temporary spawn 1 slave. Remove later.
+    drone_data d(*manifest, *profile, [this](const std::string& output){
+        COCAINE_LOG_DEBUG(log, "output: %s", output);
+    });
+    drone = drone_t::make(context, std::move(d), loop);
 }

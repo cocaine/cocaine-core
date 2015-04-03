@@ -32,6 +32,8 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
+#include <asio/local/stream_protocol.hpp>
+
 using namespace asio;
 using namespace asio::ip;
 
@@ -151,13 +153,19 @@ execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_
             )
         );
 
-        // Disable Nagle's algorithm, since most of the service clients do not send or receive more
-        // than a couple of kilobytes of data.
-        channel->socket->set_option(tcp::no_delay(true));
+        if (std::is_same<typename Socket::protocol_type, ip::tcp>::value) {
+            // Disable Nagle's algorithm, since most of the service clients do not send or receive
+            // more than a couple of kilobytes of data.
+            channel->socket->set_option(tcp::no_delay(true));
+        }
 
         auto session_log = std::make_unique<logging::log_t>(*m_log, attribute::set_t({
-            attribute::make("endpoint", boost::lexical_cast<std::string>(ptr->remote_endpoint())),
-            attribute::make("service",  dispatch->name()),
+            attribute::make("endpoint", endpoint_traits<typename Socket::endpoint_type>::path(
+                std::is_same<typename Socket::protocol_type, ip::tcp>::value ?
+                    ptr->remote_endpoint() :
+                    endpoint
+            )),
+            attribute::make("service",  dispatch->name())
         }));
 
         COCAINE_LOG_DEBUG(session_log, "attached connection to engine, load: %.2f%%", utilization() * 100);
@@ -184,7 +192,6 @@ template
 std::shared_ptr<session_t>
 execution_unit_t::attach(const std::shared_ptr<tcp::socket>&, const io::dispatch_ptr_t&);
 
-#include <asio/local/stream_protocol.hpp>
 template
 std::shared_ptr<session_t>
 execution_unit_t::attach(const std::shared_ptr<local::stream_protocol::socket>&, const io::dispatch_ptr_t&);

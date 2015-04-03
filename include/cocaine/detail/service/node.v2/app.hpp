@@ -9,6 +9,14 @@ struct profile_t;
 
 }} // namespace cocaine::engine
 
+namespace cocaine {
+
+class unix_actor_t;
+class overlord_t;
+class drone_t;
+
+}
+
 namespace cocaine { namespace service { namespace v2 {
 
 class app_t {
@@ -19,6 +27,12 @@ class app_t {
     // Configuration.
     std::unique_ptr<const engine::manifest_t> manifest;
     std::unique_ptr<const engine::profile_t>  profile;
+
+    std::shared_ptr<asio::io_service> loop;
+    std::unique_ptr<unix_actor_t> engine;
+
+    // TODO: Temporary.
+    std::shared_ptr<drone_t> drone;
 
 public:
     app_t(context_t& context, const std::string& manifest, const std::string& profile);

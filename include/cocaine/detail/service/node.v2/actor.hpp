@@ -4,6 +4,7 @@
 
 #include "cocaine/forwards.hpp"
 #include "cocaine/locked_ptr.hpp"
+#include "cocaine/rpc/session.hpp"
 
 namespace cocaine {
 
@@ -32,8 +33,11 @@ class unix_actor_t {
     // Main service thread.
     std::unique_ptr<io::chamber_t> m_chamber;
 
+    std::function<void(std::shared_ptr<session_t>)> callback;
+
 public:
     unix_actor_t(context_t& context, protocol_type::endpoint endpoint,
+                 std::function<void(std::shared_ptr<session_t>)> callback,
                  const std::shared_ptr<asio::io_service>& asio,
                  std::unique_ptr<io::basic_dispatch_t> prototype);
 

@@ -2,13 +2,36 @@
 
 #include <string>
 
+#include <asio/local/stream_protocol.hpp>
+
 namespace cocaine {
 
 template<class To>
 struct endpoint_traits;
 
 template<>
+struct endpoint_traits<asio::local::stream_protocol::endpoint> {
+    static inline
+    std::string
+    path(const asio::local::stream_protocol::endpoint& ep) {
+        auto path = boost::lexical_cast<std::string>(ep.path());
+        auto it = path.find_last_of("/");
+        if (it == std::string::npos) {
+            return path;
+        } else {
+            return path.substr(it + 1);
+        }
+    }
+};
+
+template<>
 struct endpoint_traits<asio::ip::tcp::endpoint> {
+    static inline
+    std::string
+    path(const asio::ip::tcp::endpoint& ep) {
+        return boost::lexical_cast<std::string>(ep);
+    }
+
     template<class From>
     static inline
     asio::ip::tcp::endpoint
