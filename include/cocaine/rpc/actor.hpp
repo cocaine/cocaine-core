@@ -22,8 +22,7 @@
 #define COCAINE_ACTOR_HPP
 
 #include "cocaine/common.hpp"
-
-#include <list>
+#include "cocaine/locked_ptr.hpp"
 
 #include <asio/io_service.hpp>
 #include <asio/ip/tcp.hpp>
@@ -42,14 +41,15 @@ class actor_t {
 
     // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
     // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
-    // after the authentication process completes successfully.
+    // after the authentication process completes successfully. Constant.
     io::dispatch_ptr_t m_prototype;
 
     // I/O acceptor. Actors have a separate thread to accept new connections. After a connection is
-    // is accepted, it is assigned to a carefully choosen thread from the main thread pool.
-    std::unique_ptr<asio::ip::tcp::acceptor> m_acceptor;
+    // is accepted, it is assigned to a least busy thread from the main thread pool. Synchronized to
+    // allow concurrent observing and operations.
+    synchronized<std::unique_ptr<asio::ip::tcp::acceptor>> m_acceptor;
 
-    // I/O authentication & processing.
+    // Main service thread.
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:

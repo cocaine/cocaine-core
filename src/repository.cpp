@@ -20,10 +20,8 @@
 
 #include "cocaine/repository.hpp"
 
-#include "cocaine/logging.hpp"
-
-#include <boost/filesystem/path.hpp>
 #include <boost/filesystem/convenience.hpp>
+#include <boost/filesystem/path.hpp>
 
 #include <boost/iterator/filter_iterator.hpp>
 
@@ -35,7 +33,7 @@ namespace {
 
 typedef std::remove_pointer<lt_dlhandle>::type handle_type;
 
-struct lt_dlclose_action {
+struct lt_dlclose_action_t {
     void
     operator()(handle_type* plugin) const {
         lt_dlclose(plugin);
@@ -49,6 +47,12 @@ struct validate_t {
         return fs::is_regular_file(entry) && entry.path().extension() == ".cocaine-plugin";
     }
 };
+
+// Plugin preconditions validation function type.
+typedef preconditions_t (*validation_fn_t)();
+
+// Plugin initialization function type.
+typedef void (*initialize_fn_t)(repository_t&);
 
 } // namespace
 
@@ -67,7 +71,7 @@ repository_t::~repository_t() {
     m_categories.clear();
 
     // Dispose of the plugins.
-    std::for_each(m_plugins.begin(), m_plugins.end(), lt_dlclose_action());
+    std::for_each(m_plugins.begin(), m_plugins.end(), lt_dlclose_action_t());
 
     // Terminate the dynamic loader.
     lt_dlexit();
@@ -90,12 +94,6 @@ repository_t::load(const std::string& path) {
     }
 }
 
-// Plugin preconditions validation function type.
-typedef preconditions_t (*validation_fn_t)();
-
-// Plugin initialization function type.
-typedef void (*initialize_fn_t)(repository_t&);
-
 void
 repository_t::open(const std::string& target) {
     lt_dladvise advice;
@@ -106,9 +104,9 @@ repository_t::open(const std::string& target) {
         "plugin", target
     );
 
-    std::unique_ptr<handle_type, lt_dlclose_action> plugin(
+    std::unique_ptr<handle_type, lt_dlclose_action_t> plugin(
         lt_dlopenadvise(target.c_str(), advice),
-        lt_dlclose_action()
+        lt_dlclose_action_t()
     );
 
     lt_dladvise_destroy(&advice);

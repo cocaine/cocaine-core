@@ -25,8 +25,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/defaults.hpp"
 
-#include "cocaine/detail/actor.hpp"
-
 #include "cocaine/detail/service/node/engine.hpp"
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/manifest.hpp"
@@ -38,8 +36,8 @@
 
 #include "cocaine/logging.hpp"
 
+#include "cocaine/rpc/actor.hpp"
 #include "cocaine/rpc/asio/channel.hpp"
-
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
@@ -118,8 +116,8 @@ private:
         boost::optional<std::shared_ptr<const dispatch_type>>
         operator()(tuple_type&& args, upstream_type&& upstream) {
             return tuple::invoke(
-                std::bind(&app_service_t::enqueue, parent, std::ref(upstream), ph::_1, ph::_2),
-                std::move(args)
+                std::move(args),
+                std::bind(&app_service_t::enqueue, parent, std::ref(upstream), ph::_1, ph::_2)
             );
         }
 

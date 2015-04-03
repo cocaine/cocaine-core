@@ -25,9 +25,11 @@
 
 #include "cocaine/traits/attributes.hpp"
 #include "cocaine/traits/enum.hpp"
+#include "cocaine/traits/vector.hpp"
 
 using namespace blackhole;
 
+using namespace cocaine;
 using namespace cocaine::logging;
 using namespace cocaine::service;
 
@@ -56,8 +58,8 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
     on<io::log::set_verbosity>(std::bind(setter, std::ref(*m_logger), _1));
 }
 
-auto
-logging_t::prototype() const -> const basic_dispatch_t& {
+const io::basic_dispatch_t&
+logging_t::prototype() const {
     return *this;
 }
 

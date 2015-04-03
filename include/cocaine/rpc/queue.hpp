@@ -21,18 +21,12 @@
 #ifndef COCAINE_IO_MESSAGE_QUEUE_HPP
 #define COCAINE_IO_MESSAGE_QUEUE_HPP
 
-#include "cocaine/locked_ptr.hpp"
-
-#include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/slot.hpp"
+#include "cocaine/rpc/frozen.hpp"
+#include "cocaine/rpc/tags.hpp"
 #include "cocaine/rpc/upstream.hpp"
-
-#include <boost/mpl/lambda.hpp>
-#include <boost/mpl/transform.hpp>
 
 #include <boost/variant/apply_visitor.hpp>
 #include <boost/variant/static_visitor.hpp>
-#include <boost/variant/variant.hpp>
 
 namespace cocaine { namespace io {
 
@@ -41,29 +35,6 @@ template<class Tag, class Upstream = basic_upstream_t> class message_queue;
 namespace mpl = boost::mpl;
 
 namespace aux {
-
-template<class Event>
-struct frozen {
-    typedef Event event_type;
-    typedef typename basic_slot<event_type>::tuple_type tuple_type;
-
-    frozen() = default;
-
-    template<typename... Args>
-    frozen(event_type, Args&&... args):
-        tuple(std::forward<Args>(args)...)
-    { }
-
-    // NOTE: If the message cannot be sent right away, then the message arguments are placed into a
-    // temporary storage until the upstream is attached.
-    tuple_type tuple;
-};
-
-template<class Event, typename... Args>
-frozen<Event>
-make_frozen(Args&&... args) {
-    return frozen<Event>(Event(), std::forward<Args>(args)...);
-}
 
 template<class Upstream>
 struct frozen_visitor:
@@ -78,8 +49,8 @@ struct frozen_visitor:
 
     template<class Event>
     void
-    operator()(const frozen<Event>& frozen) const {
-        upstream->template send<Event>(frozen.tuple);
+    operator()(frozen<Event>& frozen) const {
+        upstream->template send<Event>(std::move(frozen.tuple));
     }
 
 private:
@@ -92,22 +63,15 @@ template<class Tag, class Upstream>
 class message_queue {
     typedef Upstream upstream_type;
 
-    typedef typename mpl::transform<
-        typename messages<Tag>::type,
-        typename mpl::lambda<aux::frozen<mpl::_1>>
-    >::type frozen_types;
-
-    typedef typename boost::make_variant_over<frozen_types>::type variant_type;
-
     // Operation log.
-    std::vector<variant_type> m_operations;
+    std::vector<typename make_frozen_over<Tag>::type> m_operations;
 
     // The upstream might be attached during message invocation, so it has to be synchronized for
     // thread safety - the atomicity guarantee of the shared_ptr<T> is not enough.
     std::shared_ptr<upstream_type> m_upstream;
 
 public:
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     void
     append(Args&&... args) {
         static_assert(
@@ -116,7 +80,7 @@ public:
         );
 
         if(!m_upstream) {
-            return m_operations.emplace_back(aux::make_frozen<Event>(std::forward<Args>(args)...));
+            return m_operations.emplace_back(make_frozen<Event>(std::forward<Args>(args)...));
         }
 
         m_upstream->template send<Event>(std::forward<Args>(args)...);
@@ -135,17 +99,17 @@ public:
 
     void
     attach(std::shared_ptr<upstream_type> upstream) {
-        m_upstream = std::move(upstream);
+        if(!m_operations.empty()) {
+            aux::frozen_visitor<upstream_type> visitor(upstream);
 
-        if(m_operations.empty()) {
-            return;
+            // For some weird reasons, boost::apply_visitor() only accepts lvalue-references to the
+            // visitor object, so there's no other choice but to actually bind it to a variable.
+            std::for_each(m_operations.begin(), m_operations.end(), boost::apply_visitor(visitor));
+
+            m_operations.clear();
         }
 
-        aux::frozen_visitor<upstream_type> visitor(m_upstream);
-
-        std::for_each(m_operations.begin(), m_operations.end(), boost::apply_visitor(visitor));
-
-        m_operations.clear();
+        m_upstream = std::move(upstream);
     }
 };
 

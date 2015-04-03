@@ -89,11 +89,11 @@ public:
     const std::shared_ptr<api::stream_t> upstream;
 
 private:
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     void
     send(Args&&... args);
 
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     void
     send(std::lock_guard<std::mutex>&, Args&&... args);
 
@@ -113,14 +113,14 @@ private:
     state::value m_state;
 };
 
-template<class Event, typename... Args>
+template<class Event, class... Args>
 void
 session_t::send(Args&&... args) {
     std::lock_guard<std::mutex> lock(m_mutex);
     send<Event>(lock, std::forward<Args>(args)...);
 }
 
-template<class Event, typename... Args>
+template<class Event, class... Args>
 void
 session_t::send(std::lock_guard<std::mutex>&, Args&&... args) {
     BOOST_ASSERT(m_writer);

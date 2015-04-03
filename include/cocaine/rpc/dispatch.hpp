@@ -24,8 +24,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
-#include "cocaine/rpc/graph.hpp"
-
 #include "cocaine/rpc/slot/blocking.hpp"
 #include "cocaine/rpc/slot/deferred.hpp"
 #include "cocaine/rpc/slot/streamed.hpp"
@@ -105,7 +103,9 @@ class dispatch:
 
     typedef typename mpl::transform<
         typename io::messages<Tag>::type,
-        typename mpl::lambda<std::shared_ptr<io::basic_slot<mpl::_1>>>::type
+        typename mpl::lambda<
+            std::shared_ptr<io::basic_slot<mpl::_1>>
+        >::type
     >::type slot_types;
 
     typedef std::map<
@@ -162,10 +162,11 @@ public:
         return io::protocol<Tag>::version::value;
     }
 
-private:
+    // Generic API
+
     template<class Visitor>
     typename Visitor::result_type
-    visit(int id, const Visitor& visitor) const;
+    process(int id, const Visitor& visitor) const;
 };
 
 template<class Tag>
@@ -214,7 +215,7 @@ struct calling_visitor_t:
             io::type_traits<typename io::event_traits<Event>::argument_type>::unpack(unpacked, args);
         } catch(const msgpack::type_error& e) {
             // TODO: Throw a system_error with some meaningful error code.
-            throw cocaine::error_t("unable to unpack message arguments");
+            throw cocaine::error_t("unable to unpack message arguments - %s", e.what());
         }
 
         // Call the slot with the upstream constrained with the event's upstream protocol type tag.
@@ -265,31 +266,30 @@ dispatch<Tag>::forget() {
 template<class Tag>
 io::transition_t
 dispatch<Tag>::process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const {
-    return visit(message.type(), aux::calling_visitor_t(message.args(), upstream));
+    return process(message.type(), aux::calling_visitor_t(message.args(), upstream));
 }
 
 template<class Tag>
 template<class Visitor>
 typename Visitor::result_type
-dispatch<Tag>::visit(int id, const Visitor& visitor) const {
-    typename slot_map_t::const_iterator lb, ub;
-    typename slot_map_t::mapped_type slot;
+dispatch<Tag>::process(int id, const Visitor& visitor) const {
+    typedef typename slot_map_t::mapped_type slot_ptr_type;
 
-    {
-        auto ptr = m_slots.synchronize();
+    const auto slot = m_slots.apply([&](const slot_map_t& mapping) -> slot_ptr_type {
+        typename slot_map_t::const_iterator lb, ub;
 
         // NOTE: Using equal_range() here, instead of find() to check for slot existence and get the
         // slot pointer in one call instead of two.
-        std::tie(lb, ub) = ptr->equal_range(id);
+        std::tie(lb, ub) = mapping.equal_range(id);
 
         if(lb != ub) {
             // NOTE: The slot pointer is copied here, allowing the handling code to unregister slots
             // via dispatch<T>::forget() without pulling the object from underneath itself.
-            slot = lb->second;
+            return lb->second;
         } else {
-            throw cocaine::error_t("unbound type %d slot", id);
+            throw cocaine::error_t("type %d slot wasn't bound to this dispatch", id);
         }
-    }
+    });
 
     return boost::apply_visitor(visitor, slot);
 }

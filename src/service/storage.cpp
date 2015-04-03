@@ -41,7 +41,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
     on<storage::find>(std::bind(&api::storage_t::find, storage, _1, _2));
 }
 
-auto
-storage_t::prototype() const -> const basic_dispatch_t& {
+const basic_dispatch_t&
+storage_t::prototype() const {
     return *this;
 }

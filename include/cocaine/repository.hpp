@@ -72,7 +72,7 @@ struct plugin_traits {
 struct repository_error_t:
     public cocaine::error_t
 {
-    template<typename... Args>
+    template<class... Args>
     repository_error_t(const std::string& format, const Args&... args):
         cocaine::error_t(format, args...)
     { }
@@ -101,7 +101,7 @@ public:
     void
     load(const std::string& path);
 
-    template<class Category, typename... Args>
+    template<class Category, class... Args>
     typename category_traits<Category>::ptr_type
     get(const std::string& name, Args&&... args) const;
 
@@ -114,7 +114,7 @@ private:
     open(const std::string& target);
 };
 
-template<class Category, typename... Args>
+template<class Category, class... Args>
 typename category_traits<Category>::ptr_type
 repository_t::get(const std::string& name, Args&&... args) const {
     const auto id = typeid(Category).name();

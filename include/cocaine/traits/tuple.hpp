@@ -23,6 +23,7 @@
 
 #include "cocaine/traits.hpp"
 
+#include "cocaine/platform.hpp"
 #include "cocaine/rpc/tags.hpp"
 
 #include <tuple>
@@ -130,7 +131,7 @@ struct sequence_size_error:
     public msgpack::type_error
 {
     sequence_size_error(size_t size, size_t minimal):
-        message(cocaine::format("sequence size mismatch — got %d elements, expected at least %d",
+        message(cocaine::format("sequence size mismatch - got %d element(s), expected at least %d",
             size, minimal
         ))
     { }
@@ -170,7 +171,7 @@ struct type_traits<
     };
 
 public:
-    template<class Stream, typename... Args>
+    template<class Stream, class... Args>
     static inline
     void
     pack(msgpack::packer<Stream>& target, const Args&... sources) {
@@ -183,7 +184,7 @@ public:
         pack_sequence<typename boost::mpl::begin<T>::type>(target, sources...);
     }
 
-    template<class Stream, typename... Args>
+    template<class Stream, class... Args>
     static inline
     void
     pack(msgpack::packer<Stream>& target, const std::tuple<Args...>& source) {
@@ -194,7 +195,7 @@ public:
         traits_type::template pack<T>(target, source);
     }
 
-    template<typename... Args>
+    template<class... Args>
     static inline
     void
     unpack(const msgpack::object& source, Args&... targets) {
@@ -227,7 +228,7 @@ public:
         );
     }
 
-    template<typename... Args>
+    template<class... Args>
     static inline
     void
     unpack(const msgpack::object& source, std::tuple<Args...>& target) {
@@ -246,7 +247,7 @@ private:
         // Empty.
     }
 
-    template<class It, class Stream, class Head, typename... Tail>
+    template<class It, class Stream, class Head, class... Tail>
     static inline
     void
     pack_sequence(msgpack::packer<Stream>& target, const Head& head, const Tail&... tail) {
@@ -272,7 +273,7 @@ private:
         // Empty.
     }
 
-    template<class It, class SourceIterator, class Head, typename... Tail>
+    template<class It, class SourceIterator, class Head, class... Tail>
     static inline
     void
     unpack_sequence(SourceIterator it, SourceIterator end, Head& head, Tail&... tail) {
@@ -294,7 +295,7 @@ private:
 
 // Tuple serialization
 
-template<typename... Args>
+template<class... Args>
 struct type_traits<std::tuple<Args...>> {
     typedef typename itemize<Args...>::type sequence_type;
 
@@ -324,11 +325,41 @@ struct type_traits<std::tuple<Args...>> {
     }
 };
 
+// Pair serialization
+
+#ifdef COCAINE_HAS_FEATURE_PAIR_TO_TUPLE_CONVERSION
+template<typename T, typename U>
+struct type_traits<std::pair<T, U>>: public type_traits<std::tuple<T, U>> { };
+#else
+// Workaround for libraries, that violates the standard.
+template<typename T, typename U>
+struct type_traits<std::pair<T, U>> {
+    typedef typename itemize<T, U>::type sequence_type;
+
+    typedef aux::tuple_type_traits_impl<
+        typename make_index_sequence<2>::type
+    > traits_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const std::pair<T, U>& source) {
+        traits_type::template pack<sequence_type>(target, source);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, std::pair<T, U>& target) {
+        traits_type::template unpack<sequence_type>(source, target);
+    }
+};
+#endif
+
 }} // namespace cocaine::io
 
 namespace msgpack {
 
-template<typename... Args>
+template<class... Args>
 inline
 std::tuple<Args...>&
 operator>>(object o, std::tuple<Args...>& t) {
@@ -336,7 +367,7 @@ operator>>(object o, std::tuple<Args...>& t) {
     return t;
 }
 
-template<class Stream, typename... Args>
+template<class Stream, class... Args>
 inline
 packer<Stream>&
 operator<<(packer<Stream>& p, const std::tuple<Args...>& t) {

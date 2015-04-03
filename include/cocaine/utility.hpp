@@ -21,7 +21,7 @@
 #ifndef COCAINE_UTILITY_HPP
 #define COCAINE_UTILITY_HPP
 
-#include <type_traits>
+#include <utility>
 
 #include <boost/mpl/deque.hpp>
 #include <boost/mpl/push_back.hpp>
@@ -40,10 +40,10 @@ struct depend {
 
 namespace aux {
 
-template<class, typename...>
+template<class, class...>
 struct itemize_impl;
 
-template<class TypeList, class Head, typename... Args>
+template<class TypeList, class Head, class... Args>
 struct itemize_impl<TypeList, Head, Args...> {
     typedef typename itemize_impl<
         typename boost::mpl::push_back<TypeList, Head>::type,
@@ -58,7 +58,7 @@ struct itemize_impl<TypeList> {
 
 } // namespace aux
 
-template<typename... Args>
+template<class... Args>
 struct itemize {
     typedef typename aux::itemize_impl<
         boost::mpl::deque<>,

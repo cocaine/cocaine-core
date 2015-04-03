@@ -27,27 +27,22 @@
 #include "cocaine/rpc/asio/encoder.hpp"
 #include "cocaine/rpc/asio/decoder.hpp"
 
-#include <mutex>
-
 #include <asio/ip/tcp.hpp>
 
-#define BOOST_BIND_NO_PLACEHOLDERS
-#include <boost/signals2/signal.hpp>
-
 namespace cocaine {
-
-namespace signals = boost::signals2;
 
 class session_t:
     public std::enable_shared_from_this<session_t>
 {
-    class channel_t;
-
-    // Discards all the channel dispatches on errors.
-    class discard_action_t;
-
     class pull_action_t;
     class push_action_t;
+
+    class channel_t;
+
+    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
+
+    // Log of last resort.
+    const std::unique_ptr<logging::log_t> log;
 
     // The underlying connection.
 #if defined(__clang__)
@@ -56,25 +51,19 @@ class session_t:
     synchronized<std::shared_ptr<io::channel<asio::ip::tcp>>> transport;
 #endif
 
-    // Initial dispatch.
+    // Initial dispatch. Internally synchronized.
     const io::dispatch_ptr_t prototype;
+
+    // Virtual channels.
+    synchronized<channel_map_t> channels;
 
     // The maximum channel id processed by the session. The session assumes that ids of incoming
     // channels are strongly increasing and discards messages with old channel ids.
     uint64_t max_channel_id;
 
-    typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
-
-    // Virtual channels.
-    synchronized<channel_map_t> channels;
-
 public:
-    struct {
-        signals::signal<void(const std::error_code&)> shutdown;
-    } signals;
-
-public:
-    session_t(std::unique_ptr<io::channel<asio::ip::tcp>> transport, const io::dispatch_ptr_t& prototype);
+    session_t(std::unique_ptr<logging::log_t> log,
+              std::unique_ptr<io::channel<asio::ip::tcp>> transport, const io::dispatch_ptr_t& prototype);
 
     // Operations
 
@@ -98,7 +87,7 @@ public:
     // is closed.
 
     void
-    detach();
+    detach(const std::error_code& ec);
 
     // Information
 

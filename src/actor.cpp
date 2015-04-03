@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/actor.hpp"
+#include "cocaine/rpc/actor.hpp"
 
 #include "cocaine/api/service.hpp"
 
@@ -30,10 +30,10 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
-using namespace blackhole;
-
 using namespace asio;
 using namespace asio::ip;
+
+using namespace blackhole;
 
 using namespace cocaine;
 
@@ -61,10 +61,16 @@ private:
 
 void
 actor_t::accept_action_t::operator()() {
-    parent->m_acceptor->async_accept(socket, std::bind(&accept_action_t::finalize,
-        shared_from_this(),
-        std::placeholders::_1
-    ));
+    parent->m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
+        if(!ptr) {
+            COCAINE_LOG_ERROR(parent->m_log, "abnormal termination of actor connection pump");
+            return;
+        }
+
+        using namespace std::placeholders;
+
+        ptr->async_accept(socket, std::bind(&accept_action_t::finalize, shared_from_this(), _1));
+    });
 }
 
 void
@@ -73,14 +79,27 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
     // heap-allocated object, which in turn might be attached to an engine.
     auto ptr = std::make_shared<tcp::socket>(std::move(socket));
 
-    if(ec) {
-        if(ec == asio::error::operation_aborted) {
-            return;
+    switch(ec.value()) {
+    case 0:
+        COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd %d", ptr->native_handle());
+
+        try {
+            parent->m_context.engine().attach(ptr, parent->m_prototype);
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: [%d] %s - %s",
+                e.code().value(), e.code().message(), e.what());
+            ptr = nullptr;
         }
 
-        COCAINE_LOG_ERROR(parent->m_log, "unable to accept a connection: [%d] %s", ec.value(), ec.message());
-    } else {
-        parent->m_context.engine().attach(ptr, parent->m_prototype);
+        break;
+
+    case asio::error::operation_aborted:
+        return;
+
+    default:
+        COCAINE_LOG_ERROR(parent->m_log, "unable to accept connection: [%d] %s", ec.value(),
+            ec.message());
+        break;
     }
 
     // TODO: Find out if it's always a good idea to continue accepting connections no matter what.
@@ -125,38 +144,41 @@ actor_t::~actor_t() {
 
 std::vector<tcp::endpoint>
 actor_t::endpoints() const {
-    if(!is_active()) {
-        return std::vector<tcp::endpoint>();
-    }
-
-    tcp::resolver::iterator begin, end;
-
-    // For unspecified bind addresses, actual address set has to be resolved first. In other words,
-    // unspecified means every available and reachable address for the host.
-    std::vector<tcp::endpoint> endpoints;
+    tcp::resolver::iterator begin;
 
     try {
-        const auto local = m_acceptor->local_endpoint();
+        const auto local = m_acceptor.apply(
+            [](const std::unique_ptr<tcp::acceptor>& ptr) -> tcp::endpoint
+        {
+            if(ptr) {
+                return ptr->local_endpoint();
+            } else {
+                throw std::system_error(asio::error::not_connected);
+            }
+        });
 
         if(!local.address().is_unspecified()) {
             return std::vector<tcp::endpoint>({local});
         }
 
-        tcp::resolver::query::flags flags =
-            tcp::resolver::query::numeric_service
-          | tcp::resolver::query::address_configured;
+        const tcp::resolver::query::flags flags = tcp::resolver::query::address_configured
+                                                | tcp::resolver::query::numeric_service;
 
         begin = tcp::resolver(*m_asio).resolve(tcp::resolver::query(
             m_context.config.network.hostname, std::to_string(local.port()),
             flags
         ));
-    } catch(const asio::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to determine local endpoints: [%d] %s",
-            e.code().value(), e.code().message());
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: [%d] %s", e.code().value(),
+            e.code().message());
         return std::vector<tcp::endpoint>();
     }
 
-    std::transform(begin, end, std::back_inserter(endpoints), std::bind(
+    // For unspecified bind addresses, actual address set has to be resolved first. In other words,
+    // unspecified means every available and reachable address for the host.
+    std::vector<tcp::endpoint> endpoints;
+
+    std::transform(begin, tcp::resolver::iterator(), std::back_inserter(endpoints), std::bind(
        &tcp::resolver::iterator::value_type::endpoint,
         std::placeholders::_1
     ));
@@ -166,7 +188,7 @@ actor_t::endpoints() const {
 
 bool
 actor_t::is_active() const {
-    return m_chamber && m_acceptor;
+    return static_cast<bool>(*m_acceptor.synchronize());
 }
 
 const io::basic_dispatch_t&
@@ -176,20 +198,24 @@ actor_t::prototype() const {
 
 void
 actor_t::run() {
-    BOOST_ASSERT(!m_chamber);
+    m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
+        try {
+            ptr = std::make_unique<tcp::acceptor>(*m_asio, tcp::endpoint {
+                m_context.config.network.endpoint,
+                m_context.mapper.assign(m_prototype->name())
+            });
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
+                e.code().value(),
+                e.code().message());
+            throw;
+        }
 
-    try {
-        m_acceptor = std::make_unique<tcp::acceptor>(*m_asio, tcp::endpoint {
-            m_context.config.network.endpoint,
-            m_context.mapper.assign(m_prototype->name())
-        });
+        std::error_code ec;
+        const auto endpoint = ptr->local_endpoint(ec);
 
-        COCAINE_LOG_DEBUG(m_log, "exposing service on %s", m_acceptor->local_endpoint());
-    } catch(const asio::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to determine local endpoint for service: [%d] %s",
-            e.code().value(), e.code().message());
-        throw;
-    }
+        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", endpoint);
+    });
 
     m_asio->post(std::bind(&accept_action_t::operator(),
         std::make_shared<accept_action_t>(this)
@@ -201,23 +227,20 @@ actor_t::run() {
 
 void
 actor_t::terminate() {
-    BOOST_ASSERT(m_chamber);
-
     // Do not wait for the service to finish all its stuff (like timers, etc). Graceful termination
     // happens only in engine chambers, because that's where client connections are being handled.
     m_asio->stop();
 
-    try {
-        COCAINE_LOG_DEBUG(m_log, "removing service from %s", m_acceptor->local_endpoint());
-    } catch(const asio::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to determine local endpoint for service: [%d] %s",
-            e.code().value(), e.code().message());
-        throw;
-    }
+    m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
+        std::error_code ec;
+        const auto endpoint = ptr->local_endpoint(ec);
 
-    // Does not block, unlike the one in execution_unit_t's destructors.
-    m_chamber  = nullptr;
-    m_acceptor = nullptr;
+        COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
+
+        // Does not block, unlike the one in execution_unit_t's destructors.
+        m_chamber = nullptr;
+        ptr       = nullptr;
+    });
 
     // Be ready to restart the actor.
     m_asio->reset();

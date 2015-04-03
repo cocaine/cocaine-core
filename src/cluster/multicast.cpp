@@ -23,7 +23,7 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/detail/actor.hpp"
+#include "cocaine/rpc/actor.hpp"
 
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/tuple.hpp"
@@ -31,8 +31,6 @@
 
 #include <asio/io_service.hpp>
 #include <asio/ip/multicast.hpp>
-#include <asio/ip/udp.hpp>
-#include <asio/ip/tcp.hpp>
 
 using namespace asio;
 using namespace asio::ip;
@@ -180,7 +178,7 @@ multicast_t::on_publish(const std::error_code& ec) {
 
         try {
             m_socket.send_to(buffer(target.data(), target.size()), m_cfg.endpoint);
-        } catch(const asio::system_error& e) {
+        } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: [%d] %s",
                 e.code().value(), e.code().message()
             );

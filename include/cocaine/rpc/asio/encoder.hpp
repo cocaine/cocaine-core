@@ -99,7 +99,7 @@ template<class Event>
 struct encoded:
     public aux::encoded_message_t
 {
-    template<typename... Args>
+    template<class... Args>
     encoded(uint64_t span, Args&&... args) {
         msgpack::packer<aux::encoded_buffers_t> packer(buffer);
 

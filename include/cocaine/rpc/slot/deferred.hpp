@@ -53,7 +53,7 @@ struct deferred_slot:
     operator()(tuple_type&& args, upstream_type&& upstream) {
         try {
             this->call(std::move(args)).attach(std::move(upstream));
-        } catch(const asio::system_error& e) {
+        } catch(const std::system_error& e) {
             upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
         } catch(const std::exception& e) {
             upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
@@ -88,7 +88,7 @@ struct reconstruct<T, typename std::enable_if<boost::mpl::is_sequence<T>::value>
     typedef T type;
 };
 
-template<typename... Args>
+template<class... Args>
 struct reconstruct<std::tuple<Args...>> {
     typedef typename itemize<Args...>::type type;
 };

@@ -24,7 +24,6 @@
 #include "cocaine/utility.hpp"
 
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <boost/lexical_cast.hpp>

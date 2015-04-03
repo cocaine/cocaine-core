@@ -31,7 +31,7 @@ substitute(boost::format&& message) {
     return message.str();
 }
 
-template<typename T, typename... Args>
+template<typename T, class... Args>
 static inline
 std::string
 substitute(boost::format&& message, const T& argument, const Args&... args) {
@@ -40,7 +40,7 @@ substitute(boost::format&& message, const T& argument, const Args&... args) {
 
 } // namespace aux
 
-template<typename... Args>
+template<class... Args>
 static inline
 std::string
 format(const std::string& format, const Args&... args) {

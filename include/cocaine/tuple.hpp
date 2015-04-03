@@ -43,7 +43,7 @@ struct nth_element {
 
 namespace aux {
 
-template<class It, class End, typename... Args>
+template<class It, class End, class... Args>
 struct fold_impl {
     typedef typename fold_impl<
         typename boost::mpl::next<It>::type,
@@ -53,7 +53,7 @@ struct fold_impl {
     >::type type;
 };
 
-template<class End, typename... Args>
+template<class End, class... Args>
 struct fold_impl<End, End, Args...> {
     typedef std::tuple<Args...> type;
 };
@@ -63,17 +63,12 @@ struct invoke_impl;
 
 template<size_t... Indices>
 struct invoke_impl<index_sequence<Indices...>> {
-    template<class F, typename... Args>
+    template<class F, class... Args>
     static inline
-    typename result_of<F>::type
-    apply(F&& callable, std::tuple<Args...>&& args) {
-        return callable(std::get<Indices>(args)...);
-    }
-
-    template<class F, typename... Args>
-    static inline
-    typename result_of<F>::type
-    apply(const F& callable, std::tuple<Args...>&& args) {
+    auto
+    apply(std::tuple<Args...>&& args, F&& callable)
+        -> decltype(callable(std::declval<Args>()...))
+    {
         return callable(std::get<Indices>(args)...);
     }
 };
@@ -90,22 +85,15 @@ struct fold {
 
 // Function invocation with arguments provided as a tuple
 
-template<class F, typename... Args>
+template<class F, class... Args>
 inline
-typename result_of<F>::type
-invoke(F&& callable, std::tuple<Args...>&& args) {
+auto
+invoke(std::tuple<Args...>&& args, F&& callable)
+    -> decltype(callable(std::declval<Args>()...))
+{
     return aux::invoke_impl<
         typename make_index_sequence<sizeof...(Args)>::type
-    >::apply(std::move(callable), std::move(args));
-}
-
-template<class F, typename... Args>
-inline
-typename result_of<F>::type
-invoke(const F& callable, std::tuple<Args...>&& args) {
-    return aux::invoke_impl<
-        typename make_index_sequence<sizeof...(Args)>::type
-    >::apply(callable, std::move(args));
+    >::apply(std::move(args), std::forward<F>(callable));
 }
 
 }} // namespace cocaine::tuple

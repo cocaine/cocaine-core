@@ -22,15 +22,15 @@
 #define COCAINE_PLATFORM_HPP
 
 #if defined(__GNUC__)
-    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 4
+    #if (__GNUC__ == 4 && __GNUC_MINOR__ >= 4) || __GNUC__ >= 5
         #define HAVE_GCC44
     #endif
 
-    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 6
+    #if (__GNUC__ == 4 && __GNUC_MINOR__ >= 6) || __GNUC__ >= 5
         #define HAVE_GCC46
     #endif
 
-    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 8
+    #if (__GNUC__ == 4 && __GNUC_MINOR__ >= 8) || __GNUC__ >= 5
         #define HAVE_GCC48
     #endif
 #endif
@@ -41,6 +41,10 @@
 
 #if defined(__clang__) || defined(HAVE_GCC48)
     #define COCAINE_HAS_FEATURE_STEADY_CLOCK
+#endif
+
+#if defined(__clang__)
+    #define COCAINE_HAS_FEATURE_PAIR_TO_TUPLE_CONVERSION
 #endif
 
 #endif

@@ -24,11 +24,20 @@
 #include "cocaine/traits.hpp"
 
 #include <blackhole/attribute.hpp>
+#include <blackhole/formatter/msgpack.hpp>
 
 namespace cocaine { namespace io {
 
 template<>
 struct type_traits<blackhole::attribute::value_t> {
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& packer, const blackhole::attribute::value_t& source) {
+        blackhole::formatter::msgpack_visitor<Stream> visitor(&packer);
+        boost::apply_visitor(visitor, source);
+    }
+
     static inline
     void
     unpack(const msgpack::object& source, blackhole::attribute::value_t& target) {
@@ -60,32 +69,21 @@ struct type_traits<blackhole::attribute::value_t> {
 };
 
 template<>
-struct type_traits<blackhole::attribute::set_t> {
+struct type_traits<blackhole::attribute_t> {
+    template<class Stream>
     static inline
     void
-    unpack(const msgpack::object& source, blackhole::attribute::set_t& target) {
-        if(source.type != msgpack::type::MAP) {
-            throw msgpack::type_error();
-        }
-
-        msgpack::object_kv *ptr = source.via.map.ptr,
-                           *end = ptr + source.via.map.size;
-
-        for(; ptr < end; ++ptr) {
-            if(ptr->key.type != msgpack::type::RAW) {
-                throw msgpack::type_error();
-            }
-
-            const std::string& name = ptr->key.as<std::string>();
-
-            blackhole::attribute::value_t value;
-            type_traits<blackhole::attribute::value_t>::unpack(ptr->val, value);
-
-            target.emplace_back(name, blackhole::attribute::value_t(value));
-        }
+    pack(msgpack::packer<Stream>& packer, const blackhole::attribute_t& source) {
+        type_traits<blackhole::attribute::value_t>::pack(packer, source.value);
     }
- };
 
- }} // namespace cocaine::io
+    static inline
+    void
+    unpack(const msgpack::object& source, blackhole::attribute_t& target) {
+        type_traits<blackhole::attribute::value_t>::unpack(source, target.value);
+    }
+};
+
+}} // namespace cocaine::io
 
 #endif

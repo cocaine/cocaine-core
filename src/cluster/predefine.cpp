@@ -67,7 +67,7 @@ struct dynamic_converter<predefine_cfg_t> {
                     // TODO: A better way to parse this.
                     addr.substr(0, addr.rfind(":")), addr.substr(addr.rfind(":") + 1)
                 ));
-            } catch(const asio::system_error&) {
+            } catch(const std::system_error& e) {
 #if defined(HAVE_GCC48)
                 std::throw_with_nested(cocaine::error_t("unable to determine predefined node endpoints"));
 #else

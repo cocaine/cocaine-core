@@ -43,7 +43,7 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
     auto ptr = m_remote_services.synchronize();
 
     if(!ptr->count(name)) {
-        throw asio::system_error(error::service_not_available);
+        throw std::system_error(error::service_not_available);
     }
 
     std::tie(lb, ub) = ptr->equal_range(name);

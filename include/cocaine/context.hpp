@@ -27,20 +27,18 @@
 #include "cocaine/context/mapper.hpp"
 #include "cocaine/context/signal.hpp"
 
+#include "cocaine/idl/context.hpp"
+
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
 #include <blackhole/blackhole.hpp>
 
-#define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/optional.hpp>
-#include <boost/signals2/signal.hpp>
 
 namespace cocaine {
 
 // Context
-
-namespace signals = boost::signals2;
 
 class actor_t;
 class execution_unit_t;
@@ -65,33 +63,14 @@ class context_t {
     // because services are allowed to start and stop other services during their lifetime.
     synchronized<service_list_t> m_services;
 
+    // Context signalling hub.
+    retroactive_signal<io::context_tag> m_signals;
+
 public:
     const config_t config;
 
     // Service port mapping and pinning.
     port_mapping_t mapper;
-
-    struct signals_t {
-        typedef signals::signal<void()> context_signals_t;
-        typedef cocaine::retroactive_signal<void(const actor_t& service)> service_signals_t;
-
-        struct {
-            // Fired on service creation, after service's thread is launched and is ready to accept
-            // and process new incoming connections.
-            service_signals_t exposed;
-
-            // Fired on service destruction, after the service was removed from its endpoints, but
-            // before the service object is actually destroyed.
-            service_signals_t removed;
-        } service;
-
-        // Fired first thing on context shutdown. This is a very good time to cleanup persistent
-        // connections, synchronize disk state and so on.
-        context_signals_t shutdown;
-    };
-
-    // Lifecycle management signals.
-    signals_t signals;
 
 public:
     context_t(config_t config, std::unique_ptr<logging::logger_t> logger);
@@ -100,7 +79,7 @@ public:
     std::unique_ptr<logging::log_t>
     log(const std::string& source, blackhole::attribute::set_t = blackhole::attribute::set_t());
 
-    template<class Category, typename... Args>
+    template<class Category, class... Args>
     typename api::category_traits<Category>::ptr_type
     get(const std::string& type, Args&&... args) const;
 
@@ -115,6 +94,13 @@ public:
     auto
     locate(const std::string& name) const -> boost::optional<const actor_t&>;
 
+    // Signals API
+
+    void
+    listen(const std::shared_ptr<dispatch<io::context_tag>>& slot, asio::io_service& asio) {
+        m_signals.listen(slot, asio);
+    }
+
     // Network I/O
 
     auto
@@ -125,7 +111,7 @@ private:
     bootstrap();
 };
 
-template<class Category, typename... Args>
+template<class Category, class... Args>
 typename api::category_traits<Category>::ptr_type
 context_t::get(const std::string& type, Args&&... args) const {
     return m_repository->get<Category>(type, std::forward<Args>(args)...);

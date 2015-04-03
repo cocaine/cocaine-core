@@ -24,7 +24,6 @@
 #include "cocaine/idl/primitive.hpp"
 #include "cocaine/idl/streaming.hpp"
 
-#include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/result_of.hpp"
 #include "cocaine/rpc/slot.hpp"
 
@@ -101,7 +100,7 @@ struct function_slot:
 
     R
     call(tuple_type&& args) const {
-        return tuple::invoke(callable, std::move(args));
+        return tuple::invoke(std::move(args), callable);
     }
 
 private:

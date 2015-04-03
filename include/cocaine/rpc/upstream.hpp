@@ -33,44 +33,21 @@ class basic_upstream_t {
     const std::shared_ptr<session_t> session;
     const uint64_t channel_id;
 
-    enum class states { active, sealed } state;
-
 public:
     basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_):
         session(session_),
         channel_id(channel_id_)
-    {
-        state = states::active;
-    }
+    { }
 
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     void
     send(Args&&... args);
-
-    void
-    drop();
 };
 
-template<class Event, typename... Args>
+template<class Event, class... Args>
 void
 basic_upstream_t::send(Args&&... args) {
-    if(state != states::active) {
-        return;
-    }
-
-    if(std::is_same<typename io::event_traits<Event>::dispatch_type, void>::value) {
-        // NOTE: Sealed upstreams ignore any messages. At some point it might change to an explicit
-        // way to show that the operation won't be completed.
-        state = states::sealed;
-    }
-
     session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
-}
-
-inline
-void
-basic_upstream_t::drop() {
-    session->revoke(channel_id);
 }
 
 // Forwards for the upstream<T> class
@@ -88,7 +65,7 @@ template<class Tag>
 class upstream {
     template<class, class> friend class io::message_queue;
 
-    // The original non-typed upstream.
+    // The original untyped upstream.
     io::upstream_ptr_t ptr;
 
 public:
@@ -97,7 +74,7 @@ public:
              typename allowing<Tag, Stream>::type* = nullptr): ptr(std::forward<Stream>(ptr))
     { }
 
-    template<class Event, typename... Args>
+    template<class Event, class... Args>
     upstream<typename io::event_traits<Event>::dispatch_type>
     send(Args&&... args) {
         static_assert(
@@ -116,6 +93,8 @@ template<>
 class upstream<void>
 {
 public:
+    upstream() = default;
+
     template<class Stream>
     upstream(Stream&&, typename allowing<void, Stream>::type* = nullptr) {
         // Empty.

@@ -22,11 +22,12 @@
 
 #include "cocaine/api/service.hpp"
 
-#include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/essentials.hpp"
 
 #include "cocaine/logging.hpp"
+
+#include "cocaine/rpc/actor.hpp"
 
 #include <blackhole/scoped_attributes.hpp>
 
@@ -62,16 +63,15 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger
 }
 
 context_t::~context_t() {
-    blackhole::scoped_attributes_t guard(
-       *m_logger,
-        blackhole::attribute::set_t({logging::keyword::source() = "core"})
-    );
+    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
+        logging::keyword::source() = "core"
+    }));
 
     COCAINE_LOG_INFO(m_logger, "stopping %d service(s)", m_services->size());
 
     // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
     // the outstanding connections are closed, so services have a chance to send their last wishes.
-    signals.shutdown();
+    m_signals.invoke<io::context::shutdown>();
 
     // Stop the service from accepting new clients or doing any processing. Pop them from the active
     // service list into this temporary storage, and then destroy them all at once. This is needed
@@ -130,24 +130,26 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
     const actor_t& actor = *service;
 
-    {
-        auto ptr = m_services.synchronize();
-
-        if(std::count_if(ptr->begin(), ptr->end(), match{name})) {
+    m_services.apply([&](service_list_t& list) {
+        if(std::count_if(list.begin(), list.end(), match{name})) {
             throw cocaine::error_t("service '%s' already exists", name);
         }
 
         service->run();
 
-        COCAINE_LOG_INFO(m_logger, "service has been started")(
+        COCAINE_LOG_DEBUG(m_logger, "service has been started")(
             "service", name
         );
 
-        ptr->emplace_back(name, std::move(service));
-    }
+        list.emplace_back(name, std::move(service));
+    });
 
     // Fire off the signal to alert concerned subscribers about the service removal event.
-    signals.service.exposed(actor);
+    m_signals.invoke<io::context::service::exposed>(actor.prototype().name(), std::make_tuple(
+        actor.endpoints(),
+        actor.prototype().version(),
+        actor.prototype().root()
+    ));
 }
 
 std::unique_ptr<actor_t>
@@ -158,26 +160,32 @@ context_t::remove(const std::string& name) {
 
     std::unique_ptr<actor_t> service;
 
-    {
-        auto ptr = m_services.synchronize();
-        auto it = std::find_if(ptr->begin(), ptr->end(), match{name});
+    m_services.apply([&](service_list_t& list) {
+        auto it = std::find_if(list.begin(), list.end(), match{name});
 
-        if(it == ptr->end()) {
+        if(it == list.end()) {
             throw cocaine::error_t("service '%s' doesn't exist", name);
         }
 
         service = std::move(it->second);
         service->terminate();
 
-        COCAINE_LOG_INFO(m_logger, "service has been stopped")(
+        COCAINE_LOG_DEBUG(m_logger, "service has been stopped")(
             "service", name
         );
 
-        ptr->erase(it);
-    }
+        list.erase(it);
+    });
 
-    // Fire off the signal to alert concerned subscribers about the service insertion event.
-    signals.service.removed(*service);
+    // Service is already terminated, so there's no reason to try to get its endpoints.
+    std::vector<asio::ip::tcp::endpoint> nothing;
+
+    // Fire off the signal to alert concerned subscribers about the service termination event.
+    m_signals.invoke<io::context::service::removed>(service->prototype().name(), std::make_tuple(
+        nothing,
+        service->prototype().version(),
+        service->prototype().root()
+    ));
 
     return service;
 }
@@ -231,7 +239,7 @@ context_t::bootstrap() {
 
         const auto asio = std::make_shared<asio::io_service>();
 
-        COCAINE_LOG_INFO(m_logger, "starting service");
+        COCAINE_LOG_DEBUG(m_logger, "starting service");
 
         try {
             insert(it->first, std::make_unique<actor_t>(*this, asio, get<api::service_t>(
@@ -258,7 +266,7 @@ context_t::bootstrap() {
 
         COCAINE_LOG_ERROR(m_logger, "coudn't start %d service(s): %s", errored.size(), stream.str());
 
-        signals.shutdown();
+        m_signals.invoke<io::context::shutdown>();
 
         while(!m_services->empty()) {
             m_services->back().second->terminate();
