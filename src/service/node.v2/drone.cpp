@@ -90,6 +90,7 @@ drone_t::on_watch(const std::error_code& ec, size_t len) {
 }
 
 drone_t::~drone_t() {
+    COCAINE_LOG_DEBUG(log, "processing drone termination");
     handle->terminate();
 }
 

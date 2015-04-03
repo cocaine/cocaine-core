@@ -108,7 +108,7 @@ class app_dispatch_t:
 public:
     app_dispatch_t(context_t& context, const engine::manifest_t& manifest) :
         dispatch<io::app_tag>(manifest.name),
-        log(context.log(cocaine::format("app/%s", manifest.name)))
+        log(context.log(cocaine::format("app/dispatch/%s", manifest.name)))
     {
         on<io::app::enqueue>(std::make_shared<slot_type>(
             std::bind(&app_dispatch_t::on_enqueue, this, ph::_1, ph::_2, ph::_3)
@@ -138,6 +138,7 @@ private:
 /// Represents a single application. Starts TCP and UNIX servers (the second inside the first).
 app_t::app_t(context_t& context, const std::string& manifest, const std::string& profile) :
     context(context),
+    log(context.log(format("app/%s", manifest))),
     manifest(new engine::manifest_t(context, manifest)),
     profile(new engine::profile_t(context, profile)),
     loop(std::make_shared<asio::io_service>())
