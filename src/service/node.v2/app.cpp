@@ -55,18 +55,29 @@ private:
     }
 };
 
-class app_service_t;
+/// Drone - single process representation.
+///  - spawns using isolate.
+///  - captures inputs/outputs.
+///  - can get statistics.
+///  - lives until process lives and vise versa.
+///
+/// Overlord - single drone communicator and multiplexor.
+///  - dispatches control messages.
+///
+/// Overseer - drone spawner.
+
+class app_dispatch_t;
 class overlord_t:
     public dispatch<io::rpc_tag>
 {
 public:
-    overlord_t(app_service_t*) :
+    overlord_t(app_dispatch_t*) :
         dispatch<io::rpc_tag>("name/uuid")
     {}
 };
 
-/// App service actor owns it.
-class app_service_t:
+/// App dispatch, manages incoming enqueue requests. Adds them to the queue.
+class app_dispatch_t:
     public dispatch<io::app_tag>
 {
     typedef io::streaming_slot<io::app::enqueue> slot_type;
@@ -75,12 +86,12 @@ class app_service_t:
     std::unique_ptr<unix_actor_t> actor;
 
 public:
-    app_service_t(context_t& context, const engine::manifest_t& manifest) :
+    app_dispatch_t(context_t& context, const engine::manifest_t& manifest) :
         dispatch<io::app_tag>(manifest.name),
         log(context.log(cocaine::format("app/%s", manifest.name)))
     {
         on<io::app::enqueue>(std::make_shared<slot_type>(
-            std::bind(&app_service_t::on_enqueue, this, ph::_1, ph::_2, ph::_3)
+            std::bind(&app_dispatch_t::on_enqueue, this, ph::_1, ph::_2, ph::_3)
         ));
 
         // Create unix actor and bind to {name}.sock. Owns: 1:1.
@@ -93,7 +104,7 @@ public:
         actor->run();
     }
 
-    ~app_service_t() {
+    ~app_dispatch_t() {
         actor->terminate();
     }
 
@@ -115,6 +126,7 @@ private:
     }
 };
 
+/// Represents a single application. Starts TCP and UNIX servers (the second inside the first).
 app_t::app_t(context_t& context, const std::string& manifest, const std::string& profile) :
     context(context),
     manifest(new engine::manifest_t(context, manifest)),
@@ -145,6 +157,6 @@ void app_t::start() {
     context.insert(manifest->name, std::make_unique<actor_t>(
         context,
         std::make_shared<asio::io_service>(),
-        std::make_unique<app_service_t>(context, *manifest))
+        std::make_unique<app_dispatch_t>(context, *manifest))
     );
 }
