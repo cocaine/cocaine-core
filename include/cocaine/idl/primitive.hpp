@@ -60,7 +60,7 @@ struct error {
         int,
      /* Human-readable error description. */
         std::string
-    > argument_type;
+    >::type argument_type;
 
     // Terminal message.
     typedef void upstream_type;
@@ -79,7 +79,7 @@ struct protocol<primitive_tag<T>> {
     typedef typename boost::mpl::list<
         typename primitive<T>::value,
         typename primitive<T>::error
-    > messages;
+    >::type messages;
 
     typedef primitive<T> scope;
 };

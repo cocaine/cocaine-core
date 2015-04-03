@@ -50,7 +50,7 @@ struct resolve {
         std::string,
      /* Routing seed. Can be used to consistently map users to service versions. */
         optional<std::string>
-    > argument_type;
+    >::type argument_type;
 
     typedef option_of<
      /* Endpoints for the client to connect to in order to use the the service. */
@@ -74,7 +74,7 @@ struct connect {
     typedef boost::mpl::list<
      /* Node ID. */
         std::string
-    > argument_type;
+    >::type argument_type;
 
     typedef stream_of<
      /* Node ID. */
@@ -95,7 +95,7 @@ struct refresh {
     typedef boost::mpl::list<
      /* Name of the group to refresh. */
         std::vector<std::string>
-    > argument_type;
+    >::type argument_type;
 };
 
 struct cluster {
@@ -106,8 +106,37 @@ struct cluster {
     }
 
     typedef option_of<
+     /* A full dump of the routing table. */
         std::map<std::string, asio::ip::tcp::endpoint>
     >::tag upstream_type;
+};
+
+struct expose_tag;
+
+struct expose {
+    struct discard {
+        typedef locator::expose_tag tag;
+
+        static const char* alias() {
+            return "discard";
+        }
+
+        typedef void upstream_type;
+    };
+
+    typedef locator_tag tag;
+    typedef locator::expose_tag dispatch_type;
+
+    static const char* alias() {
+        return "expose";
+    }
+
+    typedef boost::mpl::list<
+     /* The alias of the service to be impersonated. */
+        std::string,
+     /* Endpoints of the service to be impersonated. */
+        std::vector<asio::ip::tcp::endpoint>
+    >::type argument_type;
 };
 
 }; // struct locator
@@ -122,10 +151,22 @@ struct protocol<locator_tag> {
         locator::resolve,
         locator::connect,
         locator::refresh,
-        locator::cluster
-    > messages;
+        locator::cluster,
+        locator::expose
+    >::type messages;
 
     typedef locator scope;
+};
+
+template<>
+struct protocol<locator::expose_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        locator::expose::discard
+    >::type messages;
 };
 
 }} // namespace cocaine::io

@@ -71,6 +71,7 @@ class locator_t:
     public dispatch<io::locator_tag>
 {
     class remote_t;
+    class expose_slot_t;
 
     typedef std::map<std::string, continuum_t> router_map_t;
 
