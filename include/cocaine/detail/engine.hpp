@@ -59,15 +59,11 @@ public:
 
    ~execution_unit_t();
 
-    void
+    std::shared_ptr<session_t>
     attach(const std::shared_ptr<asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
     double
     utilization() const;
-
-private:
-    void
-    attach_impl(const std::shared_ptr<asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
 };
 
 } // namespace cocaine

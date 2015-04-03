@@ -125,24 +125,12 @@ execution_unit_t::~execution_unit_t() {
     m_chamber = nullptr;
 }
 
-void
+std::shared_ptr<session_t>
 execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
-    m_asio->dispatch(std::bind(&execution_unit_t::attach_impl, this, ptr, dispatch));
-}
-
-double
-execution_unit_t::utilization() const {
-    return m_chamber->load_avg1();
-}
-
-void
-execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
     int socket;
 
     if((socket = ::dup(ptr->native_handle())) == -1) {
-        std::error_code ec(errno, std::system_category());
-        COCAINE_LOG_ERROR(m_log, "unable to clone client's socket - [%d] %s", ec.value(), ec.message());
-        return;
+        throw std::system_error(errno, std::system_category(), "unable to clone client's socket");
     }
 
     std::shared_ptr<session_t> session;
@@ -167,22 +155,22 @@ execution_unit_t::attach_impl(const std::shared_ptr<tcp::socket>& ptr, const io:
             attribute::make("service",  dispatch->name()),
         }));
 
+        COCAINE_LOG_DEBUG(session_log, "attached connection to engine, load: %.2f%%", utilization() * 100);
+
         // Create the new inactive session.
         session = std::make_shared<session_t>(std::move(session_log), std::move(channel), dispatch);
     } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "client has disappeared while creating session: [%d] %s",
-            e.code().value(), e.code().message());
-        return;
+        throw std::system_error(e.code(), "client has disappeared while creating session");
     }
 
-    // Register the new session with this engine.
-    m_sessions[socket] = session;
+    m_asio->dispatch([=]() {
+        m_sessions.insert({socket, session}).first->second->pull();
+    });
 
-    COCAINE_LOG_DEBUG(m_log, "attached client to engine with %.2f%% utilization", utilization() * 100)(
-        "endpoint", session->remote_endpoint(),
-        "service",  session->name()
-    );
+    return session;
+}
 
-    // Start the message dispatching.
-    session->pull();
+double
+execution_unit_t::utilization() const {
+    return m_chamber->load_avg1();
 }

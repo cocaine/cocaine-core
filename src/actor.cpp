@@ -63,7 +63,7 @@ void
 actor_t::accept_action_t::operator()() {
     parent->m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
         if(!ptr) {
-            COCAINE_LOG_ERROR(parent->m_log, "abnormal termination of actor remote client pump");
+            COCAINE_LOG_ERROR(parent->m_log, "abnormal termination of actor connection pump");
             return;
         }
 
@@ -80,16 +80,24 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
     auto ptr = std::make_shared<tcp::socket>(std::move(socket));
 
     switch(ec.value()) {
-      case 0:
-        COCAINE_LOG_DEBUG(parent->m_log, "accepted remote client on fd %d", ptr->native_handle());
-        parent->m_context.engine().attach(ptr, parent->m_prototype);
+    case 0:
+        COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd %d", ptr->native_handle());
+
+        try {
+            parent->m_context.engine().attach(ptr, parent->m_prototype);
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: [%d] %s - %s",
+                e.code().value(), e.code().message(), e.what());
+            ptr = nullptr;
+        }
+
         break;
 
-      case asio::error::operation_aborted:
+    case asio::error::operation_aborted:
         return;
 
-      default:
-        COCAINE_LOG_ERROR(parent->m_log, "unable to accept remote client: [%d] %s", ec.value(),
+    default:
+        COCAINE_LOG_ERROR(parent->m_log, "unable to accept connection: [%d] %s", ec.value(),
             ec.message());
         break;
     }
