@@ -2,7 +2,7 @@
 
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core3
-Version:	0.12.0.3
+Version:	0.12.0.4
 Release:	1%{?dist}
 
 
@@ -125,6 +125,11 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
+* Fri Apr 03 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.4-1
+- Multiple thread-safety fixes for Actor, Locator and others.
+- Refactored Sessions to enable verbose error logging, at last.
+- Reverted setting of TCP_NODELAY option on client sockets.
+
 * Fri Mar 20 2015 Evgeny Safronov <division494@gmail.com> 0.12.0.3-1
 - Bugfix: do not read/write from/to already deleted channel.
 

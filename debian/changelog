@@ -1,3 +1,11 @@
+cocaine-core (0.12.0.4) unstable; urgency=low
+
+  * Multiple thread-safety fixes for Actor, Locator and others.
+  * Refactored Sessions to enable verbose error logging, at last.
+  * Reverted setting of TCP_NODELAY option on client sockets.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Fri, 03 Apr 2015 10:23:32 -0400
+
 cocaine-core (0.12.0.3) unstable; urgency=low
 
   * Bugfix: do not read/write from/to already deleted channel.
