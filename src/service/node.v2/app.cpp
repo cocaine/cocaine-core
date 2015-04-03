@@ -12,6 +12,7 @@
 #include "cocaine/detail/service/node.v2/actor.hpp"
 #include "cocaine/detail/service/node.v2/drone.hpp"
 #include "cocaine/detail/service/node.v2/slot.hpp"
+#include "cocaine/detail/service/node.v2/splitter.hpp"
 
 #include "cocaine/idl/node.hpp"
 #include "cocaine/idl/rpc.hpp"
@@ -72,7 +73,7 @@ class handshake_dispatch : public dispatch<io::rpc_tag> {
 
 public:
     handshake_dispatch(std::shared_ptr<session_t> session) :
-        dispatch<io::rpc_tag>("[app]/handshake"),
+        dispatch<io::rpc_tag>(format("%s/handshake", session->name())),
         session(session)
     {
         on<io::rpc::handshake>([](std::string){
@@ -87,8 +88,8 @@ class cocaine::overlord_t:
     std::unordered_map<std::string, std::shared_ptr<session_t>> sessions;
 
 public:
-    overlord_t() :
-        dispatch<io::rpc_tag>("[app]/overlord")
+    overlord_t(const std::string& name) :
+        dispatch<io::rpc_tag>(format("%s/overlord", name))
     {}
 
     void
@@ -175,7 +176,7 @@ void app_t::start() {
     );
 
     // Create unix actor and bind to {name}.sock. Owns: 1:1.
-    auto overlord = std::make_unique<overlord_t>();
+    auto overlord = std::make_unique<overlord_t>(manifest->name);
     engine.reset(new unix_actor_t(
         context,
         manifest->endpoint,
@@ -186,8 +187,12 @@ void app_t::start() {
     engine->run();
 
     // TODO: Temporary spawn 1 slave. Remove later.
-    drone_data d(*manifest, *profile, [this](const std::string& output){
-        COCAINE_LOG_DEBUG(log, "output: %s", output);
+    auto splitter = std::make_shared<splitter_t>();
+    drone_data d(*manifest, *profile, [=](const std::string& output){
+        splitter->consume(output);
+        while (auto line = splitter->next()) {
+            COCAINE_LOG_DEBUG(log, "<<< %s", *line);
+        }
     });
     drone = drone_t::make(context, std::move(d), loop);
 }
