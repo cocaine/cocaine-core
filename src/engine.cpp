@@ -181,10 +181,10 @@ execution_unit_t::utilization() const {
 }
 
 template
-void
+std::shared_ptr<session_t>
 execution_unit_t::attach(const std::shared_ptr<tcp::socket>&, const io::dispatch_ptr_t&);
 
 #include <asio/local/stream_protocol.hpp>
 template
-void
+std::shared_ptr<session_t>
 execution_unit_t::attach(const std::shared_ptr<local::stream_protocol::socket>&, const io::dispatch_ptr_t&);

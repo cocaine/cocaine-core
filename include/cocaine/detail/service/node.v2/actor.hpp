@@ -3,6 +3,7 @@
 #include <asio/local/stream_protocol.hpp>
 
 #include "cocaine/forwards.hpp"
+#include "cocaine/locked_ptr.hpp"
 
 namespace cocaine {
 
@@ -24,10 +25,11 @@ class unix_actor_t {
     io::dispatch_ptr_t m_prototype;
 
     // I/O acceptor. Actors have a separate thread to accept new connections. After a connection is
-    // is accepted, it is assigned to a carefully choosen thread from the main thread pool.
-    std::unique_ptr<protocol_type::acceptor> m_acceptor;
+    // is accepted, it is assigned to a least busy thread from the main thread pool. Synchronized to
+    // allow concurrent observing and operations.
+    synchronized<std::unique_ptr<protocol_type::acceptor>> m_acceptor;
 
-    // I/O authentication & processing.
+    // Main service thread.
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:

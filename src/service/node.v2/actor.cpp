@@ -24,10 +24,16 @@ public:
 
     void
     operator()() {
-        parent->m_acceptor->async_accept(socket, std::bind(&accept_action_t::finalize,
-            shared_from_this(),
-            std::placeholders::_1
-        ));
+        parent->m_acceptor.apply([this](std::unique_ptr<protocol_type::acceptor>& ptr) {
+            if(!ptr) {
+                COCAINE_LOG_ERROR(parent->m_log, "abnormal termination of actor connection pump");
+                return;
+            }
+
+            using namespace std::placeholders;
+
+            ptr->async_accept(socket, std::bind(&accept_action_t::finalize, shared_from_this(), _1));
+        });
     }
 
 private:
@@ -38,16 +44,26 @@ private:
         auto ptr = std::make_shared<protocol_type::socket>(std::move(socket));
 
         switch(ec.value()) {
-          case 0:
-            COCAINE_LOG_DEBUG(parent->m_log, "accepted remote client on fd %d", ptr->native_handle());
-            parent->m_context.engine().attach(ptr, parent->m_prototype);
+        case 0:
+            COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd %d", ptr->native_handle());
+
+            try {
+                parent->m_context.engine().attach(ptr, parent->m_prototype);
+            } catch(const std::system_error& e) {
+                COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: [%d] %s - %s",
+                    e.code().value(), e.code().message(), e.what());
+                ptr = nullptr;
+            }
+
             break;
 
-          case asio::error::operation_aborted:
+        case asio::error::operation_aborted:
             return;
 
-          default:
-            COCAINE_LOG_ERROR(parent->m_log, "dropped remote client: [%d] %s", ec.value(), ec.message());
+        default:
+            COCAINE_LOG_ERROR(parent->m_log, "unable to accept connection: [%d] %s", ec.value(),
+                ec.message());
+            break;
         }
 
         // TODO: Find out if it's always a good idea to continue accepting connections no matter what.
@@ -71,20 +87,21 @@ unix_actor_t::~unix_actor_t() {}
 
 void
 unix_actor_t::run() {
-    BOOST_ASSERT(!m_chamber);
+    m_acceptor.apply([this](std::unique_ptr<protocol_type::acceptor>& ptr) {
+        try {
+            ptr = std::make_unique<protocol_type::acceptor>(*m_asio, this->endpoint);
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
+                e.code().value(),
+                e.code().message());
+            throw;
+        }
 
-    try {
-        m_acceptor = std::make_unique<protocol_type::acceptor>(*m_asio, this->endpoint);
-    } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
-            e.code().value(), e.code().message());
-        throw;
-    }
+        std::error_code ec;
+        const auto endpoint = ptr->local_endpoint(ec);
 
-    std::error_code ec;
-    const auto endpoint = m_acceptor->local_endpoint(ec);
-
-    COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", endpoint);
+        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", endpoint);
+    });
 
     m_asio->post(std::bind(&accept_action_t::operator(),
         std::make_shared<accept_action_t>(this)
@@ -96,20 +113,20 @@ unix_actor_t::run() {
 
 void
 unix_actor_t::terminate() {
-    BOOST_ASSERT(m_chamber);
-
     // Do not wait for the service to finish all its stuff (like timers, etc). Graceful termination
     // happens only in engine chambers, because that's where client connections are being handled.
     m_asio->stop();
 
-    std::error_code ec;
-    const auto endpoint = m_acceptor->local_endpoint(ec);
+    m_acceptor.apply([this](std::unique_ptr<protocol_type::acceptor>& ptr) {
+        std::error_code ec;
+        const auto endpoint = ptr->local_endpoint(ec);
 
-    COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
+        COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
 
-    // Does not block, unlike the one in execution_unit_t's destructors.
-    m_chamber  = nullptr;
-    m_acceptor = nullptr;
+        // Does not block, unlike the one in execution_unit_t's destructors.
+        m_chamber = nullptr;
+        ptr       = nullptr;
+    });
 
     // Be ready to restart the actor.
     m_asio->reset();

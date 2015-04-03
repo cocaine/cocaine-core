@@ -28,6 +28,8 @@
 #include "cocaine/rpc/session.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
+#include <asio/ip/tcp.hpp>
+
 namespace cocaine { namespace api {
 
 template<class Tag> class client;

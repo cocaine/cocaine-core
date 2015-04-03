@@ -103,8 +103,8 @@ node_t::node_t(context_t& context, asio::io_service& asio, const std::string& na
 
 node_t::~node_t() {}
 
-const basic_dispatch_t&
-node_t::prototype() const {
+auto
+node_t::prototype() const -> const io::basic_dispatch_t&{
     return *this;
 }
 
