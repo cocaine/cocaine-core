@@ -152,6 +152,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     ltdl
     mhash
     msgpack
+    thrift
     ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES

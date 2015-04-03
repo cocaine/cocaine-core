@@ -225,6 +225,7 @@ context_t::engine() {
 void
 context_t::bootstrap() {
     tracer::trace_context_t::set_logger(*m_logger);
+    tracer::trace_context_t::set_service_name("cocaine");
 
     COCAINE_LOG_INFO(m_logger, "starting %d execution unit(s)", config.network.pool);
 

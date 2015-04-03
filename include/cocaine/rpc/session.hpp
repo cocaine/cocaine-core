@@ -28,7 +28,11 @@
 #include "cocaine/rpc/asio/encoder.hpp"
 #include "cocaine/rpc/asio/decoder.hpp"
 
+#include "cocaine/trace/trace.hpp"
+
 #include <asio/generic/stream_protocol.hpp>
+
+#include <asio/ip/tcp.hpp>
 
 namespace cocaine {
 

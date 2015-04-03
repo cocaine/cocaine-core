@@ -1,7 +1,3 @@
-namespace cocaine { namespace tracer {
-
-
-
 #pragma once
 
 #include <blackhole/scoped_attributes.hpp>
@@ -25,11 +21,11 @@ class callable_wrapper_t;
 
 inline
 span_ptr_t
-    current_span();
+current_span();
 
 inline
 void
-    set_service_name();
+set_service_name();
 
 class trace_push_scope_t {
 public:
@@ -42,25 +38,21 @@ public:
 
 class trace_restore_scope_t {
 public:
-    inline trace_restore_scope_t(std::string rpc_name, uint64_t trace_id, uint64_t span_id, uint64_t parent_id);
-    inline trace_restore_scope_t(span_ptr_t span);
-    inline ~trace_restore_scope_t();
+    inline
+    trace_restore_scope_t(std::string rpc_name, uint64_t trace_id, uint64_t span_id, uint64_t parent_id);
+
+    inline
+    trace_restore_scope_t(span_ptr_t span);
+
+    inline
+    ~trace_restore_scope_t();
 };
 
 
 template<class... Args>
 auto
-    bind(std::string message, Args&& ...args) -> callable_wrapper_t<decltype(std::bind(std::forward<Args>(args)...))>;
+bind(std::string message, Args&& ...args) -> callable_wrapper_t<decltype(std::bind(std::forward<Args>(args)...))>;
 
-/*
- ********************************************
- ************ Private section ***************
- ********************************************
-*/
-
-class trace_context_t;
-
-inline uint64_t generate_id();
 
 struct span_t :
     public std::enable_shared_from_this<span_t>
@@ -166,7 +158,7 @@ private:
 
     inline
     blackhole::attribute::set_t
-        attributes() const;
+    attributes() const;
 
     span_t(std::string _name, uint64_t _trace_id, uint64_t _span_id) :
         trace_id(_trace_id),
@@ -296,7 +288,7 @@ public:
         f(std::move(_f)),
         trace_context(trace_context_t::get_context())
     {
-        COCAINE_LOG_INFO(trace_context.default_logger(), "%s", message.c_str());
+          COCAINE_LOG_INFO(trace_context.default_logger(), "%s", message.c_str());
 #endif
     }
     struct cleanup_t {
@@ -317,11 +309,11 @@ public:
     operator()(Args&& ...args) -> decltype(std::declval<F>()(args...)) {
         cleanup_t c(trace_context_t::thread_context().release());
         trace_context_t::thread_context().reset(new trace_context_t(trace_context));
-#ifdef COCAINE_TRACE_USE_LOG
+        #ifdef COCAINE_TRACE_USE_LOG
         auto& span = trace_context_t::get_context().span;
         blackhole::scoped_attributes_t attr(*trace_context_t::default_logger(), span->attributes());
         COCAINE_LOG_INFO(trace_context.default_logger(), "Invoke: %s", message.c_str());
-#endif
+        #endif
         return f(std::forward<Args>(args)...);
 
     }
@@ -411,5 +403,4 @@ trace_push_scope_t::~trace_push_scope_t() {
     trace_context_t::get_context().pop();
 }
 
-}}
 }}

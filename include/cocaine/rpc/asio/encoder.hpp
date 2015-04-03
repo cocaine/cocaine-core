@@ -27,6 +27,7 @@
 
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
+#include "cocaine/trace/trace.hpp"
 
 #include <hpack-headers/header.hpp>
 #include <hpack-headers/msgpack_traits.hpp>
@@ -99,6 +100,7 @@ private:
 };
 
 } // namespace aux
+
 
 template<class Event>
 struct encoded:

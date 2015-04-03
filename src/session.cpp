@@ -59,7 +59,7 @@ private:
 
 void
 session_t::pull_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
-    ptr->reader->read(message, std::bind(&pull_action_t::finalize,
+    ptr->reader->read(message, tracer::bind(&pull_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -125,7 +125,7 @@ private:
 
 void
 session_t::push_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
-    ptr->writer->write(message, std::bind(&push_action_t::finalize,
+    ptr->writer->write(message, tracer::bind("finalize", &push_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -133,14 +133,15 @@ session_t::push_action_t::operator()(const std::shared_ptr<channel<protocol_type
 
 void
 session_t::push_action_t::finalize(const std::error_code& ec) {
-    if(ec.value() == 0) return;
+    if(ec.value() == 0) {
+        return;
+    };
 
     if(ec != asio::error::eof) {
         COCAINE_LOG_ERROR(session->log, "client disconnected: [%d] %s", ec.value(), ec.message());
     } else {
         COCAINE_LOG_DEBUG(session->log, "client disconnected");
     }
-
     return session->detach(ec);
 }
 
@@ -154,6 +155,17 @@ public:
 
     dispatch_ptr_t dispatch;
     upstream_ptr_t upstream;
+    tracer::span_ptr_t trace_span;
+
+    inline void
+    set_trace_span(tracer::span_ptr_t span) {
+        trace_span = std::move(span);
+    }
+
+    inline  tracer::span_ptr_t
+    get_trace_span() {
+        return trace_span;
+    }
 };
 
 // Session
@@ -172,11 +184,11 @@ session_t::session_t(std::unique_ptr<logging::log_t> log_,
 void
 session_t::handle(const decoder_t::message_type& message) {
     const channel_map_t::key_type channel_id = message.span();
-
     const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {
         channel_map_t::const_iterator lb, ub;
 
         std::tie(lb, ub) = mapping.equal_range(channel_id);
+
 
         if(lb == ub) {
             if(channel_id <= max_channel_id) {
@@ -191,12 +203,26 @@ session_t::handle(const decoder_t::message_type& message) {
                 std::make_shared<basic_upstream_t>(shared_from_this(), channel_id)
             )});
 
+            //Ugliest hack
+            if(prototype->name() != "logging") {
+                tracer::restore(prototype->name(), message.trace_id(), message.span_id(), message.parent_id());
+                blackhole::scoped_attributes_t attr(*log, tracer::current_span()->attributes());
+                COCAINE_LOG_INFO(log, "sr");
+                lb->second->set_trace_span(tracer::current_span());
+            }
             max_channel_id = channel_id;
+        }
+        else {
+            tracer::restore(lb->second->get_trace_span());
+            blackhole::scoped_attributes_t attr(*log, tracer::current_span()->attributes());
+            COCAINE_LOG_INFO(log, "cr");
         }
 
         // NOTE: The virtual channel pointer is copied here to avoid data races.
         return lb->second;
     });
+
+    blackhole::scoped_attributes_t attr(*log, tracer::current_span()->attributes());
 
     if(!channel->dispatch) {
         throw std::system_error(error::unbound_dispatch);
@@ -214,6 +240,7 @@ session_t::handle(const decoder_t::message_type& message) {
         // session::detach(), which was called during the dispatch::process().
         if(!channel.unique()) revoke(channel_id);
     }
+    tracer::reset();
 }
 
 upstream_ptr_t
@@ -293,7 +320,7 @@ session_t::pull() {
     if(const auto ptr = *transport.synchronize()) {
 #endif
         // Use dispatch() instead of a direct call for thread safety.
-        ptr->socket->get_io_service().dispatch(std::bind(&pull_action_t::operator(),
+        ptr->socket->get_io_service().dispatch(tracer::bind("session_pull", &pull_action_t::operator(),
             std::make_shared<pull_action_t>(shared_from_this()),
             ptr
         ));
