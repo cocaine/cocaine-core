@@ -35,15 +35,15 @@ class adhoc_t:
     // Used in resolve() method, which is const.
     std::default_random_engine mutable m_random_generator;
 
-    struct remote_service_t {
+    struct remote_t {
         std::string uuid;
-        metadata_t  info;
+        std::vector<asio::ip::tcp::endpoint> endpoints;
     };
 
-    typedef std::multimap<std::string, remote_service_t> remote_service_map_t;
+    typedef std::multimap<partition_t, remote_t> remote_map_t;
 
     // TODO: Merge service metadata from remote nodes and check whether it's consistent.
-    synchronized<remote_service_map_t> m_remote_services;
+    synchronized<remote_map_t> m_remotes;
 
 public:
     adhoc_t(context_t& context, const std::string& name, const dynamic_t& args);
@@ -53,15 +53,16 @@ public:
 
     virtual
     auto
-    resolve(const std::string& name) const -> metadata_t;
+    resolve(const partition_t& name) const -> std::vector<asio::ip::tcp::endpoint>;
 
     virtual
-    void
-    consume(const std::string& uuid, const std::string& name, const metadata_t& info);
+    size_t
+    consume(const std::string& uuid,
+            const partition_t& name, const std::vector<asio::ip::tcp::endpoint>& endpoints);
 
     virtual
-    void
-    cleanup(const std::string& uuid, const std::string& name);
+    size_t
+    cleanup(const std::string& uuid, const partition_t& name);
 };
 
 }} // namespace cocaine::gateway

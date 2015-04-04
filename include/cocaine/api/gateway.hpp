@@ -26,9 +26,7 @@
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
-// TODO: Drop this.
-#include "cocaine/idl/locator.hpp"
-#include "cocaine/rpc/result_of.hpp"
+#include <asio/ip/tcp.hpp>
 
 namespace cocaine { namespace api {
 
@@ -40,19 +38,20 @@ struct gateway_t {
         // Empty.
     }
 
-    typedef result_of<io::locator::resolve>::type metadata_t;
+    typedef std::tuple<std::string, unsigned int> partition_t;
 
     virtual
-    metadata_t
-    resolve(const std::string& name) const = 0;
+    auto
+    resolve(const partition_t& name) const -> std::vector<asio::ip::tcp::endpoint> = 0;
 
     virtual
-    void
-    consume(const std::string& uuid, const std::string& name, const metadata_t& info) = 0;
+    size_t
+    consume(const std::string& uuid,
+            const partition_t& name, const std::vector<asio::ip::tcp::endpoint>& endpoints) = 0;
 
     virtual
-    void
-    cleanup(const std::string& uuid, const std::string& name) = 0;
+    size_t
+    cleanup(const std::string& uuid, const partition_t& name) = 0;
 
 protected:
     gateway_t(context_t&, const std::string& /* name */, const dynamic_t& /* args */) {

@@ -75,6 +75,8 @@ class locator_t:
 
     typedef std::map<std::string, continuum_t> router_map_t;
 
+    typedef std::map<unsigned, io::graph_root_t, std::greater<unsigned>> partition_view_t;
+
     typedef std::map<std::string, api::client<io::locator_tag>> remote_map_t;
     typedef std::map<std::string, streamed<results::connect>>   stream_map_t;
 
@@ -91,19 +93,22 @@ class locator_t:
 
     // Clustering components.
     std::unique_ptr<api::gateway_t> m_gateway;
-    std::shared_ptr<api::cluster_t> m_cluster;
+    std::unique_ptr<api::cluster_t> m_cluster;
 
     // Used to resolve service names against routing groups, based on weights and other metrics.
     synchronized<router_map_t> m_routers;
 
-    // Incoming sessions indexed by uuid. It is required to disambiguate between multiple different
+    // Outgoing sessions indexed by uuid. It is required to disambiguate between multiple different
     // instances on the same host, even if the instance was restarted on the same port.
     synchronized<remote_map_t> m_remotes;
 
-    // Outgoing sessions indexed by uuid.
+    // Snapshot of the cluster service disposition. Synchronized with outgoing streams.
+    std::map<std::string, partition_view_t> m_protocol;
+
+    // Incoming sessions indexed by uuid.
     synchronized<stream_map_t> m_streams;
 
-    // Snapshot of the local service disposition. Synchronized with outgoing streams.
+    // Snapshot of the local service disposition. Synchronized with incoming streams.
     std::map<std::string, results::resolve> m_snapshot;
 
 public:
