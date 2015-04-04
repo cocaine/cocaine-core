@@ -164,7 +164,14 @@ execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::disp
     }
 
     m_asio->dispatch([=]() {
-        m_sessions.insert({socket, session}).first->second->pull();
+        try {
+            session->pull();
+        } catch(const std::exception& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to activate session for connection: %s", e.what());
+            return;
+        }
+
+        m_sessions.insert({socket, session});
     });
 
     return session;
