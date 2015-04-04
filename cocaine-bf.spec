@@ -2,7 +2,7 @@
 
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core3
-Version:	0.12.0.4
+Version:	0.12.0.5
 Release:	1%{?dist}
 
 
@@ -125,6 +125,9 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
+* Fri Apr 03 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.5-1
+- Bugfix: sometimes new Sessions weren't properly registered with Engines.
+
 * Fri Apr 03 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.4-1
 - Multiple thread-safety fixes for Actor, Locator and others.
 - Refactored Sessions to enable verbose error logging, at last.
