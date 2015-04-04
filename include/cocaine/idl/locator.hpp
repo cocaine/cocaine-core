@@ -139,6 +139,24 @@ struct expose {
     >::type argument_type;
 };
 
+struct routing {
+    typedef locator_tag tag;
+
+    static const char* alias() {
+        return "routing";
+    }
+
+    typedef boost::mpl::list<
+     /* Router ID. */
+        std::string
+    >::type argument_type;
+
+    typedef stream_of<
+     /* A full dump of all available routing groups on this node. */
+        std::map<std::string, std::vector<std::tuple<uint32_t, std::string>>>
+    >::tag upstream_type;
+};
+
 }; // struct locator
 
 template<>
@@ -152,7 +170,8 @@ struct protocol<locator_tag> {
         locator::connect,
         locator::refresh,
         locator::cluster,
-        locator::expose
+        locator::expose,
+        locator::routing
     >::type messages;
 
     typedef locator scope;
