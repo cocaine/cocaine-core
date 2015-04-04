@@ -164,7 +164,7 @@ execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::disp
     }
 
     m_asio->dispatch([=]() {
-        m_sessions.insert({socket, session}).first->second->pull();
+        (m_sessions[socket] = session)->pull();
     });
 
     return session;
