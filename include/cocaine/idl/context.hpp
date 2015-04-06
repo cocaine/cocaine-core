@@ -54,7 +54,7 @@ struct service {
         typedef boost::mpl::list<
             std::string,
             std::tuple<std::vector<asio::ip::tcp::endpoint>, unsigned int, graph_root_t>
-        > argument_type;
+        >::type argument_type;
 
         typedef void upstream_type;
     };
@@ -70,7 +70,7 @@ struct service {
         typedef boost::mpl::list<
             std::string,
             std::tuple<std::vector<asio::ip::tcp::endpoint>, unsigned int, graph_root_t>
-        > argument_type;
+        >::type argument_type;
 
         typedef void upstream_type;
     };
@@ -80,7 +80,9 @@ struct service {
 
 template<>
 struct protocol<context_tag> {
-    typedef boost::mpl::int_<1> version;
+    typedef boost::mpl::int_<
+        1
+    >::type version;
 
     typedef boost::mpl::list<
         // Fired first thing on context shutdown. This is a very good time to cleanup persistent
@@ -92,7 +94,7 @@ struct protocol<context_tag> {
         // Fired on service destruction, after the service was removed from its endpoints, but
         // before the service object is actually destroyed.
         context::service::removed
-    > messages;
+    >::type messages;
 
     typedef context scope;
 };

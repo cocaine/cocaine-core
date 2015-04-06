@@ -28,6 +28,7 @@
 
 #include "cocaine/detail/unique_id.hpp"
 
+#include "cocaine/idl/primitive.hpp"
 #include "cocaine/idl/streaming.hpp"
 
 #include "cocaine/logging.hpp"
@@ -55,6 +56,7 @@ using namespace asio::ip;
 
 using namespace blackhole;
 
+using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
@@ -163,6 +165,61 @@ locator_t::remote_t::on_shutdown() {
     parent->drop_node(uuid);
 }
 
+class locator_t::expose_slot_t: public basic_slot<locator::expose> {
+    struct expose_lock_t: public basic_slot<locator::expose>::dispatch_type {
+        expose_slot_t *const parent;
+        std::string    const handle;
+
+        expose_lock_t(expose_slot_t * const parent_, const std::string& handle_):
+            basic_slot<locator::expose>::dispatch_type("expose"),
+            parent(parent_),
+            handle(handle_)
+        {
+            on<locator::expose::discard>([this] { discard(std::error_code()); });
+        }
+
+        virtual
+        void
+        discard(const std::error_code& ec) const { parent->discard(ec, handle); }
+    };
+
+    typedef std::shared_ptr<const basic_slot::dispatch_type> result_type;
+
+    locator_t *const parent;
+
+public:
+    expose_slot_t(locator_t *const parent_): parent(parent_) { }
+
+    auto
+    operator()(tuple_type&& args, upstream_type&& upstream) -> boost::optional<result_type> {
+        const auto dispatch = cocaine::tuple::invoke(std::move(args),
+            [this](std::string&& handle, std::vector<tcp::endpoint>&& endpoints) -> result_type
+        {
+            COCAINE_LOG_INFO(parent->m_log, "exposing alien with %d endpoints", endpoints.size())(
+                "service", handle
+            );
+
+            parent->on_service(handle, results::resolve{endpoints, 0, graph_root_t{}}, 1);
+
+            return std::make_shared<expose_lock_t>(this, handle);
+        });
+
+        upstream.send<protocol<event_traits<locator::expose>::upstream_type>::scope::value>();
+
+        return boost::make_optional(dispatch);
+    }
+
+private:
+    void
+    discard(const std::error_code& ec, const std::string& handle) {
+        COCAINE_LOG_INFO(parent->m_log, "alien disconnected: [%d] %s", ec.value(), ec.message())(
+            "service", handle
+        );
+
+        return parent->on_service(handle, results::resolve{}, 0);
+    }
+};
+
 // Locator
 
 locator_cfg_t::locator_cfg_t(const std::string& name_, const dynamic_t& root):
@@ -187,6 +244,8 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     on<locator::connect>(std::bind(&locator_t::on_connect, this, _1));
     on<locator::refresh>(std::bind(&locator_t::on_refresh, this, _1));
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
+
+    on<locator::expose>(std::make_shared<expose_slot_t>(this));
 
     // Service restrictions
 
@@ -466,28 +525,33 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, boo
 
     auto mapping = m_streams.synchronize();
 
-    if(!mapping->empty()) {
-        const auto response = results::connect { m_cfg.uuid, {{ name, meta }} };
-
-        for(auto it = mapping->begin(); it != mapping->end();) {
-            try {
-                it->second.write(response);
-                it++;
-            } catch(...) {
-                it = mapping->erase(it);
-            }
-        }
-
-        COCAINE_LOG_DEBUG(m_log, "synchronized metadata with %llu remote nodes", mapping->size())(
-            "service", name
-        );
-    }
+    scoped_attributes_t attributes(*m_log, { attribute::make("service", name)});
 
     if(active) {
+        if(m_snapshot.count(name) != 0) {
+            COCAINE_LOG_ERROR(m_log, "duplicate service detected");
+            return;
+        }
+
         m_snapshot[name] = meta;
     } else {
         m_snapshot.erase(name);
     }
+
+    if(mapping->empty()) return;
+
+    const auto response = results::connect { m_cfg.uuid, {{ name, meta }} };
+
+    for(auto it = mapping->begin(); it != mapping->end();) {
+        try {
+            it->second.write(response);
+            it++;
+        } catch(...) {
+            it = mapping->erase(it);
+        }
+    }
+
+    COCAINE_LOG_DEBUG(m_log, "sent meta to %llu remote nodes", mapping->size());
 }
 
 void

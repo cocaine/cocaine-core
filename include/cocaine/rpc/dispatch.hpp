@@ -45,8 +45,6 @@ template<class Tag> class dispatch;
 
 namespace io {
 
-typedef boost::optional<dispatch_ptr_t> transition_t;
-
 class basic_dispatch_t {
     // The name of the service which this protocol implementation belongs to. Mostly used for logs,
     // and for synchronization stuff in the Locator Service.
@@ -64,7 +62,7 @@ public:
     // an empty optional - recurrent transition (i.e. no transition at all).
 
     virtual
-    transition_t
+    boost::optional<dispatch_ptr_t>
     process(const decoder_t::message_type& message, const upstream_ptr_t& upstream) const = 0;
 
     // Called on abnormal channel destruction. The idea is: if the client disconnects unexpectedly,
@@ -147,7 +145,7 @@ public:
 
 public:
     virtual
-    io::transition_t
+    boost::optional<io::dispatch_ptr_t>
     process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const;
 
     virtual
@@ -194,7 +192,7 @@ struct select<streamed<R>, Event> {
 // Slot invocation with arguments provided as a MessagePack object
 
 struct calling_visitor_t:
-    public boost::static_visitor<io::transition_t>
+    public boost::static_visitor<boost::optional<io::dispatch_ptr_t>>
 {
     calling_visitor_t(const msgpack::object& unpacked_, const io::upstream_ptr_t& upstream_):
         unpacked(unpacked_),
@@ -264,7 +262,7 @@ dispatch<Tag>::forget() {
 }
 
 template<class Tag>
-io::transition_t
+boost::optional<io::dispatch_ptr_t>
 dispatch<Tag>::process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const {
     return process(message.type(), aux::calling_visitor_t(message.args(), upstream));
 }
