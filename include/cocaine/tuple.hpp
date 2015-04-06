@@ -79,7 +79,7 @@ template<typename TypeList>
 struct fold {
     typedef typename aux::fold_impl<
         typename boost::mpl::begin<TypeList>::type,
-        typename boost::mpl::end<TypeList>::type
+        typename boost::mpl::end  <TypeList>::type
     >::type type;
 };
 
