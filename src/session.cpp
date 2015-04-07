@@ -82,7 +82,7 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
     if(const auto ptr = *session->transport.synchronize()) {
 #endif
         try {
-            session->invoke(message);
+            session->handle(message);
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(session->log, "uncaught invocation exception - %s", e.what());
 
@@ -165,7 +165,7 @@ session_t::session_t(std::unique_ptr<logging::log_t> log_,
 // Operations
 
 void
-session_t::invoke(const decoder_t::message_type& message) {
+session_t::handle(const decoder_t::message_type& message) {
     const channel_map_t::key_type channel_id = message.span();
 
     const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {

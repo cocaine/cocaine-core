@@ -65,15 +65,24 @@ public:
     session_t(std::unique_ptr<logging::log_t> log,
               std::unique_ptr<io::channel<asio::ip::tcp>> transport, const io::dispatch_ptr_t& prototype);
 
-    // Operations
+    // Observers
+
+    auto
+    active_channels() const -> std::map<uint64_t, std::string>;
+
+    size_t
+    memory_pressure() const;
+
+    auto
+    name() const -> std::string;
+
+    auto
+    remote_endpoint() const -> asio::ip::tcp::endpoint;
+
+    // Modifiers
 
     auto
     inject(const io::dispatch_ptr_t& dispatch) -> io::upstream_ptr_t;
-
-    void
-    revoke(uint64_t channel_id);
-
-    // Channel I/O
 
     void
     pull();
@@ -89,23 +98,12 @@ public:
     void
     detach(const std::error_code& ec);
 
-    // Information
-
-    auto
-    active_channels() const -> std::map<uint64_t, std::string>;
-
-    size_t
-    memory_pressure() const;
-
-    auto
-    name() const -> std::string;
-
-    auto
-    remote_endpoint() const -> asio::ip::tcp::endpoint;
-
 private:
     void
-    invoke(const io::decoder_t::message_type& message);
+    handle(const io::decoder_t::message_type& message);
+
+    void
+    revoke(uint64_t channel_id);
 };
 
 } // namespace cocaine
