@@ -405,9 +405,9 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         if(ec) {
             mapping->erase(uuid);
 
-            COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s, retrying...",
+            COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s",
                 ec.value(), ec.message());
-            m_asio.post([&, uuid, endpoints] { link_node(uuid, endpoints); });
+            return m_asio.post([&, uuid, endpoints] { link_node(uuid, endpoints); });
         } else {
             COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
         }
