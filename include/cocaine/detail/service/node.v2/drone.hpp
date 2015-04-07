@@ -39,7 +39,11 @@ struct drone_data {
     {}
 };
 
-/// Штука, которая будет уметь запускать воркеры и олицетворяющая единственный экземпляр воркера.
+/// Drone - single process representation.
+///  - spawns using isolate.
+///  - captures inputs/outputs.
+///  - can get statistics.
+///  - lives until process lives and vise versa.
 // TODO: Rename to `comrade`.
 class drone_t : public std::enable_shared_from_this<drone_t> {
     drone_data d;

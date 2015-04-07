@@ -26,6 +26,7 @@
 namespace cocaine { namespace io {
 
 struct rpc_tag;
+struct control_tag;
 
 struct rpc {
 
@@ -36,81 +37,76 @@ struct handshake {
         return "handshake";
     }
 
+    typedef control_tag dispatch_type;
+    typedef control_tag upstream_type;
+
     typedef boost::mpl::list<
         /* peer id */ std::string
     > argument_type;
 };
 
-struct heartbeat {
-    typedef rpc_tag tag;
+//struct terminate {
+//    typedef rpc_tag tag;
 
-    static const char* alias() noexcept {
-        return "heartbeat";
-    }
-};
+//    static const char* alias() noexcept {
+//        return "terminate";
+//    }
 
-struct terminate {
-    typedef rpc_tag tag;
+//    enum code: int {
+//        normal = 1,
+//        abnormal
+//    };
 
-    static const char* alias() noexcept {
-        return "terminate";
-    }
+//    typedef boost::mpl::list<
+//        /* code */   code,
+//        /* reason */ std::string
+//    > argument_type;
+//};
 
-    enum code: int {
-        normal = 1,
-        abnormal
-    };
+//struct invoke {
+//    typedef rpc_tag tag;
 
-    typedef boost::mpl::list<
-        /* code */   code,
-        /* reason */ std::string
-    > argument_type;
-};
+//    static const char* alias() noexcept {
+//        return "invoke";
+//    }
 
-struct invoke {
-    typedef rpc_tag tag;
+//    typedef boost::mpl::list<
+//        /* event */ std::string
+//    > argument_type;
+//};
 
-    static const char* alias() noexcept {
-        return "invoke";
-    }
+//struct chunk {
+//    typedef rpc_tag tag;
 
-    typedef boost::mpl::list<
-        /* event */ std::string
-    > argument_type;
-};
+//    static const char* alias() noexcept {
+//        return "chunk";
+//    }
 
-struct chunk {
-    typedef rpc_tag tag;
+//    typedef boost::mpl::list<
+//        /* chunk */ std::string
+//    > argument_type;
+//};
 
-    static const char* alias() noexcept {
-        return "chunk";
-    }
+//struct error {
+//    typedef rpc_tag tag;
 
-    typedef boost::mpl::list<
-        /* chunk */ std::string
-    > argument_type;
-};
+//    static const char* alias() noexcept {
+//        return "error";
+//    }
 
-struct error {
-    typedef rpc_tag tag;
+//    typedef boost::mpl::list<
+//        /* code */   int,
+//        /* reason */ std::string
+//    > argument_type;
+//};
 
-    static const char* alias() noexcept {
-        return "error";
-    }
+//struct choke {
+//    typedef rpc_tag tag;
 
-    typedef boost::mpl::list<
-        /* code */   int,
-        /* reason */ std::string
-    > argument_type;
-};
-
-struct choke {
-    typedef rpc_tag tag;
-
-    static const char* alias() noexcept {
-        return "choke";
-    }
-};
+//    static const char* alias() noexcept {
+//        return "choke";
+//    }
+//};
 
 }; // struct rpc
 
@@ -121,36 +117,29 @@ struct protocol<rpc_tag> {
     >::type version;
 
     typedef boost::mpl::list<
-        rpc::handshake,
-        rpc::heartbeat,
-        rpc::terminate,
-        rpc::invoke,
-        rpc::chunk,
-        rpc::error,
-        rpc::choke
+        rpc::handshake
+//        rpc::heartbeat,
+//        rpc::terminate,
+//        rpc::invoke,
+//        rpc::chunk,
+//        rpc::error,
+//        rpc::choke
     > messages;
 
     typedef rpc scope;
 };
 
-struct control_tag;
-
 struct control {
 
-struct report {
-    typedef control_tag tag;
-};
-
-struct info {
+struct heartbeat {
     typedef control_tag tag;
 
-    typedef boost::mpl::list<
-        /* info */ dynamic_t
-    > argument_type;
-};
+    static const char* alias() noexcept {
+        return "heartbeat";
+    }
 
-struct terminate {
-    typedef control_tag tag;
+    typedef control_tag dispatch_type;
+    typedef void        upstream_type;
 };
 
 }; // struct control
@@ -162,10 +151,8 @@ struct protocol<control_tag> {
     >::type version;
 
     typedef boost::mpl::list<
-        control::report,
-        control::info,
-        control::terminate
-    > messages;
+        control::heartbeat
+    >::type messages;
 
     typedef control scope;
 };

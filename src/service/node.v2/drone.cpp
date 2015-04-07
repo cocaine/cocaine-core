@@ -31,6 +31,7 @@ drone_t::drone_t(context_t& context, drone_data data, std::shared_ptr<asio::io_s
 
     // Prepare command line arguments for worker instance.
 
+    // TODO: Hardcoded locator name.
     auto locator = context.locate("locator");
 
     std::map<std::string, std::string> args;
@@ -95,5 +96,6 @@ drone_t::~drone_t() {
 }
 
 void drone_t::terminate() {
+    // Send terminate message.
     watcher.cancel();
 }

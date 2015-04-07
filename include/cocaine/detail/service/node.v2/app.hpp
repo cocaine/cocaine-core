@@ -12,7 +12,7 @@ struct profile_t;
 namespace cocaine {
 
 class unix_actor_t;
-class overlord_t;
+class overseer_t;
 class drone_t;
 
 }
@@ -30,6 +30,7 @@ class app_t {
 
     std::shared_ptr<asio::io_service> loop;
     std::unique_ptr<unix_actor_t> engine;
+    std::shared_ptr<overseer_t> overseer;
 
     // TODO: Temporary.
     std::shared_ptr<drone_t> drone;
