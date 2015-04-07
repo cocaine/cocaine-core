@@ -2,7 +2,7 @@
 
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core3
-Version:	0.12.0.5
+Version:	0.12.0.6
 Release:	1%{?dist}
 
 
@@ -125,6 +125,14 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
+* Tue Apr 07 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.6-1
+- External service support. Non-native services can now be exposed via the
+  Cocaine service discovery mechanics, including gateway setup and stuff.
+- External routers can now hook up into RG path in Locator and sync all the
+  routing group changes in realtime.
+- Bugfix: multiple versions of the same service in the cluster won't render
+  such services unusable anymore.
+
 * Fri Apr 03 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.5-1
 - Bugfix: sometimes new Sessions weren't properly registered with Engines.
 
