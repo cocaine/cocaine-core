@@ -47,7 +47,7 @@ struct traverse_impl {
     static inline
     void
     apply(graph_root_t& vertex) {
-        vertex[traits_type::id] = std::make_tuple(event_type::alias(),
+        vertex[traits_type::id] = std::forward_as_tuple(event_type::alias(),
             std::is_same<typename traits_type::dispatch_type, typename event_type::tag>::value
               ? boost::none
               : traverse<typename traits_type::dispatch_type, graph_node_t>(),
@@ -60,7 +60,7 @@ struct traverse_impl {
     static inline
     void
     apply(graph_node_t& vertex) {
-        vertex[traits_type::id] = std::make_tuple(event_type::alias(),
+        vertex[traits_type::id] = std::forward_as_tuple(event_type::alias(),
             std::is_same<typename traits_type::dispatch_type, typename event_type::tag>::value
               ? boost::none
               : traverse<typename traits_type::dispatch_type, graph_node_t>()

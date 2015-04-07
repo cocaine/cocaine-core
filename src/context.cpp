@@ -43,6 +43,7 @@
 #include <boost/spirit/include/karma_string.hpp>
 
 using namespace cocaine;
+using namespace cocaine::io;
 
 context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger):
     config(config_),
@@ -81,7 +82,7 @@ context_t::~context_t() {
 
     // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
     // the outstanding connections are closed, so services have a chance to send their last wishes.
-    m_signals.invoke<io::context::shutdown>();
+    m_signals.invoke<context::shutdown>();
 
     // Stop the service from accepting new clients or doing any processing. Pop them from the active
     // service list into this temporary storage, and then destroy them all at once. This is needed
@@ -155,7 +156,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
     });
 
     // Fire off the signal to alert concerned subscribers about the service removal event.
-    m_signals.invoke<io::context::service::exposed>(actor.prototype().name(), std::make_tuple(
+    m_signals.invoke<context::service::exposed>(actor.prototype().name(), std::forward_as_tuple(
         actor.endpoints(),
         actor.prototype().version(),
         actor.prototype().root()
@@ -191,7 +192,7 @@ context_t::remove(const std::string& name) {
     std::vector<asio::ip::tcp::endpoint> nothing;
 
     // Fire off the signal to alert concerned subscribers about the service termination event.
-    m_signals.invoke<io::context::service::removed>(service->prototype().name(), std::make_tuple(
+    m_signals.invoke<context::service::removed>(service->prototype().name(), std::forward_as_tuple(
         nothing,
         service->prototype().version(),
         service->prototype().root()
@@ -276,7 +277,7 @@ context_t::bootstrap() {
 
         COCAINE_LOG_ERROR(m_logger, "coudn't start %d service(s): %s", errored.size(), stream.str());
 
-        m_signals.invoke<io::context::shutdown>();
+        m_signals.invoke<context::shutdown>();
 
         while(!m_services->empty()) {
             m_services->back().second->terminate();

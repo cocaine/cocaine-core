@@ -565,7 +565,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, boo
 
     auto mapping = m_streams.synchronize();
 
-    scoped_attributes_t attributes(*m_log, { attribute::make("service", name)});
+    scoped_attributes_t attributes(*m_log, { attribute::make("service", name) });
 
     if(active) {
         if(m_snapshot.count(name) != 0) {
@@ -580,7 +580,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, boo
 
     if(mapping->empty()) return;
 
-    const auto response = results::connect { m_cfg.uuid, {{ name, meta }} };
+    const auto response = results::connect{m_cfg.uuid, {{name, meta}}};
 
     for(auto it = mapping->begin(); it != mapping->end();) {
         try {
