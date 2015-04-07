@@ -108,13 +108,13 @@ struct deferred {
         outbox(new synchronized<queue_type>())
     { }
 
-    template<class U>
+    template<class... Args>
     typename std::enable_if<
-        std::is_convertible<typename pristine<U>::type, T>::value,
+        std::is_constructible<T, Args...>::value,
         deferred&
     >::type
-    write(U&& value) {
-        outbox->synchronize()->template append<typename protocol::value>(std::forward<U>(value));
+    write(Args&&... args) {
+        outbox->synchronize()->template append<typename protocol::value>(std::forward<Args>(args)...);
         return *this;
     }
 

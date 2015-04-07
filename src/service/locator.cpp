@@ -499,7 +499,7 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
     if(m_snapshot.empty()) {
         return stream;
     } else {
-        return stream.write(results::connect{m_cfg.uuid, m_snapshot});
+        return stream.write(m_cfg.uuid, m_snapshot);
     }
 }
 
