@@ -175,9 +175,6 @@ session_t::handle(const decoder_t::message_type& message) {
 
         if(lb == ub) {
             if(channel_id <= max_channel_id) {
-                // NOTE: Checking whether channel number is always higher than the previous channel
-                // number is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be
-                // not the best approach, but since we have 2^64 possible channels it's good enough.
                 throw cocaine::error_t("specified channel id was revoked");
             }
 
@@ -189,9 +186,7 @@ session_t::handle(const decoder_t::message_type& message) {
             max_channel_id = channel_id;
         }
 
-        // NOTE: The virtual channel pointer is copied here so that if the slot decides to close the
-        // virtual channel, it won't destroy it inside this function. Instead, it will be destroyed
-        // when this function scope is exited.
+        // NOTE: The virtual channel pointer is copied here to avoid data races.
         return lb->second;
     });
 
