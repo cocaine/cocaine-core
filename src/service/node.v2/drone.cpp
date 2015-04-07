@@ -74,12 +74,17 @@ void drone_t::watch() {
 void
 drone_t::on_watch(const std::error_code& ec, size_t len) {
     if (ec) {
-        // TODO: Something abnormal happened. Maybe terminate itself?
-        if (ec == asio::error::operation_aborted) {
+        switch (ec.value()) {
+        case asio::error::operation_aborted:
             return;
+        case asio::error::eof:
+            COCAINE_LOG_DEBUG(log, "slave has closed its output");
+            break;
+        default:
+            COCAINE_LOG_WARNING(log, "slave has failed to read output: %s", ec.message());
+            // TODO: Something abnormal happened. Maybe terminate itself?
         }
 
-        COCAINE_LOG_WARNING(log, "slave has failed to read output: %s", ec.message());
         return;
     }
 
