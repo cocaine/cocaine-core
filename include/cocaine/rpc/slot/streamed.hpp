@@ -38,13 +38,13 @@ struct streamed {
         outbox(new synchronized<queue_type>())
     { }
 
-    template<class U>
+    template<class... Args>
     typename std::enable_if<
-        std::is_convertible<typename pristine<U>::type, T>::value,
+        std::is_constructible<T, Args...>::value,
         streamed&
     >::type
-    write(U&& value) {
-        outbox->synchronize()->template append<typename protocol::chunk>(std::forward<U>(value));
+    write(Args&&... args) {
+        outbox->synchronize()->template append<typename protocol::chunk>(std::forward<Args>(args)...);
         return *this;
     }
 

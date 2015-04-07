@@ -82,7 +82,7 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
     if(const auto ptr = *session->transport.synchronize()) {
 #endif
         try {
-            session->invoke(message);
+            session->handle(message);
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(session->log, "uncaught invocation exception - %s", e.what());
 
@@ -165,7 +165,7 @@ session_t::session_t(std::unique_ptr<logging::log_t> log_,
 // Operations
 
 void
-session_t::invoke(const decoder_t::message_type& message) {
+session_t::handle(const decoder_t::message_type& message) {
     const channel_map_t::key_type channel_id = message.span();
 
     const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {
@@ -175,9 +175,6 @@ session_t::invoke(const decoder_t::message_type& message) {
 
         if(lb == ub) {
             if(channel_id <= max_channel_id) {
-                // NOTE: Checking whether channel number is always higher than the previous channel
-                // number is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be
-                // not the best approach, but since we have 2^64 possible channels it's good enough.
                 throw cocaine::error_t("specified channel id was revoked");
             }
 
@@ -189,9 +186,7 @@ session_t::invoke(const decoder_t::message_type& message) {
             max_channel_id = channel_id;
         }
 
-        // NOTE: The virtual channel pointer is copied here so that if the slot decides to close the
-        // virtual channel, it won't destroy it inside this function. Instead, it will be destroyed
-        // when this function scope is exited.
+        // NOTE: The virtual channel pointer is copied here to avoid data races.
         return lb->second;
     });
 

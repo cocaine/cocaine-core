@@ -29,12 +29,10 @@ namespace cocaine { namespace service {
 
 // Ketama algorithm implementation
 
-class continuum_t {
+struct continuum_t {
     typedef uint32_t point_type;
 
-    const std::shared_ptr<logging::log_t> m_log;
-
-    typedef struct {
+    typedef struct element_type {
         point_type  point;
         std::string value;
     } element_t;
@@ -57,15 +55,9 @@ class continuum_t {
         return lhs < rhs.point;
     }
 
-    std::vector<element_t> m_elements;
-
-    // Used for keyless operations.
-    std::default_random_engine                mutable m_rng;
-    std::uniform_int_distribution<point_type> mutable m_distribution;
-
-public:
     typedef std::map<std::string, unsigned int> stored_type;
 
+public:
     continuum_t(std::unique_ptr<logging::log_t> log, const stored_type& group);
 
     // Observers
@@ -75,6 +67,19 @@ public:
 
     std::string
     get() const;
+
+    std::vector<std::tuple<point_type, std::string>>
+    all() const;
+
+private:
+    const std::shared_ptr<logging::log_t> m_log;
+
+    // The hashring.
+    std::vector<element_t> m_elements;
+
+    // Used for keyless operations.
+    std::default_random_engine                mutable m_rng;
+    std::uniform_int_distribution<point_type> mutable m_distribution;
 };
 
 }} // namespace cocaine::service

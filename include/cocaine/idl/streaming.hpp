@@ -61,7 +61,7 @@ struct error {
         int,
      /* Human-readable error description. */
         std::string
-    > argument_type;
+    >::type argument_type;
 
     // Terminal message.
     typedef void upstream_type;
@@ -92,7 +92,7 @@ struct protocol<streaming_tag<T>> {
         typename streaming<T>::chunk,
         typename streaming<T>::error,
         typename streaming<T>::choke
-    > messages;
+    >::type messages;
 
     typedef streaming<T> scope;
 };

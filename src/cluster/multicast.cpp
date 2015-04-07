@@ -171,7 +171,7 @@ multicast_t::on_publish(const std::error_code& ec) {
         msgpack::sbuffer target;
         msgpack::packer<msgpack::sbuffer> packer(target);
 
-        io::type_traits<announce_t::tuple_type>::pack(packer, std::make_tuple(
+        io::type_traits<announce_t::tuple_type>::pack(packer, std::forward_as_tuple(
             m_locator.uuid(),
             endpoints
         ));

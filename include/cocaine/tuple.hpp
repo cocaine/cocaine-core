@@ -66,10 +66,19 @@ struct invoke_impl<index_sequence<Indices...>> {
     template<class F, class... Args>
     static inline
     auto
+    apply(const std::tuple<Args...>& args, F&& callable)
+        -> decltype(callable(std::declval<Args>()...))
+    {
+        return callable(std::move(std::get<Indices>(args))...);
+    }
+
+    template<class F, class... Args>
+    static inline
+    auto
     apply(std::tuple<Args...>&& args, F&& callable)
         -> decltype(callable(std::declval<Args>()...))
     {
-        return callable(std::get<Indices>(args)...);
+        return callable(std::move(std::get<Indices>(args))...);
     }
 };
 
@@ -79,11 +88,22 @@ template<typename TypeList>
 struct fold {
     typedef typename aux::fold_impl<
         typename boost::mpl::begin<TypeList>::type,
-        typename boost::mpl::end<TypeList>::type
+        typename boost::mpl::end  <TypeList>::type
     >::type type;
 };
 
 // Function invocation with arguments provided as a tuple
+
+template<class F, class... Args>
+inline
+auto
+invoke(const std::tuple<Args...>& args, F&& callable)
+    -> decltype(callable(std::declval<Args>()...))
+{
+    return aux::invoke_impl<
+        typename make_index_sequence<sizeof...(Args)>::type
+    >::apply(args, std::forward<F>(callable));
+}
 
 template<class F, class... Args>
 inline

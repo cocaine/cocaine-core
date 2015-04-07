@@ -40,12 +40,17 @@ continuum_t::continuum_t(std::unique_ptr<logging::log_t> log, const stored_type&
     const size_t length = group.size();
     const double weight = boost::accumulate(group | boost::adaptors::map_values, 0.0f);
 
-    COCAINE_LOG_INFO(m_log, "populating continuum based on %d group elements, total weight: %d",
+    COCAINE_LOG_DEBUG(m_log, "populating continuum based on %d group elements, total weight: %d",
         length,
         weight
     );
 
-    unsigned char digest[16];
+    union digest_t {
+        char       hashed[16];
+        point_type points[sizeof(hashed) / sizeof(point_type)];
+    } digest;
+
+    auto builder = std::back_inserter(m_elements);
 
     for(auto it = group.begin(); it != group.end(); ++it) {
         const double slice = it->second / weight;
@@ -60,20 +65,17 @@ continuum_t::continuum_t(std::unique_ptr<logging::log_t> log, const stored_type&
             MHASH thread = mhash_init(MHASH_MD5);
             mhash(thread, value.data(), value.size());
             mhash(thread, &step, sizeof(step));
-            mhash_deinit(thread, digest);
+            mhash_deinit(thread, digest.hashed);
 
-            for(unsigned int part = 0; part < 4; ++part) {
-                // Generate four 4-byte points out of a 16-byte hash.
-                const point_type point = (digest[3 + part * 4] << 24)
-                                       ^ (digest[2 + part * 4] << 16)
-                                       ^ (digest[1 + part * 4] << 8 )
-                                       ^  digest[0 + part * 4];
-
-                m_elements.push_back({point, value});
-            }
+            // Generate four 4-byte points out of a 16-byte hash.
+            std::transform(std::begin(digest.points), std::end(digest.points), builder,
+                [&](const point_type& point) -> element_t
+            {
+                return element_t{point, value};
+            });
         }
 
-        COCAINE_LOG_INFO(m_log, "added %d points for %s (weight: %.02f%%, %d/%d)", steps * 4, value,
+        COCAINE_LOG_DEBUG(m_log, "added %d quads for %s, weight: %.02f%%, %d/%d", steps, value,
             slice * 100.0f,
             steps, length * 64
         );
@@ -82,7 +84,7 @@ continuum_t::continuum_t(std::unique_ptr<logging::log_t> log, const stored_type&
     // Sort the ring to enable binary searching.
     std::sort(m_elements.begin(), m_elements.end());
 
-    COCAINE_LOG_INFO(m_log, "resulting continuum population: %d points, unique: %s",
+    COCAINE_LOG_DEBUG(m_log, "resulting continuum population: %d points, unique: %s",
         m_elements.size(),
         boost::adjacent_find(m_elements) == m_elements.end() ? "true" : "false"
     );
@@ -131,4 +133,19 @@ continuum_t::get() const {
     );
 
     return rv.value;
+}
+
+auto
+continuum_t::all() const -> std::vector<std::tuple<point_type, std::string>> {
+    typedef std::vector<std::tuple<point_type, std::string>> result_type;
+
+    result_type tuples;
+
+    std::transform(m_elements.begin(), m_elements.end(), std::back_inserter(tuples),
+        [](const element_t& element) -> result_type::value_type
+    {
+        return std::make_tuple(element.point, element.value);
+    });
+
+    return tuples;
 }

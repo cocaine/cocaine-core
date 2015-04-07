@@ -51,7 +51,7 @@ struct enqueue {
         std::string,
      /* Tag. Event can be enqueued to a specific worker with some user-defined name. */
         optional<std::string>
-    > argument_type;
+    >::type argument_type;
 
     typedef stream_of<
      /* Some other arbitrary sequence of bytes, streamed back to the client in chunks. */
@@ -83,7 +83,7 @@ struct protocol<app_tag> {
     typedef boost::mpl::list<
         app::enqueue,
         app::info
-    > messages;
+    >::type messages;
 
     typedef app scope;
 };
@@ -104,7 +104,7 @@ struct start_app {
     typedef boost::mpl::list<
         std::string,
         std::string
-    > argument_type;
+    >::type argument_type;
 };
 
 struct pause_app {
@@ -117,7 +117,7 @@ struct pause_app {
     typedef boost::mpl::list<
      /* Name of the app to susped. */
         std::string
-    > argument_type;
+    >::type argument_type;
 };
 
 struct list {
@@ -145,7 +145,7 @@ struct protocol<node_tag> {
         node::start_app,
         node::pause_app,
         node::list
-    > messages;
+    >::type messages;
 
     typedef node scope;
 };
