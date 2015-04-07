@@ -21,6 +21,8 @@
 
 #include <tuple>
 
+#include <blackhole/scoped_attributes.hpp>
+
 using namespace cocaine;
 using namespace cocaine::service::v2;
 
@@ -88,12 +90,13 @@ class control_t : public dispatch<io::control_tag> {
     std::unique_ptr<logging::log_t> log;
 
 public:
-    control_t(context_t& context, const std::string& name) :
+    control_t(context_t& context, const std::string& name, const std::string& uuid) :
         dispatch<io::control_tag>(format("%s/control", name)),
-        log(context.log(format("%s/control", name)))
+        log(context.log(format("%s/control", name), attribute::set_t({{ "uuid", uuid }})))
     {
         on<io::control::heartbeat>([&](){
-            COCAINE_LOG_DEBUG(log, "<- heartbeat");
+            COCAINE_LOG_DEBUG(log, "processing heartbeat message");
+            // TODO: Send heartbeat back.
         });
     }
 
@@ -152,20 +155,21 @@ public:
     attach(std::shared_ptr<session_t> session) {
         COCAINE_LOG_DEBUG(log, "attaching drone candidate session");
 
-        session->inject(std::make_shared<handshake_dispatch_t>(name,
-            [=](io::streaming_slot<io::rpc::handshake>::upstream_type&, const std::string& uuid) -> std::shared_ptr<control_t>
-        {
-            COCAINE_LOG_DEBUG(log, "processing handshake message")("drone", uuid);
+        session->inject(std::make_shared<handshake_dispatch_t>(name, [=](io::streaming_slot<io::rpc::handshake>::upstream_type&, const std::string& uuid) -> std::shared_ptr<control_t> {
+            scoped_attributes_t holder(*log, {{ "uuid", uuid }});
+
+            COCAINE_LOG_DEBUG(log, "processing handshake message");
 
             auto control = pool.apply([=](std::unordered_map<std::string, drone_context_t>& pool) -> std::shared_ptr<control_t> {
                 auto it = pool.find(uuid);
                 if (it == pool.end()) {
-                    COCAINE_LOG_DEBUG(log, "rejecting drone as unexpected")("drone", uuid);
+                    COCAINE_LOG_DEBUG(log, "rejecting drone as unexpected");
                     return nullptr;
                 }
 
-                COCAINE_LOG_DEBUG(log, "accepted new drone")("drone", uuid);
-                auto control = std::make_shared<control_t>(context, name);
+                COCAINE_LOG_DEBUG(log, "accepted authenticated drone");
+                auto control = std::make_shared<control_t>(context, name, uuid);
+                // TODO: Replace with `atttach(session, control)`.
                 it->second.session = session;
                 it->second.control = control;
 
