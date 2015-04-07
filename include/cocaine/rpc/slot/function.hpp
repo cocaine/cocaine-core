@@ -74,8 +74,8 @@ struct function_slot:
     public basic_slot<Event>
 {
     static_assert(
-        is_final<Event>::value || is_recursive<Event>::value,
-        "messages with dispatch transition are not supported"
+        is_terminal<Event>::value || is_recursed<Event>::value,
+        "messages with dispatch transitions are not supported"
     );
 
     typedef typename bft::function_type<typename mpl::push_front<

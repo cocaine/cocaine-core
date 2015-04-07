@@ -59,7 +59,7 @@ struct deferred_slot:
             upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
         }
 
-        if(is_recursive<Event>::value) {
+        if(is_recursed<Event>::value) {
             return boost::none;
         } else {
             return boost::make_optional<std::shared_ptr<const dispatch_type>>(nullptr);

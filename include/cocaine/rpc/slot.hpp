@@ -61,12 +61,12 @@ public:
 };
 
 template<class Event>
-struct is_recursive:
+struct is_recursed:
     public std::is_same<typename event_traits<Event>::dispatch_type, typename Event::tag>
 { };
 
 template<class Event>
-struct is_final:
+struct is_terminal:
     public std::is_same<typename event_traits<Event>::dispatch_type, void>
 { };
 
