@@ -76,12 +76,19 @@ class locator_t:
 
     typedef std::map<std::string, continuum_t> rg_map_t;
 
-    typedef std::map<std::string, api::client<io::locator_tag>> client_map_t;
+    class wrapper_t
+    {
+    public:
+        std::vector<asio::ip::tcp::endpoint> endpoints;
+        api::client<io::locator_tag> client;
+    };
+
+    typedef std::map<std::string, wrapper_t> client_map_t;
 
     typedef std::map<unsigned int, io::graph_root_t, std::greater<unsigned int>> partition_view_t;
 
-    typedef std::map<std::string, streamed<results::connect>>   remote_map_t;
-    typedef std::map<std::string, streamed<results::routing>>   router_map_t;
+    typedef std::map<std::string, streamed<results::connect>> remote_map_t;
+    typedef std::map<std::string, streamed<results::routing>> router_map_t;
 
     context_t& m_context;
 

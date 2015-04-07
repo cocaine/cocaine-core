@@ -57,7 +57,7 @@ public:
     // Modifiers
 
     void
-    attach(std::unique_ptr<logging::log_t> log, std::unique_ptr<asio::ip::tcp::socket> socket);
+    attach(const std::shared_ptr<session_t>& session);
 };
 
 } // namespace details

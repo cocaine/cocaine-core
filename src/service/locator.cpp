@@ -26,6 +26,7 @@
 
 #include "cocaine/context.hpp"
 
+#include "cocaine/detail/engine.hpp"
 #include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/idl/primitive.hpp"
@@ -384,30 +385,37 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         return;
     }
 
-    auto channel = std::make_shared<tcp::socket>(m_asio);
+    mapping->operator[](uuid) = {endpoints, api::client<locator_tag>()};
 
-    asio::async_connect(*channel, endpoints.begin(), endpoints.end(),
+    auto  channel = std::make_shared<tcp::socket>(m_asio);
+    auto& wrapped = mapping->at(uuid).endpoints;
+
+    asio::async_connect(*channel, wrapped.begin(), wrapped.end(),
         [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator endpoint)
     {
         auto mapping = m_clients.synchronize();
 
         blackhole::scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
 
-        if(ec) {
-            COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s",
-                ec.value(), ec.message());
+        if(mapping->count(uuid) == 0) {
+            COCAINE_LOG_ERROR(m_log, "remote disappeared while connecting");
             return;
+        }
+
+        if(ec) {
+            COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s, retrying...",
+                ec.value(), ec.message());
+            return link_node(uuid, endpoints);
         } else {
             COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
         }
 
-        auto& client = mapping->operator[](uuid);
+        auto& client = mapping->at(uuid).client;
 
-        auto  client_log = std::make_unique<logging::log_t>(*m_log, attribute::set_t({
-            attribute::make("endpoint", boost::lexical_cast<std::string>(*endpoint))
-        }));
+        client.attach(m_context.engine().attach(std::make_unique<tcp::socket>(std::move(*channel)),
+            nullptr
+        ));
 
-        client.attach(std::move(client_log), std::make_unique<tcp::socket>(std::move(*channel)));
         client.invoke<locator::connect>(std::make_shared<remote_t>(this, uuid), m_cfg.uuid);
     });
 
@@ -573,9 +581,11 @@ locator_t::on_cluster() const {
 
     auto mapping = m_clients.synchronize();
 
-    for(auto it = mapping->begin(); it != mapping->end(); ++it) {
-        result[it->first] = it->second.remote_endpoint();
-    }
+    std::transform(mapping->begin(), mapping->end(), std::inserter(result, result.end()),
+        [](const client_map_t::value_type& value) -> results::cluster::value_type
+    {
+        return {value.first, value.second.client.remote_endpoint()};
+    });
 
     return result;
 }
@@ -590,7 +600,7 @@ locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results
     std::transform(mapping->begin(), mapping->end(), builder,
         [](const rg_map_t::value_type& value) -> results::routing::value_type
     {
-        return std::make_pair(value.first, value.second.all());
+        return {value.first, value.second.all()};
     });
 
     auto stream = m_routers.apply([&](router_map_t& mapping) -> streamed<results::routing> {
