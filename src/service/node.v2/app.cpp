@@ -168,7 +168,6 @@ public:
                 auto control = std::make_shared<control_t>(context, name);
                 it->second.session = session;
                 it->second.control = control;
-                COCAINE_LOG_DEBUG(log, "accepted new drone: %s", control ? control->name() : "nullptr");
 
                 return control;
             });
@@ -177,7 +176,6 @@ public:
                 // TODO: balancer->rebalance();
             }
 
-            COCAINE_LOG_DEBUG(log, "returning new dispatch: %s", control ? control->name() : "nullptr");
             return control;
         }));
     }
