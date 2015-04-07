@@ -50,6 +50,7 @@ namespace results {
 typedef result_of<io::locator::resolve>::type resolve;
 typedef result_of<io::locator::connect>::type connect;
 typedef result_of<io::locator::cluster>::type cluster;
+typedef result_of<io::locator::routing>::type routing;
 
 } // namespace results
 
@@ -73,12 +74,14 @@ class locator_t:
     class remote_t;
     class expose_slot_t;
 
-    typedef std::map<std::string, continuum_t> router_map_t;
+    typedef std::map<std::string, continuum_t> rg_map_t;
 
-    typedef std::map<unsigned, io::graph_root_t, std::greater<unsigned>> partition_view_t;
+    typedef std::map<std::string, api::client<io::locator_tag>> client_map_t;
 
-    typedef std::map<std::string, api::client<io::locator_tag>> remote_map_t;
-    typedef std::map<std::string, streamed<results::connect>>   stream_map_t;
+    typedef std::map<unsigned int, io::graph_root_t, std::greater<unsigned int>> partition_view_t;
+
+    typedef std::map<std::string, streamed<results::connect>>   remote_map_t;
+    typedef std::map<std::string, streamed<results::routing>>   router_map_t;
 
     context_t& m_context;
 
@@ -92,24 +95,27 @@ class locator_t:
     std::shared_ptr<dispatch<io::context_tag>> m_signals;
 
     // Clustering components.
-    std::unique_ptr<api::gateway_t> m_gateway;
     std::unique_ptr<api::cluster_t> m_cluster;
+    std::unique_ptr<api::gateway_t> m_gateway;
 
     // Used to resolve service names against routing groups, based on weights and other metrics.
-    synchronized<router_map_t> m_routers;
+    synchronized<rg_map_t> m_rgs;
 
-    // Outgoing sessions indexed by uuid. It is required to disambiguate between multiple different
-    // instances on the same host, even if the instance was restarted on the same port.
-    synchronized<remote_map_t> m_remotes;
+    // Incoming remote locator streams indexed by uuid. Uuid is required to disambiguate between
+    // multiple different instances on the same host and port (in case it was restarted).
+    synchronized<client_map_t> m_clients;
 
-    // Snapshot of the cluster service disposition. Synchronized with outgoing streams.
+    // Snapshot of the cluster service disposition. Synchronized with incoming streams.
     std::map<std::string, partition_view_t> m_protocol;
 
-    // Incoming sessions indexed by uuid.
-    synchronized<stream_map_t> m_streams;
+    // Outgoing remote locator streams indexed by node uuid.
+    synchronized<remote_map_t> m_remotes;
 
-    // Snapshot of the local service disposition. Synchronized with incoming streams.
+    // Snapshot of the local service disposition. Synchronized with outgoing remote streams.
     std::map<std::string, results::resolve> m_snapshot;
+
+    // Outgoing router streams indexed by some arbitrary router-provided uuid.
+    synchronized<router_map_t> m_routers;
 
 public:
     locator_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);
@@ -126,8 +132,8 @@ public:
     // Cluster API
 
     virtual
-    asio::io_service&
-    asio();
+    auto
+    asio() -> asio::io_service&;
 
     virtual
     void
@@ -153,6 +159,9 @@ private:
 
     auto
     on_cluster() const -> results::cluster;
+
+    auto
+    on_routing(const std::string& ruid, bool replace = false) -> streamed<results::routing>;
 
     // Context signals
 
