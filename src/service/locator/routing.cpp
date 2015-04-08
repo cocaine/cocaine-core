@@ -71,7 +71,7 @@ continuum_t::continuum_t(std::unique_ptr<logging::log_t> log, const stored_type&
             std::transform(std::begin(digest.points), std::end(digest.points), builder,
                 [&](const point_type& point) -> element_t
             {
-                return element_t{point, value};
+                return {point, value};
             });
         }
 
@@ -144,6 +144,7 @@ continuum_t::all() const -> std::vector<std::tuple<point_type, std::string>> {
     std::transform(m_elements.begin(), m_elements.end(), std::back_inserter(tuples),
         [](const element_t& element) -> result_type::value_type
     {
+        // NOTE: Tuple constructor is explicit for some reason, so have to use full form.
         return std::make_tuple(element.point, element.value);
     });
 

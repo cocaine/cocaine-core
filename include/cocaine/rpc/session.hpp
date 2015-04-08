@@ -84,7 +84,7 @@ public:
     // Modifiers
 
     auto
-    inject(const io::dispatch_ptr_t& dispatch) -> io::upstream_ptr_t;
+    fork(const io::dispatch_ptr_t& dispatch) -> io::upstream_ptr_t;
 
     void
     pull();

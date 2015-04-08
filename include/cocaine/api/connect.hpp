@@ -57,7 +57,7 @@ public:
     // Modifiers
 
     void
-    attach(std::unique_ptr<logging::log_t> log, std::unique_ptr<asio::ip::tcp::socket> socket);
+    attach(const std::shared_ptr<session_t>& session);
 };
 
 } // namespace details
@@ -87,7 +87,7 @@ public:
             throw cocaine::error_t("callee has no upstreams specified");
         }
 
-        const auto ptr = m_session->inject(dispatch);
+        const auto ptr = m_session->fork(dispatch);
 
         // NOTE: No locking required: session synchronizes channels, hence no races.
         ptr->template send<Event>(std::forward<Args>(args)...);

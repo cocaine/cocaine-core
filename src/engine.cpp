@@ -152,7 +152,7 @@ execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::disp
 
         auto session_log = std::make_unique<logging::log_t>(*m_log, attribute::set_t({
             attribute::make("endpoint", boost::lexical_cast<std::string>(ptr->remote_endpoint())),
-            attribute::make("service",  dispatch->name()),
+            attribute::make("service",  dispatch ? dispatch->name() : "<none>"),
         }));
 
         COCAINE_LOG_DEBUG(session_log, "attached connection to engine, load: %.2f%%", utilization() * 100);
