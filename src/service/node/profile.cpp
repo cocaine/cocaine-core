@@ -24,7 +24,7 @@
 
 #include "cocaine/traits/dynamic.hpp"
 
-using namespace cocaine::engine;
+using namespace cocaine;
 
 profile_t::profile_t(context_t& context, const std::string& name_):
     cached<dynamic_t>(context, "profiles", name_),

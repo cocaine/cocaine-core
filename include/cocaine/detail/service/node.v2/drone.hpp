@@ -9,29 +9,28 @@
 
 #include "cocaine/api/isolate.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/idl/rpc.hpp"
 
 #include "cocaine/detail/unique_id.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine {
 
 struct manifest_t;
 struct profile_t;
 
-}} // namespace cocaine::engine
+}
 
 namespace cocaine {
 
-struct drone_data {
+struct slave_data {
     typedef std::function<void(const std::string&)> output_callback;
 
     std::string id;
-    const engine::manifest_t& manifest;
-    const engine::profile_t& profile;
+    const manifest_t& manifest;
+    const profile_t&  profile;
     output_callback output;
 
-    drone_data(const engine::manifest_t& manifest,
-               const engine::profile_t& profile,
-               output_callback output) :
+    slave_data(const manifest_t& manifest, const profile_t& profile, output_callback output) :
         id(unique_id_t().string()),
         manifest(manifest),
         profile(profile),
@@ -44,26 +43,36 @@ struct drone_data {
 ///  - captures inputs/outputs.
 ///  - can get statistics.
 ///  - lives until process lives and vise versa.
-// TODO: Rename to `comrade`.
-class drone_t : public std::enable_shared_from_this<drone_t> {
-    drone_data d;
+// TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
+class slave_t : public std::enable_shared_from_this<slave_t> {
+    slave_data d;
     std::unique_ptr<logging::log_t> log;
-    std::unique_ptr<api::handle_t> handle;
 
+    // TODO: Move stdout/stderr fetcher and stdin pusher to isolate.
     std::array<char, 4096> buffer;
     asio::posix::stream_descriptor watcher;
+    std::unique_ptr<api::handle_t> handle;
 
 public:
     /// Spawn, connect, prepare. Instead of constructor.
     // TODO: Make async.
     static
-    std::shared_ptr<drone_t>
-    make(context_t& context, drone_data data, std::shared_ptr<asio::io_service> loop);
+    std::shared_ptr<slave_t>
+    make(context_t& context, slave_data data, std::shared_ptr<asio::io_service> loop);
 
-    drone_t(context_t& context, drone_data data, std::shared_ptr<asio::io_service> loop);
+    // TODO: Make private, because we create this class asynchronously using `make`.
+    slave_t(context_t& context, slave_data data, std::shared_ptr<asio::io_service> loop);
 
     /// Performs hard shutdown.
-    ~drone_t();
+    ~slave_t();
+
+    //? keep session in control.
+//    std::shared_ptr<control_t>
+//    attach(std::shared_ptr<session_t>);
+
+    //? keep session in control.
+//    upstream_ptr_t
+//    process(dispatch_ptr_t);
 
     /// Soft shutdown, cancels all timers and watchers.
     void
@@ -75,9 +84,11 @@ public:
     /// Send to stdin.
     // void communicate(const char*, size_t);
 
+    // TODO: Make private, because we call this when invoking `make`.
     void
     watch();
 
+private:
     void
     on_watch(const std::error_code& ec, size_t len);
 };

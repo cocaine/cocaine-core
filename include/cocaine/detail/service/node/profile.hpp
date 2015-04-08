@@ -26,7 +26,7 @@
 
 #include "cocaine/dynamic.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine {
 
 struct profile_t:
     cached<dynamic_t>
@@ -57,6 +57,6 @@ struct profile_t:
     config_t::component_t isolate;
 };
 
-}} // namespace cocaine::engine
+} // namespace cocaine
 
 #endif

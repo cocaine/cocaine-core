@@ -2,18 +2,19 @@
 
 #include "cocaine/context.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine {
 
 struct manifest_t;
 struct profile_t;
 
-}} // namespace cocaine::engine
+} // namespace cocaine
 
 namespace cocaine {
 
 class unix_actor_t;
 class overseer_t;
-class drone_t;
+class slave_t;
+class balancer_t;
 
 }
 
@@ -25,15 +26,13 @@ class app_t {
     const std::unique_ptr<logging::log_t> log;
 
     // Configuration.
-    std::unique_ptr<const engine::manifest_t> manifest;
-    std::unique_ptr<const engine::profile_t>  profile;
+    std::unique_ptr<const manifest_t> manifest;
+    std::unique_ptr<const profile_t>  profile;
 
     std::shared_ptr<asio::io_service> loop;
     std::unique_ptr<unix_actor_t> engine;
+    std::unique_ptr<balancer_t> balancer;
     std::shared_ptr<overseer_t> overseer;
-
-    // TODO: Temporary.
-    std::shared_ptr<drone_t> drone;
 
 public:
     app_t(context_t& context, const std::string& manifest, const std::string& profile);

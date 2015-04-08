@@ -11,14 +11,14 @@ namespace ph = std::placeholders;
 
 using namespace cocaine;
 
-std::shared_ptr<drone_t>
-drone_t::make(context_t& context, drone_data data, std::shared_ptr<asio::io_service> loop) {
-    auto drone = std::make_shared<drone_t>(context, data, loop);
+std::shared_ptr<slave_t>
+slave_t::make(context_t& context, slave_data data, std::shared_ptr<asio::io_service> loop) {
+    auto drone = std::make_shared<slave_t>(context, data, loop);
     drone->watch();
     return drone;
 }
 
-drone_t::drone_t(context_t& context, drone_data data, std::shared_ptr<asio::io_service> loop) :
+slave_t::slave_t(context_t& context, slave_data data, std::shared_ptr<asio::io_service> loop) :
     d(std::move(data)),
     log(context.log(format("drone/%s", d.manifest.name), blackhole::attribute::set_t({{ "drone", d.id }}))),
     watcher(*loop)
@@ -46,6 +46,7 @@ drone_t::drone_t(context_t& context, drone_data data, std::shared_ptr<asio::io_s
         throw std::runtime_error("no locator provided");
     }
 
+    // TODO: Pass protocol version number.
     args["--locator"]  = cocaine::format("%s:%d", context.config.network.hostname, locator->endpoints().front().port());
 
     // Spawn a worker instance and start reading standard outputs of it.
@@ -66,13 +67,13 @@ drone_t::drone_t(context_t& context, drone_data data, std::shared_ptr<asio::io_s
     }
 }
 
-void drone_t::watch() {
+void slave_t::watch() {
     // TODO: Log.
-    watcher.async_read_some(asio::buffer(buffer.data(), buffer.size()), std::bind(&drone_t::on_watch, shared_from_this(), ph::_1, ph::_2));
+    watcher.async_read_some(asio::buffer(buffer.data(), buffer.size()), std::bind(&slave_t::on_watch, shared_from_this(), ph::_1, ph::_2));
 }
 
 void
-drone_t::on_watch(const std::error_code& ec, size_t len) {
+slave_t::on_watch(const std::error_code& ec, size_t len) {
     if (ec) {
         switch (ec.value()) {
         case asio::error::operation_aborted:
@@ -95,12 +96,13 @@ drone_t::on_watch(const std::error_code& ec, size_t len) {
     watch();
 }
 
-drone_t::~drone_t() {
+slave_t::~slave_t() {
     COCAINE_LOG_DEBUG(log, "processing drone termination");
+    // TODO: Drop terminate in favor of destructor.
     handle->terminate();
 }
 
-void drone_t::terminate() {
+void slave_t::terminate() {
     // Send terminate message.
     watcher.cancel();
 }
