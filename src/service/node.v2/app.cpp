@@ -15,6 +15,7 @@
 #include "cocaine/detail/service/node.v2/drone.hpp"
 #include "cocaine/detail/service/node.v2/slot.hpp"
 #include "cocaine/detail/service/node.v2/splitter.hpp"
+#include "cocaine/detail/service/node.v2/overseer.hpp"
 
 #include "cocaine/idl/node.hpp"
 #include "cocaine/idl/rpc.hpp"
@@ -86,8 +87,10 @@ public:
     }
 };
 
-/// Control channel for single drone.
-/// (Worker should shut itself down after sending terminate message back (even if it initiates) to Runtime).
+/// Control channel for single slave.
+///
+/// NOTE: Worker should shut itself down after sending terminate message back (even if it initiates)
+/// to the runtime.
 class control_t :
     public dispatch<io::control_tag>,
     public std::enable_shared_from_this<control_t>
@@ -99,7 +102,7 @@ class control_t :
 public:
     control_t(context_t& context, const std::string& name, const std::string& uuid) :
         dispatch<io::control_tag>(format("%s/control", name)),
-        log(context.log(format("%s/control", name), attribute::set_t({{ "uuid", uuid }})))
+        log(context.log(format("%s/control", name), blackhole::attribute::set_t({{ "uuid", uuid }})))
     {
         on<io::control::heartbeat>([&](){
             COCAINE_LOG_DEBUG(log, "processing heartbeat message");
@@ -123,12 +126,6 @@ public:
 
     void
     reset_idle_timer() {}
-};
-
-class cocaine::balancer_t {
-public:
-    virtual
-    void rebalance() = 0;
 };
 
 class cocaine::overseer_t {

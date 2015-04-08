@@ -14,11 +14,16 @@ namespace cocaine {
 class unix_actor_t;
 class overseer_t;
 class slave_t;
-class balancer_t;
 
 }
 
 namespace cocaine { namespace service { namespace v2 {
+
+class balancer_t {
+public:
+    virtual
+    void rebalance() = 0;
+};
 
 class app_t {
     context_t& context;
