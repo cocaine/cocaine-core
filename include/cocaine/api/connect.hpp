@@ -87,7 +87,7 @@ public:
             throw cocaine::error_t("callee has no upstreams specified");
         }
 
-        const auto ptr = m_session->inject(dispatch);
+        const auto ptr = m_session->fork(dispatch);
 
         // NOTE: No locking required: session synchronizes channels, hence no races.
         ptr->template send<Event>(std::forward<Args>(args)...);
