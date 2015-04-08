@@ -2,7 +2,7 @@
 
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core3
-Version:	0.12.0.6
+Version:	0.12.0.7
 Release:	1%{?dist}
 
 
@@ -125,6 +125,10 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
+* Wed Apr 08 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.7-1
+- Remote connections are now retried on failure.
+- Bugfix: endpoints while connecting remotes were corrupted in logs.
+
 * Tue Apr 07 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.6-1
 - External service support. Non-native services can now be exposed via the
   Cocaine service discovery mechanics, including gateway setup and stuff.
