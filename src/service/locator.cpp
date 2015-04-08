@@ -63,10 +63,7 @@ using namespace cocaine::service;
 
 // Locator internals
 
-class locator_t::remote_t:
-    public dispatch<event_traits<locator::connect>::upstream_type>,
-    public std::enable_shared_from_this<remote_t>
-{
+class locator_t::remote_t: public dispatch<event_traits<locator::connect>::upstream_type> {
     locator_t  *const parent;
     std::string const uuid;
 
