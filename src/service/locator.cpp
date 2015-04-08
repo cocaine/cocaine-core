@@ -395,7 +395,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
     {
         auto mapping = m_clients.synchronize();
 
-        blackhole::scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
+        scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
 
         if(mapping->count(uuid) == 0) {
             COCAINE_LOG_ERROR(m_log, "remote disappeared while connecting");
