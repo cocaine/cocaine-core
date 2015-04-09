@@ -13,9 +13,10 @@
 
 #include "cocaine/detail/service/node.v2/actor.hpp"
 #include "cocaine/detail/service/node.v2/drone.hpp"
+#include "cocaine/detail/service/node.v2/match.hpp"
+#include "cocaine/detail/service/node.v2/overseer.hpp"
 #include "cocaine/detail/service/node.v2/slot.hpp"
 #include "cocaine/detail/service/node.v2/splitter.hpp"
-#include "cocaine/detail/service/node.v2/overseer.hpp"
 
 #include "cocaine/idl/node.hpp"
 #include "cocaine/idl/rpc.hpp"
@@ -141,14 +142,20 @@ public:
     std::unique_ptr<logging::log_t> log;
 
     /// Slave pool.
-    struct slave_context_t {
-        std::shared_ptr<slave_t> slave;
-        std::shared_ptr<control_t> control;
+    typedef boost::variant<
+        std::shared_ptr<slave::spawning_t>,
+        std::shared_ptr<slave::unauthenticated_t>
+    > slave_variant;
+//    struct slave_context_t {
+//        std::shared_ptr<slave_t> slave;
+//        std::shared_ptr<control_t> control;
 
-        slave_context_t(std::shared_ptr<slave_t> slave) : slave(slave) {}
-    };
+//        slave_context_t(std::shared_ptr<slave_t> slave) : slave(slave) {}
+//    };
 
-    synchronized<std::unordered_map<std::string, slave_context_t>> pool;
+    // states: null | spawning | unauthenticated | active | closed.
+
+    synchronized<std::unordered_map<std::string, slave_variant>> pool;
 
     /// - queue<<event, tag, adapter>> - pending queue.
     /// - balancer - balancing policy.
@@ -192,7 +199,7 @@ public:
 
             COCAINE_LOG_DEBUG(log, "processing handshake message");
 
-            auto control = pool.apply([=](std::unordered_map<std::string, slave_context_t>& pool) -> std::shared_ptr<control_t> {
+            auto control = pool.apply([=](std::unordered_map<std::string, slave_variant>& pool) -> std::shared_ptr<control_t> {
                 auto it = pool.find(uuid);
                 if (it == pool.end()) {
                     COCAINE_LOG_DEBUG(log, "rejecting drone as unexpected");
@@ -201,7 +208,7 @@ public:
 
                 COCAINE_LOG_DEBUG(log, "accepted authenticated drone");
                 auto control = std::make_shared<control_t>(context, name, uuid);
-                it->second.control = control;
+                //it->second.control = control;
                 return control;
             });
 
@@ -225,7 +232,7 @@ public:
 
         COCAINE_LOG_INFO(log, "enlarging the slaves pool from %d to %d", size, size + 1);
 
-        // TODO: Currently it just spawns one more slave synchronously.
+        // TODO: Keep logs collector somewhere else.
         auto splitter = std::make_shared<splitter_t>();
         slave_data d(manifest, profile, [=](const std::string& output){
             splitter->consume(output);
@@ -234,10 +241,22 @@ public:
             }
         });
 
-        auto uuid = d.id;
-        pool->insert(std::make_pair(uuid, slave_context_t(
-            slave_t::make(context, std::move(d), loop)
-        )));
+        const auto uuid = d.id;
+
+        COCAINE_LOG_DEBUG(log, "slave %s is spawning, timeout: %.02f seconds", uuid, profile.timeout.spawn);
+
+        // Regardless of whether the asynchronous operation completes immediately or not, the
+        // handler will not be invoked from within this function.
+        pool->emplace(uuid, slave::spawn(loop, [&](result<std::shared_ptr<slave::unauthenticated_t>> result){
+            match<void>(result, [&](std::shared_ptr<slave::unauthenticated_t> /*slave*/){
+                COCAINE_LOG_DEBUG(log, "slave has been spawned");
+
+            }, [&](std::error_code ec){
+                COCAINE_LOG_ERROR(log, "unable to spawn more slaves: %s", ec.message());
+
+                pool->erase(uuid);
+            });
+        }));
     }
 
     /// Closes the worker from new requests

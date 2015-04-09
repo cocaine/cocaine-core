@@ -10,12 +10,47 @@
 namespace ph = std::placeholders;
 
 using namespace cocaine;
+using namespace cocaine::slave;
 
-std::shared_ptr<slave_t>
-slave_t::make(context_t& context, slave_data data, std::shared_ptr<asio::io_service> loop) {
-    auto drone = std::make_shared<slave_t>(context, data, loop);
-    drone->watch();
-    return drone;
+spawning_t::spawning_t(spawning_t::callback_type fn) :
+    fn(std::move(fn)),
+    fired(false)
+{}
+
+void spawning_t::set(result_type&& res) {
+    auto fired = this->fired.exchange(true);
+    if (!fired) {
+        fn(std::move(res));
+    }
+}
+
+void spawning_t::cancel() {
+    set(std::error_code(asio::error::operation_aborted));
+}
+
+std::shared_ptr<spawning_t>
+slave::spawn(std::shared_ptr<asio::io_service> loop, spawning_t::callback_type fn) {
+    auto slave = std::make_shared<slave::spawning_t>(std::move(fn));
+
+    auto timer = std::make_shared<asio::deadline_timer>(*loop);
+    timer->expires_from_now(boost::posix_time::milliseconds(1000));
+    timer->async_wait([timer, slave](const std::error_code& ec){
+        if (ec) {
+            // The timer has been cancelled.
+            return;
+        }
+
+        slave->cancel();
+    });
+
+    loop->post([=]{
+        // TODO: Remove. Just imitate long spawning.
+        usleep(600000);
+        timer->cancel();
+        slave->set(std::make_shared<unauthenticated_t>());
+    });
+
+    return slave;
 }
 
 slave_t::slave_t(context_t& context, slave_data data, std::shared_ptr<asio::io_service> loop) :

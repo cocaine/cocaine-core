@@ -53,6 +53,8 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         isolate_config.at("args", dynamic_t::object_t())
     };
 
+    timeout.spawn = 5.0f;
+
     // Validation
 
     if(heartbeat_timeout <= 0.0f) {
