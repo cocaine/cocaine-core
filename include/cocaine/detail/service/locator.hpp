@@ -72,7 +72,7 @@ class locator_t:
     public dispatch<io::locator_tag>
 {
     class remote_t;
-    class expose_slot_t;
+    class publish_slot_t;
 
     typedef std::map<std::string, continuum_t> rg_map_t;
 
@@ -172,8 +172,10 @@ private:
 
     // Context signals
 
+    enum class modes { exposed, removed };
+
     void
-    on_service(const std::string& name, const results::resolve& meta, bool active);
+    on_service(const std::string& name, const results::resolve& meta, modes mode);
 
     void
     on_context_shutdown();

@@ -151,23 +151,23 @@ locator_t::remote_t::on_announce(const std::string& node,
 
     for(auto it = update.begin(); it != update.end(); ++it) {
         tuple::invoke(std::move(it->second),
-            [&](std::vector<tcp::endpoint>&& endpoints, unsigned int version, graph_root_t&& graph)
+            [&](std::vector<tcp::endpoint>&& location, unsigned int versions, graph_root_t&& protocol)
         {
             int copies = 0;
-            api::gateway_t::partition_t partition(it->first, version);
+            api::gateway_t::partition_t partition(it->first, versions);
 
-            if(endpoints.empty()) {
+            if(location.empty()) {
                 copies = parent->m_gateway->cleanup(uuid, partition);
                 active.erase (partition);
             } else {
-                copies = parent->m_gateway->consume(uuid, partition, endpoints);
+                copies = parent->m_gateway->consume(uuid, partition, location);
                 active.insert(partition);
             }
 
             if(copies == 0) {
-                parent->m_protocol[it->first].erase(version);
+                parent->m_protocol[it->first].erase(versions);
             } else {
-                parent->m_protocol[it->first][version] = std::move(graph);
+                parent->m_protocol[it->first][versions] = std::move(protocol);
             }
         });
     }
@@ -197,17 +197,17 @@ locator_t::remote_t::on_shutdown() {
     parent->drop_node(uuid);
 }
 
-class locator_t::expose_slot_t: public basic_slot<locator::expose> {
-    struct expose_lock_t: public basic_slot<locator::expose>::dispatch_type {
-        expose_slot_t *const parent;
-        std::string    const handle;
+class locator_t::publish_slot_t: public basic_slot<locator::publish> {
+    struct publish_lock_t: public basic_slot<locator::publish>::dispatch_type {
+        publish_slot_t *const parent;
+        std::string     const handle;
 
-        expose_lock_t(expose_slot_t * const parent_, const std::string& handle_):
-            basic_slot<locator::expose>::dispatch_type("expose"),
+        publish_lock_t(publish_slot_t * const parent_, const std::string& handle_):
+            basic_slot<locator::publish>::dispatch_type("publish"),
             parent(parent_),
             handle(handle_)
         {
-            on<locator::expose::discard>([this] { discard(std::error_code()); });
+            on<locator::publish::discard>([this] { discard(std::error_code()); });
         }
 
         virtual
@@ -220,7 +220,7 @@ class locator_t::expose_slot_t: public basic_slot<locator::expose> {
     locator_t *const parent;
 
 public:
-    expose_slot_t(locator_t *const parent_): parent(parent_) { }
+    publish_slot_t(locator_t *const parent_): parent(parent_) { }
 
     auto
     operator()(tuple_type&& args, upstream_type&& upstream) -> boost::optional<result_type> {
@@ -228,25 +228,25 @@ public:
             [this](std::string&& handle, std::vector<tcp::endpoint>&& location,
                    std::tuple<unsigned int, graph_root_t>&& metadata) -> result_type
         {
-            unsigned int protocol_version;
+            unsigned int versions;
             graph_root_t protocol;
 
-            std::tie(protocol_version, protocol) = metadata;
+            std::tie(versions, protocol) = metadata;
 
-            if(!protocol.empty() && protocol_version == 0) {
+            if(!protocol.empty() && versions == 0) {
                 throw std::system_error(std::make_error_code(std::errc::invalid_argument));
             }
 
             scoped_attributes_t attributes(*parent->m_log, { attribute::make("service", handle) });
 
-            COCAINE_LOG_INFO(parent->m_log, "exposing external %s service with %d endpoints",
+            COCAINE_LOG_INFO(parent->m_log, "publishing external %s service with %d endpoints",
                 protocol.empty() ? "non-native" : "native", location.size());
-            parent->on_service(handle, results::resolve{location, protocol_version, protocol}, 1);
+            parent->on_service(handle, results::resolve{location, versions, protocol}, modes::exposed);
 
-            return std::make_shared<expose_lock_t>(this, handle);
+            return std::make_shared<publish_lock_t>(this, handle);
         });
 
-        upstream.send<protocol<event_traits<locator::expose>::upstream_type>::scope::value>();
+        upstream.send<protocol<event_traits<locator::publish>::upstream_type>::scope::value>();
 
         return boost::make_optional(dispatch);
     }
@@ -254,11 +254,11 @@ public:
 private:
     void
     discard(const std::error_code& ec, const std::string& handle) {
-        COCAINE_LOG_INFO(parent->m_log, "external service disconnected: [%d] %s", ec.value(), ec.message())(
-            "service", handle
-        );
+        scoped_attributes_t attributes(*parent->m_log, { attribute::make("service", handle) });
 
-        return parent->on_service(handle, results::resolve{}, 0);
+        COCAINE_LOG_INFO(parent->m_log, "external service disconnected, unpublishing: [%d] %s",
+            ec.value(), ec.message());
+        return parent->on_service(handle, results::resolve{}, modes::removed);
     }
 };
 
@@ -288,7 +288,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
     on<locator::routing>(std::bind(&locator_t::on_routing, this, _1, true));
 
-    on<locator::expose>(std::make_shared<expose_slot_t>(this));
+    on<locator::publish>(std::make_shared<publish_slot_t>(this));
 
     // Service restrictions
 
@@ -317,8 +317,10 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
         m_cluster = m_context.get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
 
-        m_signals->on<context::service::exposed>(std::bind(&locator_t::on_service, this, _1, _2, 1));
-        m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this, _1, _2, 0));
+        m_signals->on<context::service::exposed>(std::bind(&locator_t::on_service, this, _1,
+            _2, modes::exposed));
+        m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this, _1,
+            _2, modes::removed));
     }
 
     if(root.as_object().count("gateway")) {
@@ -628,7 +630,7 @@ locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results
 }
 
 void
-locator_t::on_service(const std::string& name, const results::resolve& meta, bool active) {
+locator_t::on_service(const std::string& name, const results::resolve& meta, modes mode) {
     if(m_cfg.restricted.count(name)) {
         return;
     }
@@ -637,7 +639,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, boo
 
     scoped_attributes_t attributes(*m_log, { attribute::make("service", name) });
 
-    if(active) {
+    if(mode == modes::exposed) {
         if(m_snapshot.count(name) != 0) {
             COCAINE_LOG_ERROR(m_log, "duplicate service detected");
             return;
