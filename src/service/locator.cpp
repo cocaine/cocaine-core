@@ -86,13 +86,12 @@ public:
 
     virtual
    ~remote_t() {
-        for(auto it = active.begin(); it != active.end(); ++it) {
-            if(!parent->m_gateway->cleanup(uuid, *it)) tuple::invoke(*it,
-                [this](const std::string& name, unsigned int version)
-            {
-                parent->m_protocol[name].erase(version);
-            });
-        }
+        for(auto it = active.begin(); it != active.end(); ++it) tuple::invoke(
+            *it,
+            [this, &it](const std::string& name, unsigned int version)
+        {
+            if(!parent->m_gateway->cleanup(uuid, *it)) parent->m_protocol[name].erase(version);
+        });
 
         cleanup();
     }
