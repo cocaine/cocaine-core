@@ -225,13 +225,23 @@ public:
     auto
     operator()(tuple_type&& args, upstream_type&& upstream) -> boost::optional<result_type> {
         const auto dispatch = cocaine::tuple::invoke(std::move(args),
-            [this](std::string&& handle, std::vector<tcp::endpoint>&& endpoints) -> result_type
+            [this](std::string&& handle, std::vector<tcp::endpoint>&& location,
+                   std::tuple<unsigned int, graph_root_t>&& metadata) -> result_type
         {
-            COCAINE_LOG_INFO(parent->m_log, "exposing alien with %d endpoints", endpoints.size())(
-                "service", handle
-            );
+            unsigned int protocol_version;
+            graph_root_t protocol;
 
-            parent->on_service(handle, results::resolve{endpoints, 0, graph_root_t{}}, 1);
+            std::tie(protocol_version, protocol) = metadata;
+
+            if(!protocol.empty() && protocol_version == 0) {
+                throw std::system_error(std::make_error_code(std::errc::invalid_argument));
+            }
+
+            scoped_attributes_t attributes(*parent->m_log, { attribute::make("service", handle) });
+
+            COCAINE_LOG_INFO(parent->m_log, "exposing external %s service with %d endpoints",
+                protocol.empty() ? "non-native" : "native", location.size());
+            parent->on_service(handle, results::resolve{location, protocol_version, protocol}, 1);
 
             return std::make_shared<expose_lock_t>(this, handle);
         });
@@ -244,7 +254,7 @@ public:
 private:
     void
     discard(const std::error_code& ec, const std::string& handle) {
-        COCAINE_LOG_INFO(parent->m_log, "alien disconnected: [%d] %s", ec.value(), ec.message())(
+        COCAINE_LOG_INFO(parent->m_log, "external service disconnected: [%d] %s", ec.value(), ec.message())(
             "service", handle
         );
 

@@ -132,10 +132,12 @@ struct expose {
     }
 
     typedef boost::mpl::list<
-     /* The alias of the service to be impersonated. */
+     /* The name of the external service to be exposed. */
         std::string,
-     /* Endpoints of the service to be impersonated. */
-        std::vector<asio::ip::tcp::endpoint>
+     /* External service endpoints. */
+        std::vector<asio::ip::tcp::endpoint>,
+     /* Service metadata, if the external service is using native protocol. */
+        optional<std::tuple<unsigned int, graph_root_t>>
     >::type argument_type;
 };
 
