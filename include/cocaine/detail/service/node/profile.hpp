@@ -43,7 +43,7 @@ struct profile_t:
     float heartbeat_timeout;
     float idle_timeout;
     struct {
-        float spawn;
+        unsigned long spawn;
     } timeout;
     float startup_timeout;
     float termination_timeout;

@@ -146,6 +146,8 @@ public:
         std::shared_ptr<slave::spawning_t>,
         std::shared_ptr<slave::unauthenticated_t>
     > slave_variant;
+
+    typedef std::unordered_map<std::string, slave_variant> pool_type;
 //    struct slave_context_t {
 //        std::shared_ptr<slave_t> slave;
 //        std::shared_ptr<control_t> control;
@@ -155,7 +157,7 @@ public:
 
     // states: null | spawning | unauthenticated | active | closed.
 
-    synchronized<std::unordered_map<std::string, slave_variant>> pool;
+    synchronized<pool_type> pool;
 
     /// - queue<<event, tag, adapter>> - pending queue.
     /// - balancer - balancing policy.
@@ -176,6 +178,10 @@ public:
         loop(loop),
         log(context.log(format("%s/overseer", name)))
     {}
+
+    ~overseer_t() {
+        COCAINE_LOG_DEBUG(log, "performing overseer shutdown");
+    }
 
     std::shared_ptr<streaming_dispatch_t>
     enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& /*upstream*/, const std::string& /*event*/) {
@@ -199,7 +205,7 @@ public:
 
             COCAINE_LOG_DEBUG(log, "processing handshake message");
 
-            auto control = pool.apply([=](std::unordered_map<std::string, slave_variant>& pool) -> std::shared_ptr<control_t> {
+            auto control = pool.apply([=](pool_type& pool) -> std::shared_ptr<control_t> {
                 auto it = pool.find(uuid);
                 if (it == pool.end()) {
                     COCAINE_LOG_DEBUG(log, "rejecting drone as unexpected");
@@ -243,15 +249,23 @@ public:
 
         const auto uuid = d.id;
 
-        COCAINE_LOG_DEBUG(log, "slave %s is spawning, timeout: %.02f seconds", uuid, profile.timeout.spawn);
+        COCAINE_LOG_DEBUG(log, "slave is spawning, timeout: %.02f seconds", profile.timeout.spawn)("uuid", uuid);
+
+        const auto now = std::chrono::steady_clock::now();
 
         // Regardless of whether the asynchronous operation completes immediately or not, the
         // handler will not be invoked from within this function.
-        pool->emplace(uuid, slave::spawn(loop, [&](result<std::shared_ptr<slave::unauthenticated_t>> result){
-            match<void>(result, [&](std::shared_ptr<slave::unauthenticated_t> /*slave*/){
-                COCAINE_LOG_DEBUG(log, "slave has been spawned");
+        pool->emplace(uuid, slave::spawn(context, std::move(d), loop, [=](result<std::shared_ptr<slave::unauthenticated_t>> result){
+            match<void>(result, [=](std::shared_ptr<slave::unauthenticated_t> slave){
+                const auto end = std::chrono::steady_clock::now();
+                COCAINE_LOG_DEBUG(log, "slave has been spawned in %.3f seconds",
+                    std::chrono::duration<float, std::chrono::seconds::period>(end - now).count()
+                );
 
-            }, [&](std::error_code ec){
+                pool.apply([=](pool_type& pool){
+                    pool[uuid] = slave;
+                });
+            }, [=](std::error_code ec){
                 COCAINE_LOG_ERROR(log, "unable to spawn more slaves: %s", ec.message());
 
                 pool->erase(uuid);
