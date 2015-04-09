@@ -149,28 +149,27 @@ locator_t::remote_t::on_announce(const std::string& node,
 
     auto lock = parent->m_remotes.synchronize();
 
-    for(auto it = update.begin(); it != update.end(); ++it) {
-        tuple::invoke(std::move(it->second),
-            [&](std::vector<tcp::endpoint>&& location, unsigned int versions, graph_root_t&& protocol)
-        {
-            int copies = 0;
-            api::gateway_t::partition_t partition(it->first, versions);
+    for(auto it = update.begin(); it != update.end(); ++it) tuple::invoke(
+        std::move(it->second),
+        [&](std::vector<tcp::endpoint>&& location, unsigned int versions, graph_root_t&& protocol)
+    {
+        int copies = 0;
+        api::gateway_t::partition_t partition(it->first, versions);
 
-            if(location.empty()) {
-                copies = parent->m_gateway->cleanup(uuid, partition);
-                active.erase (partition);
-            } else {
-                copies = parent->m_gateway->consume(uuid, partition, location);
-                active.insert(partition);
-            }
+        if(location.empty()) {
+            copies = parent->m_gateway->cleanup(uuid, partition);
+            active.erase (partition);
+        } else {
+            copies = parent->m_gateway->consume(uuid, partition, location);
+            active.insert(partition);
+        }
 
-            if(copies == 0) {
-                parent->m_protocol[it->first].erase(versions);
-            } else {
-                parent->m_protocol[it->first][versions] = std::move(protocol);
-            }
-        });
-    }
+        if(copies == 0) {
+            parent->m_protocol[it->first].erase(versions);
+        } else {
+            parent->m_protocol[it->first][versions] = std::move(protocol);
+        }
+    });
 
     std::ostringstream stream;
     std::ostream_iterator<char> builder(stream);
