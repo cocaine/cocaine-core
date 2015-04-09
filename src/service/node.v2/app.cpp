@@ -256,9 +256,9 @@ public:
         // Regardless of whether the asynchronous operation completes immediately or not, the
         // handler will not be invoked from within this function.
         pool->emplace(uuid, slave::spawn(context, std::move(d), loop, [=](result<std::shared_ptr<slave::unauthenticated_t>> result){
-            match<void>(result, [=](std::shared_ptr<slave::unauthenticated_t> slave){
+            match(result, [=](std::shared_ptr<slave::unauthenticated_t> slave){
                 const auto end = std::chrono::steady_clock::now();
-                COCAINE_LOG_DEBUG(log, "slave has been spawned in %.3f seconds",
+                COCAINE_LOG_DEBUG(log, "slave has been spawned in %.3f s",
                     std::chrono::duration<float, std::chrono::seconds::period>(end - now).count()
                 );
 
