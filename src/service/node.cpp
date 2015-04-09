@@ -40,16 +40,16 @@
 using namespace cocaine::io;
 using namespace cocaine::service;
 
+namespace ph = std::placeholders;
+
 node_t::node_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),
     dispatch<node_tag>(name),
     m_context(context),
     m_log(context.log(name))
 {
-    using namespace std::placeholders;
-
-    on<node::start_app>(std::bind(&node_t::on_start_app, this, _1, _2));
-    on<node::pause_app>(std::bind(&node_t::on_pause_app, this, _1));
+    on<node::start_app>(std::bind(&node_t::on_start_app, this, ph::_1, ph::_2));
+    on<node::pause_app>(std::bind(&node_t::on_pause_app, this, ph::_1));
     on<node::list>(std::bind(&node_t::on_list, this));
 
     const auto runlist_id = args.as_object().at("runlist", "default").as_string();

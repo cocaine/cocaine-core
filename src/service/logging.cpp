@@ -33,6 +33,8 @@ using namespace cocaine;
 using namespace cocaine::logging;
 using namespace cocaine::service;
 
+namespace ph = std::placeholders;
+
 logging_t::logging_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),
     dispatch<io::log_tag>(name)
@@ -48,14 +50,12 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
         throw cocaine::error_t("logger '%s' is not configured", backend);
     }
 
-    using namespace std::placeholders;
-
     const auto getter = &logger_t::verbosity;
     const auto setter = static_cast<void(logger_t::*)(priorities)>(&logger_t::set_filter);
 
-    on<io::log::emit>(std::bind(&logging_t::on_emit, this, _1, _2, _3, _4));
+    on<io::log::emit>(std::bind(&logging_t::on_emit, this, ph::_1, ph::_2, ph::_3, ph::_4));
     on<io::log::verbosity>(std::bind(getter, std::ref(*m_logger)));
-    on<io::log::set_verbosity>(std::bind(setter, std::ref(*m_logger), _1));
+    on<io::log::set_verbosity>(std::bind(setter, std::ref(*m_logger), ph::_1));
 }
 
 const io::basic_dispatch_t&

@@ -61,6 +61,8 @@ using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
+namespace ph = std::placeholders;
+
 // Locator internals
 
 class locator_t::remote_t: public dispatch<event_traits<locator::connect>::upstream_type> {
@@ -78,9 +80,7 @@ public:
     {
         typedef io::protocol<event_traits<locator::connect>::upstream_type>::scope protocol;
 
-        using namespace std::placeholders;
-
-        on<protocol::chunk>(std::bind(&remote_t::on_announce, this, _1, _2));
+        on<protocol::chunk>(std::bind(&remote_t::on_announce, this, ph::_1, ph::_2));
         on<protocol::choke>(std::bind(&remote_t::on_shutdown, this));
     }
 
@@ -280,13 +280,11 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     m_cfg(name, root),
     m_asio(asio)
 {
-    using namespace std::placeholders;
-
-    on<locator::resolve>(std::bind(&locator_t::on_resolve, this, _1, _2));
-    on<locator::connect>(std::bind(&locator_t::on_connect, this, _1));
-    on<locator::refresh>(std::bind(&locator_t::on_refresh, this, _1));
+    on<locator::resolve>(std::bind(&locator_t::on_resolve, this, ph::_1, ph::_2));
+    on<locator::connect>(std::bind(&locator_t::on_connect, this, ph::_1));
+    on<locator::refresh>(std::bind(&locator_t::on_refresh, this, ph::_1));
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
-    on<locator::routing>(std::bind(&locator_t::on_routing, this, _1, true));
+    on<locator::routing>(std::bind(&locator_t::on_routing, this, ph::_1, true));
 
     on<locator::publish>(std::make_shared<publish_slot_t>(this));
 
@@ -313,14 +311,14 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         const auto type = conf.at("type", "unspecified").as_string();
         const auto args = conf.at("args", dynamic_t::object_t());
 
-        COCAINE_LOG_INFO(m_log, "using '%s' for cluster discovery", type);
+        COCAINE_LOG_INFO(m_log, "using '%s' as a cluster manager, enabling synchronization", type);
+
+        m_signals->on<context::service::exposed>(std::bind(&locator_t::on_service, this,
+            ph::_1, ph::_2, modes::exposed));
+        m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this,
+            ph::_1, ph::_2, modes::removed));
 
         m_cluster = m_context.get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
-
-        m_signals->on<context::service::exposed>(std::bind(&locator_t::on_service, this, _1,
-            _2, modes::exposed));
-        m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this, _1,
-            _2, modes::removed));
     }
 
     if(root.as_object().count("gateway")) {
@@ -328,7 +326,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         const auto type = conf.at("type", "unspecified").as_string();
         const auto args = conf.at("args", dynamic_t::object_t());
 
-        COCAINE_LOG_INFO(m_log, "using '%s' as a cluster accessor", type);
+        COCAINE_LOG_INFO(m_log, "using '%s' as a gateway manager, enabling service routing", type);
 
         m_gateway = m_context.get<api::gateway_t>(type, m_context, name + ":gateway", args);
     }
