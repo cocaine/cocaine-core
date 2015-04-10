@@ -426,7 +426,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         client.invoke<locator::connect>(std::make_shared<remote_t>(this, uuid), m_cfg.uuid);
     });
 
-    COCAINE_LOG_INFO(m_log, "setting up remote client, trying %llu route(s)", endpoints.size())(
+    COCAINE_LOG_INFO(m_log, "setting up remote client, trying %d route(s)", endpoints.size())(
         "uuid", uuid
     );
 }
@@ -559,27 +559,21 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
         COCAINE_LOG_INFO(m_log, "routing group %s", lb != ub ? "updated" : "removed")("rg", group);
     });
 
-    m_asio.post([this]() {
-        typedef std::vector<std::string> router_vector_t;
+    typedef std::vector<std::string> ruid_vector_t;
 
-        using boost::adaptors::keys;
-
-        const auto routers = m_routers.apply([&](const router_map_t& mapping) -> router_vector_t {
-            return router_vector_t(keys(mapping).begin(), keys(mapping).end());
-        });
-
-        if(routers.empty()) return;
-
-        std::for_each(routers.begin(), routers.end(), [&](const std::string& ruid) {
-            try {
-                on_routing(ruid);
-            } catch(...) {
-                m_routers->erase(ruid);
-            }
-        });
-
-        COCAINE_LOG_DEBUG(m_log, "sent routing updates to %d router(s)", routers.size());
+    const auto ruids = m_routers.apply([&](const router_map_t& mapping) -> ruid_vector_t {
+        return {boost::adaptors::keys(mapping).begin(), boost::adaptors::keys(mapping).end()};
     });
+
+    std::for_each(ruids.begin(), ruids.end(), [&](const std::string& ruid) {
+        try {
+            on_routing(ruid);
+        } catch(...) {
+            m_routers->erase(ruid);
+        }
+    });
+
+    COCAINE_LOG_DEBUG(m_log, "enqueued sending routing updates to %d router(s)", ruids.size());
 }
 
 results::cluster
@@ -659,7 +653,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
         }
     }
 
-    COCAINE_LOG_DEBUG(m_log, "sent service updates to %llu locators", mapping->size());
+    COCAINE_LOG_DEBUG(m_log, "enqueued sending service updates to %d locators", mapping->size());
 }
 
 void

@@ -87,7 +87,7 @@ execution_unit_t::gc_action_t::finalize(const std::error_code& ec) {
     }
 
     if(recycled) {
-        COCAINE_LOG_DEBUG(parent->m_log, "recycled %llu session(s)", recycled);
+        COCAINE_LOG_DEBUG(parent->m_log, "recycled %d session(s)", recycled);
     }
 
     operator()();
