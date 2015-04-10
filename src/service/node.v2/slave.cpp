@@ -144,19 +144,31 @@ unauthenticated_t::unauthenticated_t(context_t& context, slave_data d, std::shar
     d(d),
     fetcher(std::make_shared<fetcher_t>(context, d, handle->stdout(), loop)),
     handle(std::move(handle)),
-    timer(*loop)
+    timer(*loop),
+    start(std::chrono::steady_clock::now())
 {
     COCAINE_LOG_DEBUG(log, "slave has started fetching standard output");
 
     fetcher->watch();
-    loop->post([=]{
-        timer.expires_from_now(boost::posix_time::milliseconds(d.profile.timeout.handshake));
+}
+
+void unauthenticated_t::activate_in(std::function<void ()> on_timeout){
+    timer.expires_from_now(boost::posix_time::milliseconds(d.profile.timeout.handshake));
+    timer.async_wait([=](const std::error_code& ec){
+        if (!ec) {
+            on_timeout();
+        }
     });
 }
 
 std::shared_ptr<active_t>
 unauthenticated_t::activate(std::shared_ptr<control_t> control) {
-    COCAINE_LOG_DEBUG(log, "slave has become active in %.3f ms");
+    timer.cancel();
+
+    auto now = std::chrono::steady_clock::now();
+    COCAINE_LOG_DEBUG(log, "slave has become active in %.3fms",
+        std::chrono::duration<float, std::chrono::milliseconds::period>(now - start).count()
+    );
 
     return std::make_shared<active_t>(std::move(*this), control);
 }

@@ -218,9 +218,15 @@ public:
         pool->emplace(uuid, slave::spawn(context, std::move(d), loop, [=](result<std::shared_ptr<slave::unauthenticated_t>> result){
             match<void>(result, [=](std::shared_ptr<slave::unauthenticated_t> slave){
                 const auto end = std::chrono::steady_clock::now();
-                COCAINE_LOG_DEBUG(log, "slave has been spawned in %.3f s",
-                    std::chrono::duration<float, std::chrono::seconds::period>(end - now).count()
+                COCAINE_LOG_DEBUG(log, "slave has been spawned in %.3fms",
+                    std::chrono::duration<float, std::chrono::milliseconds::period>(end - now).count()
                 );
+
+                slave->activate_in([=]{
+                    COCAINE_LOG_ERROR(log, "unable to activate slave: timeout");
+
+                    pool->erase(uuid);
+                });
 
                 pool.apply([=](pool_type& pool){
                     pool[uuid] = slave;

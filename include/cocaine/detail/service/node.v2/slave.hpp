@@ -98,9 +98,12 @@ class unauthenticated_t : public std::enable_shared_from_this<unauthenticated_t>
     std::unique_ptr<api::handle_t> handle;
 
     asio::deadline_timer timer;
+    std::chrono::steady_clock::time_point start;
 
 public:
     unauthenticated_t(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, std::unique_ptr<api::handle_t> handle);
+
+    void activate_in(std::function<void()> on_timeout);
 
     // This method invalidates current object.
     std::shared_ptr<active_t> activate(std::shared_ptr<control_t> control);
