@@ -539,24 +539,22 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
         throw std::system_error(error::routing_storage_error);
     }
 
-    std::for_each(groups.begin(), groups.end(), [&](const std::string& group) {
-        std::tie(lb, ub) = values.equal_range(group);
+    for(auto it = groups.begin(); it != groups.end(); ++it) m_rgs.apply([&](rg_map_t& mapping) {
+        // Routing continuums can't be updated, only erased and reconstructed. This simplifies
+        // the logic greatly and doesn't impose any significant performance penalty.
+        mapping.erase(*it);
 
-        m_rgs.apply([&](rg_map_t& mapping) {
-            // Routing continuums can't be updated, only erased and reconstructed. This simplifies
-            // the logic greatly and doesn't impose any significant performance penalty.
-            mapping.erase(group);
+        std::tie(lb, ub) = values.equal_range(*it);
 
-            if(lb == ub) return;
+        if(lb == ub) return;
 
-            std::unique_ptr<logging::log_t> log_ptr = m_context.log(m_cfg.name, {
-                attribute::make("rg", group)
-            });
-
-            mapping.insert({group, continuum_t(std::move(log_ptr), lb->second)});
+        std::unique_ptr<logging::log_t> log_ptr = m_context.log(m_cfg.name, {
+            attribute::make("rg", *it)
         });
 
-        COCAINE_LOG_INFO(m_log, "routing group %s", lb != ub ? "updated" : "removed")("rg", group);
+        COCAINE_LOG_INFO(log_ptr, "routing group %s", lb != ub ? "updated" : "removed");
+
+        mapping.insert({*it, continuum_t(std::move(log_ptr), lb->second)});
     });
 
     typedef std::vector<std::string> ruid_vector_t;
@@ -565,13 +563,13 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
         return {boost::adaptors::keys(mapping).begin(), boost::adaptors::keys(mapping).end()};
     });
 
-    std::for_each(ruids.begin(), ruids.end(), [&](const std::string& ruid) {
+    for(auto it = ruids.begin(); it != ruids.end(); ++it) {
         try {
-            on_routing(ruid);
+            on_routing(*it);
         } catch(...) {
-            m_routers->erase(ruid);
+            m_routers->erase(*it);
         }
-    });
+    }
 
     COCAINE_LOG_DEBUG(m_log, "enqueued sending routing updates to %d router(s)", ruids.size());
 }

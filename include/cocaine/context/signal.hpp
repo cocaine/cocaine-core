@@ -109,11 +109,10 @@ public:
     listen(const std::shared_ptr<dispatch<Tag>>& slot, asio::io_service& asio) {
         subscribers->push_back(subscriber_t{slot, asio});
 
-        auto ptr = history.synchronize();
+        auto ptr     = history.synchronize();
+        auto visitor = aux::event_visitor<Tag>(slot, asio);
 
-        std::for_each(ptr->begin(), ptr->end(), [&](const variant_type& event) {
-            boost::apply_visitor(aux::event_visitor<Tag>(slot, asio), event);
-        });
+        std::for_each(ptr->begin(), ptr->end(), boost::apply_visitor(visitor));
     }
 
     template<class Event, class... Args>
