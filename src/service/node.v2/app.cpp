@@ -81,12 +81,24 @@ private:
 class authenticator_t :
     public dispatch<io::rpc_tag>
 {
+    mutable std::shared_ptr<session_t> session;
+    mutable std::atomic<bool> flag;
+
 public:
     template<class F>
     authenticator_t(const std::string& name, F&& fn) :
-        dispatch<io::rpc_tag>(format("%s/auth", name))
+        dispatch<io::rpc_tag>(format("%s/auth", name)),
+        flag(false)
     {
-        on<io::rpc::handshake>(std::make_shared<io::streaming_slot<io::rpc::handshake>>(std::move(fn)));
+        on<io::rpc::handshake>(std::make_shared<io::streaming_slot<io::rpc::handshake>>([=](io::streaming_slot<io::rpc::handshake>::upstream_type& us, const std::string& uuid) -> std::shared_ptr<control_t> {
+            while (!flag.load()) {}
+            return fn(us, uuid, session);
+        }));
+    }
+
+    void bind(std::shared_ptr<session_t> session) const {
+        this->session = session;
+        flag.store(true);
     }
 };
 
@@ -182,11 +194,9 @@ public:
     /// If invalid - drop.
     /// BALANCER:
     ///  - for each pending queue needed for invoke: session->inject(event) -> upstream; adapter->attach(upstream).
-    void
-    attach(std::shared_ptr<session_t> session) {
-        COCAINE_LOG_DEBUG(log, "attaching drone candidate session");
-
-        session->inject(std::make_shared<authenticator_t>(name, [=](io::streaming_slot<io::rpc::handshake>::upstream_type&, const std::string& uuid) -> std::shared_ptr<control_t> {
+    io::dispatch_ptr_t
+    prototype() {
+        return std::make_shared<const authenticator_t>(name, [=](io::streaming_slot<io::rpc::handshake>::upstream_type&, const std::string& uuid, std::shared_ptr<session_t>) -> std::shared_ptr<control_t> {
             scoped_attributes_t holder(*log, {{ "uuid", uuid }});
 
             COCAINE_LOG_DEBUG(log, "processing handshake message");
@@ -215,7 +225,7 @@ public:
             }
 
             return control;
-        }));
+        });
     }
 
     locked_ptr<std::queue<queue_value>>
@@ -407,7 +417,10 @@ void app_t::start() {
     engine.reset(new unix_actor_t(
         context,
         manifest->endpoint,
-        std::bind(&overseer_t::attach, overseer.get(), ph::_1),
+        std::bind(&overseer_t::prototype, overseer.get()),
+        [](io::dispatch_ptr_t auth, std::shared_ptr<session_t> sess) {
+            std::dynamic_pointer_cast<const authenticator_t>(auth)->bind(sess);
+        },
         loop,
         std::make_unique<hostess_t>(manifest->name)
     ));

@@ -48,8 +48,9 @@ private:
             COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd %d", ptr->native_handle());
 
             try {
-                auto session = parent->m_context.engine().attach(ptr, parent->m_prototype);
-                parent->callback(std::move(session));
+                auto base = parent->fact();
+                auto session = parent->m_context.engine().attach(ptr, base);
+                parent->bind(base, std::move(session));
             } catch(const std::system_error& e) {
                 COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: [%d] %s - %s",
                     e.code().value(), e.code().message(), e.what());
@@ -75,7 +76,8 @@ private:
 
 unix_actor_t::unix_actor_t(cocaine::context_t& context,
                            asio::local::stream_protocol::endpoint endpoint,
-                           std::function<void(std::shared_ptr<session_t>)> callback,
+                           fact_type fact,
+                           bind_type bind,
                            const std::shared_ptr<asio::io_service>& asio,
                            std::unique_ptr<cocaine::io::basic_dispatch_t> prototype) :
     m_context(context),
@@ -83,7 +85,8 @@ unix_actor_t::unix_actor_t(cocaine::context_t& context,
     m_log(context.log("core::io", { attribute::make("app", prototype->name()) })),
     m_asio(asio),
     m_prototype(std::move(prototype)),
-    callback(std::move(callback))
+    fact(std::move(fact)),
+    bind(bind)
 {}
 
 unix_actor_t::~unix_actor_t() {}

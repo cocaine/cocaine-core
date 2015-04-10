@@ -33,11 +33,15 @@ class unix_actor_t {
     // Main service thread.
     std::unique_ptr<io::chamber_t> m_chamber;
 
-    std::function<void(std::shared_ptr<session_t>)> callback;
+    typedef std::function<io::dispatch_ptr_t()> fact_type;
+    typedef std::function<void(io::dispatch_ptr_t, std::shared_ptr<session_t>)> bind_type;
+    fact_type fact;
+    bind_type bind;
 
 public:
     unix_actor_t(context_t& context, protocol_type::endpoint endpoint,
-                 std::function<void(std::shared_ptr<session_t>)> callback,
+                 fact_type fact,
+                 bind_type bind,
                  const std::shared_ptr<asio::io_service>& asio,
                  std::unique_ptr<io::basic_dispatch_t> prototype);
 
