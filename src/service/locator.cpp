@@ -564,12 +564,10 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
         return {boost::adaptors::keys(mapping).begin(), boost::adaptors::keys(mapping).end()};
     });
 
-    for(auto it = ruids.begin(); it != ruids.end(); ++it) {
-        try {
-            on_routing(*it);
-        } catch(...) {
-            m_routers->erase(*it);
-        }
+    for(auto it = ruids.begin(); it != ruids.end(); ++it) try {
+        on_routing(*it);
+    } catch(...) {
+        m_routers->erase(*it);
     }
 
     COCAINE_LOG_DEBUG(m_log, "enqueued sending routing updates to %d router(s)", ruids.size());
@@ -643,13 +641,11 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
 
     const auto response = results::connect{m_cfg.uuid, {{name, meta}}};
 
-    for(auto it = mapping->begin(); it != mapping->end();) {
-        try {
-            it->second.write(response);
-            it++;
-        } catch(...) {
-            it = mapping->erase(it);
-        }
+    for(auto it = mapping->begin(); it != mapping->end();) try {
+        it->second.write(response);
+        it++;
+    } catch(...) {
+        it = mapping->erase(it);
     }
 
     COCAINE_LOG_DEBUG(m_log, "enqueued sending service updates to %d locators", mapping->size());
