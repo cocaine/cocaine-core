@@ -55,9 +55,7 @@ public:
         on<protocol::choke>(std::bind(&streaming_dispatch_t::close, this));
     }
 
-    // TODO: Complete.
-    void attach(std::shared_ptr<upstream<io::event_traits<io::rpc::invoke>::dispatch_type>> u) {
-//        deduce<tag_type>::show();
+    void attach(std::shared_ptr<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> u) {
         mq->attach(u);
     }
 
@@ -81,7 +79,7 @@ private:
 /// Initial dispatch for slaves. Accepts only handshake messages and forwards it to the actual
 /// checker (i.e. to the Overseer).
 class authenticator_t :
-    public dispatch<io::rpc_tag>
+    public dispatch<io::worker_tag>
 {
     mutable std::shared_ptr<session_t> session;
     mutable std::mutex mutex;
@@ -90,9 +88,9 @@ class authenticator_t :
 public:
     template<class F>
     authenticator_t(const std::string& name, F&& fn) :
-        dispatch<io::rpc_tag>(format("%s/auth", name))
+        dispatch<io::worker_tag>(format("%s/auth", name))
     {
-        on<io::rpc::handshake>(std::make_shared<io::streaming_slot<io::rpc::handshake>>([=](io::streaming_slot<io::rpc::handshake>::upstream_type& us, const std::string& uuid) -> std::shared_ptr<control_t> {
+        on<io::worker::handshake>(std::make_shared<io::streaming_slot<io::worker::handshake>>([=](io::streaming_slot<io::worker::handshake>::upstream_type& us, const std::string& uuid) -> std::shared_ptr<control_t> {
             std::unique_lock<std::mutex> lock(mutex);
             if (!session) {
                 cv.wait(lock);
@@ -206,7 +204,7 @@ public:
     ///  - for each pending queue needed for invoke: session->inject(event) -> upstream; adapter->attach(upstream).
     io::dispatch_ptr_t
     prototype() {
-        return std::make_shared<const authenticator_t>(name, [=](io::streaming_slot<io::rpc::handshake>::upstream_type&, const std::string& uuid, std::shared_ptr<session_t> session) -> std::shared_ptr<control_t> {
+        return std::make_shared<const authenticator_t>(name, [=](io::streaming_slot<io::worker::handshake>::upstream_type&, const std::string& uuid, std::shared_ptr<session_t> session) -> std::shared_ptr<control_t> {
             scoped_attributes_t holder(*log, {{ "uuid", uuid }});
 
             COCAINE_LOG_DEBUG(log, "processing handshake message");
@@ -318,8 +316,9 @@ public:
     void despawn(std::string, bool graceful = true);
 };
 
-class worker_client_dispatch_t
-    : public dispatch<io::event_traits<io::rpc::invoke>::dispatch_type>
+// TODO: Check correctness.
+class worker_client_dispatch_t:
+    public dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>
 {
     typedef io::event_traits<io::app::enqueue>::upstream_type tag_type;
 
@@ -329,7 +328,7 @@ class worker_client_dispatch_t
 
 public:
     worker_client_dispatch_t(upstream<io::event_traits<io::app::enqueue>::upstream_type>& wcu):
-        dispatch<io::event_traits<io::rpc::invoke>::dispatch_type>("w->c"),
+        dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>("w->c"),
         us(wcu)
     {
         on<protocol::chunk>([=](const std::string& chunk){
@@ -362,10 +361,10 @@ public:
         auto slave = pool->begin()->second;
         if (auto slave_ = boost::get<std::shared_ptr<slave::active_t>*>(slave)) {
             auto cwu = (*slave_)->inject(std::make_shared<worker_client_dispatch_t>(wcu));
-            cwu->template send<io::rpc::invoke>(event);
+            cwu->send<io::worker::rpc::invoke>(event);
 
             auto dispatch = std::make_shared<streaming_dispatch_t>("c->w");
-            dispatch->attach(std::make_shared<upstream<io::event_traits<io::rpc::invoke>::dispatch_type>>(cwu));
+            dispatch->attach(std::make_shared<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(cwu));
             return dispatch;
         } else {
             return nullptr;
@@ -393,10 +392,10 @@ public:
         auto slave = pool->begin()->second;
         if (auto slave_ = boost::get<std::shared_ptr<slave::active_t>>(&slave)) {
             auto cwu = (*slave_)->inject(std::make_shared<worker_client_dispatch_t>(payload.upstream));
-            cwu->template send<io::rpc::invoke>(payload.event);
+            cwu->send<io::worker::rpc::invoke>(payload.event);
 
             auto dispatch = payload.dispatch;
-            dispatch->attach(std::make_shared<upstream<io::event_traits<io::rpc::invoke>::dispatch_type>>(cwu));
+            dispatch->attach(std::make_shared<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(cwu));
         }
     }
 };
@@ -439,13 +438,16 @@ private:
     }
 };
 
-/// Accepts workers, does nothing.
+/// The basic prototype.
+///
+/// It's here only, because Cocaine API wants it in actor. Does nothing, because it is always
+/// replaced by an authenticate dispatch for every incoming connection.
 class hostess_t :
-    public dispatch<io::rpc_tag>
+    public dispatch<io::worker_tag>
 {
 public:
     hostess_t(const std::string& name) :
-        dispatch<io::rpc_tag>(format("%s/hostess", name))
+        dispatch<io::worker_tag>(format("hostess/%s", name))
     {}
 };
 

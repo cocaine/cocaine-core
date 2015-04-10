@@ -27,102 +27,107 @@
 
 namespace cocaine { namespace io {
 
-struct rpc_tag;
+struct worker_tag;
+
+struct worker {
+
 struct control_tag;
 
-struct rpc {
-
+/// This is the only message, that the worker can sent to be able create control channel.
 struct handshake {
-    typedef rpc_tag tag;
-
-    static const char* alias() noexcept {
+    static const char* alias() {
         return "handshake";
     }
+
+    typedef worker_tag tag;
 
     typedef control_tag dispatch_type;
     typedef control_tag upstream_type;
 
     typedef boost::mpl::list<
-        /* peer id */ std::string
-    > argument_type;
-};
-
-//struct terminate {
-//    typedef rpc_tag tag;
-
-//    static const char* alias() noexcept {
-//        return "terminate";
-//    }
-
-//    enum code: int {
-//        normal = 1,
-//        abnormal
-//    };
-
-//    typedef boost::mpl::list<
-//        /* code */   code,
-//        /* reason */ std::string
-//    > argument_type;
-//};
-
-struct invoke {
-    typedef rpc_tag tag;
-
-    typedef stream_of<std::string>::tag dispatch_type;
-    typedef stream_of<std::string>::tag upstream_type;
-
-    static const char* alias() noexcept {
-        return "invoke";
-    }
-
-    typedef boost::mpl::list<
-        /* event */ std::string
+     /* The unique worker identifyer (usually uuid). */
+        std::string
     >::type argument_type;
 };
 
-
-}; // struct rpc
-
-template<>
-struct protocol<rpc_tag> {
-    typedef boost::mpl::int_<
-        2
-    >::type version;
-
-    typedef boost::mpl::list<
-        rpc::handshake,
-        rpc::invoke
-    > messages;
-
-    typedef rpc scope;
-};
-
-struct control {
-
 struct heartbeat {
-    typedef control_tag tag;
-
-    static const char* alias() noexcept {
+    static const char* alias() {
         return "heartbeat";
     }
 
+    typedef control_tag tag;
     typedef control_tag dispatch_type;
-    typedef void        upstream_type;
+    typedef void        upstream_type; // TODO: Maybe option?
 };
 
-}; // struct control
+struct terminate {
+    static const char* alias() {
+        return "terminate";
+    }
+
+    typedef control_tag tag;
+};
+
+struct rpc_tag;
+
+struct rpc {
+    struct invoke {
+        static const char* alias() {
+            return "invoke";
+        }
+
+        typedef rpc_tag tag;
+
+        typedef stream_of<std::string>::tag dispatch_type;
+        typedef stream_of<std::string>::tag upstream_type;
+
+        typedef boost::mpl::list<
+         /* Event name. */
+            std::string
+        >::type argument_type;
+    };
+};
+
+}; // struct worker
 
 template<>
-struct protocol<control_tag> {
+struct protocol<worker_tag> {
     typedef boost::mpl::int_<
-        2
+        1
     >::type version;
 
     typedef boost::mpl::list<
-        control::heartbeat
+        worker::handshake
     >::type messages;
 
-    typedef control scope;
+    typedef worker scope;
+};
+
+template<>
+struct protocol<worker::control_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        worker::heartbeat,
+        worker::terminate
+    >::type messages;
+
+    typedef worker scope;
+};
+
+template<>
+struct protocol<worker::rpc_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        worker::rpc::invoke
+    >::type messages;
+
+    typedef worker::rpc scope;
 };
 
 }} // namespace cocaine::io
