@@ -82,23 +82,29 @@ class authenticator_t :
     public dispatch<io::rpc_tag>
 {
     mutable std::shared_ptr<session_t> session;
-    mutable std::atomic<bool> flag;
+    mutable std::mutex mutex;
+    mutable std::condition_variable cv;
 
 public:
     template<class F>
     authenticator_t(const std::string& name, F&& fn) :
-        dispatch<io::rpc_tag>(format("%s/auth", name)),
-        flag(false)
+        dispatch<io::rpc_tag>(format("%s/auth", name))
     {
         on<io::rpc::handshake>(std::make_shared<io::streaming_slot<io::rpc::handshake>>([=](io::streaming_slot<io::rpc::handshake>::upstream_type& us, const std::string& uuid) -> std::shared_ptr<control_t> {
-            while (!flag.load()) {}
+            std::unique_lock<std::mutex> lock(mutex);
+            if (!session) {
+                cv.wait(lock);
+            }
+
             return fn(us, uuid, session);
         }));
     }
 
     void bind(std::shared_ptr<session_t> session) const {
+        std::unique_lock<std::mutex> lock(mutex);
         this->session = session;
-        flag.store(true);
+        lock.unlock();
+        cv.notify_one();
     }
 };
 
