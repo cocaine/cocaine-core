@@ -46,6 +46,7 @@
 #include <blackhole/scoped_attributes.hpp>
 
 #include <boost/range/adaptor/map.hpp>
+#include <boost/range/algorithm/for_each.hpp>
 
 #include <boost/spirit/include/karma_char.hpp>
 #include <boost/spirit/include/karma_generate.hpp>
@@ -668,6 +669,8 @@ locator_t::on_context_shutdown() {
         mapping.clear();
     });
 
+    m_cluster = nullptr;
+
     m_remotes.apply([this](remote_map_t& mapping) {
         if(mapping.empty()) {
             return;
@@ -675,18 +678,23 @@ locator_t::on_context_shutdown() {
             COCAINE_LOG_DEBUG(m_log, "closing %d outgoing locator streams", mapping.size());
         }
 
-        for(auto it = mapping.begin(); it != mapping.end(); ++it) {
-            try {
-                it->second.close();
-            } catch(...) {
-                // Ignore all exceptions. The runtime is being destroyed anyway.
-            }
-        }
-
-        mapping.clear();
+        boost::for_each(mapping | boost::adaptors::map_values, [](streamed<results::connect>& s) {
+            try { s.close(); } catch(...) { /* None */ }
+        });
     });
 
-    m_cluster = nullptr;
+    m_routers.apply([this](router_map_t& mapping) {
+        if(mapping.empty()) {
+            return;
+        } else {
+            COCAINE_LOG_DEBUG(m_log, "closing %d outgoing routing streams", mapping.size());
+        }
+
+        boost::for_each(mapping | boost::adaptors::map_values, [](streamed<results::routing>& s) {
+            try { s.close(); } catch(...) { /* None */ }
+        });
+    });
+
     m_signals = nullptr;
 }
 
