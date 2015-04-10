@@ -29,6 +29,9 @@ public:
     virtual
     void
     discard(const std::error_code&) const override;
+
+    void attach(std::shared_ptr<session_t> session);
+    io::upstream_ptr_t inject(io::dispatch_ptr_t dispatch);
 };
 
 }

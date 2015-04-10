@@ -32,3 +32,11 @@ void control_t::discard(const std::error_code&) const {
     // Unix socket is destroyed some unexpected way, for example worker is down.
     // Detach slave from pool - `overseer->detach(uuid);`.
 }
+
+void control_t::attach(std::shared_ptr<session_t> session){
+    this->session = session;
+}
+
+io::upstream_ptr_t control_t::inject(io::dispatch_ptr_t dispatch) {
+    return session->inject(dispatch);
+}

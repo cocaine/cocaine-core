@@ -120,7 +120,7 @@ public:
     active_t(unauthenticated_t&& unauth, std::shared_ptr<control_t> control);
     // ~active_t(); // sends terminate signal and creates waitable object (30-5).
 
-    io::upstream_ptr_t inject(io::dispatch_ptr_t);
+    io::upstream_ptr_t inject(io::dispatch_ptr_t dispatch);
 
     void heartbeat();
     void terminate();

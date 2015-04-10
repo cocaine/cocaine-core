@@ -21,6 +21,8 @@
 #ifndef COCAINE_ENGINE_INTERFACE_HPP
 #define COCAINE_ENGINE_INTERFACE_HPP
 
+#include <string>
+
 #include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
@@ -63,67 +65,33 @@ struct handshake {
 //    > argument_type;
 //};
 
-//struct invoke {
-//    typedef rpc_tag tag;
+struct invoke {
+    typedef rpc_tag tag;
 
-//    static const char* alias() noexcept {
-//        return "invoke";
-//    }
+    typedef stream_of<std::string>::tag dispatch_type;
+    typedef stream_of<std::string>::tag upstream_type;
 
-//    typedef boost::mpl::list<
-//        /* event */ std::string
-//    > argument_type;
-//};
+    static const char* alias() noexcept {
+        return "invoke";
+    }
 
-//struct chunk {
-//    typedef rpc_tag tag;
+    typedef boost::mpl::list<
+        /* event */ std::string
+    >::type argument_type;
+};
 
-//    static const char* alias() noexcept {
-//        return "chunk";
-//    }
-
-//    typedef boost::mpl::list<
-//        /* chunk */ std::string
-//    > argument_type;
-//};
-
-//struct error {
-//    typedef rpc_tag tag;
-
-//    static const char* alias() noexcept {
-//        return "error";
-//    }
-
-//    typedef boost::mpl::list<
-//        /* code */   int,
-//        /* reason */ std::string
-//    > argument_type;
-//};
-
-//struct choke {
-//    typedef rpc_tag tag;
-
-//    static const char* alias() noexcept {
-//        return "choke";
-//    }
-//};
 
 }; // struct rpc
 
 template<>
 struct protocol<rpc_tag> {
     typedef boost::mpl::int_<
-        1
+        2
     >::type version;
 
     typedef boost::mpl::list<
-        rpc::handshake
-//        rpc::heartbeat,
-//        rpc::terminate,
-//        rpc::invoke,
-//        rpc::chunk,
-//        rpc::error,
-//        rpc::choke
+        rpc::handshake,
+        rpc::invoke
     > messages;
 
     typedef rpc scope;
@@ -147,7 +115,7 @@ struct heartbeat {
 template<>
 struct protocol<control_tag> {
     typedef boost::mpl::int_<
-        1
+        2
     >::type version;
 
     typedef boost::mpl::list<

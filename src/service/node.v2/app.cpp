@@ -38,7 +38,7 @@ namespace ph = std::placeholders;
 template<class T> class deduce;
 
 // From client to worker.
-class streaming_dispatch_t:
+class cocaine::streaming_dispatch_t:
     public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
 {
     typedef io::event_traits<io::app::enqueue>::dispatch_type tag_type;
@@ -56,7 +56,9 @@ public:
     }
 
     // TODO: Complete.
-    void attach(/*upstream*/) {
+    void attach(std::shared_ptr<upstream<io::event_traits<io::rpc::invoke>::dispatch_type>> u) {
+//        deduce<tag_type>::show();
+        mq->attach(u);
     }
 
 private:
@@ -184,7 +186,9 @@ public:
     /// \param event an invocation event name.
     std::shared_ptr<streaming_dispatch_t>
     enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstream, const std::string& event) {
-        balancer->queue_changed(event);
+        if (auto dispatch = balancer->queue_changed(upstream, event)) {
+            return dispatch;
+        }
 
         auto dispatch = std::make_shared<streaming_dispatch_t>(manifest.name);
         queue->push({ event, "", dispatch, std::move(upstream) });
@@ -202,7 +206,7 @@ public:
     ///  - for each pending queue needed for invoke: session->inject(event) -> upstream; adapter->attach(upstream).
     io::dispatch_ptr_t
     prototype() {
-        return std::make_shared<const authenticator_t>(name, [=](io::streaming_slot<io::rpc::handshake>::upstream_type&, const std::string& uuid, std::shared_ptr<session_t>) -> std::shared_ptr<control_t> {
+        return std::make_shared<const authenticator_t>(name, [=](io::streaming_slot<io::rpc::handshake>::upstream_type&, const std::string& uuid, std::shared_ptr<session_t> session) -> std::shared_ptr<control_t> {
             scoped_attributes_t holder(*log, {{ "uuid", uuid }});
 
             COCAINE_LOG_DEBUG(log, "processing handshake message");
@@ -219,6 +223,7 @@ public:
                 it->second = match<slave_variant>(it->second, [](std::shared_ptr<slave::spawning_t>&) -> slave_variant{
                     throw std::runtime_error("invalid state");
                 }, [=](std::shared_ptr<slave::unauthenticated_t>& slave) -> slave_variant{
+                    control->attach(session);
                     return slave->activate(control);
                 }, [](std::shared_ptr<slave::active_t>&) -> slave_variant {
                     throw std::runtime_error("invalid state");
@@ -239,9 +244,19 @@ public:
         return queue.synchronize();
     }
 
+    locked_ptr<pool_type>
+    get_pool() {
+        return pool.synchronize();
+    }
+
+    locked_ptr<const pool_type>
+    get_pool() const {
+        return pool.synchronize();
+    }
+
     info_t
     info() const {
-        return info_t(*pool.synchronize());
+        return info_t(*get_pool());
     }
 
     /// Spawns a slave using given manifest and profile.
@@ -303,6 +318,26 @@ public:
     void despawn(std::string, bool graceful = true);
 };
 
+class worker_client_dispatch_t
+    : public dispatch<io::event_traits<io::rpc::invoke>::dispatch_type>
+{
+    typedef io::event_traits<io::app::enqueue>::upstream_type tag_type;
+
+    upstream<io::event_traits<io::app::enqueue>::upstream_type> us;
+
+    typedef io::protocol<tag_type>::scope protocol;
+
+public:
+    worker_client_dispatch_t(upstream<io::event_traits<io::app::enqueue>::upstream_type>& wcu):
+        dispatch<io::event_traits<io::rpc::invoke>::dispatch_type>("w->c"),
+        us(wcu)
+    {
+        on<protocol::chunk>([=](const std::string& chunk){
+            us = us.send<protocol::chunk>(chunk);
+        });
+    }
+};
+
 class simple_balancer_t : public balancer_t {
     std::shared_ptr<overseer_t> overseer;
 
@@ -311,18 +346,58 @@ public:
         this->overseer = overseer;
     }
 
-    bool queue_changed(std::string) {
+    virtual std::shared_ptr<streaming_dispatch_t>
+    queue_changed(io::streaming_slot<io::app::enqueue>::upstream_type& wcu, std::string event) {
         auto info = overseer->info();
+
+        // TODO: Insert normal spawn condition here.
         if (info.pool == 0) {
             overseer->spawn();
-            return false;
+            return nullptr;
         }
 
-        return false;
+        auto pool = overseer->get_pool();
+
+        // TODO: Get slave with minimum load.
+        auto slave = pool->begin()->second;
+        if (auto slave_ = boost::get<std::shared_ptr<slave::active_t>*>(slave)) {
+            auto cwu = (*slave_)->inject(std::make_shared<worker_client_dispatch_t>(wcu));
+            cwu->template send<io::rpc::invoke>(event);
+
+            auto dispatch = std::make_shared<streaming_dispatch_t>("c->w");
+            dispatch->attach(std::make_shared<upstream<io::event_traits<io::rpc::invoke>::dispatch_type>>(cwu));
+            return dispatch;
+        } else {
+            return nullptr;
+        }
     }
 
     void pool_changed() {
-        // TODO: Rebalance.
+        {
+            auto queue = overseer->get_queue();
+            if (queue->empty()) {
+                return;
+            }
+        }
+
+        auto payload = [&]() -> overseer_t::queue_value {
+            auto queue = overseer->get_queue();
+
+            auto payload = queue->front();
+            queue->pop();
+            return payload;
+        }();
+
+        auto pool = overseer->get_pool();
+
+        auto slave = pool->begin()->second;
+        if (auto slave_ = boost::get<std::shared_ptr<slave::active_t>>(&slave)) {
+            auto cwu = (*slave_)->inject(std::make_shared<worker_client_dispatch_t>(payload.upstream));
+            cwu->template send<io::rpc::invoke>(payload.event);
+
+            auto dispatch = payload.dispatch;
+            dispatch->attach(std::make_shared<upstream<io::event_traits<io::rpc::invoke>::dispatch_type>>(cwu));
+        }
     }
 };
 
@@ -425,7 +500,7 @@ void app_t::start() {
         manifest->endpoint,
         std::bind(&overseer_t::prototype, overseer.get()),
         [](io::dispatch_ptr_t auth, std::shared_ptr<session_t> sess) {
-            std::dynamic_pointer_cast<const authenticator_t>(auth)->bind(sess);
+            std::static_pointer_cast<const authenticator_t>(auth)->bind(sess);
         },
         loop,
         std::make_unique<hostess_t>(manifest->name)

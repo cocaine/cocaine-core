@@ -183,6 +183,6 @@ active_t::active_t(unauthenticated_t&& unauth, std::shared_ptr<control_t> contro
     handle(std::move(unauth.handle))
 {}
 
-io::upstream_ptr_t active_t::inject(io::dispatch_ptr_t) {
-    return nullptr;
+io::upstream_ptr_t active_t::inject(io::dispatch_ptr_t dispatch) {
+    return control->inject(dispatch);
 }

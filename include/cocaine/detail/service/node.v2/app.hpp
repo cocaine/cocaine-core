@@ -1,6 +1,8 @@
 #pragma once
 
 #include "cocaine/context.hpp"
+#include "cocaine/detail/service/node.v2/slot.hpp"
+#include "cocaine/idl/node.hpp"
 
 namespace cocaine {
 
@@ -15,6 +17,7 @@ class unix_actor_t;
 class overseer_t;
 class slave_t;
 class control_t;
+class streaming_dispatch_t;
 
 }
 
@@ -24,8 +27,12 @@ class balancer_t {
 public:
     // TODO: Use signals?
     virtual void attach(std::shared_ptr<overseer_t>) = 0;
-    virtual bool queue_changed(std::string event) = 0;
+    virtual std::shared_ptr<streaming_dispatch_t>
+    queue_changed(io::streaming_slot<io::app::enqueue>::upstream_type& upstream, std::string event) = 0;
     virtual void pool_changed() = 0;
+
+    virtual void channel_started(/*uuid*/) {}
+    virtual void channel_finished(/*uuid*/) {}
 };
 
 class app_t {
