@@ -90,7 +90,7 @@ public:
             *it,
             [this, &it](const std::string& name, unsigned int version)
         {
-            if(!parent->m_gateway->cleanup(uuid, *it)) parent->m_protocol[name].erase(version);
+            if(!parent->m_gateway->cleanup(uuid, *it)) parent->m_aggregate[name].erase(version);
         });
 
         cleanup();
@@ -124,14 +124,14 @@ locator_t::remote_t::discard(const std::error_code& ec) const {
 
 void
 locator_t::remote_t::cleanup() {
-    for(auto it = parent->m_protocol.begin(), end = parent->m_protocol.end(); it != end;) {
+    for(auto it = parent->m_aggregate.begin(), end = parent->m_aggregate.end(); it != end;) {
         if(!it->second.empty()) {
             it++; continue;
         }
 
         COCAINE_LOG_DEBUG(parent->m_log, "protocol '%s' extinct in the cluster", it->first);
 
-        it = parent->m_protocol.erase(it);
+        it = parent->m_aggregate.erase(it);
     }
 }
 
@@ -164,9 +164,9 @@ locator_t::remote_t::on_announce(const std::string& node,
         }
 
         if(copies == 0) {
-            parent->m_protocol[it->first].erase(versions);
+            parent->m_aggregate[it->first].erase(versions);
         } else {
-            parent->m_protocol[it->first][versions] = std::move(protocol);
+            parent->m_aggregate[it->first][versions] = std::move(protocol);
         }
     });
 
@@ -476,9 +476,9 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
     }
 
     auto lock = m_clients.synchronize();
-    auto it   = m_protocol.end();
+    auto it   = m_aggregate.end();
 
-    if(m_gateway && (it = m_protocol.find(remapped)) != m_protocol.end()) {
+    if(m_gateway && (it = m_aggregate.find(remapped)) != m_aggregate.end()) {
         const auto proto = *it->second.begin();
 
         return results::resolve {
@@ -512,10 +512,10 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
     // sent out on context service signals, and propagate to all nodes in the cluster.
     mapping->insert({uuid, stream});
 
-    if(m_snapshot.empty()) {
+    if(m_snapshots.empty()) {
         return stream;
     } else {
-        return stream.write(m_cfg.uuid, m_snapshot);
+        return stream.write(m_cfg.uuid, m_snapshots);
     }
 }
 
@@ -636,14 +636,14 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
     scoped_attributes_t attributes(*m_log, { attribute::make("service", name) });
 
     if(mode == modes::exposed) {
-        if(m_snapshot.count(name) != 0) {
+        if(m_snapshots.count(name) != 0) {
             COCAINE_LOG_ERROR(m_log, "duplicate service detected");
             return;
         }
 
-        m_snapshot[name] = meta;
+        m_snapshots[name] = meta;
     } else {
-        m_snapshot.erase(name);
+        m_snapshots.erase(name);
     }
 
     if(mapping->empty()) return;
