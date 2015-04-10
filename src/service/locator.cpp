@@ -146,7 +146,7 @@ locator_t::remote_t::on_announce(const std::string& node,
         return;
     }
 
-    auto lock = parent->m_remotes.synchronize();
+    auto lock = parent->m_clients.synchronize();
 
     for(auto it = update.begin(); it != update.end(); ++it) tuple::invoke(
         std::move(it->second),
@@ -475,7 +475,7 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
         };
     }
 
-    auto lock = m_remotes.synchronize();
+    auto lock = m_clients.synchronize();
     auto it   = m_protocol.end();
 
     if(m_gateway && (it = m_protocol.find(remapped)) != m_protocol.end()) {
