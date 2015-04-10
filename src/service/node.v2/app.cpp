@@ -334,6 +334,14 @@ public:
         on<protocol::chunk>([=](const std::string& chunk){
             us = us.send<protocol::chunk>(chunk);
         });
+
+        on<protocol::error>([&](int id, const std::string& reason){
+            us.send<protocol::error>(id, reason);
+        });
+
+        on<protocol::choke>([&](){
+            us.send<protocol::choke>();
+        });
     }
 };
 
