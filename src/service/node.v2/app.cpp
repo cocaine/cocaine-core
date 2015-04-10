@@ -1,5 +1,7 @@
 #include "cocaine/detail/service/node.v2/app.hpp"
 
+#include <queue>
+
 #include "cocaine/api/isolate.hpp"
 
 #include "cocaine/context.hpp"
@@ -90,6 +92,8 @@ public:
 
 class cocaine::overseer_t {
 public:
+    std::unique_ptr<logging::log_t> log;
+
     context_t& context;
 
     /// Application name.
@@ -97,8 +101,6 @@ public:
 
     /// Io loop for timers and standard output fetchers.
     std::shared_ptr<asio::io_service> loop;
-
-    std::unique_ptr<logging::log_t> log;
 
     /// Slave pool.
     typedef boost::variant<
@@ -113,8 +115,43 @@ public:
 
     synchronized<pool_type> pool;
 
-    /// - queue<<event, tag, adapter>> - pending queue.
-    /// - balancer - balancing policy.
+    /// Pending queue.
+    struct queue_value {
+        std::string event;
+        std::string tag;
+        std::shared_ptr<streaming_dispatch_t> dispatch;
+        io::streaming_slot<io::app::enqueue>::upstream_type upstream;
+    };
+
+    synchronized<std::queue<queue_value>> queue;
+
+    std::shared_ptr<balancer_t> balancer;
+
+    manifest_t manifest;
+    profile_t profile;
+
+public:
+    struct info_t {
+        size_t pool;
+
+        info_t(const pool_type& pool) :
+            pool(pool.size())
+        {}
+    };
+
+    overseer_t(context_t& context, manifest_t manifest, profile_t profile, std::shared_ptr<asio::io_service> loop, std::shared_ptr<balancer_t> balancer) :
+        log(context.log(format("%s/overseer", manifest.name))),
+        context(context),
+        name(manifest.name),
+        loop(loop),
+        balancer(std::move(balancer)),
+        manifest(manifest),
+        profile(profile)
+    {}
+
+    ~overseer_t() {
+        COCAINE_LOG_DEBUG(log, "performing overseer shutdown");
+    }
 
     /// If uuid provided - find uuid in pool.
     ///  - found - attach without balancer.
@@ -124,22 +161,17 @@ public:
     ///  - pool is empty - create adapter, cache event and return. Save adapter in queue.
     ///  - pool is not empty - all unattached - create adapter, cache event and return. Save adapter in queue.
     ///  - pool is not empty - get session (attached) - inject in session. Get upstream.
-
-public:
-    overseer_t(context_t& context, const std::string& name, std::shared_ptr<asio::io_service> loop) :
-        context(context),
-        name(name),
-        loop(loop),
-        log(context.log(format("%s/overseer", name)))
-    {}
-
-    ~overseer_t() {
-        COCAINE_LOG_DEBUG(log, "performing overseer shutdown");
-    }
-
+    ///
+    /// \param upstream represents the client <- worker stream.
+    /// \param event an invocation event name.
     std::shared_ptr<streaming_dispatch_t>
-    enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& /*upstream*/, const std::string& /*event*/) {
-        return nullptr;
+    enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstream, const std::string& event) {
+        balancer->queue_changed(event);
+
+        auto dispatch = std::make_shared<streaming_dispatch_t>(manifest.name);
+        queue->push({ event, "", dispatch, std::move(upstream) });
+
+        return dispatch;
     }
 
     /// Called when an unix-socket client (probably, a worker) has been accepted.
@@ -179,11 +211,16 @@ public:
             });
 
             if (control) {
-                // TODO: balancer->pool_changed();
+                balancer->pool_changed();
             }
 
             return control;
         }));
+    }
+
+    info_t
+    info() const {
+        return info_t(*pool.synchronize());
     }
 
     /// Spawns a slave using given manifest and profile.
@@ -193,7 +230,7 @@ public:
     /// Add uuid to map.
     /// Wait for startup timeout. Erase on timeout.
     /// Wait for uuid on acceptor.
-    void spawn(manifest_t manifest, profile_t profile) {
+    void spawn() {
         const size_t size = pool->size();
 
         COCAINE_LOG_INFO(log, "enlarging the slaves pool from %d to %d", size, size + 1);
@@ -245,6 +282,27 @@ public:
     void despawn(std::string, bool graceful = true);
 };
 
+class simple_balancer_t : public balancer_t {
+    std::shared_ptr<overseer_t> overseer;
+
+public:
+    void attach(std::shared_ptr<overseer_t> overseer) {
+        this->overseer = overseer;
+    }
+
+    bool queue_changed(std::string) {
+        auto info = overseer->info();
+        if (info.pool == 0) {
+            overseer->spawn();
+            return false;
+        }
+
+        return false;
+    }
+
+    void pool_changed() {}
+};
+
 /// App dispatch, manages incoming enqueue requests. Adds them to the queue.
 class app_dispatch_t:
     public dispatch<io::app_tag>
@@ -256,9 +314,9 @@ class app_dispatch_t:
     std::shared_ptr<overseer_t> overseer;
 
 public:
-    app_dispatch_t(context_t& context, const manifest_t& manifest, std::shared_ptr<overseer_t> overseer) :
-        dispatch<io::app_tag>(manifest.name),
-        log(context.log(cocaine::format("app/dispatch/%s", manifest.name))),
+    app_dispatch_t(context_t& context, const std::string& name, std::shared_ptr<overseer_t> overseer) :
+        dispatch<io::app_tag>(name),
+        log(context.log(format("app/%s/dispatch", name))),
         overseer(overseer)
     {
         on<io::app::enqueue>(std::make_shared<slot_type>(
@@ -293,15 +351,6 @@ public:
     {}
 };
 
-//class simple_balancer_t : public balancer_t {
-//public:
-//    void rebalance() override {
-//        if (pool.empty()) {
-//            overseer.spawn();
-//        }
-//    }
-//};
-
 /// Represents a single application. Starts TCP and UNIX servers.
 app_t::app_t(context_t& context, const std::string& manifest, const std::string& profile) :
     context(context),
@@ -333,15 +382,18 @@ app_t::~app_t() {
 }
 
 void app_t::start() {
+    std::shared_ptr<balancer_t> balancer(new simple_balancer_t);
+
     // Create an overseer - a thing, that watches the event queue and makes decision about what
     // to spawn or despawn.
-    overseer.reset(new overseer_t(context, manifest->name, loop));
+    overseer.reset(new overseer_t(context, *manifest, *profile, loop, balancer));
+    balancer->attach(overseer);
 
     // Create an TCP server.
     context.insert(manifest->name, std::make_unique<actor_t>(
         context,
         loop,
-        std::make_unique<app_dispatch_t>(context, *manifest, overseer))
+        std::make_unique<app_dispatch_t>(context, manifest->name, overseer))
     );
 
     // Create an unix actor and bind to {manifest->name}.{int} unix-socket.
@@ -353,7 +405,4 @@ void app_t::start() {
         std::make_unique<hostess_t>(manifest->name)
     ));
     engine->run();
-
-    // TODO: Temporary.
-    overseer->spawn(*manifest, *profile);
 }

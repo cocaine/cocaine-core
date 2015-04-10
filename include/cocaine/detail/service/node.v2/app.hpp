@@ -22,8 +22,10 @@ namespace cocaine { namespace service { namespace v2 {
 
 class balancer_t {
 public:
-    virtual
-    void rebalance() = 0;
+    // TODO: Use signals?
+    virtual void attach(std::shared_ptr<overseer_t>) = 0;
+    virtual bool queue_changed(std::string event) = 0;
+    virtual void pool_changed() = 0;
 };
 
 class app_t {
@@ -37,7 +39,6 @@ class app_t {
 
     std::shared_ptr<asio::io_service> loop;
     std::unique_ptr<unix_actor_t> engine;
-    std::unique_ptr<balancer_t> balancer;
     std::shared_ptr<overseer_t> overseer;
 
 public:
