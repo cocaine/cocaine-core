@@ -218,6 +218,11 @@ public:
         }));
     }
 
+    locked_ptr<std::queue<queue_value>>
+    get_queue() {
+        return queue.synchronize();
+    }
+
     info_t
     info() const {
         return info_t(*pool.synchronize());
@@ -300,7 +305,9 @@ public:
         return false;
     }
 
-    void pool_changed() {}
+    void pool_changed() {
+        // TODO: Rebalance.
+    }
 };
 
 /// App dispatch, manages incoming enqueue requests. Adds them to the queue.

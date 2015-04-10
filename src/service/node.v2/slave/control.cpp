@@ -11,12 +11,19 @@ control_t::control_t(context_t& context, const std::string& name, const std::str
 {
     on<io::control::heartbeat>([&](){
         COCAINE_LOG_DEBUG(log, "processing heartbeat message");
-        // TODO: Reset heartbeat timer. slave->heartbeat();
+
+        // TODO: Reset heartbeat timer.
+        // slave->heartbeat();
+
         // TODO: Send heartbeat back.
+        // session->send<io::control::heartbeat>();
     });
 
-    // TODO: `on<io::control::terminate>();` - call detach from parent, send SIGTERM to worker,
-    // wait for GRACEFUL_SHUTDOWN_TIMEOUT and send SIGKILL.
+    // TODO: Register terminate handler.
+    // on<io::control::terminate>();
+    // - Call detach from parent.
+    // - Send SIGTERM to worker.
+    // - Wait for timeout.terminate and send SIGKILL.
 }
 
 control_t::~control_t() {}
