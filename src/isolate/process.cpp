@@ -53,6 +53,10 @@ struct process_handle_t:
         m_stdout(stdout)
     { }
 
+    ~process_handle_t() {
+        terminate();
+    }
+
     virtual
     void
     terminate() {

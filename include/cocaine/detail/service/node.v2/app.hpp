@@ -14,6 +14,7 @@ namespace cocaine {
 class unix_actor_t;
 class overseer_t;
 class slave_t;
+class control_t;
 
 }
 

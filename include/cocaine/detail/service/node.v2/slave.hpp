@@ -15,11 +15,14 @@
 #include "cocaine/idl/rpc.hpp"
 
 #include "cocaine/detail/unique_id.hpp"
+#include "cocaine/detail/service/node/manifest.hpp"
+#include "cocaine/detail/service/node/profile.hpp"
+
+#include "slave/control.hpp"
 
 namespace cocaine {
 
-struct manifest_t;
-struct profile_t;
+class control_t;
 
 }
 
@@ -36,11 +39,11 @@ struct slave_data {
     typedef std::function<void(const std::string&)> output_callback;
 
     std::string id;
-    const manifest_t& manifest;
-    const profile_t&  profile;
+    manifest_t manifest;
+    profile_t  profile;
     output_callback output;
 
-    slave_data(const manifest_t& manifest, const profile_t& profile, output_callback output) :
+    slave_data(manifest_t manifest, profile_t profile, output_callback output) :
         id(unique_id_t().string()),
         manifest(manifest),
         profile(profile),
@@ -48,6 +51,7 @@ struct slave_data {
     {}
 };
 
+// TODO: Make an owners, not shared pointers.
 namespace slave {
 
 //class sealing_t {
@@ -57,14 +61,9 @@ namespace slave {
 //    // notify overseer when finished to process channel.
 //};
 
-class unauthenticated_t {
-public:
-    unauthenticated_t(slave_data d, std::unique_ptr<api::handle_t> handle);
+class unauthenticated_t;
 
-    void terminate();
-};
-
-// Spawning state lasts ~100-3000ms.
+// Spawning state lasts up to 3000ms.
 class spawning_t {
 public:
     typedef result<std::shared_ptr<unauthenticated_t>> result_type;
@@ -83,18 +82,42 @@ public:
     void cancel();
 };
 
-//class active_t {
-////    // - output fetcher.
-////    // - control (with session)
-//public:
-//    active_t(spawning_t&&, control_t);
-////    ~active_t(); // sends terminate signal and creates waitable object (30-5).
+class active_t;
 
-////    void attach(session);
-////    auto inject(dispatch) -> upstream;
+class fetcher_t;
 
-////    // notify overseer when starts/finished to process channel.
-//};
+class unauthenticated_t : public std::enable_shared_from_this<unauthenticated_t> {
+    friend class spawning_t;
+    friend class active_t;
+
+    std::unique_ptr<logging::log_t> log;
+
+    slave_data d;
+
+    std::shared_ptr<fetcher_t> fetcher;
+    std::unique_ptr<api::handle_t> handle;
+
+public:
+    unauthenticated_t(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, std::unique_ptr<api::handle_t> handle);
+
+    // This method invalidates current object.
+    std::shared_ptr<active_t> activate(std::shared_ptr<control_t> control);
+
+    void terminate();
+};
+
+class active_t {
+//    // - output fetcher.
+//    // - control (with session)
+public:
+    active_t(unauthenticated_t&&);
+//    ~active_t(); // sends terminate signal and creates waitable object (30-5).
+
+//    void attach(session);
+//    auto inject(dispatch) -> upstream;
+
+//    // notify overseer when starts/finished to process channel.
+};
 
 std::shared_ptr<slave::spawning_t>
 spawn(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, slave::spawning_t::callback_type fn);

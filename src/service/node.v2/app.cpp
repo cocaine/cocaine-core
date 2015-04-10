@@ -12,9 +12,9 @@
 #include "cocaine/detail/service/node/profile.hpp"
 
 #include "cocaine/detail/service/node.v2/actor.hpp"
-#include "cocaine/detail/service/node.v2/drone.hpp"
 #include "cocaine/detail/service/node.v2/match.hpp"
 #include "cocaine/detail/service/node.v2/overseer.hpp"
+#include "cocaine/detail/service/node.v2/slave.hpp"
 #include "cocaine/detail/service/node.v2/slot.hpp"
 #include "cocaine/detail/service/node.v2/splitter.hpp"
 
@@ -86,47 +86,6 @@ public:
     {
         on<io::rpc::handshake>(std::make_shared<io::streaming_slot<io::rpc::handshake>>(std::move(fn)));
     }
-};
-
-/// Control channel for single slave.
-///
-/// NOTE: Worker should shut itself down after sending terminate message back (even if it initiates)
-/// to the runtime.
-class control_t :
-    public dispatch<io::control_tag>,
-    public std::enable_shared_from_this<control_t>
-{
-    std::unique_ptr<logging::log_t> log;
-
-    /// - timer - heartbeat timer.
-    /// - session - session pointer for sending events, like heartbeat and terminate. May detach when it disappears.
-public:
-    control_t(context_t& context, const std::string& name, const std::string& uuid) :
-        dispatch<io::control_tag>(format("%s/control", name)),
-        log(context.log(format("%s/control", name), blackhole::attribute::set_t({{ "uuid", uuid }})))
-    {
-        on<io::control::heartbeat>([&](){
-            COCAINE_LOG_DEBUG(log, "processing heartbeat message");
-            // TODO: Send heartbeat back.
-            // TODO: Reset heartbeat timer.
-        });
-
-        // TODO: `on<io::control::terminate>();` - call detach from parent, send SIGTERM to worker,
-        // wait for GRACEFUL_SHUTDOWN_TIMEOUT and send SIGKILL.
-    }
-
-    ~control_t() {
-    }
-
-    virtual
-    void
-    discard(const std::error_code&) const override {
-        // Unix socket is destroyed some unexpected way, for example worker is down.
-        // Detach slave from pool - `overseer->detach(uuid);`.
-    }
-
-    void
-    reset_idle_timer() {}
 };
 
 class cocaine::overseer_t {
@@ -249,7 +208,7 @@ public:
 
         const auto uuid = d.id;
 
-        COCAINE_LOG_DEBUG(log, "slave is spawning, timeout: %.02f seconds", profile.timeout.spawn)("uuid", uuid);
+        COCAINE_LOG_DEBUG(log, "slave is spawning, timeout: %.02f ms", profile.timeout.spawn)("uuid", uuid);
 
         const auto now = std::chrono::steady_clock::now();
 
