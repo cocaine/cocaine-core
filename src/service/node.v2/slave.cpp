@@ -29,7 +29,7 @@ public:
     }
 
     void watch() {
-        COCAINE_LOG_DEBUG(log, "slave is fetching standard output");
+        COCAINE_LOG_DEBUG(log, "slave is fetching more standard output");
 
         watcher.async_read_some(
             asio::buffer(buffer.data(), buffer.size()),
@@ -111,8 +111,7 @@ spawning_t::spawning_t(context_t& context, slave_data d, std::shared_ptr<asio::i
 }
 
 void spawning_t::set(result_type&& res) {
-    auto fired = this->fired.exchange(true);
-    if (!fired) {
+    if (!fired.exchange(true)) {
         fn(std::move(res));
     }
 }
@@ -144,16 +143,34 @@ unauthenticated_t::unauthenticated_t(context_t& context, slave_data d, std::shar
     log(context.log(format("slave/%s/unauthenticated", d.manifest.name), {{ "uuid", d.id }})),
     d(d),
     fetcher(std::make_shared<fetcher_t>(context, d, handle->stdout(), loop)),
-    handle(std::move(handle))
+    handle(std::move(handle)),
+    timer(*loop)
 {
+    COCAINE_LOG_DEBUG(log, "slave has started fetching standard output");
+
     fetcher->watch();
+    loop->post([=]{
+        timer.expires_from_now(boost::posix_time::milliseconds(d.profile.timeout.handshake));
+    });
 }
 
 std::shared_ptr<active_t>
-unauthenticated_t::activate(std::shared_ptr<control_t> /*control*/) {
-    return nullptr;
+unauthenticated_t::activate(std::shared_ptr<control_t> control) {
+    COCAINE_LOG_DEBUG(log, "slave has become active in %.3f ms");
+
+    return std::make_shared<active_t>(std::move(*this), control);
 }
 
 void unauthenticated_t::terminate() {
     fetcher->cancel();
+}
+
+active_t::active_t(unauthenticated_t&& unauth, std::shared_ptr<control_t> control) :
+    fetcher(std::move(unauth.fetcher)),
+    control(control),
+    handle(std::move(unauth.handle))
+{}
+
+io::upstream_ptr_t active_t::inject(io::dispatch_ptr_t) {
+    return nullptr;
 }

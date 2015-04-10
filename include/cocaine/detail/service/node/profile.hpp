@@ -42,9 +42,15 @@ struct profile_t:
     // Timeouts.
     float heartbeat_timeout;
     float idle_timeout;
+
     struct {
         unsigned long spawn;
+        unsigned long handshake;
+        unsigned long heartbeat;
+        unsigned long terminate;
+        unsigned long idle;
     } timeout;
+
     float startup_timeout;
     float termination_timeout;
 

@@ -48,15 +48,9 @@ template<typename R, typename T, class... Lambda>
 inline
 auto
 match(T&& variant, Lambda&&... lambda) -> R {
-    return boost::apply_visitor(lambda_visitor<R, Lambda...>(std::forward<Lambda>(lambda)...),
-                                std::forward<T>(variant));
-}
-
-template<typename T, class... Lambda>
-inline
-auto
-match(T&& variant, Lambda&&... lambda) -> void {
-    return match<void>(std::forward<T>(variant), std::forward<Lambda>(lambda)...);
+    return boost::apply_visitor(
+        lambda_visitor<R, Lambda...>(std::forward<Lambda>(lambda)...), std::forward<T>(variant)
+    );
 }
 
 }

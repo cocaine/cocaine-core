@@ -97,6 +97,8 @@ class unauthenticated_t : public std::enable_shared_from_this<unauthenticated_t>
     std::shared_ptr<fetcher_t> fetcher;
     std::unique_ptr<api::handle_t> handle;
 
+    asio::deadline_timer timer;
+
 public:
     unauthenticated_t(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, std::unique_ptr<api::handle_t> handle);
 
@@ -107,16 +109,18 @@ public:
 };
 
 class active_t {
-//    // - output fetcher.
-//    // - control (with session)
+    std::shared_ptr<fetcher_t> fetcher;
+    std::shared_ptr<control_t> control;
+    std::unique_ptr<api::handle_t> handle;
+
 public:
-    active_t(unauthenticated_t&&);
-//    ~active_t(); // sends terminate signal and creates waitable object (30-5).
+    active_t(unauthenticated_t&& unauth, std::shared_ptr<control_t> control);
+    // ~active_t(); // sends terminate signal and creates waitable object (30-5).
 
-//    void attach(session);
-//    auto inject(dispatch) -> upstream;
+    io::upstream_ptr_t inject(io::dispatch_ptr_t);
 
-//    // notify overseer when starts/finished to process channel.
+    void heartbeat();
+    void terminate();
 };
 
 std::shared_ptr<slave::spawning_t>
