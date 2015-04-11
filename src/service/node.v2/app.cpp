@@ -44,6 +44,7 @@ class cocaine::streaming_dispatch_t:
     typedef io::event_traits<io::app::enqueue>::dispatch_type tag_type;
     typedef io::protocol<tag_type>::scope protocol;
 
+    // TODO: Use `streamed<>`.
     cocaine::synchronized<io::message_queue<tag_type, upstream<tag_type>>> mq;
 
 public:
@@ -236,25 +237,11 @@ public:
         });
     }
 
-    locked_ptr<std::queue<queue_value>>
-    get_queue() {
-        return queue.synchronize();
-    }
+    locked_ptr<std::queue<queue_value>> get_queue() { return queue.synchronize(); }
+    locked_ptr<pool_type> get_pool() { return pool.synchronize(); }
+    locked_ptr<const pool_type> get_pool() const { return pool.synchronize(); }
 
-    locked_ptr<pool_type>
-    get_pool() {
-        return pool.synchronize();
-    }
-
-    locked_ptr<const pool_type>
-    get_pool() const {
-        return pool.synchronize();
-    }
-
-    info_t
-    info() const {
-        return info_t(*get_pool());
-    }
+    info_t info() const { return info_t(*get_pool()); }
 
     /// Spawns a slave using given manifest and profile.
     ///
