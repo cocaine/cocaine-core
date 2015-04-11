@@ -162,7 +162,7 @@ void unauthenticated_t::activate_in(std::function<void ()> on_timeout){
 }
 
 std::shared_ptr<active_t>
-unauthenticated_t::activate(std::shared_ptr<control_t> control) {
+unauthenticated_t::activate(std::shared_ptr<control_t> control, std::shared_ptr<session_t> session) {
     timer.cancel();
 
     auto now = std::chrono::steady_clock::now();
@@ -170,19 +170,20 @@ unauthenticated_t::activate(std::shared_ptr<control_t> control) {
         std::chrono::duration<float, std::chrono::milliseconds::period>(now - start).count()
     );
 
-    return std::make_shared<active_t>(std::move(*this), control);
+    return std::make_shared<active_t>(std::move(*this), std::move(control), std::move(session));
 }
 
 void unauthenticated_t::terminate() {
     fetcher->cancel();
 }
 
-active_t::active_t(unauthenticated_t&& unauth, std::shared_ptr<control_t> control) :
+active_t::active_t(unauthenticated_t&& unauth, std::shared_ptr<control_t> control, std::shared_ptr<session_t> session) :
     fetcher(std::move(unauth.fetcher)),
     control(control),
+    session(session),
     handle(std::move(unauth.handle))
 {}
 
 io::upstream_ptr_t active_t::inject(io::dispatch_ptr_t dispatch) {
-    return control->inject(dispatch);
+    return session->inject(dispatch);
 }

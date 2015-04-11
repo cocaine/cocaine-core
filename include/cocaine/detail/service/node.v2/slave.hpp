@@ -105,8 +105,11 @@ public:
 
     void activate_in(std::function<void()> on_timeout);
 
-    // This method invalidates current object.
-    std::shared_ptr<active_t> activate(std::shared_ptr<control_t> control);
+    /// Activates the current slave.
+    ///
+    /// \warning this method invalidates current object.
+    std::shared_ptr<active_t>
+    activate(std::shared_ptr<control_t> control, std::shared_ptr<session_t> session);
 
     void terminate();
 };
@@ -114,13 +117,15 @@ public:
 class active_t {
     std::shared_ptr<fetcher_t> fetcher;
     std::shared_ptr<control_t> control;
+    std::shared_ptr<session_t> session;
     std::unique_ptr<api::handle_t> handle;
 
 public:
-    active_t(unauthenticated_t&& unauth, std::shared_ptr<control_t> control);
+    active_t(unauthenticated_t&& unauth, std::shared_ptr<control_t> control, std::shared_ptr<session_t> session);
     // ~active_t(); // sends terminate signal and creates waitable object (30-5).
 
-    io::upstream_ptr_t inject(io::dispatch_ptr_t dispatch);
+    io::upstream_ptr_t
+    inject(io::dispatch_ptr_t dispatch);
 
     void heartbeat();
     void terminate();

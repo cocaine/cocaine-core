@@ -17,8 +17,6 @@ class control_t :
 {
     std::unique_ptr<logging::log_t> log;
 
-    std::shared_ptr<session_t> session;
-
     std::function<void(std::error_code)> suicide;
 
 public:
@@ -29,9 +27,6 @@ public:
     virtual
     void
     discard(const std::error_code&) const override;
-
-    void attach(std::shared_ptr<session_t> session);
-    io::upstream_ptr_t inject(io::dispatch_ptr_t dispatch);
 };
 
 }

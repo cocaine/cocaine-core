@@ -221,8 +221,7 @@ public:
                 it->second = match<slave_variant>(it->second, [](std::shared_ptr<slave::spawning_t>&) -> slave_variant{
                     throw std::runtime_error("invalid state");
                 }, [=](std::shared_ptr<slave::unauthenticated_t>& slave) -> slave_variant{
-                    control->attach(session);
-                    return slave->activate(control);
+                    return slave->activate(control, session);
                 }, [](std::shared_ptr<slave::active_t>&) -> slave_variant {
                     throw std::runtime_error("invalid state");
                 });
