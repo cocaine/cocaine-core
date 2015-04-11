@@ -331,7 +331,7 @@ public:
         dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>("w->c"),
         us(wcu)
     {
-        on<protocol::chunk>([=](const std::string& chunk){
+        on<protocol::chunk>([&](const std::string& chunk){
             us = us.send<protocol::chunk>(chunk);
         });
 
