@@ -39,8 +39,9 @@ namespace ph = std::placeholders;
 /// Helper trait to deduce type in compile-time. Use deduce<T>::show().
 template<class T> class deduce;
 
-/// Initial dispatch for slaves. Accepts only handshake messages and forwards it to the actual
-/// checker (i.e. to the Overseer).
+/// Initial dispatch for slaves.
+///
+/// Accepts only handshake messages and forwards it to the actual checker (i.e. to the Overseer).
 class authenticator_t :
     public dispatch<io::worker_tag>
 {
@@ -80,7 +81,7 @@ public:
     /// Application name.
     std::string name;
 
-    /// Io loop for timers and standard output fetchers.
+    /// IO loop for timers and standard output fetchers.
     std::shared_ptr<asio::io_service> loop;
 
     /// Slave pool.
@@ -88,7 +89,7 @@ public:
         std::shared_ptr<slave::spawning_t>,
         std::shared_ptr<slave::unauthenticated_t>,
         std::shared_ptr<slave::active_t>
-        // TODO: closed - closed for new events, but processing current.
+        // TODO: sealing - closed for new events, but processing current.
         // TODO: terminating - waiting for terminate ack.
     > slave_variant;
 
@@ -411,8 +412,8 @@ app_t::~app_t() {
 void app_t::start() {
     std::shared_ptr<balancer_t> balancer(new simple_balancer_t);
 
-    // Create an overseer - a thing, that watches the event queue and makes decision about what
-    // to spawn or despawn.
+    // Create an overseer - a thing, that watches the event queue and has an ability to spawn or
+    // despawn slaves.
     overseer.reset(new overseer_t(context, *manifest, *profile, loop, balancer));
     balancer->attach(overseer);
 
