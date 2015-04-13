@@ -117,6 +117,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/node.v2/slave.cpp
     src/service/node.v2/slave/control.cpp
     src/service/node.v2/dispatch/client.cpp
+    src/service/node.v2/dispatch/worker.cpp
+
     src/service/node/manifest.cpp
     src/service/node/profile.cpp
     src/service/storage.cpp

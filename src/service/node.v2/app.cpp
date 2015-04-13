@@ -20,6 +20,7 @@
 #include "cocaine/detail/service/node.v2/slot.hpp"
 #include "cocaine/detail/service/node.v2/splitter.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/client.hpp"
+#include "cocaine/detail/service/node.v2/dispatch/worker.hpp"
 
 #include "cocaine/idl/node.hpp"
 #include "cocaine/idl/rpc.hpp"
@@ -263,35 +264,6 @@ public:
     void despawn(std::string, bool graceful = true);
 };
 
-// TODO: Check correctness.
-class worker_client_dispatch_t:
-    public dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>
-{
-    typedef io::event_traits<io::app::enqueue>::upstream_type tag_type;
-
-    upstream<io::event_traits<io::app::enqueue>::upstream_type> us;
-
-    typedef io::protocol<tag_type>::scope protocol;
-
-public:
-    worker_client_dispatch_t(upstream<io::event_traits<io::app::enqueue>::upstream_type>& wcu):
-        dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>("w->c"),
-        us(wcu)
-    {
-        on<protocol::chunk>([&](const std::string& chunk){
-            us = us.send<protocol::chunk>(chunk);
-        });
-
-        on<protocol::error>([&](int id, const std::string& reason){
-            us.send<protocol::error>(id, reason);
-        });
-
-        on<protocol::choke>([&](){
-            us.send<protocol::choke>();
-        });
-    }
-};
-
 class simple_balancer_t : public balancer_t {
     std::shared_ptr<overseer_t> overseer;
 
@@ -456,8 +428,8 @@ void app_t::start() {
         context,
         manifest->endpoint,
         std::bind(&overseer_t::prototype, overseer.get()),
-        [](io::dispatch_ptr_t auth, std::shared_ptr<session_t> sess) {
-            std::static_pointer_cast<const authenticator_t>(auth)->bind(sess);
+        [](io::dispatch_ptr_t auth, std::shared_ptr<session_t> session) {
+            std::static_pointer_cast<const authenticator_t>(auth)->bind(session);
         },
         loop,
         std::make_unique<hostess_t>(manifest->name)
