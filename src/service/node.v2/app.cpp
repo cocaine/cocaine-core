@@ -19,6 +19,7 @@
 #include "cocaine/detail/service/node.v2/slave.hpp"
 #include "cocaine/detail/service/node.v2/slot.hpp"
 #include "cocaine/detail/service/node.v2/splitter.hpp"
+#include "cocaine/detail/service/node.v2/dispatch/client.hpp"
 
 #include "cocaine/idl/node.hpp"
 #include "cocaine/idl/rpc.hpp"
@@ -36,46 +37,6 @@ namespace ph = std::placeholders;
 
 /// Helper trait to deduce type in compile-time. Use deduce<T>::show().
 template<class T> class deduce;
-
-// From client to worker.
-class cocaine::streaming_dispatch_t:
-    public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
-{
-    typedef io::event_traits<io::app::enqueue>::dispatch_type tag_type;
-    typedef io::protocol<tag_type>::scope protocol;
-
-    // TODO: Use `streamed<>`.
-    cocaine::synchronized<io::message_queue<tag_type, upstream<tag_type>>> mq;
-
-public:
-    explicit streaming_dispatch_t(const std::string& name):
-        dispatch<io::event_traits<io::app::enqueue>::dispatch_type>(name)
-    {
-        on<protocol::chunk>(std::bind(&streaming_dispatch_t::write, this, ph::_1));
-        on<protocol::error>(std::bind(&streaming_dispatch_t::error, this, ph::_1, ph::_2));
-        on<protocol::choke>(std::bind(&streaming_dispatch_t::close, this));
-    }
-
-    void attach(std::shared_ptr<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> u) {
-        mq->attach(u);
-    }
-
-private:
-    void
-    write(const std::string& chunk) {
-        mq->append<protocol::chunk>(chunk);
-    }
-
-    void
-    error(int id, const std::string& reason) {
-        mq->append<protocol::error>(id, reason);
-    }
-
-    void
-    close() {
-        mq->append<protocol::choke>();
-    }
-};
 
 /// Initial dispatch for slaves. Accepts only handshake messages and forwards it to the actual
 /// checker (i.e. to the Overseer).
@@ -353,7 +314,7 @@ public:
 
         // TODO: Get slave with minimum load.
         auto slave = pool->begin()->second;
-        if (auto slave_ = boost::get<std::shared_ptr<slave::active_t>*>(slave)) {
+        if (auto slave_ = boost::get<std::shared_ptr<slave::active_t>>(&slave)) {
             auto cwu = (*slave_)->inject(std::make_shared<worker_client_dispatch_t>(wcu));
             cwu->send<io::worker::rpc::invoke>(event);
 

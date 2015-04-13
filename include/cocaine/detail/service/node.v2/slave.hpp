@@ -18,22 +18,10 @@
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
 
-#include "slave/control.hpp"
+#include "cocaine/detail/service/node.v2/result.hpp"
+#include "cocaine/detail/service/node.v2/slave/control.hpp"
 
 namespace cocaine {
-
-class control_t;
-
-}
-
-namespace cocaine {
-
-template<class T>
-class result : public boost::variant<T, std::error_code> {
-public:
-    result(T val) : boost::variant<T, std::error_code>(std::move(val)) {}
-    result(std::error_code err) : boost::variant<T, std::error_code>(std::move(err)) {}
-};
 
 struct slave_data {
     typedef std::function<void(const std::string&)> output_callback;
@@ -52,6 +40,7 @@ struct slave_data {
 };
 
 // TODO: Make an owners, not shared pointers.
+// TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
 namespace slave {
 
 //class sealing_t {
@@ -127,20 +116,16 @@ public:
     io::upstream_ptr_t
     inject(io::dispatch_ptr_t dispatch);
 
-    void heartbeat();
-    void terminate();
+    void
+    heartbeat();
+
+    void
+    terminate();
 };
 
 std::shared_ptr<slave::spawning_t>
 spawn(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, slave::spawning_t::callback_type fn);
 
 }
-
-/// Drone - single process representation.
-///  - spawns using isolate.
-///  - captures inputs/outputs.
-///  - can get statistics.
-///  - lives until process lives and vise versa.
-// TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
 
 }

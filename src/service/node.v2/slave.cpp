@@ -6,6 +6,7 @@
 
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
+#include "cocaine/detail/service/node.v2/util.hpp"
 
 namespace ph = std::placeholders;
 
@@ -104,7 +105,7 @@ spawning_t::spawning_t(context_t& context, slave_data d, std::shared_ptr<asio::i
         auto done = [=, &context](std::unique_ptr<api::handle_t>& handle){
             set(std::make_shared<unauthenticated_t>(context, d, loop, std::move(handle)));
         };
-        loop->post(std::bind(done, std::move(handle)));
+        loop->post(move_handler(std::bind(done, std::move(handle))));
     } catch(const std::system_error& err) {
         loop->post([=]{ set(err.code()); });
     }
