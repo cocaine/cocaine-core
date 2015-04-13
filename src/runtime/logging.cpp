@@ -29,6 +29,7 @@ namespace sink {
 priority_t
 priority_traits<cocaine::logging::priorities>::map(cocaine::logging::priorities level) {
     switch (level) {
+    case cocaine::logging::trace:
     case cocaine::logging::debug:
         return priority_t::debug;
     case cocaine::logging::info:
@@ -56,7 +57,7 @@ void
 map_severity(blackhole::aux::attachable_ostringstream& stream, const logging::priorities& level) {
     typedef blackhole::aux::underlying_type<logging::priorities>::type underlying_type;
 
-    static const std::array<const char*, 4> describe = {{ "D", "I", "W", "E" }};
+    static const std::array<const char*, 5> describe = {{ "T", "D", "I", "W", "E" }};
 
     const size_t value = static_cast<size_t>(level);
 

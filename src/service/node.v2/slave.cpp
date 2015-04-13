@@ -30,7 +30,7 @@ public:
     }
 
     void watch() {
-        COCAINE_LOG_DEBUG(log, "slave is fetching more standard output");
+        COCAINE_LOG_TRACE(log, "slave is fetching more standard output");
 
         watcher.async_read_some(
             asio::buffer(buffer.data(), buffer.size()),
@@ -46,7 +46,7 @@ private:
     void on_read(const std::error_code& ec, size_t len) {
         switch (ec.value()) {
         case 0:
-            COCAINE_LOG_DEBUG(log, "slave has received %d bytes of output", len);
+            COCAINE_LOG_TRACE(log, "slave has received %d bytes of output", len);
             cb(std::string(buffer.data(), len));
             watch();
             break;
