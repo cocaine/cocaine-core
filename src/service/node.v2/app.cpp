@@ -176,11 +176,11 @@ public:
             auto control = pool.apply([=](pool_type& pool) -> std::shared_ptr<control_t> {
                 auto it = pool.find(uuid);
                 if (it == pool.end()) {
-                    COCAINE_LOG_DEBUG(log, "rejecting drone as unexpected");
+                    COCAINE_LOG_DEBUG(log, "rejecting slave as unexpected");
                     return nullptr;
                 }
 
-                COCAINE_LOG_DEBUG(log, "accepted authenticated drone");
+                COCAINE_LOG_DEBUG(log, "accepted authenticated slave");
                 auto control = std::make_shared<control_t>(context, name, uuid);
                 it->second = match<slave_variant>(it->second, [](std::shared_ptr<slave::spawning_t>&) -> slave_variant{
                     throw std::runtime_error("invalid state");
@@ -206,7 +206,7 @@ public:
 
     info_t info() const { return info_t(*get_pool()); }
 
-    /// Spawns a slave using given manifest and profile.
+    /// Spawns a new slave using current manifest and profile.
     ///
     /// Check current pool size. Return if already >=.
     /// Spawn.
@@ -375,7 +375,7 @@ class hostess_t :
 {
 public:
     hostess_t(const std::string& name) :
-        dispatch<io::worker_tag>(format("hostess/%s", name))
+        dispatch<io::worker_tag>(format("%s/hostess", name))
     {}
 };
 
