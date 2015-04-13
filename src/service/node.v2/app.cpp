@@ -158,14 +158,14 @@ public:
         return dispatch;
     }
 
-    /// Called when an unix-socket client (probably, a worker) has been accepted.
-    /// The first message should be a handshake to be sure, that the client is the worker we are
-    /// waiting for.
-    /// Attach handshake dispatch (with parent=this, session=session).
-    /// If handshake's uuid valid - add session to map and notify balancer. Start controlling.
-    /// If invalid - drop.
-    /// BALANCER:
-    ///  - for each pending queue needed for invoke: session->inject(event) -> upstream; adapter->attach(upstream).
+    /// Creates a new authenticate dispatch for incoming connection.
+    ///
+    /// Called when an unix-socket client (probably, a worker) has been accepted. The first message
+    /// from it should be a handshake to be sure, that the remote peer is the worker we are waiting
+    /// for.
+    /// The handshake message should contain its peer id (likely uuid) by comparing that we either
+    /// accept the session or drop it.
+    /// After successful accepting the balancer should be notified about pool's changes.
     io::dispatch_ptr_t
     prototype() {
         return std::make_shared<const authenticator_t>(name, [=](io::streaming_slot<io::worker::handshake>::upstream_type&, const std::string& uuid, std::shared_ptr<session_t> session) -> std::shared_ptr<control_t> {
