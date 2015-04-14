@@ -54,19 +54,25 @@ public:
     authenticator_t(const std::string& name, F&& fn) :
         dispatch<io::worker_tag>(format("%s/auth", name))
     {
-        on<io::worker::handshake>(std::make_shared<io::streaming_slot<io::worker::handshake>>([=](io::streaming_slot<io::worker::handshake>::upstream_type& us, const std::string& uuid) -> std::shared_ptr<control_t> {
+        typedef io::streaming_slot<io::worker::handshake> slot_type;
+
+        on<io::worker::handshake>(std::make_shared<slot_type>(
+            [=](slot_type::upstream_type& stream, const std::string& uuid) -> std::shared_ptr<control_t>
+        {
             std::unique_lock<std::mutex> lock(mutex);
             if (!session) {
                 cv.wait(lock);
             }
 
-            return fn(us, uuid, session);
+            return fn(stream, uuid, session);
         }));
     }
 
+    /// Here we need mutable variables, because io::dispatch_ptr_t is a shared pointer over constant
+    /// dispatch.
     void bind(std::shared_ptr<session_t> session) const {
         std::unique_lock<std::mutex> lock(mutex);
-        this->session = session;
+        this->session = std::move(session);
         lock.unlock();
         cv.notify_one();
     }
@@ -200,11 +206,12 @@ public:
         });
     }
 
+    /// THESE METHODS ARE IN HEAVY DEVELOPMENT.
     locked_ptr<std::queue<queue_value>> get_queue() { return queue.synchronize(); }
     locked_ptr<pool_type> get_pool() { return pool.synchronize(); }
     locked_ptr<const pool_type> get_pool() const { return pool.synchronize(); }
-
     info_t info() const { return info_t(*get_pool()); }
+    /// ======================================
 
     /// Spawns a new slave using current manifest and profile.
     ///
@@ -214,9 +221,7 @@ public:
     /// Wait for startup timeout. Erase on timeout.
     /// Wait for uuid on acceptor.
     void spawn() {
-        const size_t size = pool->size();
-
-        COCAINE_LOG_INFO(log, "enlarging the slaves pool from %d to %d", size, size + 1);
+        COCAINE_LOG_INFO(log, "enlarging the slaves pool from to %d", pool->size() + 1);
 
         // TODO: Keep logs collector somewhere else.
         auto splitter = std::make_shared<splitter_t>();
@@ -229,7 +234,7 @@ public:
 
         const auto uuid = d.id;
 
-        COCAINE_LOG_DEBUG(log, "slave is spawning, timeout: %.02f ms", profile.timeout.spawn)("uuid", uuid);
+        COCAINE_LOG_DEBUG(log, "slave is spawning, timeout: %.2f ms", profile.timeout.spawn)("uuid", uuid);
 
         const auto now = std::chrono::steady_clock::now();
 
@@ -238,7 +243,7 @@ public:
         pool->emplace(uuid, slave::spawn(context, std::move(d), loop, [=](result<std::shared_ptr<slave::unauthenticated_t>> result){
             match<void>(result, [=](std::shared_ptr<slave::unauthenticated_t> slave){
                 const auto end = std::chrono::steady_clock::now();
-                COCAINE_LOG_DEBUG(log, "slave has been spawned in %.3fms",
+                COCAINE_LOG_DEBUG(log, "slave has been spawned in %.2f ms",
                     std::chrono::duration<float, std::chrono::milliseconds::period>(end - now).count()
                 );
 
