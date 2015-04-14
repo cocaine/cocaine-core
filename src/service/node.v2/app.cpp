@@ -91,16 +91,7 @@ public:
     std::shared_ptr<asio::io_service> loop;
 
     /// Slave pool.
-    typedef boost::variant<
-        std::shared_ptr<slave::spawning_t>,
-        std::shared_ptr<slave::unauthenticated_t>,
-        std::shared_ptr<slave::active_t>
-        // TODO: sealing - closed for new events, but processing current.
-        // TODO: terminating - waiting for terminate ack.
-    > slave_variant;
-
-    typedef std::unordered_map<std::string, slave_variant> pool_type;
-
+    typedef std::unordered_map<std::string, std::unique_ptr<slave_t>> pool_type;
     synchronized<pool_type> pool;
 
     /// Pending queue.
@@ -127,7 +118,10 @@ public:
         {}
     };
 
-    overseer_t(context_t& context, manifest_t manifest, profile_t profile, std::shared_ptr<asio::io_service> loop, std::shared_ptr<balancer_t> balancer) :
+    overseer_t(context_t& context,
+               manifest_t manifest, profile_t profile,
+               std::shared_ptr<asio::io_service> loop,
+               std::shared_ptr<balancer_t> balancer) :
         log(context.log(format("%s/overseer", manifest.name))),
         context(context),
         name(manifest.name),
@@ -174,28 +168,29 @@ public:
     /// After successful accepting the balancer should be notified about pool's changes.
     io::dispatch_ptr_t
     prototype() {
-        return std::make_shared<const authenticator_t>(name, [=](io::streaming_slot<io::worker::handshake>::upstream_type&, const std::string& uuid, std::shared_ptr<session_t> session) -> std::shared_ptr<control_t> {
+        return std::make_shared<const authenticator_t>(name, [=](io::streaming_slot<io::worker::handshake>::upstream_type&, const std::string& uuid, std::shared_ptr<session_t> /*session*/) -> std::shared_ptr<control_t> {
             scoped_attributes_t holder(*log, {{ "uuid", uuid }});
 
             COCAINE_LOG_DEBUG(log, "processing handshake message");
 
-            auto control = pool.apply([=](pool_type& pool) -> std::shared_ptr<control_t> {
-                auto it = pool.find(uuid);
-                if (it == pool.end()) {
-                    COCAINE_LOG_DEBUG(log, "rejecting slave as unexpected");
-                    return nullptr;
-                }
+            auto control = pool.apply([=](pool_type& /*pool*/) -> std::shared_ptr<control_t> {
+//                auto it = pool.find(uuid);
+//                if (it == pool.end()) {
+//                    COCAINE_LOG_DEBUG(log, "rejecting slave as unexpected");
+//                    return nullptr;
+//                }
 
-                COCAINE_LOG_DEBUG(log, "accepted authenticated slave");
-                auto control = std::make_shared<control_t>(context, name, uuid);
-                it->second = match<slave_variant>(it->second, [](std::shared_ptr<slave::spawning_t>&) -> slave_variant{
-                    throw std::runtime_error("invalid state");
-                }, [=](std::shared_ptr<slave::unauthenticated_t>& slave) -> slave_variant{
-                    return slave->activate(control, session);
-                }, [](std::shared_ptr<slave::active_t>&) -> slave_variant {
-                    throw std::runtime_error("invalid state");
-                });
-                return control;
+//                COCAINE_LOG_DEBUG(log, "accepted authenticated slave");
+//                auto control = std::make_shared<control_t>(context, name, uuid);
+//                it->second = match<slave_variant>(it->second, [](std::shared_ptr<slave::spawning_t>&) -> slave_variant{
+//                    throw std::runtime_error("invalid state");
+//                }, [=](std::shared_ptr<slave::unauthenticated_t>& slave) -> slave_variant{
+//                    return slave->activate(control, session);
+//                }, [](std::shared_ptr<slave::active_t>&) -> slave_variant {
+//                    throw std::runtime_error("invalid state");
+//                });
+//                return control;
+                return nullptr;
             });
 
             if (control) {
@@ -221,46 +216,21 @@ public:
     /// Wait for startup timeout. Erase on timeout.
     /// Wait for uuid on acceptor.
     void spawn() {
-        COCAINE_LOG_INFO(log, "enlarging the slaves pool from to %d", pool->size() + 1);
+        COCAINE_LOG_INFO(log, "enlarging the slaves pool to %d", pool->size() + 1);
 
-        // TODO: Keep logs collector somewhere else.
-        auto splitter = std::make_shared<splitter_t>();
-        slave_data d(manifest, profile, [=](const std::string& output){
-            splitter->consume(output);
-            while (auto line = splitter->next()) {
-                COCAINE_LOG_DEBUG(log, "output: `%s`", *line);
+        slave_context ctx(context, manifest, profile);
+
+        // It is guaranteed that the suicide handler will not be invoked from within the slave's
+        // constructor.
+        const auto uuid = ctx.id;
+        pool->emplace(uuid, std::make_unique<slave_t>(std::move(ctx), *loop, [=](const std::error_code& ec){
+            if (ec) {
+                COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool: %s", ec.message());
+            } else {
+                COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool");
             }
-        });
 
-        const auto uuid = d.id;
-
-        COCAINE_LOG_DEBUG(log, "slave is spawning, timeout: %.2f ms", profile.timeout.spawn)("uuid", uuid);
-
-        const auto now = std::chrono::steady_clock::now();
-
-        // Regardless of whether the asynchronous operation completes immediately or not, the
-        // handler will not be invoked from within this function.
-        pool->emplace(uuid, slave::spawn(context, std::move(d), loop, [=](result<std::shared_ptr<slave::unauthenticated_t>> result){
-            match<void>(result, [=](std::shared_ptr<slave::unauthenticated_t> slave){
-                const auto end = std::chrono::steady_clock::now();
-                COCAINE_LOG_DEBUG(log, "slave has been spawned in %.2f ms",
-                    std::chrono::duration<float, std::chrono::milliseconds::period>(end - now).count()
-                );
-
-                slave->activate_in([=]{
-                    COCAINE_LOG_ERROR(log, "unable to activate slave: timeout");
-
-                    pool->erase(uuid);
-                });
-
-                pool.apply([=](pool_type& pool){
-                    pool[uuid] = slave;
-                });
-            }, [=](std::error_code ec){
-                COCAINE_LOG_ERROR(log, "unable to spawn more slaves: %s", ec.message());
-
-                pool->erase(uuid);
-            });
+            pool->erase(uuid);
         }));
     }
 
@@ -279,7 +249,7 @@ public:
     }
 
     virtual std::shared_ptr<streaming_dispatch_t>
-    queue_changed(io::streaming_slot<io::app::enqueue>::upstream_type& wcu, std::string event) {
+    queue_changed(io::streaming_slot<io::app::enqueue>::upstream_type& /*wcu*/, std::string /*event*/) {
         auto info = overseer->info();
 
         // TODO: Insert normal spawn condition here.
@@ -288,20 +258,21 @@ public:
             return nullptr;
         }
 
-        auto pool = overseer->get_pool();
+//        auto pool = overseer->get_pool();
 
-        // TODO: Get slave with minimum load.
-        auto slave = pool->begin()->second;
-        if (auto slave_ = boost::get<std::shared_ptr<slave::active_t>>(&slave)) {
-            auto cwu = (*slave_)->inject(std::make_shared<worker_client_dispatch_t>(wcu));
-            cwu->send<io::worker::rpc::invoke>(event);
+//        // TODO: Get slave with minimum load.
+//        auto slave = pool->begin()->second;
+//        if (auto slave_ = boost::get<std::shared_ptr<slave::active_t>>(&slave)) {
+//            auto cwu = (*slave_)->inject(std::make_shared<worker_client_dispatch_t>(wcu));
+//            cwu->send<io::worker::rpc::invoke>(event);
 
-            auto dispatch = std::make_shared<streaming_dispatch_t>("c->w");
-            dispatch->attach(std::make_shared<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(cwu));
-            return dispatch;
-        } else {
-            return nullptr;
-        }
+//            auto dispatch = std::make_shared<streaming_dispatch_t>("c->w");
+//            dispatch->attach(std::make_shared<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(cwu));
+//            return dispatch;
+//        } else {
+//            return nullptr;
+//        }
+        return nullptr;
     }
 
     void pool_changed() {
@@ -312,24 +283,24 @@ public:
             }
         }
 
-        auto payload = [&]() -> overseer_t::queue_value {
-            auto queue = overseer->get_queue();
+//        auto payload = [&]() -> overseer_t::queue_value {
+//            auto queue = overseer->get_queue();
 
-            auto payload = queue->front();
-            queue->pop();
-            return payload;
-        }();
+//            auto payload = queue->front();
+//            queue->pop();
+//            return payload;
+//        }();
 
-        auto pool = overseer->get_pool();
+//        auto pool = overseer->get_pool();
 
-        auto slave = pool->begin()->second;
-        if (auto slave_ = boost::get<std::shared_ptr<slave::active_t>>(&slave)) {
-            auto cwu = (*slave_)->inject(std::make_shared<worker_client_dispatch_t>(payload.upstream));
-            cwu->send<io::worker::rpc::invoke>(payload.event);
+//        auto slave = pool->begin()->second;
+//        if (auto slave_ = boost::get<std::shared_ptr<slave::active_t>>(&slave)) {
+//            auto cwu = (*slave_)->inject(std::make_shared<worker_client_dispatch_t>(payload.upstream));
+//            cwu->send<io::worker::rpc::invoke>(payload.event);
 
-            auto dispatch = payload.dispatch;
-            dispatch->attach(std::make_shared<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(cwu));
-        }
+//            auto dispatch = payload.dispatch;
+//            dispatch->attach(std::make_shared<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(cwu));
+//        }
     }
 };
 

@@ -4,6 +4,7 @@
 #include <string>
 #include <system_error>
 
+#include <boost/circular_buffer.hpp>
 #include <boost/variant/variant.hpp>
 
 #include <asio/io_service.hpp>
@@ -20,112 +21,72 @@
 
 #include "cocaine/detail/service/node.v2/result.hpp"
 #include "cocaine/detail/service/node.v2/slave/control.hpp"
+#include "cocaine/detail/service/node.v2/splitter.hpp"
 
 namespace cocaine {
 
-struct slave_data {
-    typedef std::function<void(const std::string&)> output_callback;
-
+struct slave_context {
+    context_t&  context;
+    manifest_t  manifest;
+    profile_t   profile;
     std::string id;
-    manifest_t manifest;
-    profile_t  profile;
-    output_callback output;
 
-    slave_data(manifest_t manifest, profile_t profile, output_callback output) :
-        id(unique_id_t().string()),
+    slave_context(context_t& context, manifest_t manifest, profile_t profile) :
+        context(context),
         manifest(manifest),
         profile(profile),
-        output(std::move(output))
+        id(unique_id_t().string())
     {}
 };
 
-// TODO: Make an owners, not shared pointers.
 // TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
-namespace slave {
-
-//class sealing_t {
-//    // lives only to keep open channels opened, heartbeats etc.
-//    // not allow to create new channels.
-
-//    // notify overseer when finished to process channel.
-//};
-
-class unauthenticated_t;
-
-// Spawning state lasts up to 3000ms.
-class spawning_t {
+class slave_t {
 public:
-    typedef result<std::shared_ptr<unauthenticated_t>> result_type;
-    typedef std::function<void(result_type)> callback_type;
+    typedef std::function<void(const std::error_code&)> cleanup_handler;
 
 private:
-    std::unique_ptr<logging::log_t> log;
+    const std::unique_ptr<logging::log_t> log;
 
-    callback_type fn;
-    std::atomic<bool> fired;
+    const slave_context context;
+    asio::io_service& loop;
+    const cleanup_handler cleanup;
 
-public:
-    spawning_t(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, callback_type fn);
+    class fetcher_t;
 
-    void set(result_type&& res);
-    void cancel();
-};
+    class state_t;
+    class spawning_t;
+    class unauthenticated_t;
+    class broken_t;
 
-class active_t;
-
-class fetcher_t;
-
-class unauthenticated_t : public std::enable_shared_from_this<unauthenticated_t> {
-    friend class spawning_t;
-    friend class active_t;
-
-    std::unique_ptr<logging::log_t> log;
-
-    slave_data d;
-
+    splitter_t splitter;
     std::shared_ptr<fetcher_t> fetcher;
-    std::unique_ptr<api::handle_t> handle;
+    boost::circular_buffer<std::string> lines;
 
-    asio::deadline_timer timer;
-    std::chrono::steady_clock::time_point start;
-
-public:
-    unauthenticated_t(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, std::unique_ptr<api::handle_t> handle);
-
-    void activate_in(std::function<void()> on_timeout);
-
-    /// Activates the current slave.
-    ///
-    /// \warning this method invalidates current object.
-    std::shared_ptr<active_t>
-    activate(std::shared_ptr<control_t> control, std::shared_ptr<session_t> session);
-
-    void terminate();
-};
-
-class active_t {
-    std::shared_ptr<fetcher_t> fetcher;
-    std::shared_ptr<control_t> control;
-    std::shared_ptr<session_t> session;
-    std::unique_ptr<api::handle_t> handle;
+    synchronized<std::shared_ptr<state_t>> state;
 
 public:
-    active_t(unauthenticated_t&& unauth, std::shared_ptr<control_t> control, std::shared_ptr<session_t> session);
-    // ~active_t(); // sends terminate signal and creates waitable object (30-5).
+    slave_t(slave_context ctx, asio::io_service& loop, cleanup_handler fn);
 
-    io::upstream_ptr_t
-    inject(io::dispatch_ptr_t dispatch);
+    ~slave_t();
+
+    slave_t(const slave_t& other) = delete;
+    slave_t(slave_t&& other) = delete;
+
+    slave_t& operator=(const slave_t& other) = delete;
+    slave_t& operator=(slave_t&& other) = delete;
 
     void
-    heartbeat();
+    activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control);
+
+private:
+    void
+    output(const char* data, size_t size);
 
     void
-    terminate();
+    migrate(std::shared_ptr<state_t> desired);
+
+    void
+    close(std::error_code ec);
 };
-
-std::shared_ptr<slave::spawning_t>
-spawn(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, slave::spawning_t::callback_type fn);
-
-}
 
 }

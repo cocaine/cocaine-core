@@ -11,26 +11,30 @@
 namespace ph = std::placeholders;
 
 using namespace cocaine;
-using namespace cocaine::slave;
 
-class cocaine::slave::fetcher_t : public std::enable_shared_from_this<fetcher_t> {
-    std::unique_ptr<logging::log_t> log;
+class slave_t::fetcher_t:
+    public std::enable_shared_from_this<fetcher_t>
+{
+    slave_t& slave;
 
-    std::function<void(std::string)> cb;
     std::array<char, 4096> buffer;
     asio::posix::stream_descriptor watcher;
 
 public:
-    fetcher_t(context_t& context, slave_data d, int fd, std::shared_ptr<asio::io_service> loop) :
-        log(context.log(format("slave/%s/output", d.manifest.name), {{ "uuid", d.id }})),
-        cb(d.output),
-        watcher(*loop)
-    {
+    explicit fetcher_t(slave_t& slave) :
+        slave(slave),
+        watcher(slave.loop)
+    {}
+
+    void assign(int fd) {
+        COCAINE_LOG_DEBUG(slave.log, "slave has started fetching standard output");
+
         watcher.assign(fd);
+        watch();
     }
 
     void watch() {
-        COCAINE_LOG_TRACE(log, "slave is fetching more standard output");
+        COCAINE_LOG_TRACE(slave.log, "slave is fetching more standard output");
 
         watcher.async_read_some(
             asio::buffer(buffer.data(), buffer.size()),
@@ -46,145 +50,269 @@ private:
     void on_read(const std::error_code& ec, size_t len) {
         switch (ec.value()) {
         case 0:
-            COCAINE_LOG_TRACE(log, "slave has received %d bytes of output", len);
-            cb(std::string(buffer.data(), len));
+            COCAINE_LOG_TRACE(slave.log, "slave has received %d bytes of output", len);
+            slave.output(buffer.data(), len);
             watch();
             break;
         case asio::error::operation_aborted:
             break;
         case asio::error::eof:
-            COCAINE_LOG_DEBUG(log, "slave has closed its output");
+            COCAINE_LOG_DEBUG(slave.log, "slave has closed its output");
             break;
         default:
-            COCAINE_LOG_WARNING(log, "slave has failed to read output: %s", ec.message());
+            COCAINE_LOG_WARNING(slave.log, "slave has failed to read output: %s", ec.message());
             // TODO: Something abnormal happened. Maybe terminate itself?
         }
     }
 };
 
-spawning_t::spawning_t(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, spawning_t::callback_type fn) :
-    log(context.log(format("slave/%s/spawning", d.manifest.name), {{ "uuid", d.id }})),
-    fn(std::move(fn)),
-    fired(false)
+class slave_t::state_t {
+public:
+    virtual
+    const char*
+    name() const noexcept = 0;
+
+    /// Cancels all pending asynchronous operations.
+    ///
+    /// Should be invoked on slave destruction, indicating that the current state should cancel all
+    /// its asynchronous operations to break cyclic references.
+    virtual
+    void cancel() = 0;
+};
+
+class slave_t::unauthenticated_t:
+    public slave_t::state_t,
+    public std::enable_shared_from_this<unauthenticated_t>
 {
-    COCAINE_LOG_DEBUG(log, "slave is spawning using '%s'", d.manifest.executable);
+    slave_t& slave;
 
-    // TODO: I don't like, that we can possibly create an object in invalid state.
-    // Maybe it's a better idea to create this object via a special function?
+    asio::deadline_timer timer;
+    std::unique_ptr<api::handle_t> handle;
 
-    // TODO: Hardcoded locator name.
-    auto locator = context.locate("locator");
-    if (!locator) {
-        // TODO: What if there are no locator?
-        COCAINE_LOG_ERROR(log, "unable to determine locator endpoint");
-        loop->post([=]{ set(std::error_code(asio::error::host_not_found)); });
-        return;
+public:
+    unauthenticated_t(slave_t& slave, std::unique_ptr<api::handle_t> handle):
+        slave(slave),
+        timer(slave.loop),
+        handle(std::move(handle))
+    {
+        slave.fetcher->assign(this->handle->stdout());
     }
 
-    // Prepare command line arguments for worker instance.
-    std::map<std::string, std::string> args;
-    args["--uuid"]     = d.id;
-    args["--app"]      = d.manifest.name;
-    args["--endpoint"] = d.manifest.endpoint;
-    // TODO: Assign locator endpoints list.
-    args["--locator"]  = format("%s:%d", context.config.network.hostname, locator->endpoints().front().port());
-    // TODO: Protocol version.
-    // args["--protocol"] = std::to_string(io::protocol<io::rpc_tag>::version::value);
+    void
+    start(unsigned long timeout) {
+        COCAINE_LOG_DEBUG(slave.log, "slave is waiting for handshake, timeout: %.2f ms", timeout);
 
-    // Spawn a worker instance and start reading standard outputs of it.
-    try {
-        // TODO: What if there are no isolate?
-        auto isolate = context.get<api::isolate_t>(
-            d.profile.isolate.type,
-            context,
-            d.manifest.name,
-            d.profile.isolate.args
-        );
-
-        auto handle = isolate->spawn(d.manifest.executable, args, d.manifest.environment);
-        auto done = [=, &context](std::unique_ptr<api::handle_t>& handle){
-            set(std::make_shared<unauthenticated_t>(context, d, loop, std::move(handle)));
-        };
-        loop->post(move_handler(std::bind(done, std::move(handle))));
-    } catch(const std::system_error& err) {
-        loop->post([=]{ set(err.code()); });
+        timer.expires_from_now(boost::posix_time::milliseconds(timeout));
+        timer.async_wait(std::bind(&unauthenticated_t::on_timeout, shared_from_this(), ph::_1));
     }
-}
 
-void spawning_t::set(result_type&& res) {
-    if (!fired.exchange(true)) {
-        fn(std::move(res));
+    const char*
+    name() const noexcept {
+        return "unauthenticated";
     }
-}
 
-void spawning_t::cancel() {
-    set(std::error_code(asio::error::operation_aborted));
-}
+    void cancel() {
+        handle->terminate();
+        timer.cancel();
+    }
 
-std::shared_ptr<spawning_t>
-slave::spawn(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, spawning_t::callback_type fn) {
-    auto timer = std::make_shared<asio::deadline_timer>(*loop);
-
-    auto slave = std::make_shared<slave::spawning_t>(context, d, loop, [=](result<std::shared_ptr<unauthenticated_t>> result){
-        timer->cancel();
-        fn(std::move(result));
-    });
-
-    timer->expires_from_now(boost::posix_time::milliseconds(d.profile.timeout.spawn));
-    timer->async_wait([timer, slave](const std::error_code& ec){
-        if (ec.value() == 0) {
-            slave->set(std::error_code(asio::error::timed_out));
-        }
-    });
-
-    return slave;
-}
-
-unauthenticated_t::unauthenticated_t(context_t& context, slave_data d, std::shared_ptr<asio::io_service> loop, std::unique_ptr<api::handle_t> handle) :
-    log(context.log(format("slave/%s/unauthenticated", d.manifest.name), {{ "uuid", d.id }})),
-    d(d),
-    fetcher(std::make_shared<fetcher_t>(context, d, handle->stdout(), loop)),
-    handle(std::move(handle)),
-    timer(*loop),
-    start(std::chrono::steady_clock::now())
-{
-    COCAINE_LOG_DEBUG(log, "slave has started fetching standard output");
-
-    fetcher->watch();
-}
-
-void unauthenticated_t::activate_in(std::function<void ()> on_timeout){
-    timer.expires_from_now(boost::posix_time::milliseconds(d.profile.timeout.handshake));
-    timer.async_wait([=](const std::error_code& ec){
+private:
+    void
+    on_timeout(const std::error_code& ec) {
         if (!ec) {
-            on_timeout();
+            COCAINE_LOG_ERROR(slave.log, "unable to activate slave: timeout");
+
+            // TODO: Make unique category.
+            slave.close(asio::error::timed_out);
         }
+    }
+};
+
+class slave_t::spawning_t:
+    public slave_t::state_t,
+    public std::enable_shared_from_this<spawning_t>
+{
+    slave_t& slave;
+
+    asio::deadline_timer timer;
+
+public:
+    explicit spawning_t(slave_t& slave) :
+        slave(slave),
+        timer(slave.loop)
+    {}
+
+    void
+    spawn(unsigned int timeout) {
+        COCAINE_LOG_DEBUG(slave.log, "slave is spawning using '%s', timeout: %.2f ms",
+                          slave.context.manifest.executable, timeout);
+
+        auto locator = slave.context.context.locate("locator");
+        if (!locator || locator->endpoints().empty()) {
+            COCAINE_LOG_ERROR(slave.log, "unable to spawn slave: failed to determine the Locator endpoint");
+
+            // TODO: Make unique category.
+            slave.close(asio::error::host_not_found);
+            return;
+        }
+
+        // Fill Locator's endpoint list.
+        std::ostringstream stream;
+        const auto& endpoints = locator->endpoints();
+        auto it = endpoints.begin();
+        stream << *it;
+        ++it;
+
+        for (; it != endpoints.end(); ++it) {
+            stream << "," << *it;
+        }
+
+        // Prepare command line arguments for worker instance.
+        COCAINE_LOG_TRACE(slave.log, "preparing command line arguments");
+        std::map<std::string, std::string> args;
+        args["--uuid"]     = slave.context.id;
+        args["--app"]      = slave.context.manifest.name;
+        args["--endpoint"] = slave.context.manifest.endpoint;
+        args["--locator"]  = stream.str();
+        args["--protocol"] = std::to_string(io::protocol<io::worker_tag>::version::value);
+
+        // Spawn a worker instance and start reading standard outputs of it.
+        try {
+            auto isolate = slave.context.context.get<api::isolate_t>(
+                slave.context.profile.isolate.type,
+                slave.context.context,
+                slave.context.manifest.name,
+                slave.context.profile.isolate.args
+            );
+
+            COCAINE_LOG_TRACE(slave.log, "spawning");
+
+            auto handle = isolate->spawn(
+                slave.context.manifest.executable,
+                args,
+                slave.context.manifest.environment
+            );
+
+            // Currently we spawn all slaves syncronously.
+            slave.loop.post(move_handler(std::bind(
+                &spawning_t::on_spawn, shared_from_this(), std::move(handle), std::chrono::steady_clock::now()
+            )));
+
+            timer.expires_from_now(boost::posix_time::milliseconds(timeout));
+            timer.async_wait(std::bind(&spawning_t::on_timeout, shared_from_this(), ph::_1));
+        } catch(const std::system_error& err) {
+            COCAINE_LOG_ERROR(slave.log, "unable to spawn slave: %s", err.code().message());
+
+            slave.close(err.code());
+        }
+    }
+
+    const char*
+    name() const noexcept {
+        return "spawning";
+    }
+
+    void
+    cancel() {
+        timer.cancel();
+    }
+
+private:
+    void
+    on_spawn(std::unique_ptr<api::handle_t>& handle, std::chrono::steady_clock::time_point start) {
+        const auto now = std::chrono::steady_clock::now();
+        COCAINE_LOG_DEBUG(slave.log, "slave has been spawned in %.2f ms",
+            std::chrono::duration<float, std::chrono::milliseconds::period>(now - start).count());
+
+        timer.cancel();
+        auto unauthenticated = std::make_shared<unauthenticated_t>(slave, std::move(handle));
+        unauthenticated->start(slave.context.profile.timeout.handshake);
+        slave.migrate(std::move(unauthenticated));
+    }
+
+    void
+    on_timeout(const std::error_code& ec) {
+        if (!ec) {
+            COCAINE_LOG_ERROR(slave.log, "unable to spawn slave: timeout");
+
+            // TODO: Make unique category.
+            slave.close(asio::error::timed_out);
+        }
+    }
+};
+
+class slave_t::broken_t:
+    public slave_t::state_t
+{
+    std::error_code ec;
+
+public:
+    explicit broken_t(std::error_code ec) : ec(ec) {}
+
+    const char*
+    name() const noexcept {
+        return "broken";
+    }
+
+    void
+    cancel() {}
+};
+
+slave_t::slave_t(slave_context ctx, asio::io_service& loop, cleanup_handler fn) :
+    log(ctx.context.log(format("slave/%s", ctx.manifest.name), {{ "uuid", ctx.id }})),
+    context(std::move(ctx)),
+    loop(loop),
+    cleanup(std::move(fn)),
+    fetcher(std::make_shared<fetcher_t>(*this)),
+    lines(context.profile.crashlog_limit)
+{
+    auto spawning = std::make_shared<spawning_t>(*this);
+    state.unsafe() = spawning;
+
+    loop.post([=]{
+        spawning->spawn(context.profile.timeout.spawn);
     });
 }
 
-std::shared_ptr<active_t>
-unauthenticated_t::activate(std::shared_ptr<control_t> control, std::shared_ptr<session_t> session) {
-    timer.cancel();
+slave_t::~slave_t() {
+    state.apply([](std::shared_ptr<state_t> state){
+        state->cancel();
+    });
 
-    auto now = std::chrono::steady_clock::now();
-    COCAINE_LOG_DEBUG(log, "slave has become active in %.3fms",
-        std::chrono::duration<float, std::chrono::milliseconds::period>(now - start).count()
-    );
-
-    return std::make_shared<active_t>(std::move(*this), std::move(control), std::move(session));
-}
-
-void unauthenticated_t::terminate() {
     fetcher->cancel();
 }
 
-active_t::active_t(unauthenticated_t&& unauth, std::shared_ptr<control_t> control, std::shared_ptr<session_t> session) :
-    fetcher(std::move(unauth.fetcher)),
-    control(control),
-    session(session),
-    handle(std::move(unauth.handle))
-{}
+void
+slave_t::activate(std::shared_ptr<session_t> /*session*/, std::shared_ptr<control_t> /*control*/) {
 
-io::upstream_ptr_t active_t::inject(io::dispatch_ptr_t dispatch) {
-    return session->inject(dispatch);
+}
+
+void
+slave_t::output(const char* data, size_t size) {
+    splitter.consume(std::string(data, size));
+    while (auto line = splitter.next()) {
+        lines.push_back(*line);
+
+        if (context.profile.log_output) {
+            COCAINE_LOG_DEBUG(log, "slave's output: `%s`", *line);
+        }
+    }
+}
+
+void
+slave_t::migrate(std::shared_ptr<slave_t::state_t> desired) {
+    state.apply([=](std::shared_ptr<state_t>& state){
+        COCAINE_LOG_DEBUG(log, "slave has changed its state from '%s' to '%s'", state->name(), desired->name());
+
+        state = desired;
+    });
+}
+
+void
+slave_t::close(std::error_code ec) {
+    if (ec) {
+        migrate(std::make_shared<broken_t>(ec));
+    }
+
+    cleanup(ec);
 }
