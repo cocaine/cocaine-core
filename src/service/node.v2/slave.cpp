@@ -193,7 +193,7 @@ public:
                 slave.context.manifest.environment
             );
 
-            // Currently we spawn all slaves syncronously.
+            // Currently we spawn all slaves synchronously.
             slave.loop.post(move_handler(std::bind(
                 &spawning_t::on_spawn, shared_from_this(), std::move(handle), std::chrono::steady_clock::now()
             )));
