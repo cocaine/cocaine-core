@@ -220,7 +220,7 @@ public:
 
         slave_context ctx(context, manifest, profile);
 
-        // It is guaranteed that the suicide handler will not be invoked from within the slave's
+        // It is guaranteed that the cleanup handler will not be invoked from within the slave's
         // constructor.
         const auto uuid = ctx.id;
         pool->emplace(uuid, std::make_unique<slave_t>(std::move(ctx), *loop, [=](const std::error_code& ec){

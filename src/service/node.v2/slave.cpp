@@ -12,6 +12,39 @@ namespace ph = std::placeholders;
 
 using namespace cocaine;
 
+class slave_category_t : public std::error_category {
+public:
+    const char*
+    name() const noexcept {
+        return "slave";
+    }
+
+    std::string
+    message(int ec) const {
+        switch (static_cast<error::slave_errors>(ec)) {
+        case error::spawn_timeout:
+            return "timed out while spawning";
+        case error::locator_not_found:
+            return "locator not found";
+        case error::activate_timeout:
+            return "timed out while activating";
+        default:
+            return "unexpected slave error";
+        }
+    }
+};
+
+const std::error_category&
+error::slave_category() {
+    static slave_category_t category;
+    return category;
+}
+
+std::error_code
+error::make_error_code(slave_errors err) {
+    return std::error_code(static_cast<int>(err), error::slave_category());
+}
+
 class slave_t::fetcher_t:
     public std::enable_shared_from_this<fetcher_t>
 {
@@ -122,8 +155,7 @@ private:
         if (!ec) {
             COCAINE_LOG_ERROR(slave.log, "unable to activate slave: timeout");
 
-            // TODO: Make unique category.
-            slave.close(asio::error::timed_out);
+            slave.close(error::activate_timeout);
         }
     }
 };
@@ -151,8 +183,7 @@ public:
         if (!locator || locator->endpoints().empty()) {
             COCAINE_LOG_ERROR(slave.log, "unable to spawn slave: failed to determine the Locator endpoint");
 
-            // TODO: Make unique category.
-            slave.close(asio::error::host_not_found);
+            slave.close(error::locator_not_found);
             return;
         }
 
@@ -235,8 +266,7 @@ private:
         if (!ec) {
             COCAINE_LOG_ERROR(slave.log, "unable to spawn slave: timeout");
 
-            // TODO: Make unique category.
-            slave.close(asio::error::timed_out);
+            slave.close(error::spawn_timeout);
         }
     }
 };
