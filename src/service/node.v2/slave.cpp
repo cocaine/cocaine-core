@@ -12,51 +12,16 @@ namespace ph = std::placeholders;
 
 using namespace cocaine;
 
-class slave_category_t : public std::error_category {
-public:
-    const char*
-    name() const noexcept {
-        return "slave";
-    }
-
-    std::string
-    message(int ec) const {
-        switch (static_cast<error::slave_errors>(ec)) {
-        case error::spawn_timeout:
-            return "timed out while spawning";
-        case error::locator_not_found:
-            return "locator not found";
-        case error::activate_timeout:
-            return "timed out while activating";
-        case error::invalid_state:
-            return "invalid state";
-        default:
-            return "unexpected slave error";
-        }
-    }
-};
-
-const std::error_category&
-error::slave_category() {
-    static slave_category_t category;
-    return category;
-}
-
-std::error_code
-error::make_error_code(slave_errors err) {
-    return std::error_code(static_cast<int>(err), error::slave_category());
-}
-
-class slave_t::fetcher_t:
+class state_manager_t::fetcher_t:
     public std::enable_shared_from_this<fetcher_t>
 {
-    slave_t& slave;
+    state_manager_t& slave;
 
     std::array<char, 4096> buffer;
     asio::posix::stream_descriptor watcher;
 
 public:
-    explicit fetcher_t(slave_t& slave) :
+    explicit fetcher_t(state_manager_t& slave) :
         slave(slave),
         watcher(slave.loop)
     {}
@@ -101,7 +66,7 @@ private:
     }
 };
 
-class slave_t::state_t {
+class state_manager_t::state_t {
 public:
     virtual
     const char*
@@ -122,8 +87,8 @@ public:
     }
 };
 
-class slave_t::active_t:
-    public slave_t::state_t,
+class state_manager_t::active_t:
+    public state_t,
     public std::enable_shared_from_this<active_t>
 {
 //    slave_t& slave;
@@ -132,7 +97,7 @@ class slave_t::active_t:
     std::shared_ptr<control_t> control;
 
 public:
-    active_t(slave_t& /*slave*/,
+    active_t(state_manager_t& /*slave*/,
              std::unique_ptr<api::handle_t> handle,
              std::shared_ptr<session_t> session,
              std::shared_ptr<control_t> control):
@@ -157,11 +122,11 @@ public:
     }
 };
 
-class slave_t::unauthenticated_t:
-    public slave_t::state_t,
+class state_manager_t::unauthenticated_t:
+    public state_t,
     public std::enable_shared_from_this<unauthenticated_t>
 {
-    slave_t& slave;
+    state_manager_t& slave;
 
     asio::deadline_timer timer;
     std::unique_ptr<api::handle_t> handle;
@@ -169,7 +134,7 @@ class slave_t::unauthenticated_t:
     std::chrono::steady_clock::time_point birthtime;
 
 public:
-    unauthenticated_t(slave_t& slave, std::unique_ptr<api::handle_t> handle):
+    unauthenticated_t(state_manager_t& slave, std::unique_ptr<api::handle_t> handle):
         slave(slave),
         timer(slave.loop),
         handle(std::move(handle)),
@@ -222,16 +187,16 @@ private:
     }
 };
 
-class slave_t::spawning_t:
-    public slave_t::state_t,
+class state_manager_t::spawning_t:
+    public state_manager_t::state_t,
     public std::enable_shared_from_this<spawning_t>
 {
-    slave_t& slave;
+    state_manager_t& slave;
 
     asio::deadline_timer timer;
 
 public:
-    explicit spawning_t(slave_t& slave) :
+    explicit spawning_t(state_manager_t& slave) :
         slave(slave),
         timer(slave.loop)
     {}
@@ -335,8 +300,8 @@ private:
     }
 };
 
-class slave_t::broken_t:
-    public slave_t::state_t
+class state_manager_t::broken_t:
+    public state_t
 {
     std::error_code ec;
 
@@ -352,53 +317,13 @@ public:
     cancel() {}
 };
 
-class slave_t::state_manager_t:
-    public std::enable_shared_from_this<state_manager_t>
-{
-    const std::unique_ptr<logging::log_t> log;
-
-    cleanup_handler cleanup;
-
-//    splitter_t splitter;
-//    std::shared_ptr<fetcher_t> fetcher;
-//    boost::circular_buffer<std::string> lines;
-
-    synchronized<std::shared_ptr<state_t>> state;
-
-public:
-    state_manager_t(slave_context ctx, cleanup_handler cleanup) :
-        log(ctx.context.log(format("slave/%s/manager", ctx.manifest.name), {{ "uuid", ctx.id }})),
-        cleanup(std::move(cleanup))
-    {}
-
-private:
-    void
-    migrate(std::shared_ptr<slave_t::state_t> desired) {
-        state.apply([=](std::shared_ptr<state_t>& state){
-            COCAINE_LOG_DEBUG(log, "slave has changed its state from '%s' to '%s'", state->name(), desired->name());
-
-            state = desired;
-        });
-    }
-
-    void
-    close(std::error_code ec) {
-        if (ec) {
-            migrate(std::make_shared<broken_t>(ec));
-        }
-
-        cleanup(ec);
-    }
-};
-
-slave_t::slave_t(slave_context ctx, asio::io_service& loop, cleanup_handler fn) :
+state_manager_t::state_manager_t(slave_context ctx, asio::io_service& loop, cleanup_handler cleanup):
     log(ctx.context.log(format("slave/%s", ctx.manifest.name), {{ "uuid", ctx.id }})),
     context(ctx),
     loop(loop),
-    cleanup(fn),
+    cleanup(std::move(cleanup)),
     fetcher(std::make_shared<fetcher_t>(*this)),
-    lines(context.profile.crashlog_limit),
-    manager(std::make_shared<state_manager_t>(ctx, fn))
+    lines(context.profile.crashlog_limit)
 {
     auto spawning = std::make_shared<spawning_t>(*this);
     state.unsafe() = spawning;
@@ -408,23 +333,22 @@ slave_t::slave_t(slave_context ctx, asio::io_service& loop, cleanup_handler fn) 
     });
 }
 
-slave_t::~slave_t() {
-    state.apply([](std::shared_ptr<state_t> state){
-        state->cancel();
-    });
+void state_manager_t::cancel() {
+    auto state = *this->state.synchronize();
 
+    state->cancel();
     fetcher->cancel();
 }
 
 void
-slave_t::activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control) {
-    state.apply([=](std::shared_ptr<state_t> state){
-        state->activate(std::move(session), std::move(control));
-    });
+state_manager_t::activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control) {
+    auto state = *this->state.synchronize();
+
+    state->activate(std::move(session), std::move(control));
 }
 
 void
-slave_t::output(const char* data, size_t size) {
+state_manager_t::output(const char* data, size_t size) {
     splitter.consume(std::string(data, size));
     while (auto line = splitter.next()) {
         lines.push_back(*line);
@@ -436,7 +360,7 @@ slave_t::output(const char* data, size_t size) {
 }
 
 void
-slave_t::migrate(std::shared_ptr<slave_t::state_t> desired) {
+state_manager_t::migrate(std::shared_ptr<state_t> desired) {
     state.apply([=](std::shared_ptr<state_t>& state){
         COCAINE_LOG_DEBUG(log, "slave has changed its state from '%s' to '%s'", state->name(), desired->name());
 
@@ -445,15 +369,24 @@ slave_t::migrate(std::shared_ptr<slave_t::state_t> desired) {
 }
 
 void
-slave_t::close(std::error_code ec) {
+state_manager_t::close(std::error_code ec) {
     if (ec) {
         migrate(std::make_shared<broken_t>(ec));
     }
 
-    // The cleanup function will remove the slave from the pool making current object invalid in
-    // the middle of this call, so just defer it.
-    auto cleanup = std::move(this->cleanup);
-    loop.post([=]{
-        cleanup(ec);
-    });
+    cleanup(ec);
 }
+
+slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn) :
+    manager(std::make_shared<state_manager_t>(context, loop, fn))
+{}
+
+slave_t::~slave_t() {
+    manager->cancel();
+}
+
+void
+slave_t::activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control) {
+    manager->activate(std::move(session), std::move(control));
+}
+

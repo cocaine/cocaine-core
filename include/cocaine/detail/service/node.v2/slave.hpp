@@ -23,24 +23,9 @@
 #include "cocaine/detail/service/node.v2/slave/control.hpp"
 #include "cocaine/detail/service/node.v2/splitter.hpp"
 
+#include "slave/error.hpp"
+
 namespace cocaine {
-
-namespace error {
-
-enum slave_errors {
-    spawn_timeout = 1,
-    locator_not_found,
-    activate_timeout,
-    invalid_state
-};
-
-const std::error_category&
-slave_category();
-
-std::error_code
-make_error_code(slave_errors err);
-
-} // namespace error
 
 struct slave_context {
     context_t&  context;
@@ -56,8 +41,21 @@ struct slave_context {
     {}
 };
 
-// TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
-class slave_t {
+/// Actual slave implementation.
+class state_manager_t:
+    public std::enable_shared_from_this<state_manager_t>
+{
+    class fetcher_t;
+
+    class state_t;
+    class spawning_t;
+    class unauthenticated_t;
+    class active_t;
+    class sealing_t;
+    class terminating_t;
+    class broken_t;
+    class closed_t;
+
 public:
     typedef std::function<void(const std::error_code&)> cleanup_handler;
 
@@ -66,15 +64,8 @@ private:
 
     const slave_context context;
     asio::io_service& loop;
-    const cleanup_handler cleanup;
 
-    class fetcher_t;
-
-    class state_t;
-    class spawning_t;
-    class unauthenticated_t;
-    class active_t;
-    class broken_t;
+    cleanup_handler cleanup;
 
     splitter_t splitter;
     std::shared_ptr<fetcher_t> fetcher;
@@ -82,19 +73,11 @@ private:
 
     synchronized<std::shared_ptr<state_t>> state;
 
-    class state_manager_t;
-    std::shared_ptr<state_manager_t> manager;
-
 public:
-    slave_t(slave_context ctx, asio::io_service& loop, cleanup_handler fn);
+    state_manager_t(slave_context ctx, asio::io_service& loop, cleanup_handler cleanup);
 
-    ~slave_t();
-
-    slave_t(const slave_t& other) = delete;
-    slave_t(slave_t&& other) = delete;
-
-    slave_t& operator=(const slave_t& other) = delete;
-    slave_t& operator=(slave_t&& other) = delete;
+    void
+    cancel();
 
     void
     activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control);
@@ -110,14 +93,24 @@ private:
     close(std::error_code ec);
 };
 
+// TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
+class slave_t {
+public:
+    typedef state_manager_t::cleanup_handler cleanup_handler;
+
+private:
+    std::shared_ptr<state_manager_t> manager;
+
+public:
+    slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn);
+    slave_t(const slave_t& other) = delete;
+
+    ~slave_t();
+
+    slave_t& operator=(const slave_t& other) = delete;
+
+    void
+    activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control);
+};
+
 }
-
-namespace std {
-
-/// Extends the type trait std::is_error_code_enum to identify `slave_errors` error codes.
-template<>
-struct is_error_code_enum<cocaine::error::slave_errors>:
-    public true_type
-{};
-
-} // namespace std
