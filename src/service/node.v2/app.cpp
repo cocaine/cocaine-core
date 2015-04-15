@@ -168,28 +168,34 @@ public:
     /// After successful accepting the balancer should be notified about pool's changes.
     io::dispatch_ptr_t
     prototype() {
-        return std::make_shared<const authenticator_t>(name, [=](io::streaming_slot<io::worker::handshake>::upstream_type&, const std::string& uuid, std::shared_ptr<session_t> /*session*/) -> std::shared_ptr<control_t> {
+        return std::make_shared<const authenticator_t>(name,
+            [=](io::streaming_slot<io::worker::handshake>::upstream_type&,
+                const std::string& uuid, std::shared_ptr<session_t> session)
+                -> std::shared_ptr<control_t>
+        {
             scoped_attributes_t holder(*log, {{ "uuid", uuid }});
 
             COCAINE_LOG_DEBUG(log, "processing handshake message");
 
-            auto control = pool.apply([=](pool_type& /*pool*/) -> std::shared_ptr<control_t> {
-//                auto it = pool.find(uuid);
-//                if (it == pool.end()) {
-//                    COCAINE_LOG_DEBUG(log, "rejecting slave as unexpected");
-//                    return nullptr;
-//                }
+            auto control = pool.apply([=](pool_type& pool) -> std::shared_ptr<control_t> {
+                auto it = pool.find(uuid);
+                if (it == pool.end()) {
+                    COCAINE_LOG_DEBUG(log, "rejecting slave as unexpected");
+                    return nullptr;
+                }
 
-//                COCAINE_LOG_DEBUG(log, "accepted authenticated slave");
-//                auto control = std::make_shared<control_t>(context, name, uuid);
-//                it->second = match<slave_variant>(it->second, [](std::shared_ptr<slave::spawning_t>&) -> slave_variant{
-//                    throw std::runtime_error("invalid state");
-//                }, [=](std::shared_ptr<slave::unauthenticated_t>& slave) -> slave_variant{
-//                    return slave->activate(control, session);
-//                }, [](std::shared_ptr<slave::active_t>&) -> slave_variant {
-//                    throw std::runtime_error("invalid state");
-//                });
-//                return control;
+                COCAINE_LOG_DEBUG(log, "activating authenticated slave");
+                try {
+                    auto control = std::make_shared<control_t>(context, name, uuid);
+                    it->second->activate(session, control);
+                    return control;
+                } catch (const std::exception& err) {
+                    // The slave can be in invalid state (broken, for example).
+                    // Also unlokely we can receive here std::bad_alloc if unable to allocate more
+                    // memory for control dispatch.
+                    COCAINE_LOG_ERROR(log, "failed to activate the slave: %s", err.what());
+                }
+
                 return nullptr;
             });
 

@@ -30,7 +30,8 @@ namespace error {
 enum slave_errors {
     spawn_timeout = 1,
     locator_not_found,
-    activate_timeout
+    activate_timeout,
+    invalid_state
 };
 
 const std::error_category&
@@ -72,6 +73,7 @@ private:
     class state_t;
     class spawning_t;
     class unauthenticated_t;
+    class active_t;
     class broken_t;
 
     splitter_t splitter;
@@ -79,6 +81,9 @@ private:
     boost::circular_buffer<std::string> lines;
 
     synchronized<std::shared_ptr<state_t>> state;
+
+    class state_manager_t;
+    std::shared_ptr<state_manager_t> manager;
 
 public:
     slave_t(slave_context ctx, asio::io_service& loop, cleanup_handler fn);

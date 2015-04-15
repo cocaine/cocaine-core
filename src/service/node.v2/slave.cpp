@@ -28,6 +28,8 @@ public:
             return "locator not found";
         case error::activate_timeout:
             return "timed out while activating";
+        case error::invalid_state:
+            return "invalid state";
         default:
             return "unexpected slave error";
         }
@@ -110,7 +112,49 @@ public:
     /// Should be invoked on slave destruction, indicating that the current state should cancel all
     /// its asynchronous operations to break cyclic references.
     virtual
-    void cancel() = 0;
+    void
+    cancel() = 0;
+
+    virtual
+    void
+    activate(std::shared_ptr<session_t> /*session*/, std::shared_ptr<control_t> /*control*/) {
+        throw std::system_error(error::invalid_state, std::string("invalid state: ") + name());
+    }
+};
+
+class slave_t::active_t:
+    public slave_t::state_t,
+    public std::enable_shared_from_this<active_t>
+{
+//    slave_t& slave;
+    std::unique_ptr<api::handle_t> handle;
+    std::shared_ptr<session_t> session;
+    std::shared_ptr<control_t> control;
+
+public:
+    active_t(slave_t& /*slave*/,
+             std::unique_ptr<api::handle_t> handle,
+             std::shared_ptr<session_t> session,
+             std::shared_ptr<control_t> control):
+//        slave(slave),
+        handle(std::move(handle)),
+        session(std::move(session)),
+        control(std::move(control))
+    {}
+
+    const char*
+    name() const noexcept {
+        return "active";
+    }
+
+    void
+    cancel() {
+        handle->terminate();
+    }
+
+    void
+    start() {
+    }
 };
 
 class slave_t::unauthenticated_t:
@@ -122,11 +166,14 @@ class slave_t::unauthenticated_t:
     asio::deadline_timer timer;
     std::unique_ptr<api::handle_t> handle;
 
+    std::chrono::steady_clock::time_point birthtime;
+
 public:
     unauthenticated_t(slave_t& slave, std::unique_ptr<api::handle_t> handle):
         slave(slave),
         timer(slave.loop),
-        handle(std::move(handle))
+        handle(std::move(handle)),
+        birthtime(std::chrono::steady_clock::now())
     {
         slave.fetcher->assign(this->handle->stdout());
     }
@@ -144,9 +191,24 @@ public:
         return "unauthenticated";
     }
 
-    void cancel() {
+    void
+    cancel() {
         handle->terminate();
         timer.cancel();
+    }
+
+    void
+    activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control) {
+        // TODO: What if the timer has already fired in another thread at the same time? Race!
+        timer.cancel();
+
+        const auto now = std::chrono::steady_clock::now();
+        COCAINE_LOG_DEBUG(slave.log, "slave has been activated in %.2f ms",
+            std::chrono::duration<float, std::chrono::milliseconds::period>(now - birthtime).count());
+
+        auto active = std::make_shared<active_t>(slave, std::move(handle), std::move(session), std::move(control));
+        active->start();
+        slave.migrate(std::move(active));
     }
 
 private:
@@ -251,11 +313,13 @@ public:
 private:
     void
     on_spawn(std::unique_ptr<api::handle_t>& handle, std::chrono::steady_clock::time_point start) {
+        // TODO: What if the timer has already fired in another thread at the same time? Race!
+        timer.cancel();
+
         const auto now = std::chrono::steady_clock::now();
         COCAINE_LOG_DEBUG(slave.log, "slave has been spawned in %.2f ms",
             std::chrono::duration<float, std::chrono::milliseconds::period>(now - start).count());
 
-        timer.cancel();
         auto unauthenticated = std::make_shared<unauthenticated_t>(slave, std::move(handle));
         unauthenticated->start(slave.context.profile.timeout.handshake);
         slave.migrate(std::move(unauthenticated));
@@ -288,13 +352,53 @@ public:
     cancel() {}
 };
 
+class slave_t::state_manager_t:
+    public std::enable_shared_from_this<state_manager_t>
+{
+    const std::unique_ptr<logging::log_t> log;
+
+    cleanup_handler cleanup;
+
+//    splitter_t splitter;
+//    std::shared_ptr<fetcher_t> fetcher;
+//    boost::circular_buffer<std::string> lines;
+
+    synchronized<std::shared_ptr<state_t>> state;
+
+public:
+    state_manager_t(slave_context ctx, cleanup_handler cleanup) :
+        log(ctx.context.log(format("slave/%s/manager", ctx.manifest.name), {{ "uuid", ctx.id }})),
+        cleanup(std::move(cleanup))
+    {}
+
+private:
+    void
+    migrate(std::shared_ptr<slave_t::state_t> desired) {
+        state.apply([=](std::shared_ptr<state_t>& state){
+            COCAINE_LOG_DEBUG(log, "slave has changed its state from '%s' to '%s'", state->name(), desired->name());
+
+            state = desired;
+        });
+    }
+
+    void
+    close(std::error_code ec) {
+        if (ec) {
+            migrate(std::make_shared<broken_t>(ec));
+        }
+
+        cleanup(ec);
+    }
+};
+
 slave_t::slave_t(slave_context ctx, asio::io_service& loop, cleanup_handler fn) :
     log(ctx.context.log(format("slave/%s", ctx.manifest.name), {{ "uuid", ctx.id }})),
-    context(std::move(ctx)),
+    context(ctx),
     loop(loop),
-    cleanup(std::move(fn)),
+    cleanup(fn),
     fetcher(std::make_shared<fetcher_t>(*this)),
-    lines(context.profile.crashlog_limit)
+    lines(context.profile.crashlog_limit),
+    manager(std::make_shared<state_manager_t>(ctx, fn))
 {
     auto spawning = std::make_shared<spawning_t>(*this);
     state.unsafe() = spawning;
@@ -313,8 +417,10 @@ slave_t::~slave_t() {
 }
 
 void
-slave_t::activate(std::shared_ptr<session_t> /*session*/, std::shared_ptr<control_t> /*control*/) {
-
+slave_t::activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control) {
+    state.apply([=](std::shared_ptr<state_t> state){
+        state->activate(std::move(session), std::move(control));
+    });
 }
 
 void
@@ -344,5 +450,10 @@ slave_t::close(std::error_code ec) {
         migrate(std::make_shared<broken_t>(ec));
     }
 
-    cleanup(ec);
+    // The cleanup function will remove the slave from the pool making current object invalid in
+    // the middle of this call, so just defer it.
+    auto cleanup = std::move(this->cleanup);
+    loop.post([=]{
+        cleanup(ec);
+    });
 }
