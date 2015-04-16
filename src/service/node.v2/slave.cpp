@@ -88,11 +88,6 @@ public:
     const char*
     name() const noexcept = 0;
 
-    virtual
-    bool
-    terminal() const noexcept {
-        return false;
-    }
 
     /// Cancels all pending asynchronous operations.
     ///
@@ -345,11 +340,6 @@ public:
     const char*
     name() const noexcept {
         return "broken";
-    }
-
-    bool
-    terminal() const noexcept {
-        return true;
     }
 
     void
