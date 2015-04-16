@@ -24,9 +24,6 @@ class state_machine_t::fetcher_t:
     std::array<char, 4096> buffer;
     asio::posix::stream_descriptor watcher;
 
-    /// Assign mutex.
-    std::mutex mutex;
-
 public:
     explicit fetcher_t(std::shared_ptr<state_machine_t> slave) :
         slave(slave),
@@ -37,9 +34,7 @@ public:
     ///
     /// \throws std::system_error on any system error while assigning an fd.
     void assign(int fd) {
-        std::unique_lock<std::mutex> lock(mutex);
         watcher.assign(fd);
-        lock.unlock();
 
         COCAINE_LOG_DEBUG(slave->log, "slave has started fetching standard output");
         watch();
@@ -49,7 +44,6 @@ public:
     ///
     /// \throws std::system_error on any system error.
     void cancel() {
-        std::lock_guard<std::mutex> lock(mutex);
         if (watcher.is_open()) {
             COCAINE_LOG_TRACE(slave->log, "slave has cancelled fetching standard output");
 
