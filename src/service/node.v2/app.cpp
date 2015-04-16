@@ -416,7 +416,7 @@ void app_t::start() {
         [](io::dispatch_ptr_t auth, std::shared_ptr<session_t> session) {
             std::static_pointer_cast<const authenticator_t>(auth)->bind(session);
         },
-        loop,
+        std::make_shared<asio::io_service>(),
         std::make_unique<hostess_t>(manifest->name)
     ));
     engine->run();
