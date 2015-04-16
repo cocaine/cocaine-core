@@ -7,7 +7,7 @@ using namespace cocaine;
 
 control_t::control_t(context_t& context, const std::string& name, const std::string& uuid) :
     dispatch<io::worker::control_tag>(format("%s/control", name)),
-    log(context.log(format("%s/control", name), blackhole::attribute::set_t({{ "uuid", uuid }})))
+    log(context.log(format("%s/control", name), {{ "uuid", uuid }}))
 {
     on<io::worker::heartbeat>([&](){
         COCAINE_LOG_DEBUG(log, "processing heartbeat message");

@@ -169,7 +169,7 @@ public:
     io::dispatch_ptr_t
     prototype() {
         return std::make_shared<const authenticator_t>(name,
-            [=](io::streaming_slot<io::worker::handshake>::upstream_type&,
+            [=](io::streaming_slot<io::worker::handshake>::upstream_type& /*upstream*/,
                 const std::string& uuid, std::shared_ptr<session_t> session)
                 -> std::shared_ptr<control_t>
         {
@@ -190,9 +190,11 @@ public:
                     it->second.activate(session, control);
                     return control;
                 } catch (const std::exception& err) {
-                    // The slave can be in invalid state (broken, for example).
-                    // Also unlokely we can receive here std::bad_alloc if unable to allocate more
+                    // The slave can be in invalid state; broken, for example or because Cocaine is
+                    // overloaded. In fact I hope it never happens.
+                    // Also unlikely we can receive here std::bad_alloc if unable to allocate more
                     // memory for control dispatch.
+                    // If this happens the session will be closed.
                     COCAINE_LOG_ERROR(log, "failed to activate the slave: %s", err.what());
                 }
 
