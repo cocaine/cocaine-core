@@ -42,14 +42,14 @@ struct slave_context {
 };
 
 /// Actual slave implementation.
-class state_manager_t:
-    public std::enable_shared_from_this<state_manager_t>
+class state_machine_t:
+    public std::enable_shared_from_this<state_machine_t>
 {
     class fetcher_t;
 
     class state_t;
     class spawning_t;
-    class unauthenticated_t;
+    class handshaking_t;
     class active_t;
     class sealing_t;
     class terminating_t;
@@ -74,10 +74,14 @@ private:
     synchronized<std::shared_ptr<state_t>> state;
 
 public:
-    state_manager_t(slave_context ctx, asio::io_service& loop, cleanup_handler cleanup);
+    state_machine_t(slave_context ctx, asio::io_service& loop, cleanup_handler cleanup);
+    ~state_machine_t();
 
     void
-    cancel();
+    start();
+
+    void
+    stop();
 
     void
     activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control);
@@ -96,18 +100,20 @@ private:
 // TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
 class slave_t {
 public:
-    typedef state_manager_t::cleanup_handler cleanup_handler;
+    typedef state_machine_t::cleanup_handler cleanup_handler;
 
 private:
-    std::shared_ptr<state_manager_t> manager;
+    std::shared_ptr<state_machine_t> machine;
 
 public:
     slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn);
     slave_t(const slave_t& other) = delete;
+    slave_t(slave_t&&) = default;
 
     ~slave_t();
 
     slave_t& operator=(const slave_t& other) = delete;
+    slave_t& operator=(slave_t&&) = default;
 
     void
     activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control);

@@ -91,7 +91,7 @@ public:
     std::shared_ptr<asio::io_service> loop;
 
     /// Slave pool.
-    typedef std::unordered_map<std::string, std::unique_ptr<slave_t>> pool_type;
+    typedef std::unordered_map<std::string, slave_t> pool_type;
     synchronized<pool_type> pool;
 
     /// Pending queue.
@@ -187,7 +187,7 @@ public:
                 COCAINE_LOG_DEBUG(log, "activating authenticated slave");
                 try {
                     auto control = std::make_shared<control_t>(context, name, uuid);
-                    it->second->activate(session, control);
+                    it->second.activate(session, control);
                     return control;
                 } catch (const std::exception& err) {
                     // The slave can be in invalid state (broken, for example).
@@ -229,7 +229,7 @@ public:
         // It is guaranteed that the cleanup handler will not be invoked from within the slave's
         // constructor.
         const auto uuid = ctx.id;
-        pool->emplace(uuid, std::make_unique<slave_t>(std::move(ctx), *loop, [=](const std::error_code& ec){
+        pool->emplace(uuid, slave_t(std::move(ctx), *loop, [=](const std::error_code& ec){
             if (ec) {
                 COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool: %s", ec.message());
             } else {
@@ -386,7 +386,9 @@ app_t::app_t(context_t& context, const std::string& manifest, const std::string&
 }
 
 app_t::~app_t() {
+    COCAINE_LOG_DEBUG(log, "removing application service from the context");
     // TODO: Anounce all opened sessions to be closed (and sockets).
+
     engine->terminate();
     context.remove(manifest->name);
 }
