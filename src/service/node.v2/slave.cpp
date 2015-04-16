@@ -12,6 +12,10 @@ namespace ph = std::placeholders;
 
 using namespace cocaine;
 
+/// The slave's output fetcher.
+///
+/// \reentrant all methods must be called from the event loop thread, otherwise the behavior is
+/// undefined.
 class state_machine_t::fetcher_t:
     public std::enable_shared_from_this<fetcher_t>
 {
@@ -29,6 +33,8 @@ public:
         watcher(slave->loop)
     {}
 
+    /// Assigns an existing native descriptor to the output watcher and starts watching over it.
+    ///
     /// \throws std::system_error on any system error while assigning an fd.
     void assign(int fd) {
         std::unique_lock<std::mutex> lock(mutex);
@@ -39,6 +45,9 @@ public:
         watch();
     }
 
+    /// Cancels all asynchronous operations associated with the descriptor.
+    ///
+    /// \throws std::system_error on any system error.
     void cancel() {
         std::lock_guard<std::mutex> lock(mutex);
         if (watcher.is_open()) {
