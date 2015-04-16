@@ -153,12 +153,12 @@ class state_machine_t::handshaking_t:
 
 public:
     handshaking_t(std::shared_ptr<state_machine_t> slave, std::unique_ptr<api::handle_t> handle):
-        slave(slave),
-        timer(slave->loop),
+        slave(std::move(slave)),
+        timer(this->slave->loop),
         handle(std::move(handle)),
         birthtime(std::chrono::steady_clock::now())
     {
-        slave->fetcher->assign(this->handle->stdout());
+        this->slave->fetcher->assign(this->handle->stdout());
     }
 
     void
@@ -176,7 +176,6 @@ public:
 
     void
     cancel() {
-        handle->terminate();
         timer.cancel();
     }
 
@@ -341,7 +340,7 @@ class state_machine_t::broken_t:
     std::error_code ec;
 
 public:
-    explicit broken_t(std::error_code ec) : ec(ec) {}
+    explicit broken_t(std::error_code ec) : ec(std::move(ec)) {}
 
     const char*
     name() const noexcept {
@@ -427,7 +426,11 @@ state_machine_t::close(std::error_code ec) {
         migrate(std::make_shared<broken_t>(ec));
     }
 
-    cleanup(ec);
+    try {
+        cleanup(ec);
+    } catch (...) {
+        // Just eat an exception, we don't care why the cleanup handler failed to do its job.
+    }
 }
 
 slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn) :

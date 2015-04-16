@@ -20,6 +20,8 @@ public:
             return "locator not found";
         case error::activate_timeout:
             return "timed out while activating";
+        case error::unknown_activate_error:
+            return "unknown activate error";
         case error::invalid_state:
             return "invalid state";
         default:
