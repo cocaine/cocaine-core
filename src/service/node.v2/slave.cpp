@@ -100,7 +100,7 @@ public:
     virtual
     void
     activate(std::shared_ptr<session_t> /*session*/, std::shared_ptr<control_t> /*control*/) {
-        throw std::system_error(error::invalid_state, std::string("invalid state: ") + name());
+        throw std::system_error(error::invalid_state, format("invalid state (%s)", name()));
     }
 };
 
