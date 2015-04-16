@@ -301,7 +301,6 @@ public:
     cancel() {
         // TODO: May throw.
         timer.cancel();
-        slave.reset();
     }
 
 private:
