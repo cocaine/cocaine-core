@@ -392,7 +392,9 @@ state_machine_t::stop() {
     auto state = std::move(*this->state.synchronize());
 
     state->cancel();
+
     fetcher->cancel();
+    fetcher.reset();
 }
 
 void
