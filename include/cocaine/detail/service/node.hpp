@@ -25,6 +25,7 @@
 
 #include "cocaine/detail/service/node/forwards.hpp"
 
+#include "cocaine/idl/context.hpp"
 #include "cocaine/idl/node.hpp"
 
 #include "cocaine/locked_ptr.hpp"
@@ -43,6 +44,9 @@ class node_t:
 
     synchronized<std::map<std::string, std::shared_ptr<v2::app_t>>> m_apps;
 
+    // Slot for context signals.
+    std::shared_ptr<dispatch<io::context_tag>> signals;
+
 public:
     node_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);
 
@@ -54,6 +58,9 @@ public:
     prototype() const -> const io::basic_dispatch_t&;
 
 private:
+    void
+    on_context_shutdown();
+
     void
     start_app(const std::string& name, const std::string& profile);
 

@@ -27,6 +27,10 @@
 #include "cocaine/logging.hpp"
 
 #include "cocaine/traits/dynamic.hpp"
+#include "cocaine/traits/endpoint.hpp"
+#include "cocaine/traits/graph.hpp"
+#include "cocaine/traits/tuple.hpp"
+#include "cocaine/traits/vector.hpp"
 
 #include "cocaine/tuple.hpp"
 
@@ -99,6 +103,12 @@ node_t::node_t(context_t& context, asio::io_service& asio, const std::string& na
 
         COCAINE_LOG_WARNING(m_log, "couldn't start %d app(s): %s", errored.size(), stream.str());
     }
+
+    // Context signals slot
+
+    signals = std::make_shared<dispatch<io::context_tag>>(name);
+    signals->on<io::context::shutdown>(std::bind(&node_t::on_context_shutdown, this));
+    context.listen(signals, asio);
 }
 
 node_t::~node_t() {}
@@ -106,6 +116,15 @@ node_t::~node_t() {}
 auto
 node_t::prototype() const -> const io::basic_dispatch_t&{
     return *this;
+}
+
+void
+node_t::on_context_shutdown() {
+    COCAINE_LOG_DEBUG(m_log, "shutting down apps");
+
+    m_apps->clear();
+
+    signals = nullptr;
 }
 
 void
