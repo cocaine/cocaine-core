@@ -8,6 +8,7 @@ enum slave_errors {
     spawn_timeout = 1,
     locator_not_found,
     activate_timeout,
+    unknown_activate_error,
     invalid_state
 };
 

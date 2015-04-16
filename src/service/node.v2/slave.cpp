@@ -300,7 +300,7 @@ public:
 
 private:
     void
-    on_spawn(std::unique_ptr<api::handle_t>& /*handle*/, std::chrono::steady_clock::time_point start) {
+    on_spawn(std::unique_ptr<api::handle_t>& handle, std::chrono::steady_clock::time_point start) {
         std::error_code ec;
         const size_t cancelled = timer.cancel(ec);
         if (ec || cancelled == 0) {
@@ -312,11 +312,17 @@ private:
         COCAINE_LOG_DEBUG(slave->log, "slave has been spawned in %.2f ms",
             std::chrono::duration<float, std::chrono::milliseconds::period>(now - start).count());
 
-        // TODO: May throw.
-//        auto handshaking = std::make_shared<handshaking_t>(slave, std::move(handle));
-//        slave->migrate(handshaking);
+        try {
+            // May throw system error when failed to assign native descriptor to the fetcher.
+            auto handshaking = std::make_shared<handshaking_t>(slave, std::move(handle));
+            slave->migrate(handshaking);
 
-//        handshaking->start(slave->context.profile.timeout.handshake);
+            handshaking->start(slave->context.profile.timeout.handshake);
+        } catch (const std::exception& err) {
+            COCAINE_LOG_ERROR(slave->log, "unable to activate slave: %s", err.what());
+
+            slave->close(error::unknown_activate_error);
+        }
     }
 
     void
