@@ -90,6 +90,7 @@ public:
     ///
     /// Should be invoked on slave destruction, indicating that the current state should cancel all
     /// its asynchronous operations to break cyclic references.
+    /// /// TODO: Consider whether it should be noexcept or not.
     virtual
     void
     cancel() = 0;

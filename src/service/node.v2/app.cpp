@@ -332,6 +332,7 @@ class app_dispatch_t:
 
     std::unique_ptr<logging::log_t> log;
 
+    // Yes, weak pointer here indicates about application destruction.
     std::weak_ptr<overseer_t> overseer;
 
 public:
@@ -363,6 +364,7 @@ private:
             if (auto overseer = this->overseer.lock()) {
                 return overseer->enqueue(upstream, event);
             } else {
+                // TODO: Assign error code instead of magic.
                 upstream.send<
                     io::protocol<io::event_traits<io::app::enqueue>::dispatch_type>::scope::error
                 >(42, std::string("the application has been closed"));
