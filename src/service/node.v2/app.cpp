@@ -20,6 +20,7 @@
 #include "cocaine/detail/service/node.v2/slot.hpp"
 #include "cocaine/detail/service/node.v2/splitter.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/client.hpp"
+#include "cocaine/detail/service/node.v2/dispatch/hostess.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/worker.hpp"
 
 #include "cocaine/idl/node.hpp"
@@ -42,7 +43,7 @@ template<class T> class deduce;
 /// Initial dispatch for slaves.
 ///
 /// Accepts only handshake messages and forwards it to the actual checker (i.e. to the Overseer).
-class authenticator_t :
+class handshaker_t :
     public dispatch<io::worker_tag>
 {
     mutable std::shared_ptr<session_t> session;
@@ -51,7 +52,7 @@ class authenticator_t :
 
 public:
     template<class F>
-    authenticator_t(const std::string& name, F&& fn) :
+    handshaker_t(const std::string& name, F&& fn) :
         dispatch<io::worker_tag>(format("%s/auth", name))
     {
         typedef io::streaming_slot<io::worker::handshake> slot_type;
@@ -78,7 +79,9 @@ public:
     }
 };
 
-class cocaine::overseer_t {
+class cocaine::overseer_t:
+    public std::enable_shared_from_this<overseer_t>
+{
 public:
     std::unique_ptr<logging::log_t> log;
 
@@ -120,8 +123,7 @@ public:
 
     overseer_t(context_t& context,
                manifest_t manifest, profile_t profile,
-               std::shared_ptr<asio::io_service> loop,
-               std::shared_ptr<balancer_t> balancer) :
+               std::shared_ptr<asio::io_service> loop) :
         log(context.log(format("%s/overseer", manifest.name))),
         context(context),
         name(manifest.name),
@@ -132,7 +134,13 @@ public:
     {}
 
     ~overseer_t() {
-        COCAINE_LOG_DEBUG(log, "performing overseer shutdown");
+        COCAINE_LOG_TRACE(log, "overseer has been destroyed");
+    }
+
+    void
+    attach(std::shared_ptr<balancer_t> balancer) {
+        balancer->attach(shared_from_this());
+        this->balancer = std::move(balancer);
     }
 
     /// If uuid provided - find uuid in pool.
@@ -167,8 +175,8 @@ public:
     /// accept the session or drop it.
     /// After successful accepting the balancer should be notified about pool's changes.
     io::dispatch_ptr_t
-    prototype() {
-        return std::make_shared<const authenticator_t>(name,
+    handshaker() {
+        return std::make_shared<const handshaker_t>(name,
             [=](io::streaming_slot<io::worker::handshake>::upstream_type& /*upstream*/,
                 const std::string& uuid, std::shared_ptr<session_t> session)
                 -> std::shared_ptr<control_t>
@@ -248,7 +256,7 @@ public:
     void despawn(std::string, bool graceful = true);
 };
 
-class simple_balancer_t : public balancer_t {
+class load_balancer_t : public balancer_t {
     std::shared_ptr<overseer_t> overseer;
 
 public:
@@ -258,6 +266,8 @@ public:
 
     virtual std::shared_ptr<streaming_dispatch_t>
     queue_changed(io::streaming_slot<io::app::enqueue>::upstream_type& /*wcu*/, std::string /*event*/) {
+        BOOST_ASSERT(overseer);
+
         auto info = overseer->info();
 
         // TODO: Insert normal spawn condition here.
@@ -284,6 +294,8 @@ public:
     }
 
     void pool_changed() {
+        BOOST_ASSERT(overseer);
+
         {
             auto queue = overseer->get_queue();
             if (queue->empty()) {
@@ -320,7 +332,7 @@ class app_dispatch_t:
 
     std::unique_ptr<logging::log_t> log;
 
-    std::shared_ptr<overseer_t> overseer;
+    std::weak_ptr<overseer_t> overseer;
 
 public:
     app_dispatch_t(context_t& context, const std::string& name, std::shared_ptr<overseer_t> overseer) :
@@ -333,7 +345,14 @@ public:
         ));
     }
 
-    ~app_dispatch_t() {}
+    ~app_dispatch_t() {
+        COCAINE_LOG_TRACE(log, "app dispatch has been destroyed");
+    }
+
+    void
+    discard(const std::error_code& ec) const {
+        COCAINE_LOG_TRACE(log, "app dispatch has been discarded: %s", ec.message());
+    }
 
 private:
     std::shared_ptr<const slot_type::dispatch_type>
@@ -341,26 +360,17 @@ private:
         if(tag.empty()) {
             COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event", event);
 
-            return overseer->enqueue(upstream, event);
+            if (auto overseer = this->overseer.lock()) {
+                return overseer->enqueue(upstream, event);
+            } else {
+                throw cocaine::error_t("the application has been closed");
+            }
         } else {
             COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event with tag '%s'", event, tag);
             // TODO: Complete!
             throw cocaine::error_t("on_enqueue: not implemented yet");
         }
     }
-};
-
-/// The basic prototype.
-///
-/// It's here only, because Cocaine API wants it in actors. Does nothing, because it is always
-/// replaced by an authenticate dispatch for every incoming connection.
-class hostess_t :
-    public dispatch<io::worker_tag>
-{
-public:
-    hostess_t(const std::string& name) :
-        dispatch<io::worker_tag>(format("%s/hostess", name))
-    {}
 };
 
 /// Represents a single application. Starts TCP and UNIX servers.
@@ -389,20 +399,24 @@ app_t::app_t(context_t& context, const std::string& manifest, const std::string&
 
 app_t::~app_t() {
     COCAINE_LOG_DEBUG(log, "removing application service from the context");
-    // TODO: Anounce all opened sessions to be closed (and sockets).
+    // TODO: Anounce all opened sessions to be closed (and sockets). But how? For now I've hacked
+    // it using weak_ptr.
 
-    context.remove(manifest->name);
+    balancer->attach(nullptr);
+
+    context.remove(manifest->name)->prototype().discard(std::error_code());
 
     engine->terminate();
 }
 
 void app_t::start() {
-    std::shared_ptr<balancer_t> balancer(new simple_balancer_t);
+    // Load balancer.
+    balancer = std::make_shared<load_balancer_t>();
 
     // Create an overseer - a thing, that watches the event queue and has an ability to spawn or
     // despawn slaves.
-    overseer.reset(new overseer_t(context, *manifest, *profile, loop, balancer));
-    balancer->attach(overseer);
+    overseer.reset(new overseer_t(context, *manifest, *profile, loop));
+    overseer->attach(balancer);
 
     // Create an TCP server.
     context.insert(manifest->name, std::make_unique<actor_t>(
@@ -415,9 +429,9 @@ void app_t::start() {
     engine.reset(new unix_actor_t(
         context,
         manifest->endpoint,
-        std::bind(&overseer_t::prototype, overseer.get()),
-        [](io::dispatch_ptr_t auth, std::shared_ptr<session_t> session) {
-            std::static_pointer_cast<const authenticator_t>(auth)->bind(session);
+        std::bind(&overseer_t::handshaker, overseer),
+        [](io::dispatch_ptr_t handshaker, std::shared_ptr<session_t> session) {
+            std::static_pointer_cast<const handshaker_t>(handshaker)->bind(session);
         },
         std::make_shared<asio::io_service>(),
         std::make_unique<hostess_t>(manifest->name)
