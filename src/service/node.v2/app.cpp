@@ -363,7 +363,10 @@ private:
             if (auto overseer = this->overseer.lock()) {
                 return overseer->enqueue(upstream, event);
             } else {
-                throw cocaine::error_t("the application has been closed");
+                upstream.send<
+                    io::protocol<io::event_traits<io::app::enqueue>::dispatch_type>::scope::error
+                >(42, std::string("the application has been closed"));
+                return nullptr;
             }
         } else {
             COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event with tag '%s'", event, tag);
