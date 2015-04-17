@@ -82,7 +82,7 @@ unix_actor_t::unix_actor_t(cocaine::context_t& context,
                            std::unique_ptr<cocaine::io::basic_dispatch_t> prototype) :
     m_context(context),
     endpoint(std::move(endpoint)),
-    m_log(context.log("core::io", { attribute::make("app", prototype->name()) })),
+    m_log(context.log("core::io", {{ "app", prototype->name() }})),
     m_asio(asio),
     m_prototype(std::move(prototype)),
     fact(std::move(fact)),
