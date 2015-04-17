@@ -179,8 +179,6 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
 }
 
 engine_t::~engine_t() {
-    COCAINE_LOG_DEBUG(m_log, "stopping '%s' engine", m_manifest.name);
-
     boost::filesystem::remove(m_manifest.endpoint);
 
     m_loop.post(std::bind(&engine_t::migrate, this, states::stopping));
@@ -188,6 +186,8 @@ engine_t::~engine_t() {
     if(m_thread.joinable()) {
         m_thread.join();
     }
+
+    COCAINE_LOG_DEBUG(m_log, "app '%s' engine has been destroyed", m_manifest.name);
 }
 
 void

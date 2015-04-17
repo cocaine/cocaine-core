@@ -2,7 +2,7 @@
 
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core3
-Version:	0.12.0.7
+Version:	0.12.0.8
 Release:	1%{?dist}
 
 
@@ -125,6 +125,9 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
+* Fri Apr 17 2015 Evgeny Safronov <division494@gmail.com> 0.12.0.8-1
+- Bugfix: fixed app vs. published services list inconsistency.
+
 * Wed Apr 08 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.7-1
 - Remote connections are now retried on failure.
 - Bugfix: endpoints while connecting remotes were corrupted in logs.

@@ -131,21 +131,19 @@ node_t::prototype() const {
 
 void
 node_t::on_start_app(const std::string& name, const std::string& profile) {
-    auto ptr = m_apps.synchronize();
-    auto it = ptr->find(name);
+    m_apps.apply([&](std::map<std::string, std::shared_ptr<app_t>>& apps) {
+        COCAINE_LOG_DEBUG(m_log, "starting app '%s'", name);
 
-    COCAINE_LOG_INFO(m_log, "trying to start app '%s'", name);
+        auto it = apps.find(name);
+        if(it != apps.end()) {
+            throw cocaine::error_t("app '%s' is already running", name);
+        }
 
-    if(it != ptr->end()) {
-        throw cocaine::error_t("app '%s' is already running", name);
-    }
+        auto app = std::make_shared<app_t>(m_context, name, profile);
+        app->start();
 
-    std::tie(it, std::ignore) = ptr->insert({
-        name,
-        std::make_shared<app_t>(m_context, name, profile)
+        apps.insert(std::make_pair(name, app));
     });
-
-    it->second->start();
 }
 
 void

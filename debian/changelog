@@ -1,3 +1,9 @@
+cocaine-core (0.12.0.8) unstable; urgency=low
+
+  * Bugfix: fixed app vs. published services list inconsistency.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 17 Apr 2015 19:56:54 +0300
+
 cocaine-core (0.12.0.7) unstable; urgency=low
 
   * Remote connections are now retried on failure.
