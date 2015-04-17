@@ -391,8 +391,9 @@ app_t::~app_t() {
     COCAINE_LOG_DEBUG(log, "removing application service from the context");
     // TODO: Anounce all opened sessions to be closed (and sockets).
 
-    engine->terminate();
     context.remove(manifest->name);
+
+    engine->terminate();
 }
 
 void app_t::start() {
