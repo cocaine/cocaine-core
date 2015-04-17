@@ -130,13 +130,10 @@ public:
     }
 
     void
-    cancel() {
-        handle->terminate();
-    }
+    cancel() {}
 
     void
-    start() {
-    }
+    start() {}
 };
 
 // TODO: Rename.
@@ -146,7 +143,7 @@ class state_machine_t::handshaking_t:
 {
     std::shared_ptr<state_machine_t> slave;
 
-    asio::deadline_timer timer;
+    synchronized<asio::deadline_timer> timer;
     std::unique_ptr<api::handle_t> handle;
 
     std::chrono::steady_clock::time_point birthtime;
@@ -165,8 +162,10 @@ public:
     start(unsigned long timeout) {
         COCAINE_LOG_DEBUG(slave->log, "slave is waiting for handshake, timeout: %.2f ms", timeout);
 
-        timer.expires_from_now(boost::posix_time::milliseconds(timeout));
-        timer.async_wait(std::bind(&handshaking_t::on_timeout, shared_from_this(), ph::_1));
+        timer.apply([&](asio::deadline_timer& timer){
+            timer.expires_from_now(boost::posix_time::milliseconds(timeout));
+            timer.async_wait(std::bind(&handshaking_t::on_timeout, shared_from_this(), ph::_1));
+        });
     }
 
     const char*
@@ -176,21 +175,39 @@ public:
 
     void
     cancel() {
-        timer.cancel();
+        std::error_code ec;
+
+        timer->cancel(ec);
     }
 
+    /// Activates the slave by transferring it to the active state using given session and control
+    /// channel.
+    ///
+    /// \threadsafe
     void
     activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control) {
-        // TODO: What if the timer has already fired in another thread at the same time? Race!
-        timer.cancel();
+        std::error_code ec;
+
+        const size_t cancelled = timer->cancel(ec);
+        if (ec || cancelled == 0) {
+            COCAINE_LOG_WARNING(slave->log, "slave has been activated, but the timeout has already expired");
+            return;
+        }
 
         const auto now = std::chrono::steady_clock::now();
         COCAINE_LOG_DEBUG(slave->log, "slave has been activated in %.2f ms",
             std::chrono::duration<float, std::chrono::milliseconds::period>(now - birthtime).count());
 
-        auto active = std::make_shared<active_t>(slave, std::move(handle), std::move(session), std::move(control));
-        active->start();
-        slave->migrate(std::move(active));
+        try {
+            auto active = std::make_shared<active_t>(slave, std::move(handle),
+                                                     std::move(session), std::move(control));
+            active->start();
+            slave->migrate(std::move(active));
+        } catch (const std::exception& err) {
+            COCAINE_LOG_ERROR(slave->log, "unable to activate slave: %s", err.what());
+
+            slave->close(error::unknown_activate_error);
+        }
     }
 
 private:
@@ -293,8 +310,8 @@ public:
 
     void
     cancel() {
-        // TODO: May throw.
-        timer.cancel();
+        std::error_code ec;
+        timer.cancel(ec);
     }
 
 private:

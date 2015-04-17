@@ -407,8 +407,8 @@ void app_t::start() {
     context.insert(manifest->name, std::make_unique<actor_t>(
         context,
         loop,
-        std::make_unique<app_dispatch_t>(context, manifest->name, overseer))
-    );
+        std::make_unique<app_dispatch_t>(context, manifest->name, overseer)
+    ));
 
     // Create an unix actor and bind to {manifest->name}.{int} unix-socket.
     engine.reset(new unix_actor_t(
