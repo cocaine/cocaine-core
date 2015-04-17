@@ -207,7 +207,7 @@ app_t::~app_t() {
 
 void
 app_t::start() {
-    COCAINE_LOG_INFO(m_log, "creating engine '%s'", m_manifest->name);
+    COCAINE_LOG_DEBUG(m_log, "creating engine '%s'", m_manifest->name);
 
     // Start the engine thread.
     try {
