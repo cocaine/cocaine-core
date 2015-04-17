@@ -131,7 +131,7 @@ node_t::prototype() const {
 
 void
 node_t::on_start_app(const std::string& name, const std::string& profile) {
-    m_apps.apply([&](std::map<std::string, std::shared_ptr<app_t>>& apps){
+    m_apps.apply([&](std::map<std::string, std::shared_ptr<app_t>>& apps) {
         COCAINE_LOG_DEBUG(m_log, "starting app '%s'", name);
 
         auto it = apps.find(name);
