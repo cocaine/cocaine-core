@@ -69,15 +69,12 @@ private:
             watch();
             break;
         case asio::error::operation_aborted:
-            slave.reset();
             break;
         case asio::error::eof:
             COCAINE_LOG_DEBUG(slave->log, "slave has closed its output");
-            slave.reset();
             break;
         default:
             COCAINE_LOG_WARNING(slave->log, "slave has failed to read output: %s", ec.message());
-            slave.reset();
         }
     }
 };
