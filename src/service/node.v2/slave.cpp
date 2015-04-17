@@ -136,7 +136,6 @@ public:
     start() {}
 };
 
-// TODO: Rename.
 class state_machine_t::handshaking_t:
     public state_t,
     public std::enable_shared_from_this<handshaking_t>
@@ -176,7 +175,6 @@ public:
     void
     cancel() {
         std::error_code ec;
-
         timer->cancel(ec);
     }
 
