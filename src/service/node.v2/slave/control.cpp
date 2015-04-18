@@ -5,9 +5,10 @@
 
 using namespace cocaine;
 
-control_t::control_t(context_t& context, const std::string& name, const std::string& uuid) :
-    dispatch<io::worker::control_tag>(format("%s/control", name)),
-    log(context.log(format("%s/control", name), {{ "uuid", uuid }}))
+control_t::control_t(slave_context ctx, asio::io_service& /*loop*/, upstream<io::worker::control_tag> stream) :
+    dispatch<io::worker::control_tag>(format("%s/control", ctx.manifest.name)),
+    log(ctx.context.log(format("%s/control", ctx.manifest.name), {{ "uuid", ctx.id }})),
+    stream(std::move(stream))
 {
     on<io::worker::heartbeat>([&](){
         COCAINE_LOG_DEBUG(log, "processing heartbeat message");

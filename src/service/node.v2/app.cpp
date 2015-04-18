@@ -22,6 +22,7 @@
 #include "cocaine/detail/service/node.v2/dispatch/client.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/hostess.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/worker.hpp"
+#include "cocaine/detail/service/node.v2/slave/control.hpp"
 
 #include "cocaine/idl/node.hpp"
 #include "cocaine/idl/rpc.hpp"
@@ -176,10 +177,10 @@ public:
     /// After successful accepting the balancer should be notified about pool's changes.
     io::dispatch_ptr_t
     handshaker() {
-        return std::make_shared<const handshaker_t>(name,
-            [=](io::streaming_slot<io::worker::handshake>::upstream_type& /*upstream*/,
-                const std::string& uuid, std::shared_ptr<session_t> session)
-                -> std::shared_ptr<control_t>
+        return std::make_shared<const handshaker_t>(
+            name,
+            [=](upstream<io::worker::control_tag>& stream, const std::string& uuid,
+                std::shared_ptr<session_t> session) -> std::shared_ptr<control_t>
         {
             scoped_attributes_t holder(*log, {{ "uuid", uuid }});
 
@@ -192,14 +193,12 @@ public:
                     return nullptr;
                 }
 
-                COCAINE_LOG_DEBUG(log, "activating authenticated slave");
+                COCAINE_LOG_DEBUG(log, "activating slave");
                 try {
-                    auto control = std::make_shared<control_t>(context, name, uuid);
-                    it->second.activate(session, control);
-                    return control;
+                    return it->second.activate(session, std::move(stream));
                 } catch (const std::exception& err) {
-                    // The slave can be in invalid state; broken, for example or because Cocaine is
-                    // overloaded. In fact I hope it never happens.
+                    // The slave can be in invalid state; broken, for example, or because the
+                    // overseer is overloaded. In fact I hope it never happens.
                     // Also unlikely we can receive here std::bad_alloc if unable to allocate more
                     // memory for control dispatch.
                     // If this happens the session will be closed.

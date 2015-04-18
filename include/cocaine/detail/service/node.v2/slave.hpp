@@ -20,12 +20,13 @@
 #include "cocaine/detail/service/node/profile.hpp"
 
 #include "cocaine/detail/service/node.v2/result.hpp"
-#include "cocaine/detail/service/node.v2/slave/control.hpp"
 #include "cocaine/detail/service/node.v2/splitter.hpp"
 
 #include "slave/error.hpp"
 
 namespace cocaine {
+
+class control_t;
 
 struct slave_context {
     context_t&  context;
@@ -83,8 +84,8 @@ public:
     void
     stop();
 
-    void
-    activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control);
+    std::shared_ptr<control_t>
+    activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 
 private:
     void
@@ -115,8 +116,8 @@ public:
     slave_t& operator=(const slave_t& other) = delete;
     slave_t& operator=(slave_t&&) = default;
 
-    void
-    activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control);
+    std::shared_ptr<control_t>
+    activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 };
 
 }

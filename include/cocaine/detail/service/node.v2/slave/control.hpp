@@ -5,6 +5,8 @@
 #include "cocaine/idl/rpc.hpp"
 #include "cocaine/rpc/dispatch.hpp"
 
+#include "cocaine/detail/service/node.v2/slave.hpp"
+
 namespace cocaine {
 
 /// Control channel for single slave.
@@ -15,12 +17,14 @@ class control_t :
     public dispatch<io::worker::control_tag>,
     public std::enable_shared_from_this<control_t>
 {
-    std::unique_ptr<logging::log_t> log;
+    const std::unique_ptr<logging::log_t> log;
 
     std::function<void(std::error_code)> suicide;
 
+    upstream<io::worker::control_tag> stream;
+
 public:
-    control_t(context_t& context, const std::string& name, const std::string& uuid);
+    control_t(cocaine::slave_context ctx, asio::io_service& loop, upstream<io::worker::control_tag> stream);
 
     ~control_t();
 

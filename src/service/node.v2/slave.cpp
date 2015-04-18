@@ -6,6 +6,7 @@
 
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
+#include "cocaine/detail/service/node.v2/slave/control.hpp"
 #include "cocaine/detail/service/node.v2/util.hpp"
 
 namespace ph = std::placeholders;
@@ -96,8 +97,8 @@ public:
     cancel() = 0;
 
     virtual
-    void
-    activate(std::shared_ptr<session_t> /*session*/, std::shared_ptr<control_t> /*control*/) {
+    std::shared_ptr<control_t>
+    activate(std::shared_ptr<session_t> /*session*/, upstream<io::worker::control_tag> /*stream*/) {
         throw std::system_error(error::invalid_state, format("invalid state (%s)", name()));
     }
 };
@@ -109,17 +110,14 @@ class state_machine_t::active_t:
 //    slave_t& slave;
     std::unique_ptr<api::handle_t> handle;
     std::shared_ptr<session_t> session;
-    std::shared_ptr<control_t> control;
 
 public:
     active_t(std::shared_ptr<state_machine_t> /*slave*/,
              std::unique_ptr<api::handle_t> handle,
-             std::shared_ptr<session_t> session,
-             std::shared_ptr<control_t> control):
+             std::shared_ptr<session_t> session):
 //        slave(slave),
         handle(std::move(handle)),
-        session(std::move(session)),
-        control(std::move(control))
+        session(std::move(session))
     {}
 
     const char*
@@ -180,14 +178,14 @@ public:
     /// channel.
     ///
     /// \threadsafe
-    void
-    activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control) {
+    std::shared_ptr<control_t>
+    activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream) {
         std::error_code ec;
 
         const size_t cancelled = timer->cancel(ec);
         if (ec || cancelled == 0) {
             COCAINE_LOG_WARNING(slave->log, "slave has been activated, but the timeout has already expired");
-            return;
+            return nullptr;
         }
 
         const auto now = std::chrono::steady_clock::now();
@@ -195,15 +193,18 @@ public:
             std::chrono::duration<float, std::chrono::milliseconds::period>(now - birthtime).count());
 
         try {
-            auto active = std::make_shared<active_t>(slave, std::move(handle),
-                                                     std::move(session), std::move(control));
+            auto control = std::make_shared<control_t>(slave->context, slave->loop, std::move(stream));
+            auto active = std::make_shared<active_t>(slave, std::move(handle), std::move(session));
             active->start();
             slave->migrate(std::move(active));
+            return control;
         } catch (const std::exception& err) {
             COCAINE_LOG_ERROR(slave->log, "unable to activate slave: %s", err.what());
 
             slave->close(error::unknown_activate_error);
         }
+
+        return nullptr;
     }
 
 private:
@@ -404,11 +405,11 @@ state_machine_t::stop() {
     fetcher.reset();
 }
 
-void
-state_machine_t::activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control) {
+std::shared_ptr<control_t>
+state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream) {
     auto state = *this->state.synchronize();
 
-    state->activate(std::move(session), std::move(control));
+    return state->activate(std::move(session), std::move(stream));
 }
 
 void
@@ -459,10 +460,10 @@ slave_t::~slave_t() {
     }
 }
 
-void
-slave_t::activate(std::shared_ptr<session_t> session, std::shared_ptr<control_t> control) {
+std::shared_ptr<control_t>
+slave_t::activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream) {
     BOOST_ASSERT(machine);
 
-    machine->activate(std::move(session), std::move(control));
+    return machine->activate(std::move(session), std::move(stream));
 }
 
