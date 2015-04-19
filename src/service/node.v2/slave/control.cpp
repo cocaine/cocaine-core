@@ -13,8 +13,7 @@ control_t::control_t(std::shared_ptr<state_machine_t> slave, upstream<io::worker
     dispatch<io::worker::control_tag>(format("%s/control", slave->context.manifest.name)),
     slave(std::move(slave)),
     stream(std::move(stream)),
-    timer(this->slave->loop),
-    cancelled(false)
+    timer(this->slave->loop)
 {
     on<io::worker::heartbeat>(std::bind(&control_t::on_heartbeat, this));
 
@@ -29,15 +28,11 @@ control_t::~control_t() {}
 
 void
 control_t::start() {
-    cancelled = false;
-
     breath();
 }
 
 void
 control_t::cancel() {
-    cancelled = true;
-
     // TODO: May throw.
     timer.cancel();
 }
@@ -70,11 +65,7 @@ control_t::on_timeout(const std::error_code& ec) {
     // message at least once in profile.timeout.heartbeat milliseconds.
     // In this case we should terminate it.
     if (ec) {
-        if (cancelled) {
-            COCAINE_LOG_TRACE(slave->log, "heartbeat timer has called its completion handler: cancelled");
-        } else {
-            COCAINE_LOG_TRACE(slave->log, "heartbeat timer has called its completion handler: restarted");
-        }
+        COCAINE_LOG_TRACE(slave->log, "heartbeat timer has called its completion handler: cancelled");
     } else {
         COCAINE_LOG_TRACE(slave->log, "heartbeat timer has called its completion handler: timeout");
         // TODO: Terminate slave.

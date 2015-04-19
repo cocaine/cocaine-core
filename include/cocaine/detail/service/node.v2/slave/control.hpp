@@ -25,7 +25,6 @@ class control_t :
 
     /// Heartbeat timer.
     asio::deadline_timer timer;
-    bool cancelled;
 
 public:
     control_t(std::shared_ptr<state_machine_t> slave, upstream<io::worker::control_tag> stream);
