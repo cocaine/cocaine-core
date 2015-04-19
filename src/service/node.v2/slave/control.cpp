@@ -3,22 +3,20 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
+#include "cocaine/detail/service/node.v2/slave.hpp"
+
+namespace ph = std::placeholders;
+
 using namespace cocaine;
 
-control_t::control_t(slave_context ctx, asio::io_service& /*loop*/, upstream<io::worker::control_tag> stream) :
-    dispatch<io::worker::control_tag>(format("%s/control", ctx.manifest.name)),
-    log(ctx.context.log(format("%s/control", ctx.manifest.name), {{ "uuid", ctx.id }})),
-    stream(std::move(stream))
+control_t::control_t(std::shared_ptr<state_machine_t> slave, upstream<io::worker::control_tag> stream):
+    dispatch<io::worker::control_tag>(format("%s/control", slave->context.manifest.name)),
+    slave(std::move(slave)),
+    stream(std::move(stream)),
+    timer(this->slave->loop),
+    cancelled(false)
 {
-    on<io::worker::heartbeat>([&](){
-        COCAINE_LOG_DEBUG(log, "processing heartbeat message");
-
-        // TODO: Reset heartbeat timer.
-        // slave->heartbeat();
-
-        // TODO: Send heartbeat back.
-        // session->send<io::control::heartbeat>();
-    });
+    on<io::worker::heartbeat>(std::bind(&control_t::on_heartbeat, this));
 
     // TODO: Register terminate handler.
     // on<io::control::terminate>();
@@ -29,7 +27,56 @@ control_t::control_t(slave_context ctx, asio::io_service& /*loop*/, upstream<io:
 
 control_t::~control_t() {}
 
-void control_t::discard(const std::error_code&) const {
-    // Unix socket is destroyed some unexpected way, for example worker is down.
-    // Detach slave from pool - `overseer->detach(uuid);`.
+void
+control_t::start() {
+    cancelled = false;
+
+    breath();
+}
+
+void
+control_t::cancel() {
+    cancelled = true;
+
+    // TODO: May throw.
+    timer.cancel();
+}
+
+void
+control_t::discard(const std::error_code&) const {
+    // The unix socket is destroyed some unexpected way, for example the worker is down.
+    // TODO: Detach the slave from pool.
+}
+
+void
+control_t::on_heartbeat() {
+    COCAINE_LOG_DEBUG(slave->log, "processing heartbeat message");
+
+    breath();
+    stream = stream.send<io::worker::heartbeat>();
+}
+
+void
+control_t::breath() {
+    COCAINE_LOG_TRACE(slave->log, "heartbeat timer has been restarted");
+
+    timer.expires_from_now(boost::posix_time::milliseconds(slave->context.profile.timeout.heartbeat));
+    timer.async_wait(std::bind(&control_t::on_timeout, shared_from_this(), ph::_1));
+}
+
+void
+control_t::on_timeout(const std::error_code& ec) {
+    // No error containing in error code indicates that the slave has failed to send heartbeat
+    // message at least once in profile.timeout.heartbeat milliseconds.
+    // In this case we should terminate it.
+    if (ec) {
+        if (cancelled) {
+            COCAINE_LOG_TRACE(slave->log, "heartbeat timer has called its completion handler: cancelled");
+        } else {
+            COCAINE_LOG_TRACE(slave->log, "heartbeat timer has called its completion handler: restarted");
+        }
+    } else {
+        COCAINE_LOG_TRACE(slave->log, "heartbeat timer has called its completion handler: timeout");
+        // TODO: Terminate slave.
+    }
 }

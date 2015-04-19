@@ -57,6 +57,8 @@ class state_machine_t:
     class broken_t;
     class closed_t;
 
+    friend class control_t;
+
 public:
     typedef std::function<void(const std::error_code&)> cleanup_handler;
 

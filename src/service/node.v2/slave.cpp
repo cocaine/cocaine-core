@@ -107,18 +107,21 @@ class state_machine_t::active_t:
     public state_t,
     public std::enable_shared_from_this<active_t>
 {
-//    slave_t& slave;
     std::unique_ptr<api::handle_t> handle;
     std::shared_ptr<session_t> session;
+    std::shared_ptr<control_t> control;
 
 public:
     active_t(std::shared_ptr<state_machine_t> /*slave*/,
              std::unique_ptr<api::handle_t> handle,
-             std::shared_ptr<session_t> session):
-//        slave(slave),
+             std::shared_ptr<session_t> session,
+             std::shared_ptr<control_t> control):
         handle(std::move(handle)),
-        session(std::move(session))
-    {}
+        session(std::move(session)),
+        control(std::move(control))
+    {
+        this->control->start();
+    }
 
     const char*
     name() const noexcept {
@@ -193,10 +196,12 @@ public:
             std::chrono::duration<float, std::chrono::milliseconds::period>(now - birthtime).count());
 
         try {
-            auto control = std::make_shared<control_t>(slave->context, slave->loop, std::move(stream));
-            auto active = std::make_shared<active_t>(slave, std::move(handle), std::move(session));
-            active->start();
+            auto control = std::make_shared<control_t>(slave, std::move(stream));
+            auto active = std::make_shared<active_t>(slave, std::move(handle), std::move(session), control);
             slave->migrate(std::move(active));
+
+            active->start();
+
             return control;
         } catch (const std::exception& err) {
             COCAINE_LOG_ERROR(slave->log, "unable to activate slave: %s", err.what());

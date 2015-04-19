@@ -5,9 +5,9 @@
 #include "cocaine/idl/rpc.hpp"
 #include "cocaine/rpc/dispatch.hpp"
 
-#include "cocaine/detail/service/node.v2/slave.hpp"
-
 namespace cocaine {
+
+class state_machine_t;
 
 /// Control channel for single slave.
 ///
@@ -17,20 +17,45 @@ class control_t :
     public dispatch<io::worker::control_tag>,
     public std::enable_shared_from_this<control_t>
 {
-    const std::unique_ptr<logging::log_t> log;
+    /// Attached slave.
+    std::shared_ptr<state_machine_t> slave;
 
-    std::function<void(std::error_code)> suicide;
-
+    /// Upstream to send messages to the worker.
     upstream<io::worker::control_tag> stream;
 
+    /// Heartbeat timer.
+    asio::deadline_timer timer;
+    bool cancelled;
+
 public:
-    control_t(cocaine::slave_context ctx, asio::io_service& loop, upstream<io::worker::control_tag> stream);
+    control_t(std::shared_ptr<state_machine_t> slave, upstream<io::worker::control_tag> stream);
 
     ~control_t();
+
+    /// Starts health checking explicitly.
+    void
+    start();
+
+    /// Cancels all asynchronous operations on channel (e.g. timers).
+    ///
+    /// \note this method is required to be explicitly called on slave shutdown, because it breakes
+    /// all cycle references inside the control channel.
+    void
+    cancel();
 
     virtual
     void
     discard(const std::error_code&) const override;
+
+private:
+    void
+    on_heartbeat();
+
+    void
+    breath();
+
+    void
+    on_timeout(const std::error_code& ec);
 };
 
 }
