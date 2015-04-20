@@ -140,6 +140,12 @@ public:
         this->control->start();
     }
 
+    ~active_t() {
+        if (control) {
+            control->cancel();
+        }
+    }
+
     const char*
     name() const noexcept {
         return "active";
@@ -158,9 +164,7 @@ public:
     }
 
     void
-    cancel() {
-        control->cancel();
-    }
+    cancel() {}
 
     virtual
     io::upstream_ptr_t
