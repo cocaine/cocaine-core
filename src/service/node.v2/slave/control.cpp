@@ -13,7 +13,8 @@ control_t::control_t(std::shared_ptr<state_machine_t> slave, upstream<io::worker
     dispatch<io::worker::control_tag>(format("%s/control", slave->context.manifest.name)),
     slave(std::move(slave)),
     stream(std::move(stream)),
-    timer(this->slave->loop)
+    timer(this->slave->loop),
+    closed(false)
 {
     on<io::worker::heartbeat>(std::bind(&control_t::on_heartbeat, this));
 
@@ -37,15 +38,22 @@ void
 control_t::cancel() {
     forget<io::worker::heartbeat>();
 
-    // TODO: May throw.
-    timer.cancel();
+    try {
+        timer.cancel();
+    } catch (const std::system_error&) {
+        // We don't care.
+    }
+
+    closed.store(true);
 }
 
 void
 control_t::discard(const std::error_code& ec) const {
-    COCAINE_LOG_DEBUG(slave->log, "control channel has been discarded: %s", ec.message());
+    if (ec && !closed) {
+        COCAINE_LOG_DEBUG(slave->log, "control channel has been discarded: %s", ec.message());
 
-    slave->close(ec);
+        slave->close(ec);
+    }
 }
 
 void

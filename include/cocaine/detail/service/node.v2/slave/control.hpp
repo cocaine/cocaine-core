@@ -27,6 +27,8 @@ class control_t :
     // TODO: Need synchronization.
     asio::deadline_timer timer;
 
+    std::atomic<bool> closed;
+
 public:
     control_t(std::shared_ptr<state_machine_t> slave, upstream<io::worker::control_tag> stream);
 
