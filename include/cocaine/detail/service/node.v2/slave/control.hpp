@@ -24,6 +24,7 @@ class control_t :
     upstream<io::worker::control_tag> stream;
 
     /// Heartbeat timer.
+    // TODO: Need synchronization.
     asio::deadline_timer timer;
 
 public:
