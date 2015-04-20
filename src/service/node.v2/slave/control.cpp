@@ -24,7 +24,9 @@ control_t::control_t(std::shared_ptr<state_machine_t> slave, upstream<io::worker
     // - Wait for timeout.terminate and send SIGKILL.
 }
 
-control_t::~control_t() {}
+control_t::~control_t() {
+    COCAINE_LOG_TRACE(slave->log, "control channel has been destroyed");
+}
 
 void
 control_t::start() {
@@ -33,14 +35,18 @@ control_t::start() {
 
 void
 control_t::cancel() {
+    forget<io::worker::heartbeat>();
+
     // TODO: May throw.
     timer.cancel();
 }
 
 void
-control_t::discard(const std::error_code&) const {
-    // The unix socket is destroyed some unexpected way, for example the worker is down.
-    // TODO: Detach the slave from pool.
+control_t::discard(const std::error_code& ec) const {
+    if (ec) {
+        COCAINE_LOG_DEBUG(slave->log, "control channel has been discarded: %s", ec.message());
+        slave->close(ec);
+    }
 }
 
 void

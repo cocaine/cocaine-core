@@ -432,9 +432,9 @@ state_machine_t::start() {
     fetcher = std::make_shared<fetcher_t>(shared_from_this());
 
     auto spawning = std::make_shared<spawning_t>(shared_from_this());
+    migrate(spawning);
 
     loop.post([=]{
-        migrate(spawning);
         spawning->spawn(context.profile.timeout.spawn);
     });
 }
@@ -444,7 +444,6 @@ state_machine_t::stop() {
     COCAINE_LOG_TRACE(log, "slave state machine is stopping");
 
     auto state = std::move(*this->state.synchronize());
-
     state->cancel();
 
     fetcher->cancel();

@@ -37,7 +37,7 @@ public:
     attach(std::shared_ptr<overseer_t>) = 0;
 
     virtual
-    boost::optional<slave_t>
+    slave_t*
     on_request(const std::string& event, const std::string& id) = 0;
 
     virtual
