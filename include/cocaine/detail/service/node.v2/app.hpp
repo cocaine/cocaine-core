@@ -37,20 +37,24 @@ public:
     attach(std::shared_ptr<overseer_t>) = 0;
 
     virtual
-    std::shared_ptr<streaming_dispatch_t>
-    queue_changed(io::streaming_slot<io::app::enqueue>::upstream_type& upstream, std::string event) = 0;
+    boost::optional<slave_t>
+    on_request(const std::string& event, const std::string& id) = 0;
 
     virtual
     void
-    pool_changed() = 0;
+    on_queue() = 0;
 
     virtual
     void
-    channel_started(/*uuid*/) {}
+    on_pool() = 0;
 
     virtual
     void
-    channel_finished(/*uuid*/) {}
+    on_channel_started(/*uuid*/) {}
+
+    virtual
+    void
+    on_channel_finished(/*uuid*/) {}
 };
 
 class overseer_t:
@@ -79,7 +83,8 @@ public:
         io::streaming_slot<io::app::enqueue>::upstream_type upstream;
     };
 
-    synchronized<std::queue<queue_value>> queue;
+    typedef std::queue<queue_value> queue_type;
+    synchronized<queue_type> queue;
 
     std::shared_ptr<balancer_t> balancer;
 
@@ -91,6 +96,12 @@ public:
                manifest_t manifest, profile_t profile,
                std::shared_ptr<asio::io_service> loop);
     ~overseer_t();
+
+    locked_ptr<pool_type>
+    get_pool();
+
+    locked_ptr<queue_type>
+    get_queue();
 
     void
     attach(std::shared_ptr<balancer_t> balancer);
@@ -107,7 +118,9 @@ public:
     /// \param upstream represents the client <- worker stream.
     /// \param event an invocation event name.
     std::shared_ptr<streaming_dispatch_t>
-    enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstream, const std::string& event);
+    enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstream,
+            const std::string& event,
+            const std::string& id);
 
     /// Creates a new authenticate dispatch for incoming connection.
     ///
@@ -127,7 +140,15 @@ public:
     /// Add uuid to map.
     /// Wait for startup timeout. Erase on timeout.
     /// Wait for uuid on acceptor.
-    void spawn();
+    void
+    spawn();
+
+    void
+    spawn(locked_ptr<pool_type>& pool);
+
+    /// \warning must be called under pool & queue lock.
+    void
+    assign(slave_t& slave, queue_value& payload);
 
     /// Closes the worker from new requests
     /// Then calls the overlord to send terminate event. Start timer.

@@ -86,8 +86,17 @@ public:
     void
     stop();
 
+    bool
+    active() const noexcept;
+
+    size_t
+    load() const noexcept;
+
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
+
+    io::upstream_ptr_t
+    inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> d);
 
 private:
     void
@@ -118,8 +127,17 @@ public:
     slave_t& operator=(const slave_t& other) = delete;
     slave_t& operator=(slave_t&&) = default;
 
+    bool
+    active() const noexcept;
+
+    size_t
+    load() const noexcept;
+
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
+
+    io::upstream_ptr_t
+    inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> d);
 };
 
 }

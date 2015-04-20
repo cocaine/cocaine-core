@@ -86,6 +86,17 @@ public:
     const char*
     name() const noexcept = 0;
 
+    virtual
+    bool
+    active() const noexcept {
+        return false;
+    }
+
+    virtual
+    size_t
+    load() const noexcept {
+        return 0;
+    }
 
     /// Cancels all pending asynchronous operations.
     ///
@@ -99,6 +110,12 @@ public:
     virtual
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> /*session*/, upstream<io::worker::control_tag> /*stream*/) {
+        throw std::system_error(error::invalid_state, format("invalid state (%s)", name()));
+    }
+
+    virtual
+    io::upstream_ptr_t
+    inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> /*dispatch*/) {
         throw std::system_error(error::invalid_state, format("invalid state (%s)", name()));
     }
 };
@@ -128,9 +145,27 @@ public:
         return "active";
     }
 
+    virtual
+    bool
+    active() const noexcept {
+        return true;
+    }
+
+    virtual
+    size_t
+    load() const noexcept {
+        return session->active_channels().size();
+    }
+
     void
     cancel() {
         control->cancel();
+    }
+
+    virtual
+    io::upstream_ptr_t
+    inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> d) {
+        return session->inject(std::move(d));
     }
 
     void
@@ -412,11 +447,26 @@ state_machine_t::stop() {
     fetcher.reset();
 }
 
+bool
+state_machine_t::active() const noexcept {
+    return (*state.synchronize())->active();
+}
+
+size_t
+state_machine_t::load() const noexcept {
+    return (*state.synchronize())->load();
+}
+
 std::shared_ptr<control_t>
 state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream) {
     auto state = *this->state.synchronize();
 
     return state->activate(std::move(session), std::move(stream));
+}
+
+io::upstream_ptr_t
+state_machine_t::inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> d) {
+    return (*state.synchronize())->inject(std::move(d));
 }
 
 void
@@ -467,10 +517,31 @@ slave_t::~slave_t() {
     }
 }
 
+bool
+slave_t::active() const noexcept {
+    BOOST_ASSERT(machine);
+
+    return machine->active();
+}
+
+size_t
+slave_t::load() const noexcept {
+    BOOST_ASSERT(machine);
+
+    return machine->load();
+}
+
 std::shared_ptr<control_t>
 slave_t::activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream) {
     BOOST_ASSERT(machine);
 
     return machine->activate(std::move(session), std::move(stream));
+}
+
+io::upstream_ptr_t
+slave_t::inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> d) {
+    BOOST_ASSERT(machine);
+
+    return machine->inject(std::move(d));
 }
 

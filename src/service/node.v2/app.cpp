@@ -97,6 +97,16 @@ overseer_t::~overseer_t() {
     COCAINE_LOG_TRACE(log, "overseer has been destroyed");
 }
 
+locked_ptr<overseer_t::pool_type>
+overseer_t::get_pool() {
+    return pool.synchronize();
+}
+
+locked_ptr<overseer_t::queue_type>
+overseer_t::get_queue() {
+    return queue.synchronize();
+}
+
 void
 overseer_t::attach(std::shared_ptr<balancer_t> balancer) {
     balancer->attach(shared_from_this());
@@ -104,13 +114,22 @@ overseer_t::attach(std::shared_ptr<balancer_t> balancer) {
 }
 
 std::shared_ptr<streaming_dispatch_t>
-overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstream, const std::string& event) {
-    if (auto dispatch = balancer->queue_changed(upstream, event)) {
-        return dispatch;
-    }
-
+overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstream,
+                    const std::string& event,
+                    const std::string& id) {
     auto dispatch = std::make_shared<streaming_dispatch_t>(manifest.name);
-    queue->push({ event, "", dispatch, std::move(upstream) });
+
+    if (auto slave = balancer->on_request(event, id)) {
+        auto stream = slave->inject(std::make_shared<const worker_client_dispatch_t>(upstream));
+        stream->send<io::worker::rpc::invoke>(event);
+
+        dispatch->attach(std::make_shared<
+            cocaine::upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(stream));
+    } else {
+        queue->push({ event, id, dispatch, std::move(upstream) });
+
+        balancer->on_queue();
+    }
 
     return dispatch;
 }
@@ -149,7 +168,7 @@ overseer_t::handshaker() {
         });
 
         if (control) {
-            balancer->pool_changed();
+            balancer->on_pool();
         }
 
         return control;
@@ -158,6 +177,12 @@ overseer_t::handshaker() {
 
 void
 overseer_t::spawn() {
+    auto pool = this->pool.synchronize();
+    spawn(pool);
+}
+
+void
+overseer_t::spawn(locked_ptr<pool_type>& pool) {
     COCAINE_LOG_INFO(log, "enlarging the slaves pool to %d", pool->size() + 1);
 
     slave_context ctx(context, manifest, profile);
@@ -172,8 +197,17 @@ overseer_t::spawn() {
             COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool");
         }
 
-        pool->erase(uuid);
+        this->pool->erase(uuid);
     }));
+}
+
+void
+overseer_t::assign(slave_t& slave, queue_value& payload) {
+    auto stream = slave.inject(std::make_shared<const worker_client_dispatch_t>(payload.upstream));
+    stream->send<io::worker::rpc::invoke>(payload.event);
+
+    payload.dispatch->attach(std::make_shared<
+        cocaine::upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(stream));
 }
 
 void
@@ -212,23 +246,17 @@ public:
 
 private:
     std::shared_ptr<const slot_type::dispatch_type>
-    on_enqueue(slot_type::upstream_type& upstream , const std::string& event, const std::string& tag) {
-        if(tag.empty()) {
-            COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event", event);
+    on_enqueue(slot_type::upstream_type& upstream , const std::string& event, const std::string& id) {
+        COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event", event);
 
-            if (auto overseer = this->overseer.lock()) {
-                return overseer->enqueue(upstream, event);
-            } else {
-                // TODO: Assign error code instead of magic.
-                upstream.send<
-                    io::protocol<io::event_traits<io::app::enqueue>::dispatch_type>::scope::error
-                >(42, std::string("the application has been closed"));
-                return nullptr;
-            }
+        if (auto overseer = this->overseer.lock()) {
+            return overseer->enqueue(upstream, event, id);
         } else {
-            COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event with tag '%s'", event, tag);
-            // TODO: Complete!
-            throw cocaine::error_t("on_enqueue: not implemented yet");
+            // TODO: Assign error code instead of magic.
+            upstream.send<
+                io::protocol<io::event_traits<io::app::enqueue>::dispatch_type>::scope::error
+            >(42, std::string("the application has been closed"));
+            return nullptr;
         }
     }
 };

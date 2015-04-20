@@ -4,7 +4,9 @@
 
 namespace cocaine {
 
-class load_balancer_t : public balancer_t {
+class load_balancer_t:
+    public balancer_t
+{
     std::shared_ptr<overseer_t> overseer;
 
 public:
@@ -12,11 +14,19 @@ public:
     attach(std::shared_ptr<overseer_t> overseer);
 
     virtual
-    std::shared_ptr<streaming_dispatch_t>
-    queue_changed(io::streaming_slot<io::app::enqueue>::upstream_type& /*wcu*/, std::string /*event*/);
+    slave_t*
+    on_request(const std::string& event, const std::string& id);
+
+    virtual
+    void
+    on_queue();
 
     void
-    pool_changed();
+    on_pool();
+
+private:
+    void
+    rebalance();
 };
 
 }
