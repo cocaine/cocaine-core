@@ -54,7 +54,7 @@ struct process_handle_t:
     { }
 
     ~process_handle_t() {
-        //terminate();
+        terminate();
     }
 
     virtual

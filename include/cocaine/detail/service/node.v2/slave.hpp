@@ -76,6 +76,8 @@ private:
 
     synchronized<std::shared_ptr<state_t>> state;
 
+    std::atomic<bool> closed;
+
 public:
     state_machine_t(slave_context ctx, asio::io_service& loop, cleanup_handler cleanup);
     ~state_machine_t();

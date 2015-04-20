@@ -41,14 +41,16 @@ public:
         watch();
     }
 
-    /// Cancels all asynchronous operations associated with the descriptor.
-    ///
-    /// \throws std::system_error on any system error.
-    void cancel() {
+    /// Cancels all asynchronous operations associated with the descriptor by closing it.
+    void close() {
         if (watcher.is_open()) {
             COCAINE_LOG_TRACE(slave->log, "slave has cancelled fetching standard output");
 
-            watcher.close();
+            try {
+                watcher.close();
+            } catch (const std::system_error&) {
+                // Eat.
+            }
         }
     }
 
@@ -416,7 +418,8 @@ state_machine_t::state_machine_t(slave_context ctx, asio::io_service& loop, clea
     context(ctx),
     loop(loop),
     cleanup(std::move(cleanup)),
-    lines(context.profile.crashlog_limit)
+    lines(context.profile.crashlog_limit),
+    closed(false)
 {
     COCAINE_LOG_TRACE(log, "slave state machine has been initialized");
 }
@@ -441,12 +444,14 @@ state_machine_t::start() {
 
 void
 state_machine_t::stop() {
+    closed.store(true);
+
     COCAINE_LOG_TRACE(log, "slave state machine is stopping");
 
     auto state = std::move(*this->state.synchronize());
     state->cancel();
 
-    fetcher->cancel();
+    fetcher->close();
     fetcher.reset();
 }
 
@@ -496,6 +501,10 @@ state_machine_t::migrate(std::shared_ptr<state_t> desired) {
 
 void
 state_machine_t::close(std::error_code ec) {
+    if (closed.exchange(true)) {
+        return;
+    }
+
     if (ec) {
         migrate(std::make_shared<broken_t>(ec));
     }

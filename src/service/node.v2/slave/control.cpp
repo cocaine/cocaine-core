@@ -43,10 +43,9 @@ control_t::cancel() {
 
 void
 control_t::discard(const std::error_code& ec) const {
-    if (ec) {
-        COCAINE_LOG_DEBUG(slave->log, "control channel has been discarded: %s", ec.message());
-        slave->close(ec);
-    }
+    COCAINE_LOG_DEBUG(slave->log, "control channel has been discarded: %s", ec.message());
+
+    slave->close(ec);
 }
 
 void
