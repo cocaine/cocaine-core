@@ -48,7 +48,7 @@ public:
         if (watcher.is_open()) {
             COCAINE_LOG_TRACE(slave->log, "slave has cancelled fetching standard output");
 
-            watcher.cancel();
+            watcher.close();
         }
     }
 
