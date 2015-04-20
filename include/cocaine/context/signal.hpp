@@ -69,7 +69,7 @@ template<class Tag>
 struct event_visitor:
     public boost::static_visitor<void>
 {
-    event_visitor(const std::shared_ptr<dispatch<Tag>>& slot_, asio::io_service& asio_):
+    event_visitor(const std::shared_ptr<const dispatch<Tag>>& slot_, asio::io_service& asio_):
         slot(slot_),
         asio(asio_)
     { }
@@ -85,7 +85,7 @@ struct event_visitor:
     }
 
 private:
-    const std::shared_ptr<dispatch<Tag>>& slot;
+    const std::shared_ptr<const dispatch<Tag>>& slot;
     asio::io_service& asio;
 };
 
@@ -96,7 +96,7 @@ class retroactive_signal {
     typedef typename io::make_frozen_over<Tag>::type variant_type;
 
     struct subscriber_t {
-        std::weak_ptr<dispatch<Tag>> slot;
+        std::weak_ptr<const dispatch<Tag>> slot;
         asio::io_service& asio;
     };
 
@@ -106,7 +106,7 @@ class retroactive_signal {
 
 public:
     void
-    listen(const std::shared_ptr<dispatch<Tag>>& slot, asio::io_service& asio) {
+    listen(const std::shared_ptr<const dispatch<Tag>>& slot, asio::io_service& asio) {
         subscribers->push_back(subscriber_t{slot, asio});
 
         auto ptr     = history.synchronize();
