@@ -25,8 +25,13 @@ public:
     on_pool();
 
 private:
+    /// Tries to clear the queue by assigning tasks to slaves.
     void
-    rebalance();
+    purge();
+
+    /// Tries to spawn/despawn appropriate number of slaves.
+    void
+    balance();
 };
 
 }

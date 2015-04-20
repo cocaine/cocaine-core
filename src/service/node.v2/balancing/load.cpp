@@ -45,6 +45,13 @@ struct available {
     const size_t max;
 };
 
+template<typename T>
+inline constexpr
+const T&
+bound(const T& min, const T& value, const T& max) {
+    return std::max(min, std::min(value, max));
+}
+
 }
 
 void
@@ -58,26 +65,38 @@ load_balancer_t::on_request(const std::string&, const std::string& /*id*/) {
 
     auto pool = overseer->get_pool();
 
+    // If there are no slaves - spawn it.
     if (pool->empty()) {
         overseer->spawn(pool);
         return nullptr;
     }
 
-    return nullptr;
+    // Otherwise find an active slave with minimum load.
+    auto it = ::min_element_if(pool->begin(), pool->end(), load(), available {
+        overseer->profile.concurrency
+    });
+
+    // If all slaves are busy - just delay processing.
+    if (it == pool->end()) {
+        return nullptr;
+    }
+
+    // Otherwise return the slave.
+    return &it->second;
 }
 
 void
 load_balancer_t::on_queue() {
-    rebalance();
+    balance();
 }
 
 void
 load_balancer_t::on_pool() {
-    rebalance();
+    purge();
 }
 
 void
-load_balancer_t::rebalance() {
+load_balancer_t::purge() {
     BOOST_ASSERT(overseer);
 
     auto pool = overseer->get_pool();
@@ -100,5 +119,27 @@ load_balancer_t::rebalance() {
         queue->pop();
 
         overseer->assign(it->second, payload);
+    }
+}
+
+void
+load_balancer_t::balance() {
+    auto pool = overseer->get_pool();
+    auto queue = overseer->get_queue();
+
+    const auto& profile = overseer->profile;
+
+    if (pool->size() >= profile.pool_limit || pool->size() * profile.grow_threshold >= queue->size()) {
+        return;
+    }
+
+    const auto target = ::bound(1UL, queue->size() / profile.grow_threshold, profile.pool_limit);
+
+    if (target <= pool->size()) {
+        return;
+    }
+
+    while(pool->size() != target) {
+        overseer->spawn(pool);
     }
 }

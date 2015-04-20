@@ -121,11 +121,15 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstrea
 
     if (auto slave = balancer->on_request(event, id)) {
         auto stream = slave->inject(std::make_shared<const worker_client_dispatch_t>(upstream));
+        COCAINE_LOG_TRACE(log, "found a slave with load %d", slave->load());
+
         stream->send<io::worker::rpc::invoke>(event);
 
         dispatch->attach(std::make_shared<
             cocaine::upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(stream));
     } else {
+        COCAINE_LOG_TRACE(log, "all slaves are busy - delaying the event");
+
         queue->push({ event, id, dispatch, std::move(upstream) });
 
         balancer->on_queue();
