@@ -16,7 +16,8 @@ class worker_client_dispatch_t:
     upstream<tag> stream;
 
 public:
-    explicit worker_client_dispatch_t(upstream<io::event_traits<io::app::enqueue>::upstream_type>& stream);
+    explicit worker_client_dispatch_t(upstream<io::event_traits<io::app::enqueue>::upstream_type>& stream,
+                                      std::function<void()> callback);
 };
 
 }

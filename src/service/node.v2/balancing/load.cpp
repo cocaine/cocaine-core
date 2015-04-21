@@ -31,15 +31,15 @@ struct load {
     template<class T>
     bool
     operator()(const T& lhs, const T& rhs) const {
-        return lhs.second.load() < rhs.second.load();
+        return lhs.second.load < rhs.second.load;
     }
 };
 
 struct available {
     template<class T>
     bool
-    operator()(const T& slave) const {
-        return slave.second.active() && slave.second.load() < max;
+    operator()(const T& it) const {
+        return it.second.slave.active() && it.second.load < max;
     }
 
     const size_t max;
@@ -54,12 +54,16 @@ bound(const T& min, const T& value, const T& max) {
 
 }
 
+load_balancer_t::load_balancer_t() :
+    counter(0)
+{}
+
 void
 load_balancer_t::attach(std::shared_ptr<overseer_t> overseer) {
     this->overseer = overseer;
 }
 
-slave_t*
+load_balancer_t::slave_info
 load_balancer_t::on_request(const std::string&, const std::string& /*id*/) {
     BOOST_ASSERT(overseer);
 
@@ -68,7 +72,7 @@ load_balancer_t::on_request(const std::string&, const std::string& /*id*/) {
     // If there are no slaves - spawn it.
     if (pool->empty()) {
         overseer->spawn(pool);
-        return nullptr;
+        return slave_info();
     }
 
     // Otherwise find an active slave with minimum load.
@@ -78,11 +82,22 @@ load_balancer_t::on_request(const std::string&, const std::string& /*id*/) {
 
     // If all slaves are busy - just delay processing.
     if (it == pool->end()) {
-        return nullptr;
+        return slave_info();
     }
 
     // Otherwise return the slave.
-    return &it->second;
+    return slave_info { &it->second, it->first, it->second.load };
+}
+
+void
+load_balancer_t::on_slave_spawn(const std::string& /*uuid*/) {
+    COCAINE_LOG_TRACE(overseer->log, "slave has been added to balancer");
+    purge();
+}
+
+void
+load_balancer_t::on_slave_death(const std::string& /*uuid*/) {
+    COCAINE_LOG_TRACE(overseer->log, "slave has been removed from balancer");
 }
 
 void
@@ -90,9 +105,19 @@ load_balancer_t::on_queue() {
     balance();
 }
 
+std::uint64_t
+load_balancer_t::on_channel_started(const std::string& /*uuid*/) {
+    const auto channel = ++counter;
+    COCAINE_LOG_DEBUG(overseer->log, "slave has started processing new %d channel", channel);
+
+    return channel;
+}
+
 void
-load_balancer_t::on_pool() {
-    purge();
+load_balancer_t::on_channel_finished(const std::string /*uuid*/, std::uint64_t channel) {
+    COCAINE_LOG_DEBUG(overseer->log, "slave has closed its %d channel", channel);
+
+    balance();
 }
 
 void
@@ -118,7 +143,7 @@ load_balancer_t::purge() {
         auto payload = std::move(queue->front());
         queue->pop();
 
-        overseer->assign(it->second, payload);
+        overseer->assign(it->first, it->second, payload);
     }
 }
 

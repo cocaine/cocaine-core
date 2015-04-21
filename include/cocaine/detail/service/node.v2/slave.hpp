@@ -14,6 +14,7 @@
 #include "cocaine/api/isolate.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/idl/rpc.hpp"
+#include "cocaine/idl/node.hpp"
 
 #include "cocaine/detail/unique_id.hpp"
 #include "cocaine/detail/service/node/manifest.hpp"
@@ -27,6 +28,12 @@
 namespace cocaine {
 
 class control_t;
+
+typedef std::shared_ptr<
+    const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>
+> inject_dispatch_ptr_t;
+
+typedef std::function<void()> close_callback;
 
 struct slave_context {
     context_t&  context;
@@ -96,7 +103,7 @@ public:
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 
     io::upstream_ptr_t
-    inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> d);
+    inject(inject_dispatch_ptr_t dispatch);
 
 private:
     void
@@ -130,14 +137,11 @@ public:
     bool
     active() const noexcept;
 
-    size_t
-    load() const noexcept;
-
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 
     io::upstream_ptr_t
-    inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> d);
+    inject(inject_dispatch_ptr_t dispatch);
 };
 
 }

@@ -42,6 +42,39 @@ namespace ph = std::placeholders;
 /// Helper trait to deduce type in compile-time. Use deduce<T>::show().
 template<class T> class deduce;
 
+struct channel_watcher_t {
+    std::function<void()> cb;
+
+    channel_watcher_t(std::function<void()> cb) : cb(cb) {}
+
+    void
+    close_tx() {
+        BOOST_ASSERT(!tx_closed);
+        tx_closed = true;
+
+        check();
+    }
+
+    void
+    close_rx() {
+        BOOST_ASSERT(!rx_closed);
+        rx_closed = true;
+
+        check();
+    }
+
+private:
+    bool rx_closed = false;
+    bool tx_closed = false;
+
+    void
+    check() {
+        if (tx_closed && rx_closed) {
+            cb();
+        }
+    }
+};
+
 /// Initial dispatch for slaves.
 ///
 /// Accepts only handshake messages and forwards it to the actual checker (i.e. to the Overseer).
@@ -88,7 +121,6 @@ overseer_t::overseer_t(context_t& context,
     context(context),
     name(manifest.name),
     loop(loop),
-    balancer(std::move(balancer)),
     manifest(manifest),
     profile(profile)
 {}
@@ -118,19 +150,16 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstrea
                     const std::string& event,
                     const std::string& id) {
     auto dispatch = std::make_shared<streaming_dispatch_t>(manifest.name);
+    auto payload = queue_value { event, id, dispatch, std::move(upstream) };
 
     if (auto slave = balancer->on_request(event, id)) {
-        auto stream = slave->inject(std::make_shared<const worker_client_dispatch_t>(upstream));
-        COCAINE_LOG_TRACE(log, "found a slave with load %d", slave->load());
+        COCAINE_LOG_TRACE(log, "found a slave with load %d", slave.load);
 
-        stream->send<io::worker::rpc::invoke>(event);
-
-        dispatch->attach(std::make_shared<
-            cocaine::upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(stream));
+        assign(slave.id, *slave.slave, payload);
     } else {
         COCAINE_LOG_TRACE(log, "all slaves are busy - delaying the event");
 
-        queue->push({ event, id, dispatch, std::move(upstream) });
+        queue->push(payload);
 
         balancer->on_queue();
     }
@@ -158,7 +187,7 @@ overseer_t::handshaker() {
 
             COCAINE_LOG_DEBUG(log, "activating slave");
             try {
-                return it->second.activate(session, std::move(stream));
+                return it->second.slave.activate(session, std::move(stream));
             } catch (const std::exception& err) {
                 // The slave can be in invalid state; broken, for example, or because the
                 // overseer is overloaded. In fact I hope it never happens.
@@ -172,7 +201,7 @@ overseer_t::handshaker() {
         });
 
         if (control) {
-            balancer->on_pool();
+            balancer->on_slave_spawn(uuid);
         }
 
         return control;
@@ -202,16 +231,42 @@ overseer_t::spawn(locked_ptr<pool_type>& pool) {
         }
 
         this->pool->erase(uuid);
+        this->balancer->on_slave_death(uuid);
     }));
 }
 
 void
-overseer_t::assign(slave_t& slave, queue_value& payload) {
-    auto stream = slave.inject(std::make_shared<const worker_client_dispatch_t>(payload.upstream));
+overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& payload) {
+    const auto channel = balancer->on_channel_started(id);
+
+    auto watcher = std::make_shared<channel_watcher_t>([=]{
+        pool.apply([=](pool_type& pool){
+            auto it = pool.find(id);
+            if (it == pool.end()) {
+                return;
+            }
+
+            it->second.load--;
+        });
+
+        balancer->on_channel_finished(id, channel);
+    });
+
+    auto dispatch = std::make_shared<const worker_client_dispatch_t>(
+        payload.upstream,
+        std::bind(&channel_watcher_t::close_rx, watcher)
+    );
+
+    slave.load++;
+    auto stream = slave.slave.inject(dispatch);
     stream->send<io::worker::rpc::invoke>(payload.event);
 
-    payload.dispatch->attach(std::make_shared<
-        cocaine::upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>>(stream));
+    payload.dispatch->attach(
+        std::make_shared<
+            cocaine::upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>
+        >(stream),
+        std::bind(&channel_watcher_t::close_tx, watcher)
+    );
 }
 
 void

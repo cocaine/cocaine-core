@@ -17,6 +17,17 @@ struct profile_t;
 
 namespace cocaine {
 
+struct slave_handler_t {
+    slave_t slave;
+    std::uint64_t load;
+
+    template<class... Args>
+    slave_handler_t(Args&&... args) :
+        slave(std::forward<Args>(args)...),
+        load(0)
+    {}
+};
+
 class unix_actor_t;
 class overseer_t;
 class slave_t;
@@ -31,13 +42,39 @@ class overseer_t;
 
 class balancer_t {
 public:
-    // TODO: Use signals?
+    struct slave_info {
+        slave_handler_t* slave;
+        std::string id;
+        std::uint64_t load;
+
+        slave_info() :
+            slave(nullptr),
+            load(0)
+        {}
+
+        slave_info(slave_handler_t* slave, std::string id, std::uint64_t load) :
+            slave(slave),
+            id(std::move(id)),
+            load(load)
+        {}
+
+        operator bool() { return slave != nullptr; }
+    };
+
     virtual
     void
     attach(std::shared_ptr<overseer_t>) = 0;
 
     virtual
-    slave_t*
+    void
+    on_slave_spawn(const std::string& uuid) = 0;
+
+    virtual
+    void
+    on_slave_death(const std::string& uuid) = 0;
+
+    virtual
+    slave_info
     on_request(const std::string& event, const std::string& id) = 0;
 
     virtual
@@ -45,16 +82,12 @@ public:
     on_queue() = 0;
 
     virtual
-    void
-    on_pool() = 0;
+    std::uint64_t
+    on_channel_started(const std::string& uuid) = 0;
 
     virtual
     void
-    on_channel_started(/*uuid*/) {}
-
-    virtual
-    void
-    on_channel_finished(/*uuid*/) {}
+    on_channel_finished(const std::string uuid, std::uint64_t channel) = 0;
 };
 
 class overseer_t:
@@ -72,7 +105,7 @@ public:
     std::shared_ptr<asio::io_service> loop;
 
     /// Slave pool.
-    typedef std::unordered_map<std::string, slave_t> pool_type;
+    typedef std::unordered_map<std::string, slave_handler_t> pool_type;
     synchronized<pool_type> pool;
 
     /// Pending queue.
@@ -148,7 +181,7 @@ public:
 
     /// \warning must be called under pool & queue lock.
     void
-    assign(slave_t& slave, queue_value& payload);
+    assign(const std::string& id, slave_handler_t& slave, queue_value& payload);
 
     /// Closes the worker from new requests
     /// Then calls the overlord to send terminate event. Start timer.

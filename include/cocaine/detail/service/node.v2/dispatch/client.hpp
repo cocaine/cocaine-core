@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "cocaine/forwards.hpp"
 #include "cocaine/rpc/dispatch.hpp"
 
@@ -16,12 +18,16 @@ class streaming_dispatch_t:
     typedef io::protocol<tag>::scope protocol;
 
     streamed<std::string> stream;
+    std::function<void()> callback;
+    std::mutex mutex;
+    bool closed;
 
 public:
     explicit streaming_dispatch_t(const std::string& name);
 
     void
-    attach(std::shared_ptr<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> stream);
+    attach(std::shared_ptr<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> stream,
+           std::function<void()> callback);
 };
 
 }

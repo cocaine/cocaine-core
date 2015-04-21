@@ -5,7 +5,8 @@ namespace ph = std::placeholders;
 using namespace cocaine;
 
 streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
-    dispatch<tag>(name)
+    dispatch<tag>(name),
+    closed(false)
 {
     on<protocol::chunk>([&](const std::string& chunk){
         stream.write(chunk);
@@ -13,14 +14,34 @@ streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
 
     on<protocol::error>([&](int id, const std::string& reason){
         stream.abort(id, reason);
+
+        std::lock_guard<std::mutex> lock(mutex);
+        BOOST_ASSERT(!closed);
+
+        closed = true;
+        callback();
     });
 
     on<protocol::choke>([&]{
         stream.close();
+
+        std::lock_guard<std::mutex> lock(mutex);
+        BOOST_ASSERT(!closed);
+
+        closed = true;
+        callback();
     });
 }
 
 void
-streaming_dispatch_t::attach(std::shared_ptr<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> stream) {
+streaming_dispatch_t::attach(std::shared_ptr<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> stream,
+                             std::function<void()> callback) {
     this->stream.attach(std::move(*stream));
+
+    std::lock_guard<std::mutex> lock(mutex);
+    if (closed) {
+        callback();
+    } else {
+        this->callback = callback;
+    }
 }

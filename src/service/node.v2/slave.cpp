@@ -7,6 +7,7 @@
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
 #include "cocaine/detail/service/node.v2/slave/control.hpp"
+#include "cocaine/detail/service/node.v2/dispatch/worker.hpp"
 #include "cocaine/detail/service/node.v2/util.hpp"
 
 namespace ph = std::placeholders;
@@ -117,7 +118,7 @@ public:
 
     virtual
     io::upstream_ptr_t
-    inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> /*dispatch*/) {
+    inject(inject_dispatch_ptr_t /*dispatch*/) {
         throw std::system_error(error::invalid_state, format("invalid state (%s)", name()));
     }
 };
@@ -170,8 +171,8 @@ public:
 
     virtual
     io::upstream_ptr_t
-    inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> d) {
-        return session->inject(std::move(d));
+    inject(inject_dispatch_ptr_t dispatch) override {
+        return session->inject(dispatch);
     }
 
     void
@@ -470,8 +471,8 @@ state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worke
 }
 
 io::upstream_ptr_t
-state_machine_t::inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> d) {
-    return (*state.synchronize())->inject(std::move(d));
+state_machine_t::inject(inject_dispatch_ptr_t dispatch) {
+    return (*state.synchronize())->inject(std::move(dispatch));
 }
 
 void
@@ -529,13 +530,6 @@ slave_t::active() const noexcept {
     return machine->active();
 }
 
-size_t
-slave_t::load() const noexcept {
-    BOOST_ASSERT(machine);
-
-    return machine->load();
-}
-
 std::shared_ptr<control_t>
 slave_t::activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream) {
     BOOST_ASSERT(machine);
@@ -544,9 +538,9 @@ slave_t::activate(std::shared_ptr<session_t> session, upstream<io::worker::contr
 }
 
 io::upstream_ptr_t
-slave_t::inject(std::shared_ptr<const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> d) {
+slave_t::inject(inject_dispatch_ptr_t dispatch) {
     BOOST_ASSERT(machine);
 
-    return machine->inject(std::move(d));
+    return machine->inject(std::move(dispatch));
 }
 
