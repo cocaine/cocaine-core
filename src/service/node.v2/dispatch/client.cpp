@@ -5,7 +5,8 @@ namespace ph = std::placeholders;
 using namespace cocaine;
 
 streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
-    dispatch<tag>(name),
+    dispatch<tag>(format("C => W(%s)", name)),
+    attached(false),
     closed(false)
 {
     on<protocol::chunk>([&](const std::string& chunk){
@@ -19,7 +20,9 @@ streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
         BOOST_ASSERT(!closed);
 
         closed = true;
-        callback();
+        if (attached) {
+            callback();
+        }
     });
 
     on<protocol::choke>([&]{
@@ -29,7 +32,9 @@ streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
         BOOST_ASSERT(!closed);
 
         closed = true;
-        callback();
+        if (attached) {
+            callback();
+        }
     });
 }
 
@@ -42,6 +47,7 @@ streaming_dispatch_t::attach(std::shared_ptr<upstream<io::event_traits<io::worke
     if (closed) {
         callback();
     } else {
+        attached = true;
         this->callback = callback;
     }
 }

@@ -20,6 +20,7 @@ class streaming_dispatch_t:
     streamed<std::string> stream;
     std::function<void()> callback;
     std::mutex mutex;
+    bool attached;
     bool closed;
 
 public:

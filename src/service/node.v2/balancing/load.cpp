@@ -117,7 +117,7 @@ void
 load_balancer_t::on_channel_finished(const std::string /*uuid*/, std::uint64_t channel) {
     COCAINE_LOG_DEBUG(overseer->log, "slave has closed its %d channel", channel);
 
-    balance();
+    purge();
 }
 
 void

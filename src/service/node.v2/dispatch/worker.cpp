@@ -4,8 +4,8 @@ using namespace cocaine;
 
 worker_client_dispatch_t::worker_client_dispatch_t(upstream<io::event_traits<io::app::enqueue>::upstream_type>& stream_,
                                                    std::function<void()> callback):
-    dispatch<tag>("w->c"),
-    stream(stream_)
+    dispatch<tag>("W => C"),
+    stream(std::move(stream_))
 {
     on<protocol::chunk>([&](const std::string& chunk){
         stream = stream.send<protocol::chunk>(chunk);
