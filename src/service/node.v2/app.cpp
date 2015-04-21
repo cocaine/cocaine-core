@@ -22,6 +22,7 @@
 
 #include "cocaine/detail/service/node.v2/actor.hpp"
 #include "cocaine/detail/service/node.v2/balancing/load.hpp"
+#include "cocaine/detail/service/node.v2/balancing/null.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/client.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/handshaker.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/hostess.hpp"
@@ -101,9 +102,12 @@ overseer_t::get_queue() {
 }
 
 void
-overseer_t::attach(std::shared_ptr<balancer_t> balancer) {
-    balancer->attach(shared_from_this());
-    this->balancer = std::move(balancer);
+overseer_t::balance(std::unique_ptr<balancer_t> balancer) {
+    if (balancer) {
+        this->balancer = std::move(balancer);
+    } else {
+        this->balancer.reset(new null_balancer_t);
+    }
 }
 
 std::shared_ptr<streaming_dispatch_t>
@@ -282,13 +286,14 @@ private:
 };
 
 /// Represents a single application. Starts TCP and UNIX servers.
-app_t::app_t(context_t& context, const std::string& manifest, const std::string& profile) :
-    context(context),
-    log(context.log(format("app/%s", manifest))),
-    manifest(new manifest_t(context, manifest)),
-    profile(new profile_t(context, profile)),
+app_t::app_t(context_t& context_, const std::string& manifest_, const std::string& profile_) :
+    context(context_),
+    log(context.log(format("app/%s", manifest_))),
+    manifest(new manifest_t(context, manifest_)),
+    profile(new profile_t(context, profile_)),
     loop(std::make_shared<asio::io_service>())
 {
+    COCAINE_LOG_TRACE(log, "getting an isolation handler from the plugin");
     auto isolate = context.get<api::isolate_t>(
         this->profile->isolate.type,
         context,
@@ -297,36 +302,20 @@ app_t::app_t(context_t& context, const std::string& manifest, const std::string&
     );
 
     // TODO: Start the service immediately, but set its state to `spooling` or somethinh else.
-    // While in this state it can serve requests, but always return `invalid state` error.
+    // Do not publish the service until it started.
+    COCAINE_LOG_TRACE(log, "spooling");
     if(this->manifest->source() != cached<dynamic_t>::sources::cache) {
         isolate->spool();
     }
 
-    start();
-}
-
-app_t::~app_t() {
-    COCAINE_LOG_DEBUG(log, "removing application service from the context");
-    // TODO: Anounce all opened sessions to be closed (and sockets). But how? For now I've hacked
-    // it using weak_ptr.
-
-    balancer->attach(nullptr);
-
-    context.remove(manifest->name)->prototype().discard(std::error_code());
-
-    engine->terminate();
-}
-
-void app_t::start() {
-    // Load balancer.
-    balancer = std::make_shared<load_balancer_t>();
-
-    // Create an overseer - a thing, that watches the event queue and has an ability to spawn or
-    // despawn slaves.
+    // Create the Overseer - slaves spawner/despawner plus the event queue dispatcher.
     overseer.reset(new overseer_t(context, *manifest, *profile, loop));
-    overseer->attach(balancer);
 
-    // Create an TCP server.
+    // Create the event balancer.
+    overseer->balance(std::make_unique<load_balancer_t>(overseer));
+
+    // Create a TCP server and publish it.
+    COCAINE_LOG_TRACE(log, "publishing application service with the context");
     context.insert(manifest->name, std::make_unique<actor_t>(
         context,
         loop,
@@ -334,6 +323,7 @@ void app_t::start() {
     ));
 
     // Create an unix actor and bind to {manifest->name}.{int} unix-socket.
+    COCAINE_LOG_TRACE(log, "publishing Worker service");
     engine.reset(new unix_actor_t(
         context,
         manifest->endpoint,
@@ -345,4 +335,14 @@ void app_t::start() {
         std::make_unique<hostess_t>(manifest->name)
     ));
     engine->run();
+}
+
+app_t::~app_t() {
+    COCAINE_LOG_TRACE(log, "removing application service from the context");
+
+    overseer->balance();
+
+    context.remove(manifest->name)->prototype().discard(std::error_code());
+
+    engine->terminate();
 }

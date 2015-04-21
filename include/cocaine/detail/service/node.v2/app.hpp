@@ -5,6 +5,7 @@
 #include "cocaine/context.hpp"
 #include "cocaine/idl/node.hpp"
 
+#include "cocaine/detail/service/node.v2/balancing/base.hpp"
 #include "cocaine/detail/service/node.v2/slot.hpp"
 #include "cocaine/detail/service/node.v2/slave.hpp"
 
@@ -39,56 +40,6 @@ class streaming_dispatch_t;
 namespace cocaine {
 
 class overseer_t;
-
-class balancer_t {
-public:
-    struct slave_info {
-        slave_handler_t* slave;
-        std::string id;
-        std::uint64_t load;
-
-        slave_info() :
-            slave(nullptr),
-            load(0)
-        {}
-
-        slave_info(slave_handler_t* slave, std::string id, std::uint64_t load) :
-            slave(slave),
-            id(std::move(id)),
-            load(load)
-        {}
-
-        operator bool() { return slave != nullptr; }
-    };
-
-    virtual
-    void
-    attach(std::shared_ptr<overseer_t>) = 0;
-
-    virtual
-    void
-    on_slave_spawn(const std::string& uuid) = 0;
-
-    virtual
-    void
-    on_slave_death(const std::string& uuid) = 0;
-
-    virtual
-    slave_info
-    on_request(const std::string& event, const std::string& id) = 0;
-
-    virtual
-    void
-    on_queue() = 0;
-
-    virtual
-    std::uint64_t
-    on_channel_started(const std::string& uuid) = 0;
-
-    virtual
-    void
-    on_channel_finished(const std::string uuid, std::uint64_t channel) = 0;
-};
 
 class overseer_t:
     public std::enable_shared_from_this<overseer_t>
@@ -137,7 +88,7 @@ public:
     get_queue();
 
     void
-    attach(std::shared_ptr<balancer_t> balancer);
+    balance(std::unique_ptr<balancer_t> balancer = nullptr);
 
     /// If uuid provided - find uuid in pool.
     ///  - found - attach without balancer.
@@ -205,7 +156,6 @@ class app_t {
     std::shared_ptr<asio::io_service> loop;
     std::unique_ptr<unix_actor_t> engine;
     std::shared_ptr<overseer_t> overseer;
-    std::shared_ptr<balancer_t> balancer;
 
 public:
     app_t(context_t& context, const std::string& manifest, const std::string& profile);

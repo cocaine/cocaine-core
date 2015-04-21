@@ -1,5 +1,7 @@
 #include "cocaine/detail/service/node.v2/balancing/load.hpp"
 
+#include "cocaine/detail/service/node.v2/app.hpp"
+
 using namespace cocaine;
 
 namespace {
@@ -54,16 +56,12 @@ bound(const T& min, const T& value, const T& max) {
 
 }
 
-load_balancer_t::load_balancer_t() :
+load_balancer_t::load_balancer_t(std::shared_ptr<overseer_t> overseer):
+    balancer_t(std::move(overseer)),
     counter(0)
 {}
 
-void
-load_balancer_t::attach(std::shared_ptr<overseer_t> overseer) {
-    this->overseer = overseer;
-}
-
-load_balancer_t::slave_info
+slave_info
 load_balancer_t::on_request(const std::string&, const std::string& /*id*/) {
     BOOST_ASSERT(overseer);
 
@@ -114,7 +112,7 @@ load_balancer_t::on_channel_started(const std::string& /*uuid*/) {
 }
 
 void
-load_balancer_t::on_channel_finished(const std::string /*uuid*/, std::uint64_t channel) {
+load_balancer_t::on_channel_finished(const std::string& /*uuid*/, std::uint64_t channel) {
     COCAINE_LOG_DEBUG(overseer->log, "slave has closed its %d channel", channel);
 
     purge();
