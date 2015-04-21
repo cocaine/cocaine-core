@@ -112,14 +112,15 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/logging.cpp
 
     src/service/node.cpp
-    src/service/node.v2/app.cpp
     src/service/node.v2/actor.cpp
+    src/service/node.v2/app.cpp
+    src/service/node.v2/balancing/load.cpp
+    src/service/node.v2/dispatch/client.cpp
+    src/service/node.v2/dispatch/worker.cpp
+    src/service/node.v2/overseer.cpp
     src/service/node.v2/slave.cpp
     src/service/node.v2/slave/control.cpp
     src/service/node.v2/slave/error.cpp
-    src/service/node.v2/dispatch/client.cpp
-    src/service/node.v2/dispatch/worker.cpp
-    src/service/node.v2/balancing/load.cpp
 
     src/service/node/manifest.cpp
     src/service/node/profile.cpp
