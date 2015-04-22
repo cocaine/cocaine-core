@@ -39,6 +39,9 @@ public:
     {}
 
     virtual
+    ~balancer_t() {}
+
+    virtual
     void
     on_slave_spawn(const std::string& uuid) = 0;
 

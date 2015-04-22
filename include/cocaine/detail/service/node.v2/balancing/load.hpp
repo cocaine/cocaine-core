@@ -4,14 +4,6 @@
 
 namespace cocaine {
 
-struct pair_hash {
-public:
-    template<typename T, typename U>
-    std::size_t operator()(const std::tuple<T, U>& x) const {
-        return std::hash<T>()(std::get<0>(x)) ^ std::hash<U>()(std::get<1>(x));
-    }
-};
-
 class load_balancer_t:
     public balancer_t
 {
