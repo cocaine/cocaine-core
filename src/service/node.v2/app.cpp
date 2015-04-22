@@ -123,7 +123,7 @@ app_t::~app_t() {
 
     overseer->balance();
 
-    context.remove(manifest->name)->prototype().discard(std::error_code());
+    context.remove(manifest->name);
 
     engine->terminate();
 }

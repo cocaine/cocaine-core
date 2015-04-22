@@ -178,14 +178,12 @@ context_t::remove(const std::string& name) {
         }
 
         service = std::move(it->second);
-        service->terminate();
-
-        COCAINE_LOG_DEBUG(m_logger, "service has been stopped")(
-            "service", name
-        );
 
         list.erase(it);
     });
+
+    COCAINE_LOG_DEBUG(m_logger, "service has been stopped")("service", name);
+    service->terminate();
 
     // Service is already terminated, so there's no reason to try to get its endpoints.
     std::vector<asio::ip::tcp::endpoint> nothing;
