@@ -23,6 +23,8 @@
 
 #include "cocaine/rpc/protocol.hpp"
 
+#include "cocaine/forwards.hpp"
+
 #include <blackhole/attribute.hpp>
 
 namespace cocaine { namespace io {

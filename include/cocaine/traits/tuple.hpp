@@ -21,6 +21,7 @@
 #ifndef COCAINE_TYPELIST_SERIALIZATION_TRAITS_HPP
 #define COCAINE_TYPELIST_SERIALIZATION_TRAITS_HPP
 
+#include "cocaine/common.hpp"
 #include "cocaine/traits.hpp"
 
 #include "cocaine/platform.hpp"

@@ -23,6 +23,9 @@
 
 #include "cocaine/rpc/protocol.hpp"
 
+#include <string>
+#include <vector>
+
 namespace cocaine { namespace io {
 
 struct storage_tag;

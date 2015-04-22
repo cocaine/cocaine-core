@@ -23,6 +23,7 @@
 
 #include "cocaine/errors.hpp"
 
+#include "cocaine/common.hpp"
 #include "cocaine/trace/trace.hpp"
 
 #include <functional>
@@ -77,7 +78,7 @@ public:
             if(!ec) {
                 m_rx_offset += bytes_decoded;
             }
-            return m_channel->get_io_service().post(tracer::bind("message_handle", handle, ec));
+            return m_channel->get_io_service().post(tracer::bind("message_read_handle", handle, ec));
         }
 
         if(m_rx_offset) {

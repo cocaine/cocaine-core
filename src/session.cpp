@@ -155,17 +155,6 @@ public:
 
     dispatch_ptr_t dispatch;
     upstream_ptr_t upstream;
-    tracer::span_ptr_t trace_span;
-
-    inline void
-    set_trace_span(tracer::span_ptr_t span) {
-        trace_span = std::move(span);
-    }
-
-    inline  tracer::span_ptr_t
-    get_trace_span() {
-        return trace_span;
-    }
 };
 
 // Session
@@ -184,6 +173,10 @@ session_t::session_t(std::unique_ptr<logging::log_t> log_,
 void
 session_t::handle(const decoder_t::message_type& message) {
     const channel_map_t::key_type channel_id = message.span();
+    tracer::trace_restore_scope_t trace_scope;
+    if(message.trace_id() != 0) {
+        trace_scope.restore("sr", prototype->name(), message.trace_id(), message.span_id(), message.parent_id());
+    }
     const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {
         channel_map_t::const_iterator lb, ub;
 
@@ -202,20 +195,7 @@ session_t::handle(const decoder_t::message_type& message) {
                 prototype,
                 std::make_shared<basic_upstream_t>(shared_from_this(), channel_id)
             )});
-
-            //Ugliest hack
-            if(prototype->name() != "logging") {
-                tracer::restore(prototype->name(), message.trace_id(), message.span_id(), message.parent_id());
-                blackhole::scoped_attributes_t attr(*log, tracer::current_span()->attributes());
-                COCAINE_LOG_INFO(log, "sr");
-                lb->second->set_trace_span(tracer::current_span());
-            }
             max_channel_id = channel_id;
-        }
-        else {
-            tracer::restore(lb->second->get_trace_span());
-            blackhole::scoped_attributes_t attr(*log, tracer::current_span()->attributes());
-            COCAINE_LOG_INFO(log, "cr");
         }
 
         // NOTE: The virtual channel pointer is copied here to avoid data races.
@@ -240,7 +220,6 @@ session_t::handle(const decoder_t::message_type& message) {
         // session::detach(), which was called during the dispatch::process().
         if(!channel.unique()) revoke(channel_id);
     }
-    tracer::reset();
 }
 
 upstream_ptr_t
