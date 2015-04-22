@@ -330,43 +330,21 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         m_gateway = m_context.get<api::gateway_t>(type, m_context, name + ":gateway", args);
     }
 
-    context.listen(m_signals, asio);
-
     // It's here to keep the reference alive.
     const auto storage = api::storage(m_context, "core");
 
     try {
-        const auto groups = storage->find("groups", std::vector<std::string>({
-            "group",
-            "active"
-        }));
-
-        if(groups.empty()) return;
-
-        std::ostringstream stream;
-        std::ostream_iterator<char> builder(stream);
-
-        boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", groups);
-
-        COCAINE_LOG_INFO(m_log, "populating %d routing group(s): %s", groups.size(), stream.str());
-
-        for(auto it = groups.begin(); it != groups.end(); ++it) {
-            std::unique_ptr<logging::log_t> log = context.log(name, {
-                attribute::make("rg", *it)
-            });
-
-            m_rgs.unsafe().insert({
-                *it,
-                continuum_t(std::move(log), storage->get<continuum_t::stored_type>("groups", *it))
-            });
-        }
-    } catch(const storage_error_t& e) {
+        const auto groups = storage->find("groups", std::vector<std::string>({"group", "active"}));
+        on_refresh(groups);
+    } catch(const std::exception& e) {
 #if defined(HAVE_GCC48)
         std::throw_with_nested(cocaine::error_t("unable to initialize routing groups"));
 #else
         throw cocaine::error_t("unable to initialize routing groups");
 #endif
     }
+
+    context.listen(m_signals, asio);
 }
 
 locator_t::~locator_t() {
@@ -549,13 +527,13 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
 
         if(lb == ub) return;
 
-        std::unique_ptr<logging::log_t> log_ptr = m_context.log(m_cfg.name, {
+        auto group_log = std::make_unique<logging::log_t>(*m_log, attribute::set_t({
             attribute::make("rg", *it)
-        });
+        }));
 
-        COCAINE_LOG_INFO(log_ptr, "routing group %s", lb != ub ? "updated" : "removed");
+        COCAINE_LOG_INFO(group_log, "routing group %s", lb != ub ? "updated" : "removed");
 
-        mapping.insert({*it, continuum_t(std::move(log_ptr), lb->second)});
+        mapping.insert({*it, continuum_t(std::move(group_log), lb->second)});
     });
 
     typedef std::vector<std::string> ruid_vector_t;
