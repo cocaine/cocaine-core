@@ -14,21 +14,29 @@ namespace cocaine {
 class streaming_dispatch_t:
     public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
 {
-    typedef io::event_traits<io::app::enqueue>::dispatch_type tag;
-    typedef io::protocol<tag>::scope protocol;
+    typedef io::event_traits<io::app::enqueue>::dispatch_type incoming_tag;
+    typedef io::event_traits<io::worker::rpc::invoke>::dispatch_type outcoming_tag;
+    typedef io::protocol<incoming_tag>::scope protocol;
 
+    /// Upstream to the worker.
     streamed<std::string> stream;
-    std::function<void()> callback;
+
+    /// On close callback.
+    boost::optional<std::function<void()>> close;
+
     std::mutex mutex;
-    bool attached;
     bool closed;
 
 public:
-    explicit streaming_dispatch_t(const std::string& name);
+    explicit
+    streaming_dispatch_t(const std::string& name);
 
     void
-    attach(std::shared_ptr<upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>> stream,
-           std::function<void()> callback);
+    attach(std::shared_ptr<upstream<outcoming_tag>> stream, std::function<void()> close);
+
+private:
+    void
+    notify();
 };
 
 }

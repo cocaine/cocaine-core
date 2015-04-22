@@ -66,7 +66,9 @@ overseer_t::overseer_t(context_t& context,
     loop(loop),
     manifest(manifest),
     profile(profile)
-{}
+{
+    COCAINE_LOG_TRACE(log, "overseer has been initialized");
+}
 
 overseer_t::~overseer_t() {
     COCAINE_LOG_TRACE(log, "overseer has been destroyed");
@@ -94,8 +96,10 @@ overseer_t::balance(std::unique_ptr<balancer_t> balancer) {
 std::shared_ptr<streaming_dispatch_t>
 overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstream,
                     const std::string& event,
-                    const std::string& id) {
+                    const std::string& id)
+{
     auto dispatch = std::make_shared<streaming_dispatch_t>(manifest.name);
+
     auto payload = queue_value { event, id, dispatch, std::move(upstream) };
 
     if (auto slave = balancer->on_request(event, id)) {
