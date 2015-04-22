@@ -50,11 +50,6 @@ public:
         COCAINE_LOG_TRACE(log, "app dispatch has been destroyed");
     }
 
-    void
-    discard(const std::error_code& ec) const {
-        COCAINE_LOG_TRACE(log, "app dispatch has been discarded: %s", ec.message());
-    }
-
 private:
     std::shared_ptr<const slot_type::dispatch_type>
     on_enqueue(slot_type::upstream_type& upstream , const std::string& event, const std::string& id) {
@@ -80,7 +75,6 @@ app_t::app_t(context_t& context_, const std::string& manifest_, const std::strin
     profile(new profile_t(context, profile_)),
     loop(std::make_shared<asio::io_service>())
 {
-    COCAINE_LOG_TRACE(log, "getting an isolation handler from the plugin");
     auto isolate = context.get<api::isolate_t>(
         this->profile->isolate.type,
         context,
