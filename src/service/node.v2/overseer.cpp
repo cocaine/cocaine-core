@@ -215,6 +215,5 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
     );
 }
 
-
 void
 overseer_t::despawn(std::string, bool /*graceful*/) {}

@@ -30,7 +30,7 @@ class app_dispatch_t:
 {
     typedef io::streaming_slot<io::app::enqueue> slot_type;
 
-    std::unique_ptr<logging::log_t> log;
+    const std::unique_ptr<logging::log_t> log;
 
     // Yes, weak pointer here indicates about application destruction.
     std::weak_ptr<overseer_t> overseer;
@@ -39,7 +39,7 @@ public:
     app_dispatch_t(context_t& context, const std::string& name, std::shared_ptr<overseer_t> overseer) :
         dispatch<io::app_tag>(name),
         log(context.log(format("%s/dispatch", name))),
-        overseer(overseer)
+        overseer(std::move(overseer))
     {
         on<io::app::enqueue>(std::make_shared<slot_type>(
             std::bind(&app_dispatch_t::on_enqueue, this, ph::_1, ph::_2, ph::_3)
@@ -59,9 +59,13 @@ private:
             return overseer->enqueue(upstream, event, id);
         } else {
             // TODO: Assign error code instead of magic.
+            const int ec = 42;
+            const std::string reason("the application has been closed");
+
             upstream.send<
                 io::protocol<io::event_traits<io::app::enqueue>::dispatch_type>::scope::error
-            >(42, std::string("the application has been closed"));
+            >(ec, reason);
+
             return nullptr;
         }
     }
