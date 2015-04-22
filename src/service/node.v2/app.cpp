@@ -38,7 +38,7 @@ class app_dispatch_t:
 public:
     app_dispatch_t(context_t& context, const std::string& name, std::shared_ptr<overseer_t> overseer) :
         dispatch<io::app_tag>(name),
-        log(context.log(format("app/%s/dispatch", name))),
+        log(context.log(format("%s/dispatch", name))),
         overseer(overseer)
     {
         on<io::app::enqueue>(std::make_shared<slot_type>(
@@ -70,7 +70,7 @@ private:
 /// Represents a single application. Starts TCP and UNIX servers.
 app_t::app_t(context_t& context_, const std::string& manifest_, const std::string& profile_) :
     context(context_),
-    log(context.log(format("app/%s", manifest_))),
+    log(context.log(format("%s/app", manifest_))),
     manifest(new manifest_t(context, manifest_)),
     profile(new profile_t(context, profile_)),
     loop(std::make_shared<asio::io_service>())

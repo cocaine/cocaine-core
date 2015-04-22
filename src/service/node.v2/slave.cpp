@@ -415,7 +415,7 @@ public:
 };
 
 state_machine_t::state_machine_t(slave_context ctx, asio::io_service& loop, cleanup_handler cleanup):
-    log(ctx.context.log(format("slave/%s", ctx.manifest.name), {{ "uuid", ctx.id }})),
+    log(ctx.context.log(format("%s/slave", ctx.manifest.name), {{ "uuid", ctx.id }})),
     context(ctx),
     loop(loop),
     cleanup(std::move(cleanup)),

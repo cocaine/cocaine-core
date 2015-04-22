@@ -5,7 +5,7 @@ namespace ph = std::placeholders;
 using namespace cocaine;
 
 streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
-    dispatch<tag>(format("C => W(%s)", name)),
+    dispatch<tag>(format("%s/C2W", name)),
     attached(false),
     closed(false)
 {

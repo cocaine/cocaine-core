@@ -2,9 +2,10 @@
 
 using namespace cocaine;
 
-worker_client_dispatch_t::worker_client_dispatch_t(upstream<io::event_traits<io::app::enqueue>::upstream_type>& stream_,
-                                                   std::function<void()> callback):
-    dispatch<tag>("W => C"),
+worker_client_dispatch_t::worker_client_dispatch_t(
+        upstream<io::event_traits<io::app::enqueue>::upstream_type>& stream_,
+        std::function<void()> callback):
+    dispatch<tag>("W2C"),
     stream(std::move(stream_))
 {
     on<protocol::chunk>([&](const std::string& chunk){
