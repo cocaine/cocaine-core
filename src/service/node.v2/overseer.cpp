@@ -212,9 +212,7 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
     stream->send<io::worker::rpc::invoke>(payload.event);
 
     payload.dispatch->attach(
-        std::make_shared<
-            cocaine::upstream<io::event_traits<io::worker::rpc::invoke>::dispatch_type>
-        >(stream),
+        std::move(stream),
         std::bind(&channel_watcher_t::close_tx, watcher)
     );
 }

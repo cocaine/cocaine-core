@@ -24,8 +24,8 @@ streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
 }
 
 void
-streaming_dispatch_t::attach(std::shared_ptr<upstream<outcoming_tag>> stream, std::function<void()> close) {
-    this->stream.attach(std::move(*stream));
+streaming_dispatch_t::attach(upstream<outcoming_tag> stream, std::function<void()> close) {
+    this->stream.attach(std::move(stream));
 
     std::lock_guard<std::mutex> lock(mutex);
     if (closed) {

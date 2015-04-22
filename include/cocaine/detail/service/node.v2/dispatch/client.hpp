@@ -32,7 +32,7 @@ public:
     streaming_dispatch_t(const std::string& name);
 
     void
-    attach(std::shared_ptr<upstream<outcoming_tag>> stream, std::function<void()> close);
+    attach(upstream<outcoming_tag> stream, std::function<void()> close);
 
 private:
     void
