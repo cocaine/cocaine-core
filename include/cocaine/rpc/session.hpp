@@ -59,8 +59,10 @@ class session_t:
     // Virtual channels.
     synchronized<channel_map_t> channels;
 
-    // The maximum channel id processed by the session. The session assumes that ids of incoming
-    // channels are strongly increasing and discards messages with old channel ids.
+    // The maximum channel id processed by the session. Checking whether channel id is always higher
+    // than the previous channel id is similar to an infinite TIME_WAIT timeout for TCP sockets. It
+    // might be not the best approach, but since we have 2^64 possible channel ids, and not 2^16 TCP
+    // ports available to us, it's good enough.
     uint64_t max_channel_id;
 
 public:
@@ -68,15 +70,24 @@ public:
               std::unique_ptr<io::channel<protocol_type>> transport,
               const io::dispatch_ptr_t& prototype);
 
-    // Operations
+    // Observers
 
     auto
-    inject(const io::dispatch_ptr_t& dispatch) -> io::upstream_ptr_t;
+    active_channels() const -> std::map<uint64_t, std::string>;
 
-    void
-    revoke(uint64_t channel_id);
+    size_t
+    memory_pressure() const;
 
-    // Channel I/O
+    auto
+    name() const -> std::string;
+
+    auto
+    remote_endpoint() const -> protocol_type::endpoint;
+
+    // Modifiers
+
+    auto
+    fork(const io::dispatch_ptr_t& dispatch) -> io::upstream_ptr_t;
 
     void
     pull();
@@ -92,23 +103,17 @@ public:
     void
     detach(const std::error_code& ec);
 
-    // Information
-
-    auto
-    active_channels() const -> std::map<uint64_t, std::string>;
-
-    size_t
-    memory_pressure() const;
-
-    auto
-    name() const -> std::string;
-
-    auto
-    remote_endpoint() const -> protocol_type::endpoint;
-
 private:
     void
-    invoke(const io::decoder_t::message_type& message);
+    handle(const io::decoder_t::message_type& message);
+
+    // NOTE: The revocation happens to channel id only, not the upstream itself. It means that while
+    // some channel might be revoked during message handling, it only prohibit new incoming messages
+    // from being processed, but shared upstreams still can be used by services to send new outgoing
+    // messages to remote peers.
+
+    void
+    revoke(uint64_t channel_id);
 };
 
 } // namespace cocaine

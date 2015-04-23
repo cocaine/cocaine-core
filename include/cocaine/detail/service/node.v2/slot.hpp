@@ -4,6 +4,8 @@
 
 namespace cocaine { namespace io {
 
+template<class T> struct deduce;
+
 template<class Event>
 class streaming_slot:
     public io::basic_slot<Event>
@@ -21,7 +23,7 @@ public:
             mpl::back_inserter<
                 mpl::vector<
                     std::shared_ptr<const dispatch_type>,
-                    typename std::add_lvalue_reference<upstream_type>::type
+                    typename std::add_rvalue_reference<upstream_type>::type
                 >
             >
         >::type
@@ -40,7 +42,7 @@ public:
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& upstream) override {
-        return cocaine::tuple::invoke(std::tuple_cat(std::tie(upstream), std::move(args)), fn);
+        return cocaine::tuple::invoke(std::tuple_cat(std::forward_as_tuple(std::move(upstream)), std::move(args)), fn);
     }
 };
 

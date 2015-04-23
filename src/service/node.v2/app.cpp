@@ -52,11 +52,11 @@ public:
 
 private:
     std::shared_ptr<const slot_type::dispatch_type>
-    on_enqueue(slot_type::upstream_type& upstream , const std::string& event, const std::string& id) {
+    on_enqueue(slot_type::upstream_type&& upstream , const std::string& event, const std::string& id) {
         COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event", event);
 
         if (auto overseer = this->overseer.lock()) {
-            return overseer->enqueue(upstream, event, id);
+            return overseer->enqueue(std::move(upstream), event, id);
         } else {
             // TODO: Assign error code instead of magic.
             const int ec = 42;

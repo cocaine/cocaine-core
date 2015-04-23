@@ -91,7 +91,7 @@ execution_unit_t::gc_action_t::finalize(const std::error_code& ec) {
     }
 
     if(recycled) {
-        COCAINE_LOG_DEBUG(parent->m_log, "recycled %llu session(s)", recycled);
+        COCAINE_LOG_DEBUG(parent->m_log, "recycled %d session(s)", recycled);
     }
 
     operator()();
@@ -131,6 +131,13 @@ execution_unit_t::~execution_unit_t() {
 
 template<class Socket>
 std::shared_ptr<session_t>
+execution_unit_t::attach(std::unique_ptr<Socket> ptr, const io::dispatch_ptr_t& dispatch) {
+    auto socket = std::shared_ptr<Socket>(std::move(ptr));
+    return attach(socket, dispatch);
+}
+
+template<class Socket>
+std::shared_ptr<session_t>
 execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_ptr_t& dispatch) {
     int socket;
 
@@ -165,19 +172,19 @@ execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_
                     ptr->remote_endpoint() :
                     endpoint
             )),
-            attribute::make("service",  dispatch->name())
+            attribute::make("service",  dispatch ? dispatch->name() : "<none>"),
         }));
 
         COCAINE_LOG_DEBUG(session_log, "attached connection to engine, load: %.2f%%", utilization() * 100);
 
-        // Create the new inactive session.
+        // Create a new inactive session.
         session = std::make_shared<session_t>(std::move(session_log), std::move(channel), dispatch);
     } catch(const std::system_error& e) {
         throw std::system_error(e.code(), "client has disappeared while creating session");
     }
 
-    m_asio->dispatch([=]() {
-        m_sessions.insert({socket, session}).first->second->pull();
+    m_asio->dispatch([=]() mutable {
+        (m_sessions[socket] = std::move(session))->pull();
     });
 
     return session;
@@ -187,6 +194,10 @@ double
 execution_unit_t::utilization() const {
     return m_chamber->load_avg1();
 }
+
+template
+std::shared_ptr<session_t>
+execution_unit_t::attach(std::unique_ptr<tcp::socket>, const io::dispatch_ptr_t&);
 
 template
 std::shared_ptr<session_t>

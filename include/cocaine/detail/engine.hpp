@@ -61,6 +61,10 @@ public:
 
     template<class Socket>
     std::shared_ptr<session_t>
+    attach(std::unique_ptr<Socket> ptr, const io::dispatch_ptr_t& dispatch);
+
+    template<class Socket>
+    std::shared_ptr<session_t>
     attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
     double

@@ -81,7 +81,7 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
     if(const auto ptr = *session->transport.synchronize()) {
 #endif
         try {
-            session->invoke(message);
+            session->handle(message);
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(session->log, "uncaught invocation exception - %s", e.what());
 
@@ -165,7 +165,7 @@ session_t::session_t(std::unique_ptr<logging::log_t> log_,
 // Operations
 
 void
-session_t::invoke(const decoder_t::message_type& message) {
+session_t::handle(const decoder_t::message_type& message) {
     const channel_map_t::key_type channel_id = message.span();
 
     const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {
@@ -175,9 +175,6 @@ session_t::invoke(const decoder_t::message_type& message) {
 
         if(lb == ub) {
             if(channel_id <= max_channel_id) {
-                // NOTE: Checking whether channel number is always higher than the previous channel
-                // number is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be
-                // not the best approach, but since we have 2^64 possible channels it's good enough.
                 throw cocaine::error_t("specified channel id was revoked");
             }
 
@@ -189,9 +186,7 @@ session_t::invoke(const decoder_t::message_type& message) {
             max_channel_id = channel_id;
         }
 
-        // NOTE: The virtual channel pointer is copied here so that if the slot decides to close the
-        // virtual channel, it won't destroy it inside this function. Instead, it will be destroyed
-        // when this function scope is exited.
+        // NOTE: The virtual channel pointer is copied here to avoid data races.
         return lb->second;
     });
 
@@ -199,7 +194,7 @@ session_t::invoke(const decoder_t::message_type& message) {
         throw cocaine::error_t("no dispatch has been assigned");
     }
 
-    COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
+    COCAINE_LOG_DEBUG(log, "handling %d: '%s' message in channel %d, dispatch: '%s'",
         message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
         channel->dispatch->name());
 
@@ -207,18 +202,19 @@ session_t::invoke(const decoder_t::message_type& message) {
         .get_value_or(channel->dispatch)) == nullptr)
     {
         // NOTE: If the client has sent us the last message according to our dispatch graph, revoke
-        // the channel. No-op if the channel is no longer in the mapping (e.g., was discarded).
+        // the channel. No-op if the channel is no longer in the mapping, e.g., was discarded during
+        // session::detach(), which was called during the dispatch::process().
         if(!channel.unique()) revoke(channel_id);
     }
 }
 
 upstream_ptr_t
-session_t::inject(const dispatch_ptr_t& dispatch) {
+session_t::fork(const dispatch_ptr_t& dispatch) {
     return channels.apply([&](channel_map_t& mapping) -> upstream_ptr_t {
         const auto channel_id = ++max_channel_id;
         const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
-        COCAINE_LOG_DEBUG(log, "injection in channel %llu, dispatch: '%s'", channel_id,
+        COCAINE_LOG_DEBUG(log, "forking new channel %d, dispatch: '%s'", channel_id,
             dispatch ? dispatch->name() : "<none>");
 
         if(dispatch) {
@@ -239,8 +235,13 @@ session_t::revoke(uint64_t channel_id) {
         // NOTE: Not sure if that can ever happen, but that's why people use asserts, right?
         BOOST_ASSERT(it != mapping.end());
 
-        COCAINE_LOG_DEBUG(log, "revocation of channel %llu, dispatch: '%s'", channel_id,
-            it->second->dispatch ? it->second->dispatch->name() : "<none>");
+        if(it->second->dispatch) {
+            COCAINE_LOG_ERROR(log, "revoking channel %d with dispatch: '%s'", channel_id,
+                it->second->dispatch->name());
+            it->second->dispatch->discard(std::error_code());
+        } else {
+            COCAINE_LOG_DEBUG(log, "revoking channel %d", channel_id);
+        }
 
         mapping.erase(it);
     });
@@ -263,7 +264,7 @@ session_t::detach(const std::error_code& ec) {
         if(mapping.empty()) {
             return;
         } else {
-            COCAINE_LOG_DEBUG(log, "discarding %llu channel dispatch(es)", mapping.size());
+            COCAINE_LOG_DEBUG(log, "discarding %d channel dispatch(es)", mapping.size());
         }
 
         for(auto it = mapping.begin(); it != mapping.end(); ++it) {

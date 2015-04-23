@@ -67,9 +67,8 @@ actor_t::accept_action_t::operator()() {
             return;
         }
 
-        using namespace std::placeholders;
-
-        ptr->async_accept(socket, std::bind(&accept_action_t::finalize, shared_from_this(), _1));
+        ptr->async_accept(socket, std::bind(&accept_action_t::finalize, shared_from_this(),
+            std::placeholders::_1));
     });
 }
 

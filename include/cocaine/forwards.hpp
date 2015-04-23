@@ -96,10 +96,12 @@ typedef blackhole::wrapper_t<logger_t> log_t;
 
 }} // namespace cocaine::logging
 
+#ifdef COCAINE_ALLOW_RAFT
 namespace cocaine { namespace raft {
 
 class repository_t;
 
 }} // namesapce cocaine::raft
+#endif
 
 #endif

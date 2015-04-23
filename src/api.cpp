@@ -69,18 +69,12 @@ basic_client_t::remote_endpoint() const {
 }
 
 void
-basic_client_t::attach(std::unique_ptr<logging::log_t> log, std::unique_ptr<tcp::socket> socket) {
+basic_client_t::attach(const std::shared_ptr<session_t>& session) {
     if(m_session) {
         throw cocaine::error_t("client is already connected");
     }
 
-    m_session = std::make_shared<session_t>(
-        std::move(log),
-        std::make_unique<io::channel<generic::stream_protocol>>(std::move(socket)),
-        nullptr
-    );
-
-    m_session->pull();
+    m_session = session;
 }
 
 namespace cocaine { namespace api {

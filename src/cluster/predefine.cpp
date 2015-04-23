@@ -20,8 +20,13 @@
 
 #include "cocaine/detail/cluster/predefine.hpp"
 
+
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
+
+#include "cocaine/traits/endpoint.hpp"
+#include "cocaine/traits/graph.hpp"
+#include "cocaine/traits/vector.hpp"
 
 #include <boost/spirit/include/karma_generate.hpp>
 #include <boost/spirit/include/karma_list.hpp>
@@ -33,11 +38,12 @@
 using namespace asio;
 using namespace asio::ip;
 
+using namespace cocaine::io;
 using namespace cocaine::cluster;
 
-namespace cocaine {
-
 namespace ph = std::placeholders;
+
+namespace cocaine {
 
 template<>
 struct dynamic_converter<predefine_cfg_t> {
@@ -106,8 +112,10 @@ predefine_t::predefine_t(context_t& context, interface& locator, const std::stri
         );
     }
 
-    m_timer.expires_from_now(m_cfg.interval);
-    m_timer.async_wait(std::bind(&predefine_t::on_announce, this, ph::_1));
+    m_signals = std::make_shared<dispatch<context_tag>>(name);
+    m_signals->on<context::prepared>(std::bind(&predefine_t::on_announce, this, std::error_code()));
+
+    context.listen(m_signals, m_locator.asio());
 }
 
 predefine_t::~predefine_t() {

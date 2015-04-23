@@ -46,10 +46,14 @@ namespace cocaine { namespace engine {
 
 class engine_t;
 
+}}
+
+namespace cocaine {
+
 struct manifest_t;
 struct profile_t;
 
-}} // namespace cocaine::engine
+} // namespace cocaine::engine
 
 namespace cocaine {
 
@@ -61,8 +65,8 @@ class app_t {
     const std::unique_ptr<logging::log_t> m_log;
 
     // Configuration.
-    std::unique_ptr<const engine::manifest_t> m_manifest;
-    std::unique_ptr<const engine::profile_t> m_profile;
+    std::unique_ptr<const manifest_t> m_manifest;
+    std::unique_ptr<const profile_t> m_profile;
 
     // IO.
     std::shared_ptr<asio::io_service> m_asio;

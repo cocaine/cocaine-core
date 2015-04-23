@@ -33,8 +33,8 @@ struct cluster_t {
 
     struct interface {
         virtual
-        asio::io_service&
-        asio() = 0;
+        auto
+        asio() -> asio::io_service& = 0;
 
         virtual
         void
@@ -45,8 +45,8 @@ struct cluster_t {
         drop_node(const std::string& uuid) = 0;
 
         virtual
-        std::string
-        uuid() const = 0;
+        auto
+        uuid() const -> std::string = 0;
     };
 
     virtual

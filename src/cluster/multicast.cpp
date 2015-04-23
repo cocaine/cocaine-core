@@ -23,9 +23,11 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
+#include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/actor.hpp"
 
 #include "cocaine/traits/endpoint.hpp"
+#include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/tuple.hpp"
 #include "cocaine/traits/vector.hpp"
 
@@ -35,11 +37,12 @@
 using namespace asio;
 using namespace asio::ip;
 
+using namespace cocaine::io;
 using namespace cocaine::cluster;
 
-namespace cocaine {
-
 namespace ph = std::placeholders;
+
+namespace cocaine {
 
 template<>
 struct dynamic_converter<address> {
@@ -133,8 +136,10 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
         std::bind(&multicast_t::on_receive, this, ph::_1, ph::_2, announce)
     );
 
-    m_timer.expires_from_now(m_cfg.interval);
-    m_timer.async_wait(std::bind(&multicast_t::on_publish, this, ph::_1));
+    m_signals = std::make_shared<dispatch<context_tag>>(name);
+    m_signals->on<context::prepared>(std::bind(&multicast_t::on_publish, this, std::error_code()));
+
+    context.listen(m_signals, m_locator.asio());
 }
 
 multicast_t::~multicast_t() {
@@ -171,7 +176,7 @@ multicast_t::on_publish(const std::error_code& ec) {
         msgpack::sbuffer target;
         msgpack::packer<msgpack::sbuffer> packer(target);
 
-        io::type_traits<announce_t::tuple_type>::pack(packer, std::make_tuple(
+        type_traits<announce_t::tuple_type>::pack(packer, std::forward_as_tuple(
             m_locator.uuid(),
             endpoints
         ));
@@ -218,7 +223,7 @@ multicast_t::on_receive(const std::error_code& ec, size_t bytes_received,
     std::vector<tcp::endpoint> endpoints;
 
     try {
-        io::type_traits<announce_t::tuple_type>::unpack(unpacked.get(), std::tie(uuid, endpoints));
+        type_traits<announce_t::tuple_type>::unpack(unpacked.get(), std::tie(uuid, endpoints));
     } catch(const msgpack::type_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to decode announce: %s", e.what());
         return;

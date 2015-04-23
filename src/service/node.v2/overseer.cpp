@@ -94,7 +94,7 @@ overseer_t::balance(std::unique_ptr<balancer_t> balancer) {
 }
 
 std::shared_ptr<streaming_dispatch_t>
-overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstream,
+overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstream,
                     const std::string& event,
                     const std::string& id)
 {
@@ -121,7 +121,7 @@ io::dispatch_ptr_t
 overseer_t::handshaker() {
     return std::make_shared<const handshaker_t>(
         name,
-        [=](upstream<io::worker::control_tag>& stream, const std::string& uuid,
+        [=](upstream<io::worker::control_tag>&& stream, const std::string& uuid,
             std::shared_ptr<session_t> session) -> std::shared_ptr<control_t>
     {
         scoped_attributes_t holder(*log, {{ "uuid", uuid }});

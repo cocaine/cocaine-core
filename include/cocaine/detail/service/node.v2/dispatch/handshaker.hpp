@@ -32,14 +32,14 @@ public:
         typedef io::streaming_slot<io::worker::handshake> slot_type;
 
         on<io::worker::handshake>(std::make_shared<slot_type>(
-            [=](slot_type::upstream_type& stream, const std::string& uuid) -> std::shared_ptr<control_t>
+            [=](slot_type::upstream_type&& stream, const std::string& uuid) -> std::shared_ptr<control_t>
         {
             std::unique_lock<std::mutex> lock(mutex);
             if (!session) {
                 cv.wait(lock);
             }
 
-            return fn(stream, uuid, std::move(session));
+            return fn(std::move(stream), uuid, std::move(session));
         }));
     }
 

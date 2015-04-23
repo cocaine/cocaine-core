@@ -37,10 +37,10 @@ adhoc_t::~adhoc_t() {
 }
 
 auto
-adhoc_t::resolve(const std::string& name) const -> metadata_t {
-    remote_service_map_t::const_iterator lb, ub;
+adhoc_t::resolve(const partition_t& name) const -> std::vector<asio::ip::tcp::endpoint> {
+    remote_map_t::const_iterator lb, ub;
 
-    auto ptr = m_remote_services.synchronize();
+    auto ptr = m_remotes.synchronize();
 
     if(!ptr->count(name)) {
         throw std::system_error(error::service_not_available);
@@ -52,39 +52,51 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
     std::advance(lb, distribution(m_random_generator));
 
     COCAINE_LOG_DEBUG(m_log, "providing service using remote actor")(
-        "service", name,
-        "uuid",    lb->second.uuid
+        "uuid", lb->second.uuid
     );
 
-    return lb->second.info;
+    return lb->second.endpoints;
 }
 
-void
-adhoc_t::consume(const std::string& uuid, const std::string& name, const metadata_t& info) {
-    m_remote_services->insert({
+size_t
+adhoc_t::consume(const std::string& uuid,
+                 const partition_t& name, const std::vector<asio::ip::tcp::endpoint>& endpoints)
+{
+    auto ptr = m_remotes.synchronize();
+
+    ptr->insert({
         name,
-        remote_service_t{uuid, info}
+        remote_t{uuid, endpoints}
     });
 
-    COCAINE_LOG_DEBUG(m_log, "adding '%s' backend '%s'", name, uuid);
+    COCAINE_LOG_DEBUG(m_log, "registering destination with %d endpoints", endpoints.size())(
+        "service", std::get<0>(name),
+        "uuid", uuid,
+        "version", std::get<1>(name)
+    );
+
+    return ptr->count(name);
 }
 
-void
-adhoc_t::cleanup(const std::string& uuid, const std::string& name) {
-    remote_service_map_t::iterator it, end;
+size_t
+adhoc_t::cleanup(const std::string& uuid, const partition_t& name) {
+    remote_map_t::const_iterator lb, ub;
 
-    auto ptr = m_remote_services.synchronize();
+    auto ptr = m_remotes.synchronize();
 
-    // Only one remote will match the specified arguments.
-    std::tie(it, end) = ptr->equal_range(name);
+    // Narrow search to the specified service partition.
+    std::tie(lb, ub) = ptr->equal_range(name);
 
-    while(it != end) {
-        if(it->second.uuid != uuid) {
-            it++;
-        } else {
-            it = ptr->erase(it);
-        }
-    }
+    // Since UUIDs are unique, only one remote will match the specified UUID.
+    auto it = std::find_if(lb, ub, [&uuid](const remote_map_t::value_type& value) -> bool {
+        return value.second.uuid == uuid;
+    });
 
-    COCAINE_LOG_DEBUG(m_log, "erased '%s' backend '%s'", name, uuid);
+    COCAINE_LOG_DEBUG(m_log, "removing destination with %d endpoints", it->second.endpoints.size())(
+        "service", std::get<0>(name),
+        "uuid", uuid,
+        "version", std::get<1>(name)
+    );
+
+    ptr->erase(it); return ptr->count(name);
 }

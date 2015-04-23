@@ -97,7 +97,7 @@ public:
     /// \param upstream represents the client <- worker stream.
     /// \param event an invocation event name.
     std::shared_ptr<streaming_dispatch_t>
-    enqueue(io::streaming_slot<io::app::enqueue>::upstream_type& upstream,
+    enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstream,
             const std::string& event,
             const std::string& id);
 

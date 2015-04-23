@@ -26,7 +26,6 @@
 
 #include <asio/ip/address.hpp>
 
-#define BOOST_BIND_NO_PLACEHOLDERS
 #include <blackhole/blackhole.hpp>
 
 namespace cocaine {

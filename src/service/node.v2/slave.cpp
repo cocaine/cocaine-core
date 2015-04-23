@@ -172,7 +172,7 @@ public:
     virtual
     io::upstream_ptr_t
     inject(inject_dispatch_ptr_t dispatch) override {
-        return session->inject(dispatch);
+        return session->fork(dispatch);
     }
 
     void
