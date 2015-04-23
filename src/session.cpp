@@ -194,7 +194,7 @@ session_t::handle(const decoder_t::message_type& message) {
         throw cocaine::error_t("no dispatch has been assigned");
     }
 
-    COCAINE_LOG_DEBUG(log, "handling %llu: '%s' message in channel %llu, dispatch: '%s'",
+    COCAINE_LOG_DEBUG(log, "handling %d: '%s' message in channel %d, dispatch: '%s'",
         message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
         channel->dispatch->name());
 
@@ -214,7 +214,7 @@ session_t::fork(const dispatch_ptr_t& dispatch) {
         const auto channel_id = ++max_channel_id;
         const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
-        COCAINE_LOG_DEBUG(log, "forking new channel %llu, dispatch: '%s'", channel_id,
+        COCAINE_LOG_DEBUG(log, "forking new channel %d, dispatch: '%s'", channel_id,
             dispatch ? dispatch->name() : "<none>");
 
         if(dispatch) {
@@ -236,11 +236,11 @@ session_t::revoke(uint64_t channel_id) {
         BOOST_ASSERT(it != mapping.end());
 
         if(it->second->dispatch) {
-            COCAINE_LOG_ERROR(log, "revoking channel %llu with dispatch: '%s'", channel_id,
+            COCAINE_LOG_ERROR(log, "revoking channel %d with dispatch: '%s'", channel_id,
                 it->second->dispatch->name());
             it->second->dispatch->discard(std::error_code());
         } else {
-            COCAINE_LOG_DEBUG(log, "revoking channel %llu", channel_id);
+            COCAINE_LOG_DEBUG(log, "revoking channel %d", channel_id);
         }
 
         mapping.erase(it);
@@ -264,7 +264,7 @@ session_t::detach(const std::error_code& ec) {
         if(mapping.empty()) {
             return;
         } else {
-            COCAINE_LOG_DEBUG(log, "discarding %llu channel dispatch(es)", mapping.size());
+            COCAINE_LOG_DEBUG(log, "discarding %d channel dispatch(es)", mapping.size());
         }
 
         for(auto it = mapping.begin(); it != mapping.end(); ++it) {

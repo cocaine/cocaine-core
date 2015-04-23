@@ -277,5 +277,7 @@ context_t::bootstrap() {
         COCAINE_LOG_ERROR(m_logger, "emergency core shutdown");
 
         throw cocaine::error_t("couldn't start %d service(s)", errored.size());
+    } else {
+        m_signals.invoke<context::prepared>();
     }
 }

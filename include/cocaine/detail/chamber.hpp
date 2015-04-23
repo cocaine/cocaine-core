@@ -30,7 +30,6 @@
 #include <asio/deadline_timer.hpp>
 #include <asio/io_service.hpp>
 
-#define BOOST_BIND_NO_PLACEHOLDERS
 #include <boost/thread/thread.hpp>
 
 namespace cocaine { namespace io {

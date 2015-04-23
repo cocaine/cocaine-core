@@ -72,7 +72,7 @@ class locator_t:
     public dispatch<io::locator_tag>
 {
     class remote_t;
-    class expose_slot_t;
+    class publish_slot_t;
 
     typedef std::map<std::string, continuum_t> rg_map_t;
 
@@ -113,13 +113,13 @@ class locator_t:
     synchronized<client_map_t> m_clients;
 
     // Snapshot of the cluster service disposition. Synchronized with incoming streams.
-    std::map<std::string, partition_view_t> m_protocol;
+    std::map<std::string, partition_view_t> m_aggregate;
 
     // Outgoing remote locator streams indexed by node uuid.
     synchronized<remote_map_t> m_remotes;
 
     // Snapshot of the local service disposition. Synchronized with outgoing remote streams.
-    std::map<std::string, results::resolve> m_snapshot;
+    std::map<std::string, results::resolve> m_snapshots;
 
     // Outgoing router streams indexed by some arbitrary router-provided uuid.
     synchronized<router_map_t> m_routers;
@@ -172,8 +172,10 @@ private:
 
     // Context signals
 
+    enum class modes { exposed, removed };
+
     void
-    on_service(const std::string& name, const results::resolve& meta, bool active);
+    on_service(const std::string& name, const results::resolve& meta, modes mode);
 
     void
     on_context_shutdown();

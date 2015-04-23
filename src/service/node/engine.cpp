@@ -530,7 +530,7 @@ engine_t::migrate(states target) {
     if(!m_queue.empty()) {
         COCAINE_LOG_DEBUG(
             m_log,
-            "dropping %llu incomplete session(s) due to the engine state migration",
+            "dropping %d incomplete session(s) due to the engine state migration",
             m_queue.size()
         );
 

@@ -564,7 +564,7 @@ slave_t::terminate(int code, const std::string& reason) {
     m_state = states::inactive;
 
     if(!m_sessions.empty()) {
-        COCAINE_LOG_WARNING(m_log, "slave %s dropping %llu sessions", m_id, m_sessions.size());
+        COCAINE_LOG_WARNING(m_log, "slave %s dropping %d sessions", m_id, m_sessions.size());
         for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
             try {
                 it->second->upstream->error(error::resource_error, reason);

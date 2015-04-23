@@ -23,7 +23,7 @@
 
 #include "cocaine/traits.hpp"
 
-#include "boost/optional.hpp"
+#include <boost/optional.hpp>
 
 namespace cocaine { namespace io {
 

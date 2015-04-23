@@ -111,11 +111,11 @@ struct cluster {
     >::tag upstream_type;
 };
 
-struct expose_tag;
+struct publish_tag;
 
-struct expose {
+struct publish {
     struct discard {
-        typedef locator::expose_tag tag;
+        typedef locator::publish_tag tag;
 
         static const char* alias() {
             return "discard";
@@ -125,17 +125,19 @@ struct expose {
     };
 
     typedef locator_tag tag;
-    typedef locator::expose_tag dispatch_type;
+    typedef locator::publish_tag dispatch_type;
 
     static const char* alias() {
-        return "expose";
+        return "publish";
     }
 
     typedef boost::mpl::list<
-     /* The alias of the service to be impersonated. */
+     /* The name of the external service to be published. */
         std::string,
-     /* Endpoints of the service to be impersonated. */
-        std::vector<asio::ip::tcp::endpoint>
+     /* External service endpoints. */
+        std::vector<asio::ip::tcp::endpoint>,
+     /* Service metadata, if the external service is using native protocol. */
+        optional<std::tuple<unsigned int, graph_root_t>>
     >::type argument_type;
 };
 
@@ -170,7 +172,7 @@ struct protocol<locator_tag> {
         locator::connect,
         locator::refresh,
         locator::cluster,
-        locator::expose,
+        locator::publish,
         locator::routing
     >::type messages;
 
@@ -178,13 +180,13 @@ struct protocol<locator_tag> {
 };
 
 template<>
-struct protocol<locator::expose_tag> {
+struct protocol<locator::publish_tag> {
     typedef boost::mpl::int_<
         1
     >::type version;
 
     typedef boost::mpl::list<
-        locator::expose::discard
+        locator::publish::discard
     >::type messages;
 };
 

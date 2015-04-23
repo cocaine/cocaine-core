@@ -23,6 +23,8 @@
 
 #include "cocaine/api/cluster.hpp"
 
+#include "cocaine/idl/context.hpp"
+
 #include <asio/deadline_timer.hpp>
 #include <asio/ip/tcp.hpp>
 
@@ -51,6 +53,9 @@ class predefine_t:
 
     // Simply try linking the whole predefined list every timer tick.
     asio::deadline_timer m_timer;
+
+    // Signal to handle context ready event
+    std::shared_ptr<dispatch<io::context_tag>> m_signals;
 
 public:
     predefine_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args);

@@ -59,7 +59,7 @@ archive_t::archive_t(context_t& context, const std::string& archive):
         throw archive_error_t(m_archive);
     }
 
-    COCAINE_LOG_INFO(m_log, "compression: %s, size: %llu bytes", type(), archive.size());
+    COCAINE_LOG_INFO(m_log, "compression: %s, size: %d bytes", type(), archive.size());
 }
 
 archive_t::~archive_t() {

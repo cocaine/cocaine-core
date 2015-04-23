@@ -95,7 +95,7 @@ template<class Tag>
 class dispatch:
     public io::basic_dispatch_t
 {
-    static const io::graph_root_t kGraph;
+    static const io::graph_root_t kProtocol;
 
     // Slot construction
 
@@ -151,7 +151,7 @@ public:
     virtual
     auto
     root() const -> const io::graph_root_t& {
-        return kGraph;
+        return kProtocol;
     }
 
     virtual
@@ -168,7 +168,7 @@ public:
 };
 
 template<class Tag>
-const io::graph_root_t dispatch<Tag>::kGraph = io::traverse<Tag>().get();
+const io::graph_root_t dispatch<Tag>::kProtocol = io::traverse<Tag>().get();
 
 namespace aux {
 

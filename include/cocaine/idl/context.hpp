@@ -31,6 +31,17 @@ struct context_tag;
 
 struct context {
 
+struct prepared {
+    typedef context_tag tag;
+    typedef context_tag dispatch_type;
+
+    static const char* alias() {
+        return "prepared";
+    }
+
+    typedef void upstream_type;
+};
+
 struct shutdown {
     typedef context_tag tag;
     typedef context_tag dispatch_type;
@@ -85,6 +96,8 @@ struct protocol<context_tag> {
     >::type version;
 
     typedef boost::mpl::list<
+        // Fired after context bootstrap. Means that all essential services are now running.
+        context::prepared,
         // Fired first thing on context shutdown. This is a very good time to cleanup persistent
         // connections, synchronize disk state and so on.
         context::shutdown,

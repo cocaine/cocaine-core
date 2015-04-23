@@ -50,6 +50,7 @@
 using namespace cocaine;
 
 namespace fs = boost::filesystem;
+namespace ph = std::placeholders;
 namespace po = boost::program_options;
 
 namespace {
@@ -89,9 +90,7 @@ struct runtime_t {
     runtime_t():
         m_signals(m_asio, SIGINT, SIGTERM, SIGQUIT)
     {
-        using namespace std::placeholders;
-
-        m_signals.async_wait(std::bind(&runtime_t::on_signal, this, _1, _2));
+        m_signals.async_wait(std::bind(&runtime_t::on_signal, this, ph::_1, ph::_2));
 
         // Establish an alternative signal stack
 
