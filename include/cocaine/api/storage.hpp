@@ -139,13 +139,14 @@ struct category_traits<storage_t> {
         get(context_t& context, const std::string& name, const dynamic_t& args) {
             ptr_type instance;
 
-            auto lock_ptr = instances.synchronize();
-            auto weak_ptr = (*lock_ptr)[name];
+            instances.apply([&](std::map<std::string, std::weak_ptr<storage_t>>& instances) {
+                auto weak_ptr = instances[name];
 
-            if((instance = weak_ptr.lock()) == nullptr) {
-                instance = std::make_shared<T>(context, name, args);
-                lock_ptr->insert({name, instance});
-            }
+                if((instance = weak_ptr.lock()) == nullptr) {
+                    instance = std::make_shared<T>(context, name, args);
+                    instances[name] = instance;
+                }
+            });
 
             return instance;
         }
