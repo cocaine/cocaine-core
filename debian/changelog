@@ -1,3 +1,16 @@
+cocaine-core (0.12.0.9) unstable; urgency=low
+
+  * Native external services support. Standalone native services can now
+    attach themselves to the Locators to be announced.
+  * 'Bootstrap is complete' core signal. Services can listen for this signal
+    to hook into bootstrapping process.
+  * Blackhole v0.5.
+  * Bugfix: wrong lock held for certain Locator operations.
+  * Bugfix: routing streams are now also closed on Locator shutdown.
+  * Some optimizations and cleanup.
+
+ -- Andrey Sibiryov <kobolog@yandex-team.ru>  Wed, 22 Apr 2015 19:14:31 -0400
+
 cocaine-core (0.12.0.8) unstable; urgency=low
 
   * Bugfix: fixed app vs. published services list inconsistency.

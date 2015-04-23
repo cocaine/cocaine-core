@@ -2,7 +2,7 @@
 
 Summary:	Cocaine - Core Libraries
 Name:		libcocaine-core3
-Version:	0.12.0.8
+Version:	0.12.0.9
 Release:	1%{?dist}
 
 
@@ -125,6 +125,16 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
+* Wed Apr 22 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.9-1
+- Native external services support. Standalone native services can now
+  attach themselves to the Locators to be announced.
+- 'Bootstrap is complete' core signal. Services can listen for this signal
+  to hook into bootstrapping process.
+- Blackhole v0.5.
+- Bugfix: wrong lock held for certain Locator operations.
+- Bugfix: routing streams are now also closed on Locator shutdown.
+- Some optimizations and cleanup.
+
 * Fri Apr 17 2015 Evgeny Safronov <division494@gmail.com> 0.12.0.8-1
 - Bugfix: fixed app vs. published services list inconsistency.
 
