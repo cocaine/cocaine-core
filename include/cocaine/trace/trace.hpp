@@ -11,6 +11,11 @@ class attribute_scope_t;
 class span_t;
 class logger_t;
 
+class new_trace_scope_t;
+class trace_reset_scope_t;
+class trace_push_scope_t;
+class trace_restore_scope_t;
+
 template <class F>
 class callable_wrapper_t;
 
@@ -73,15 +78,6 @@ public:
     inline
     trace_push_scope_t(std::string annotation, std::string rpc_name);
 
-//    inline void
-//    push_new(std::string annotation, std::string rpc_name);
-//
-//    inline void
-//    push(std::string annotation, std::string rpc_name);
-//
-//    inline void
-//    push(std::string rpc_name);
-
     inline
     ~trace_push_scope_t();
 private:
@@ -112,23 +108,23 @@ public:
     trace_restore_scope_t(span_ptr_t span);
 
     // Restores trace from saved span. Logs annotation via logger.
-    inline void
+    inline
+    void
     restore(std::string annotation, span_ptr_t span);
 
     // Restores trace from saved span. No-log.
-    inline void
+    inline
+    void
     restore(span_ptr_t span);
 
     // Restores trace from trace-span-parent param. Logs event via logger.
-    inline void
+    inline
+    void
     restore(std::string annotation, std::string rpc_name, uint64_t trace_id, uint64_t span_id, uint64_t parent_id);
 
     inline
     ~trace_restore_scope_t();
 
-//    inline
-//    void
-//    pop();
 private:
     span_ptr_t old_span;
     std::unique_ptr<attribute_scope_t> attr_scope;
@@ -143,11 +139,6 @@ bind(std::string message, Args&& ...args) -> callable_wrapper_t<decltype(std::bi
 template<class... Args>
 auto
 bind(Args&& ...args) -> callable_wrapper_t<decltype(std::bind(std::forward<Args>(args)...))>;
-
-//template<class Method>
-//auto
-//mem_fn(const char* message, Method m) -> callable_wrapper_t<decltype(std::mem_fn(std::forward<Method>(m)))>;
-//
 
 inline uint64_t generate_id();
 
@@ -186,12 +177,6 @@ public:
         ).count();
     }
 
-//    inline
-//    bool
-//    should_log() const {
-//        return log_enabled;
-//    }
-
     inline bool
     empty() const {
         return span_id == 0;
@@ -209,7 +194,6 @@ private:
         span_id(),
         start_time_us(),
         last_time_us(),
-//        log_enabled(true),
         parent(nullptr),
         name()
     {}
@@ -219,7 +203,6 @@ private:
         span_id(_span_id ? _span_id : trace_id),
         start_time_us(cur_time()),
         last_time_us(start_time_us),
-//        log_enabled(true),
         parent(new span_t("", trace_id, _parent_id)),
         name(_name)
     {}
@@ -230,20 +213,9 @@ private:
         span_id(_parent->empty() ? trace_id : generate_id()),
         start_time_us(cur_time()),
         last_time_us(start_time_us),
-//        log_enabled(_parent->log_enabled),
         parent(std::move(_parent)),
         name(_name)
     {}
-
-//    inline void
-//    disable_log() {
-//        log_enabled = false;
-//    }
-//
-//    inline void
-//    enable_log() {
-//        log_enabled = true;
-//    }
 
     inline
     void
@@ -275,7 +247,6 @@ private:
         span_id(_span_id),
         start_time_us(cur_time()),
         last_time_us(start_time_us),
-//        log_enabled(true),
         parent(nullptr),
         name(_name)
     {}
@@ -284,15 +255,11 @@ private:
     uint64_t span_id;
     uint64_t start_time_us;
     uint64_t last_time_us;
-//    bool log_enabled;
     std::shared_ptr<span_t> parent;
     std::string name;
 
-//    friend void disable_span_log();
     friend class trace_context_t;
     friend class trace_reset_scope_t;
-//    friend class disable_span_log_scope_t;
-//    friend class trace_restore_scope_t;
 };
 
 }}

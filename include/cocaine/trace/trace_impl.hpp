@@ -10,7 +10,7 @@ class trace_context_t {
 private:
     inline
     void
-    restore (std::string name, uint64_t trace_id, uint64_t span_id, uint64_t parent_id) {
+    restore(std::string name, uint64_t trace_id, uint64_t span_id, uint64_t parent_id) {
         if(trace_id) {
             span.reset(new span_t(std::move(name), trace_id, span_id, parent_id));
         }
@@ -18,13 +18,13 @@ private:
 
     inline
     void
-    restore (span_ptr_t _span) {
+    restore(span_ptr_t _span) {
         span = _span;
     }
 
     inline
     void
-    push (std::string new_name) {
+    push(std::string new_name) {
         if(!span->empty()) {
             span_ptr_t new_span(new span_t(std::move(new_name), span));
             span = new_span;
@@ -33,14 +33,14 @@ private:
 
     inline
     void
-    push_new (std::string new_name) {
+    push_new(std::string new_name) {
         span_ptr_t new_span(new span_t(std::move(new_name), span));
         span = new_span;
     }
 
     inline
     void
-    pop () {
+    pop() {
         if(span->parent) {
             auto p = span->parent;
             span = p;
@@ -146,25 +146,21 @@ public:
     template<class ...Args>
     auto
     operator()(Args&& ...args) -> decltype(std::declval<F>()(args...)) {
-        auto fun = [&]() {
-            auto& logger = trace_context_t::logger();
-            if (logger) {
-                auto attr_scope = logger->get_scope(span->attributes());
-                return f(std::forward<Args>(args)...);
-            }
-            else {
-                return f(std::forward<Args>(args)...);
-            }
-        };
+        auto& logger = trace_context_t::logger();
+        trace_restore_scope_t scope();
         if(message.empty()) {
-            trace_restore_scope_t scope(span);
-            return fun();
+            scope.restore(span);
         }
         else {
-            trace_restore_scope_t scope(std::move(message), span);
-            return fun();
+            scope.restore(std::move(message), span);
         }
-
+        if (logger) {
+            auto attr_scope = logger->get_scope(span->attributes());
+            return f(std::forward<Args>(args)...);
+        }
+        else {
+            return f(std::forward<Args>(args)...);
+        }
     }
 
 private:
@@ -248,16 +244,6 @@ trace_push_scope_t::trace_push_scope_t(std::string annotation, std::string rpc_n
 trace_push_scope_t::trace_push_scope_t(std::string rpc_name) {
     trace_context_t::get_context().push(std::move(rpc_name));
 }
-
-//inline void
-//trace_push_scope_t::push_new(std::string annotation, std::string rpc_name) {
-//    trace_context_t::get_context().push_new(std::move(rpc_name));
-//    auto& logger = trace_context_t::logger();
-//    if(logger) {
-//        attr_scope = logger->get_scope(current_span()->attributes());
-//        logger->log(std::move(annotation), current_span()->attributes());
-//    }
-//}
 
 trace_push_scope_t::~trace_push_scope_t() {
     trace_context_t::get_context().pop();
