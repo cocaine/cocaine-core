@@ -147,7 +147,7 @@ public:
     auto
     operator()(Args&& ...args) -> decltype(std::declval<F>()(args...)) {
         auto& logger = trace_context_t::logger();
-        trace_restore_scope_t scope();
+        trace_restore_scope_t scope;
         if(message.empty()) {
             scope.restore(span);
         }
