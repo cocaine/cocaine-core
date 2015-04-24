@@ -37,7 +37,7 @@ public:
 namespace cocaine { namespace tracer {
 
 void logger_t::log(std::string message, blackhole::attribute::set_t attributes) {
-    if(current_span()->should_log()) {
+    if(!current_span()->empty()) {
         log_impl(std::move(message), std::move(attributes));
     }
 }

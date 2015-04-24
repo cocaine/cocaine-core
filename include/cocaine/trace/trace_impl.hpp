@@ -11,7 +11,9 @@ private:
     inline
     void
     restore (std::string name, uint64_t trace_id, uint64_t span_id, uint64_t parent_id) {
-        span.reset(new span_t(std::move(name), trace_id, span_id, parent_id));
+        if(trace_id) {
+            span.reset(new span_t(std::move(name), trace_id, span_id, parent_id));
+        }
     }
 
     inline
@@ -121,6 +123,8 @@ private:
     friend void log(std::string message);
     friend class trace_push_scope_t;
     friend class trace_restore_scope_t;
+    friend class new_trace_scope_t;
+    friend class trace_reset_scope_t;
     friend class span_t;
 };
 
@@ -135,7 +139,7 @@ public:
         span(current_span())
     {
         if(!message.empty()) {
-            trace_context_t::get_context().log(message, current_span()->attributes());
+            trace_context_t::get_context().log("Scheduled: " + message, current_span()->attributes());
         }
     }
 
@@ -157,7 +161,7 @@ public:
             return fun();
         }
         else {
-            trace_restore_scope_t scope("Invoke: " + std::move(message), span);
+            trace_restore_scope_t scope(std::move(message), span);
             return fun();
         }
 
@@ -232,51 +236,28 @@ span_t::attributes() const {
     );
 }
 
-void
-disable_span_log() {
-    current_span()->disable_log();
-}
-
-disable_span_log_scope_t::disable_span_log_scope_t() {
-    current_span()->disable_log();
-}
-
-disable_span_log_scope_t::~disable_span_log_scope_t() {
-    current_span()->enable_log();
-}
-
 trace_push_scope_t::trace_push_scope_t(std::string annotation, std::string rpc_name) {
-    push(std::move(annotation), std::move(rpc_name));
+    trace_context_t::get_context().push(std::move(rpc_name));
+    auto& logger = trace_context_t::logger();
+    if(logger) {
+        attr_scope = logger->get_scope(current_span()->attributes());
+        logger->log(std::move(annotation), current_span()->attributes());
+    }
 }
 
 trace_push_scope_t::trace_push_scope_t(std::string rpc_name) {
-    push(std::move(rpc_name));
-}
-
-inline void
-trace_push_scope_t::push_new(std::string annotation, std::string rpc_name) {
-    trace_context_t::get_context().push_new(std::move(rpc_name));
-    auto& logger = trace_context_t::logger();
-    if(logger) {
-        attr_scope = logger->get_scope(current_span()->attributes());
-        logger->log(std::move(annotation), current_span()->attributes());
-    }
-}
-
-inline void
-trace_push_scope_t::push(std::string annotation, std::string rpc_name) {
-    trace_context_t::get_context().push(std::move(rpc_name));
-    auto& logger = trace_context_t::logger();
-    if(logger) {
-        attr_scope = logger->get_scope(current_span()->attributes());
-        logger->log(std::move(annotation), current_span()->attributes());
-    }
-}
-
-inline void
-trace_push_scope_t::push(std::string rpc_name) {
     trace_context_t::get_context().push(std::move(rpc_name));
 }
+
+//inline void
+//trace_push_scope_t::push_new(std::string annotation, std::string rpc_name) {
+//    trace_context_t::get_context().push_new(std::move(rpc_name));
+//    auto& logger = trace_context_t::logger();
+//    if(logger) {
+//        attr_scope = logger->get_scope(current_span()->attributes());
+//        logger->log(std::move(annotation), current_span()->attributes());
+//    }
+//}
 
 trace_push_scope_t::~trace_push_scope_t() {
     trace_context_t::get_context().pop();
@@ -298,12 +279,6 @@ trace_restore_scope_t::trace_restore_scope_t(span_ptr_t span) :
     old_span()
 {
     restore(std::move(span));
-}
-
-trace_restore_scope_t::trace_restore_scope_t(std::nullptr_t) :
-    old_span(current_span())
-{
-    trace_context_t::get_context().restore(span_ptr_t(new span_t));
 }
 
 void
@@ -344,10 +319,34 @@ trace_restore_scope_t::~trace_restore_scope_t() {
     }
 }
 
-void
-trace_restore_scope_t::pop() {
+new_trace_scope_t::new_trace_scope_t(std::string rpc_name) {
+    trace_context_t::get_context().push_new(std::move(rpc_name));
+    auto& logger = trace_context_t::logger();
+    if(logger) {
+        attr_scope = logger->get_scope(current_span()->attributes());
+        logger->log(std::move("sr"), current_span()->attributes());
+    }
+}
+
+new_trace_scope_t::~new_trace_scope_t() {
+    auto& logger = trace_context_t::logger();
+    if(logger) {
+        attr_scope = logger->get_scope(current_span()->attributes());
+        logger->log(std::move("ss"), current_span()->attributes());
+    }
     trace_context_t::get_context().pop();
 }
+
+trace_reset_scope_t::trace_reset_scope_t() {
+    assert(!old_span);
+    old_span = current_span();
+    trace_context_t::get_context().restore(span_ptr_t(new span_t));
+}
+
+trace_reset_scope_t::~trace_reset_scope_t() {
+    trace_context_t::get_context().restore(old_span);
+}
+
 void
 set_service_name(std::string name) {
     trace_context_t::set_service_name(std::move(name));
