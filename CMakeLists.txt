@@ -87,7 +87,6 @@ LINK_DIRECTORIES(
     ${LIBLTDL_LIBRARY_DIRS})
 
 ADD_LIBRARY(cocaine-core SHARED
-    ${HEADERS}
     src/actor.cpp
     src/api.cpp
     src/chamber.cpp
@@ -151,7 +150,6 @@ TARGET_LINK_LIBRARIES(cocaine-core
     ltdl
     mhash
     msgpack
-    thrift
     ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES

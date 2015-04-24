@@ -24,7 +24,7 @@
 #include "cocaine/config.hpp"
 #include "cocaine/platform.hpp"
 
-#include <stdint.h>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
