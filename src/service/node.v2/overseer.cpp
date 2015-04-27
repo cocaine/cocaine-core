@@ -15,14 +15,11 @@
 #include "cocaine/detail/service/node.v2/slave/control.hpp"
 #include "cocaine/detail/service/node.v2/slot.hpp"
 
+namespace ph = std::placeholders;
+
 using namespace cocaine;
 
 using namespace blackhole;
-
-namespace ph = std::placeholders;
-
-/// Helper trait to deduce type in compile-time. Use deduce<T>::show().
-template<class T> class deduce;
 
 class overseer_t::channel_watcher_t {
 public:
@@ -220,6 +217,10 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
         std::move(stream),
         std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::tx)
     );
+
+    loop->post([=]{
+        pool->erase(id);
+    });
 }
 
 void

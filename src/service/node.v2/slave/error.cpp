@@ -4,7 +4,9 @@
 
 using namespace cocaine;
 
-class slave_category_t : public std::error_category {
+class slave_category_t:
+    public std::error_category
+{
 public:
     const char*
     name() const noexcept {
@@ -20,10 +22,18 @@ public:
             return "locator not found";
         case error::activate_timeout:
             return "timed out while activating";
+        case error::teminate_timeout:
+            return "timed out while terminating";
+        case error::heartbeat_timeout:
+            return "timed out while waiting for heartbeat";
         case error::unknown_activate_error:
             return "unknown activate error";
         case error::invalid_state:
             return "invalid state";
+        case error::conrol_ipc_error:
+            return "unexpected control IPC error";
+        case error::committed_suicide:
+            return "slave has committed suicide";
         default:
             return "unexpected slave error";
         }

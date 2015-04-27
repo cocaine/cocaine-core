@@ -38,6 +38,10 @@ public:
     void
     start();
 
+    /// Sends terminate event to the slave.
+    void
+    terminate(const std::error_code& ec);
+
     /// Cancels all asynchronous operations on channel (e.g. timers).
     ///
     /// \note this method is required to be explicitly called on slave shutdown, because it breakes
@@ -52,6 +56,9 @@ public:
 private:
     void
     on_heartbeat();
+
+    void
+    on_terminate(int ec, const std::string& reason);
 
     void
     breath();

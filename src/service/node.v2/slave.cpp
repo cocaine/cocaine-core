@@ -8,6 +8,9 @@
 #include "cocaine/detail/service/node/profile.hpp"
 #include "cocaine/detail/service/node.v2/slave/control.hpp"
 #include "cocaine/detail/service/node.v2/slave/fetcher.hpp"
+#include "cocaine/detail/service/node.v2/slave/state/state.hpp"
+#include "cocaine/detail/service/node.v2/slave/state/broken.hpp"
+#include "cocaine/detail/service/node.v2/slave/state/terminating.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/worker.hpp"
 #include "cocaine/detail/service/node.v2/util.hpp"
 
@@ -15,58 +18,28 @@ namespace ph = std::placeholders;
 
 using namespace cocaine;
 
-class state_machine_t::state_t {
-public:
-    virtual
-    const char*
-    name() const noexcept = 0;
-
-    virtual
-    bool
-    active() const noexcept {
-        return false;
-    }
-
-    /// Cancels all pending asynchronous operations.
-    ///
-    /// Should be invoked on slave destruction, indicating that the current state should cancel all
-    /// its asynchronous operations to break cyclic references.
-    // TODO: Consider whether it should be noexcept or not.
-    virtual
-    void
-    cancel() = 0;
-
-    virtual
-    std::shared_ptr<control_t>
-    activate(std::shared_ptr<session_t> /*session*/, upstream<io::worker::control_tag> /*stream*/) {
-        throw std::system_error(error::invalid_state, format("invalid state (%s)", name()));
-    }
-
-    virtual
-    io::upstream_ptr_t
-    inject(inject_dispatch_ptr_t /*dispatch*/) {
-        throw std::system_error(error::invalid_state, format("invalid state (%s)", name()));
-    }
-};
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class state_machine_t::active_t:
     public state_t,
     public std::enable_shared_from_this<active_t>
 {
+    std::shared_ptr<state_machine_t> slave;
     std::unique_ptr<api::handle_t> handle;
     std::shared_ptr<session_t> session;
     std::shared_ptr<control_t> control;
 
 public:
-    active_t(std::shared_ptr<state_machine_t> /*slave*/,
+    active_t(std::shared_ptr<state_machine_t> slave,
              std::unique_ptr<api::handle_t> handle,
              std::shared_ptr<session_t> session,
-             std::shared_ptr<control_t> control):
+             std::shared_ptr<control_t> control_):
+        slave(std::move(slave)),
         handle(std::move(handle)),
         session(std::move(session)),
-        control(std::move(control))
+        control(std::move(control_))
     {
-        this->control->start();
+        control->start();
     }
 
     ~active_t() {
@@ -86,18 +59,40 @@ public:
         return true;
     }
 
-    void
-    cancel() {}
-
     virtual
     io::upstream_ptr_t
     inject(inject_dispatch_ptr_t dispatch) override {
         return session->fork(dispatch);
     }
 
+    /// Migrates the current state to the terminating one.
+    ///
+    /// This is achieved by sending the terminate event to the slave and waiting for its response
+    /// for a specified amount of time (timeout.terminate).
+    ///
+    /// The slave also becomes inactive (i.e. unable to handle new channels).
+    ///
+    /// If the slave is unable to ack the termination event it will be considered as broken and
+    /// should be removed from the pool.
+    ///
+    /// \warning this call invalidates the current object.
+    virtual
+    void
+    terminate(const std::error_code& ec) {
+        auto terminating = std::make_shared<terminating_t>(slave, std::move(handle));
+
+        control->terminate(ec);
+
+        slave->migrate(terminating);
+
+        terminating->start(slave->context.profile.timeout.terminate);
+    }
+
     void
     start() {}
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class state_machine_t::handshaking_t:
     public state_t,
@@ -111,23 +106,13 @@ class state_machine_t::handshaking_t:
     std::chrono::steady_clock::time_point birthtime;
 
 public:
-    handshaking_t(std::shared_ptr<state_machine_t> slave, std::unique_ptr<api::handle_t> handle):
-        slave(std::move(slave)),
-        timer(this->slave->loop),
-        handle(std::move(handle)),
+    handshaking_t(std::shared_ptr<state_machine_t> slave_, std::unique_ptr<api::handle_t> handle_):
+        slave(std::move(slave_)),
+        timer(slave->loop),
+        handle(std::move(handle_)),
         birthtime(std::chrono::steady_clock::now())
     {
-        this->slave->fetcher->assign(this->handle->stdout());
-    }
-
-    void
-    start(unsigned long timeout) {
-        COCAINE_LOG_DEBUG(slave->log, "slave is waiting for handshake, timeout: %.2f ms", timeout);
-
-        timer.apply([&](asio::deadline_timer& timer){
-            timer.expires_from_now(boost::posix_time::milliseconds(timeout));
-            timer.async_wait(std::bind(&handshaking_t::on_timeout, shared_from_this(), ph::_1));
-        });
+        slave->fetcher->assign(handle->stdout());
     }
 
     const char*
@@ -136,9 +121,14 @@ public:
     }
 
     void
-    cancel() {
-        std::error_code ec;
-        timer->cancel(ec);
+    terminate(const std::error_code& ec) {
+        try {
+            timer->cancel();
+        } catch (...) {
+            // We don't care.
+        }
+
+        slave->close(ec);
     }
 
     /// Activates the slave by transferring it to the active state using given session and control
@@ -162,7 +152,7 @@ public:
         try {
             auto control = std::make_shared<control_t>(slave, std::move(stream));
             auto active = std::make_shared<active_t>(slave, std::move(handle), std::move(session), control);
-            slave->migrate(std::move(active));
+            slave->migrate(active);
 
             active->start();
 
@@ -176,6 +166,16 @@ public:
         return nullptr;
     }
 
+    void
+    start(unsigned long timeout) {
+        COCAINE_LOG_DEBUG(slave->log, "slave is waiting for handshake, timeout: %.2f ms", timeout);
+
+        timer.apply([&](asio::deadline_timer& timer){
+            timer.expires_from_now(boost::posix_time::milliseconds(timeout));
+            timer.async_wait(std::bind(&handshaking_t::on_timeout, shared_from_this(), ph::_1));
+        });
+    }
+
 private:
     void
     on_timeout(const std::error_code& ec) {
@@ -187,8 +187,10 @@ private:
     }
 };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class state_machine_t::spawning_t:
-    public state_machine_t::state_t,
+    public state_t,
     public std::enable_shared_from_this<spawning_t>
 {
     std::shared_ptr<state_machine_t> slave;
@@ -200,6 +202,23 @@ public:
         slave(slave),
         timer(slave->loop)
     {}
+
+    const char*
+    name() const noexcept {
+        return "spawning";
+    }
+
+    virtual
+    void
+    terminate(const std::error_code& ec) {
+        try {
+            timer.cancel();
+        } catch (...) {
+            // We don't care.
+        }
+
+        slave->close(ec);
+    }
 
     void
     spawn(unsigned int timeout) {
@@ -269,17 +288,6 @@ public:
         }
     }
 
-    const char*
-    name() const noexcept {
-        return "spawning";
-    }
-
-    void
-    cancel() {
-        std::error_code ec;
-        timer.cancel(ec);
-    }
-
 private:
     void
     on_spawn(std::unique_ptr<api::handle_t>& handle, std::chrono::steady_clock::time_point start) {
@@ -317,22 +325,7 @@ private:
     }
 };
 
-class state_machine_t::broken_t:
-    public state_t
-{
-    std::error_code ec;
-
-public:
-    explicit broken_t(std::error_code ec) : ec(std::move(ec)) {}
-
-    const char*
-    name() const noexcept {
-        return "broken";
-    }
-
-    void
-    cancel() {}
-};
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 state_machine_t::state_machine_t(slave_context ctx, asio::io_service& loop, cleanup_handler cleanup):
     log(ctx.context.log(format("%s/slave", ctx.manifest.name), {{ "uuid", ctx.id }})),
@@ -351,6 +344,8 @@ state_machine_t::~state_machine_t() {
 
 void
 state_machine_t::start() {
+    BOOST_ASSERT(*state.synchronize() == nullptr);
+
     COCAINE_LOG_TRACE(log, "slave state machine is starting");
 
     fetcher = std::make_shared<fetcher_t>(shared_from_this());
@@ -363,22 +358,10 @@ state_machine_t::start() {
     });
 }
 
-void
-state_machine_t::stop() {
-    COCAINE_LOG_TRACE(log, "slave state machine is stopping");
-
-    closed = true;
-
-    auto state = std::move(*this->state.synchronize());
-    state->cancel();
-
-    fetcher->close();
-    fetcher.reset();
-}
-
 bool
 state_machine_t::active() const noexcept {
     auto state = *this->state.synchronize();
+    BOOST_ASSERT(state);
 
     return state->active();
 }
@@ -386,6 +369,7 @@ state_machine_t::active() const noexcept {
 std::shared_ptr<control_t>
 state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream) {
     auto state = *this->state.synchronize();
+    BOOST_ASSERT(state);
 
     return state->activate(std::move(session), std::move(stream));
 }
@@ -393,8 +377,23 @@ state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worke
 io::upstream_ptr_t
 state_machine_t::inject(inject_dispatch_ptr_t dispatch) {
     auto state = *this->state.synchronize();
+    BOOST_ASSERT(state);
 
     return state->inject(std::move(dispatch));
+}
+
+void
+state_machine_t::terminate(std::error_code ec) {
+    if (closed.exchange(true)) {
+        return;
+    }
+
+    COCAINE_LOG_TRACE(log, "slave state machine is terminating");
+
+    auto state = *this->state.synchronize();
+    BOOST_ASSERT(state);
+
+    return state->terminate(ec);
 }
 
 void
@@ -411,22 +410,26 @@ state_machine_t::output(const char* data, size_t size) {
 
 void
 state_machine_t::migrate(std::shared_ptr<state_t> desired) {
+    BOOST_ASSERT(desired);
+
     state.apply([=](std::shared_ptr<state_t>& state){
         COCAINE_LOG_DEBUG(log, "slave has changed its state from '%s' to '%s'",
                           state ? state->name() : "null", desired->name());
 
-        state = desired;
+        state = std::move(desired);
     });
 }
 
 void
 state_machine_t::close(std::error_code ec) {
+    migrate(std::make_shared<broken_t>(ec));
+
+    fetcher->close();
+    fetcher.reset();
+
+    // Check is the slave has been terminated externally. If so, do not call the cleanup callback.
     if (closed) {
         return;
-    }
-
-    if (ec) {
-        migrate(std::make_shared<broken_t>(ec));
     }
 
     try {
@@ -436,7 +439,7 @@ state_machine_t::close(std::error_code ec) {
     }
 }
 
-slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn) :
+slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn):
     machine(std::make_shared<state_machine_t>(context, loop, fn))
 {
     machine->start();
@@ -445,7 +448,7 @@ slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler 
 slave_t::~slave_t() {
     // This condition is required, because the class itself is movable.
     if (machine) {
-        machine->stop();
+        machine->terminate(std::move(ec));
     }
 }
 
@@ -468,5 +471,10 @@ slave_t::inject(inject_dispatch_ptr_t dispatch) {
     BOOST_ASSERT(machine);
 
     return machine->inject(std::move(dispatch));
+}
+
+void
+slave_t::terminate(std::error_code ec) {
+    this->ec = std::move(ec);
 }
 

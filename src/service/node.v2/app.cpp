@@ -129,5 +129,6 @@ app_t::~app_t() {
 
     context.remove(manifest->name);
 
+    // TOOD: I need event loop for graceful shutdowning.
     engine->terminate();
 }

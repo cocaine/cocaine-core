@@ -65,6 +65,17 @@ struct terminate {
     }
 
     typedef control_tag tag;
+
+    typedef control_tag dispatch_type;
+
+    typedef void upstream_type;
+
+    typedef boost::mpl::list<
+     /* Code */
+        int,
+     /* Reason */
+        std::string
+    >::type argument_type;
 };
 
 struct rpc_tag;
