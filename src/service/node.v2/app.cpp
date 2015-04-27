@@ -58,7 +58,7 @@ private:
         if (auto overseer = this->overseer.lock()) {
             return overseer->enqueue(std::move(upstream), event, id);
         } else {
-            // TODO: Assign error code instead of magic.
+            // TODO: Assign an error code instead of magic.
             const int ec = 42;
             const std::string reason("the application has been closed");
 
