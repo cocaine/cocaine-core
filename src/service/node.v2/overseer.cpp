@@ -31,14 +31,14 @@ public:
 
 private:
     std::uint64_t channel;
-    std::atomic<char> closed;
+    std::atomic<int> closed;
     std::function<void()> callback;
     std::shared_ptr<overseer_t> overseer;
 
 public:
     channel_watcher_t(std::uint64_t channel, std::shared_ptr<overseer_t> overseer, std::function<void()> callback):
         channel(channel),
-        closed(close_state_t::none),
+        closed(0),
         callback(std::move(callback)),
         overseer(std::move(overseer))
     {}
@@ -49,7 +49,11 @@ public:
         COCAINE_LOG_TRACE(overseer->log, "closing %s side of %d channel",
                           state == tx ? "tx" : "rx", channel);
 
-        if (closed.fetch_or(state) == close_state_t::both) {
+        const auto preceding = closed.fetch_or(state);
+
+        BOOST_ASSERT((state & preceding) != state);
+
+        if (closed.load() == close_state_t::both) {
             callback();
         }
     }
@@ -214,7 +218,7 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
 
     payload.dispatch->attach(
         std::move(stream),
-        std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::rx)
+        std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::tx)
     );
 }
 

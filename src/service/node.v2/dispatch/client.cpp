@@ -36,6 +36,13 @@ streaming_dispatch_t::attach(upstream<outcoming_tag> stream, std::function<void(
 }
 
 void
+streaming_dispatch_t::discard(const std::error_code& ec) const {
+    if (ec) {
+        const_cast<streaming_dispatch_t*>(this)->notify();
+    }
+}
+
+void
 streaming_dispatch_t::notify() {
     std::lock_guard<std::mutex> lock(mutex);
     BOOST_ASSERT(!closed);

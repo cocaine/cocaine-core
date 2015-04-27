@@ -34,6 +34,10 @@ public:
     void
     attach(upstream<outcoming_tag> stream, std::function<void()> close);
 
+    virtual
+    void
+    discard(const std::error_code& ec) const override;
+
 private:
     void
     notify();
