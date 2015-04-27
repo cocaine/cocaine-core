@@ -172,10 +172,10 @@ overseer_t::spawn(locked_ptr<pool_type>& pool) {
     // It is guaranteed that the cleanup handler will not be invoked from within the slave's
     // constructor.
     const auto uuid = ctx.id;
-    pool->emplace(
+    pool->insert(std::make_pair(
         uuid,
         slave_t(std::move(ctx), *loop, std::bind(&overseer_t::on_slave_death, shared_from_this(), ph::_1, uuid))
-    );
+    ));
 }
 
 void

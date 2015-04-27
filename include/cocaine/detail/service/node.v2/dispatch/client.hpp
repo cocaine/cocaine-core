@@ -2,8 +2,11 @@
 
 #include <functional>
 
-#include "cocaine/forwards.hpp"
+#include <boost/optional/optional.hpp>
+
 #include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/rpc/slot/streamed.hpp"
+#include "cocaine/rpc/upstream.hpp"
 
 #include "cocaine/idl/node.hpp"
 #include "cocaine/idl/rpc.hpp"
@@ -39,7 +42,7 @@ public:
     /// In this case we should call close callback to prevend resource leak.
     virtual
     void
-    discard(const std::error_code& ec) const ;
+    discard(const std::error_code& ec) const;
 
 private:
     void

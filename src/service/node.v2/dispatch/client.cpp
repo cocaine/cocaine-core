@@ -1,7 +1,5 @@
 #include "cocaine/detail/service/node.v2/dispatch/client.hpp"
 
-namespace ph = std::placeholders;
-
 using namespace cocaine;
 
 streaming_dispatch_t::streaming_dispatch_t(const std::string& name):

@@ -30,14 +30,14 @@ class state_machine_t::handshaking_t:
     synchronized<asio::deadline_timer> timer;
     std::unique_ptr<api::handle_t> handle;
 
-    std::chrono::steady_clock::time_point birthtime;
+    std::chrono::high_resolution_clock::time_point birthtime;
 
 public:
     handshaking_t(std::shared_ptr<state_machine_t> slave_, std::unique_ptr<api::handle_t> handle_):
         slave(std::move(slave_)),
         timer(slave->loop),
         handle(std::move(handle_)),
-        birthtime(std::chrono::steady_clock::now())
+        birthtime(std::chrono::high_resolution_clock::now())
     {
         slave->fetcher->assign(handle->stdout());
     }
@@ -72,7 +72,7 @@ public:
             return nullptr;
         }
 
-        const auto now = std::chrono::steady_clock::now();
+        const auto now = std::chrono::high_resolution_clock::now();
         COCAINE_LOG_DEBUG(slave->log, "slave has been activated in %.2f ms",
             std::chrono::duration<float, std::chrono::milliseconds::period>(now - birthtime).count());
 
@@ -201,7 +201,7 @@ public:
             // NOTE: The callback must be called from the event loop thread, otherwise the behavior
             // is undefined.
             slave->loop.post(move_handler(std::bind(
-                &spawning_t::on_spawn, shared_from_this(), std::move(handle), std::chrono::steady_clock::now()
+                &spawning_t::on_spawn, shared_from_this(), std::move(handle), std::chrono::high_resolution_clock::now()
             )));
 
             timer.expires_from_now(boost::posix_time::milliseconds(timeout));
@@ -215,7 +215,7 @@ public:
 
 private:
     void
-    on_spawn(std::unique_ptr<api::handle_t>& handle, std::chrono::steady_clock::time_point start) {
+    on_spawn(std::unique_ptr<api::handle_t>& handle, std::chrono::high_resolution_clock::time_point start) {
         std::error_code ec;
         const size_t cancelled = timer.cancel(ec);
         if (ec || cancelled == 0) {
@@ -223,7 +223,7 @@ private:
             return;
         }
 
-        const auto now = std::chrono::steady_clock::now();
+        const auto now = std::chrono::high_resolution_clock::now();
         COCAINE_LOG_DEBUG(slave->log, "slave has been spawned in %.2f ms",
             std::chrono::duration<float, std::chrono::milliseconds::period>(now - start).count());
 

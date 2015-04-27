@@ -78,7 +78,7 @@ struct endpoint_traits<std::string> {
             return boost::lexical_cast<std::string>(endpoint_traits<asio::ip::tcp::endpoint>::cast(endpoint));
         case AF_UNIX: {
             const sockaddr_un* addr = (const sockaddr_un*)(endpoint.data());
-            return std::string(addr->sun_path, addr->sun_len);
+            return std::string(addr->sun_path);
         }
         default:
             break;
