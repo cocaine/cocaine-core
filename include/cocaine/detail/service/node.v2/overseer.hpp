@@ -40,7 +40,7 @@ class overseer_t:
     public std::enable_shared_from_this<overseer_t>
 {
 public:
-    std::unique_ptr<logging::log_t> log;
+    const std::unique_ptr<logging::log_t> log;
 
     context_t& context;
 
