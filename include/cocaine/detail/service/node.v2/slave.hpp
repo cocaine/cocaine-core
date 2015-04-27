@@ -74,6 +74,7 @@ private:
     const slave_context context;
     asio::io_service& loop;
 
+    std::atomic<bool> closed;
     cleanup_handler cleanup;
 
     splitter_t splitter;

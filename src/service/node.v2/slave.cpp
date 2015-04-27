@@ -406,6 +406,7 @@ state_machine_t::state_machine_t(slave_context ctx, asio::io_service& loop, clea
     log(ctx.context.log(format("%s/slave", ctx.manifest.name), {{ "uuid", ctx.id }})),
     context(ctx),
     loop(loop),
+    closed(false),
     cleanup(std::move(cleanup)),
     lines(context.profile.crashlog_limit)
 {
@@ -434,6 +435,8 @@ void
 state_machine_t::stop() {
     COCAINE_LOG_TRACE(log, "slave state machine is stopping");
 
+    closed = true;
+
     auto state = std::move(*this->state.synchronize());
     state->cancel();
 
@@ -443,7 +446,9 @@ state_machine_t::stop() {
 
 bool
 state_machine_t::active() const noexcept {
-    return (*state.synchronize())->active();
+    auto state = *this->state.synchronize();
+
+    return state->active();
 }
 
 std::shared_ptr<control_t>
@@ -455,7 +460,9 @@ state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worke
 
 io::upstream_ptr_t
 state_machine_t::inject(inject_dispatch_ptr_t dispatch) {
-    return (*state.synchronize())->inject(std::move(dispatch));
+    auto state = *this->state.synchronize();
+
+    return state->inject(std::move(dispatch));
 }
 
 void
@@ -482,6 +489,10 @@ state_machine_t::migrate(std::shared_ptr<state_t> desired) {
 
 void
 state_machine_t::close(std::error_code ec) {
+    if (closed) {
+        return;
+    }
+
     if (ec) {
         migrate(std::make_shared<broken_t>(ec));
     }
