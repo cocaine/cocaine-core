@@ -39,7 +39,7 @@ public:
     /// In this case we should call close callback to prevend resource leak.
     virtual
     void
-    discard(const std::error_code& ec) const override;
+    discard(const std::error_code& ec) const ;
 
 private:
     void

@@ -51,7 +51,7 @@ public:
 
     virtual
     void
-    discard(const std::error_code& ec) const override;
+    discard(const std::error_code& ec) const ;
 
 private:
     void

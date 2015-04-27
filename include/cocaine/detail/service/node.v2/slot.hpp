@@ -41,7 +41,7 @@ public:
 
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
-    operator()(tuple_type&& args, upstream_type&& upstream) override {
+    operator()(tuple_type&& args, upstream_type&& upstream)  {
         return cocaine::tuple::invoke(std::tuple_cat(std::forward_as_tuple(std::move(upstream)), std::move(args)), fn);
     }
 };

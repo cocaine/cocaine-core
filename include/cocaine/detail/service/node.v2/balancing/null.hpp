@@ -13,22 +13,22 @@ public:
     {}
 
     void
-    on_slave_spawn(const std::string&) override {}
+    on_slave_spawn(const std::string&)  {}
 
     void
-    on_slave_death(const std::string&) override {}
+    on_slave_death(const std::string&)  {}
 
     slave_info
-    on_request(const std::string&, const std::string&) override {}
+    on_request(const std::string&, const std::string&)  {}
 
     void
-    on_queue() override {}
+    on_queue()  {}
 
     std::uint64_t
-    on_channel_started(const std::string&) override {}
+    on_channel_started(const std::string&)  {}
 
     void
-    on_channel_finished(const std::string&, std::uint64_t) override {}
+    on_channel_finished(const std::string&, std::uint64_t)  {}
 };
 
 }
