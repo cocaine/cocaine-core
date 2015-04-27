@@ -57,7 +57,6 @@ struct heartbeat {
 
     typedef control_tag tag;
     typedef control_tag dispatch_type;
-    typedef void        upstream_type; // TODO: Maybe option?
 };
 
 struct terminate {

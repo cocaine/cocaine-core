@@ -61,7 +61,6 @@ control_t::on_heartbeat() {
     COCAINE_LOG_DEBUG(slave->log, "processing heartbeat message");
 
     breath();
-    stream = stream.send<io::worker::heartbeat>();
 }
 
 void
