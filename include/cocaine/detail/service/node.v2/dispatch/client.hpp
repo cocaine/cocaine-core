@@ -10,7 +10,7 @@
 
 namespace cocaine {
 
-/// An adapter for client -> worker message passing.
+/// An adapter for [Client -> Worker] message passing.
 class streaming_dispatch_t:
     public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
 {
@@ -39,4 +39,4 @@ private:
     notify();
 };
 
-}
+} // namespace cocaine

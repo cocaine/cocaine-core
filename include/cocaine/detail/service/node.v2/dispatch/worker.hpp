@@ -7,17 +7,18 @@
 
 namespace cocaine {
 
+/// An adapter for [Client <- Worker] message passing.
 class worker_client_dispatch_t:
     public dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>
 {
-    typedef io::event_traits<io::worker::rpc::invoke>::upstream_type tag;
-    typedef io::protocol<tag>::scope protocol;
+    typedef io::event_traits<io::worker::rpc::invoke>::upstream_type incoming_tag;
+    typedef io::event_traits<io::app::enqueue>::upstream_type outcoming_tag;
+    typedef io::protocol<incoming_tag>::scope protocol;
 
-    upstream<tag> stream;
+    upstream<incoming_tag> stream;
 
 public:
-    explicit worker_client_dispatch_t(upstream<io::event_traits<io::app::enqueue>::upstream_type>& stream,
-                                      std::function<void()> callback);
+    worker_client_dispatch_t(upstream<outcoming_tag>& stream, std::function<void()> callback);
 };
 
-}
+} // namespace cocaine

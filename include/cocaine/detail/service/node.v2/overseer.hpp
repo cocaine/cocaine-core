@@ -39,6 +39,8 @@ namespace cocaine {
 class overseer_t:
     public std::enable_shared_from_this<overseer_t>
 {
+    class channel_watcher_t;
+
 public:
     const std::unique_ptr<logging::log_t> log;
 

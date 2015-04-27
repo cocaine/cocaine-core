@@ -24,35 +24,33 @@ namespace ph = std::placeholders;
 /// Helper trait to deduce type in compile-time. Use deduce<T>::show().
 template<class T> class deduce;
 
-struct channel_watcher_t {
-    std::function<void()> cb;
-
-    channel_watcher_t(std::function<void()> cb) : cb(cb) {}
-
-    void
-    close_tx() {
-        BOOST_ASSERT(!tx_closed);
-        tx_closed = true;
-
-        check();
-    }
-
-    void
-    close_rx() {
-        BOOST_ASSERT(!rx_closed);
-        rx_closed = true;
-
-        check();
-    }
+class overseer_t::channel_watcher_t {
+public:
+    /// From client to worker and vise-versa.
+    enum close_state_t { none = 0x0, tx = 0x1, rx = 0x2, both = tx | rx };
 
 private:
-    bool rx_closed = false;
-    bool tx_closed = false;
+    std::uint64_t channel;
+    std::atomic<char> closed;
+    std::function<void()> callback;
+    std::shared_ptr<overseer_t> overseer;
 
+public:
+    channel_watcher_t(std::uint64_t channel, std::shared_ptr<overseer_t> overseer, std::function<void()> callback):
+        channel(channel),
+        closed(close_state_t::none),
+        callback(std::move(callback)),
+        overseer(std::move(overseer))
+    {}
+
+    /// \pre each closing function must be called exactly once, otherwise the behavior is undefined.
     void
-    check() {
-        if (tx_closed && rx_closed) {
-            cb();
+    close(close_state_t state) {
+        COCAINE_LOG_TRACE(overseer->log, "closing %s side of %d channel",
+                          state == tx ? "tx" : "rx", channel);
+
+        if (closed.fetch_or(state) == close_state_t::both) {
+            callback();
         }
     }
 };
@@ -189,7 +187,7 @@ void
 overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& payload) {
     const auto channel = balancer->on_channel_started(id);
 
-    auto watcher = std::make_shared<channel_watcher_t>([=]{
+    auto watcher = std::make_shared<channel_watcher_t>(channel, shared_from_this(), [=]{
         pool.apply([=](pool_type& pool){
             auto it = pool.find(id);
             if (it == pool.end()) {
@@ -197,6 +195,7 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
             }
 
             it->second.load--;
+            COCAINE_LOG_TRACE(log, "decrease slave load to %d", it->second.load)("uuid", id);
         });
 
         balancer->on_channel_finished(id, channel);
@@ -204,16 +203,18 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
 
     auto dispatch = std::make_shared<const worker_client_dispatch_t>(
         payload.upstream,
-        std::bind(&channel_watcher_t::close_rx, watcher)
+        std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::rx)
     );
 
     slave.load++;
+    COCAINE_LOG_TRACE(log, "increase slave load to %d", slave.load)("uuid", id);
+
     auto stream = slave.slave.inject(dispatch);
     stream->send<io::worker::rpc::invoke>(payload.event);
 
     payload.dispatch->attach(
         std::move(stream),
-        std::bind(&channel_watcher_t::close_tx, watcher)
+        std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::rx)
     );
 }
 
