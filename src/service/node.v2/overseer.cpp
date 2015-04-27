@@ -217,10 +217,6 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
         std::move(stream),
         std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::tx)
     );
-
-    loop->post([=]{
-        pool->erase(id);
-    });
 }
 
 void
