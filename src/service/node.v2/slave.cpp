@@ -8,8 +8,9 @@
 #include "cocaine/detail/service/node/profile.hpp"
 #include "cocaine/detail/service/node.v2/slave/control.hpp"
 #include "cocaine/detail/service/node.v2/slave/fetcher.hpp"
-#include "cocaine/detail/service/node.v2/slave/state/state.hpp"
+#include "cocaine/detail/service/node.v2/slave/state/active.hpp"
 #include "cocaine/detail/service/node.v2/slave/state/broken.hpp"
+#include "cocaine/detail/service/node.v2/slave/state/state.hpp"
 #include "cocaine/detail/service/node.v2/slave/state/terminating.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/worker.hpp"
 #include "cocaine/detail/service/node.v2/util.hpp"
@@ -17,80 +18,6 @@
 namespace ph = std::placeholders;
 
 using namespace cocaine;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class state_machine_t::active_t:
-    public state_t,
-    public std::enable_shared_from_this<active_t>
-{
-    std::shared_ptr<state_machine_t> slave;
-    std::unique_ptr<api::handle_t> handle;
-    std::shared_ptr<session_t> session;
-    std::shared_ptr<control_t> control;
-
-public:
-    active_t(std::shared_ptr<state_machine_t> slave,
-             std::unique_ptr<api::handle_t> handle,
-             std::shared_ptr<session_t> session,
-             std::shared_ptr<control_t> control_):
-        slave(std::move(slave)),
-        handle(std::move(handle)),
-        session(std::move(session)),
-        control(std::move(control_))
-    {
-        control->start();
-    }
-
-    ~active_t() {
-        if (control) {
-            control->cancel();
-        }
-    }
-
-    const char*
-    name() const noexcept {
-        return "active";
-    }
-
-    virtual
-    bool
-    active() const noexcept {
-        return true;
-    }
-
-    virtual
-    io::upstream_ptr_t
-    inject(inject_dispatch_ptr_t dispatch) override {
-        return session->fork(dispatch);
-    }
-
-    /// Migrates the current state to the terminating one.
-    ///
-    /// This is achieved by sending the terminate event to the slave and waiting for its response
-    /// for a specified amount of time (timeout.terminate).
-    ///
-    /// The slave also becomes inactive (i.e. unable to handle new channels).
-    ///
-    /// If the slave is unable to ack the termination event it will be considered as broken and
-    /// should be removed from the pool.
-    ///
-    /// \warning this call invalidates the current object.
-    virtual
-    void
-    terminate(const std::error_code& ec) {
-        auto terminating = std::make_shared<terminating_t>(slave, std::move(handle));
-
-        control->terminate(ec);
-
-        slave->migrate(terminating);
-
-        terminating->start(slave->context.profile.timeout.terminate);
-    }
-
-    void
-    start() {}
-};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -128,7 +55,7 @@ public:
             // We don't care.
         }
 
-        slave->close(ec);
+        slave->shutdown(ec);
     }
 
     /// Activates the slave by transferring it to the active state using given session and control
@@ -154,13 +81,11 @@ public:
             auto active = std::make_shared<active_t>(slave, std::move(handle), std::move(session), control);
             slave->migrate(active);
 
-            active->start();
-
             return control;
         } catch (const std::exception& err) {
             COCAINE_LOG_ERROR(slave->log, "unable to activate slave: %s", err.what());
 
-            slave->close(error::unknown_activate_error);
+            slave->shutdown(error::unknown_activate_error);
         }
 
         return nullptr;
@@ -182,7 +107,7 @@ private:
         if (!ec) {
             COCAINE_LOG_ERROR(slave->log, "unable to activate slave: timeout");
 
-            slave->close(error::activate_timeout);
+            slave->shutdown(error::activate_timeout);
         }
     }
 };
@@ -217,7 +142,7 @@ public:
             // We don't care.
         }
 
-        slave->close(ec);
+        slave->shutdown(ec);
     }
 
     void
@@ -230,7 +155,7 @@ public:
         if (!locator || locator->endpoints().empty()) {
             COCAINE_LOG_ERROR(slave->log, "unable to spawn slave: failed to determine the Locator endpoint");
 
-            slave->close(error::locator_not_found);
+            slave->shutdown(error::locator_not_found);
             return;
         }
 
@@ -284,7 +209,7 @@ public:
         } catch(const std::system_error& err) {
             COCAINE_LOG_ERROR(slave->log, "unable to spawn slave: %s", err.code().message());
 
-            slave->close(err.code());
+            slave->shutdown(err.code());
         }
     }
 
@@ -311,7 +236,7 @@ private:
         } catch (const std::exception& err) {
             COCAINE_LOG_ERROR(slave->log, "unable to activate slave: %s", err.what());
 
-            slave->close(error::unknown_activate_error);
+            slave->shutdown(error::unknown_activate_error);
         }
     }
 
@@ -320,7 +245,7 @@ private:
         if (!ec) {
             COCAINE_LOG_ERROR(slave->log, "unable to spawn slave: timeout");
 
-            slave->close(error::spawn_timeout);
+            slave->shutdown(error::spawn_timeout);
         }
     }
 };
@@ -421,7 +346,7 @@ state_machine_t::migrate(std::shared_ptr<state_t> desired) {
 }
 
 void
-state_machine_t::close(std::error_code ec) {
+state_machine_t::shutdown(std::error_code ec) {
     migrate(std::make_shared<broken_t>(ec));
 
     fetcher->close();

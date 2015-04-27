@@ -172,16 +172,10 @@ overseer_t::spawn(locked_ptr<pool_type>& pool) {
     // It is guaranteed that the cleanup handler will not be invoked from within the slave's
     // constructor.
     const auto uuid = ctx.id;
-    pool->emplace(uuid, slave_t(std::move(ctx), *loop, [=](const std::error_code& ec){
-        if (ec) {
-            COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool: %s", ec.message());
-        } else {
-            COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool");
-        }
-
-        this->pool->erase(uuid);
-        this->balancer->on_slave_death(uuid);
-    }));
+    pool->emplace(
+        uuid,
+        slave_t(std::move(ctx), *loop, std::bind(&overseer_t::on_slave_death, shared_from_this(), ph::_1, uuid))
+    );
 }
 
 void
@@ -221,3 +215,15 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
 
 void
 overseer_t::despawn(std::string, bool /*graceful*/) {}
+
+void
+overseer_t::on_slave_death(const std::error_code& ec, std::string uuid) {
+    if (ec) {
+        COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool: %s", ec.message());
+    } else {
+        COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool");
+    }
+
+    pool->erase(uuid);
+    balancer->on_slave_death(uuid);
+}

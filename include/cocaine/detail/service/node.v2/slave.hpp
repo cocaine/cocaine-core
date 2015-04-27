@@ -27,6 +27,7 @@
 namespace cocaine {
 
 class state_t;
+class active_t;
 class terminating_t;
 class broken_t;
 
@@ -59,9 +60,8 @@ class state_machine_t:
 {
     class spawning_t;
     class handshaking_t;
-    class active_t;
-    class sealing_t;
 
+    friend class active_t;
     friend class terminating_t;
     friend class broken_t;
 
@@ -91,9 +91,20 @@ public:
     state_machine_t(slave_context ctx, asio::io_service& loop, cleanup_handler cleanup);
     ~state_machine_t();
 
+    /// Starts the state machine.
+    ///
+    /// \pre state == nullptr.
+    ///
+    /// \note this method should be called once just after creating an instance of this class.
+    /// The reason is - we start processing asynchronous operations with providing shared pointer
+    /// on this object, which is impossible in constructor.
+    /// Calling this method twice or more will result in undefined behavior.
     void
     start();
 
+    /// Returns true is the slave is in active state.
+    ///
+    /// \pre state != nullptr.
     bool
     active() const noexcept;
 
@@ -118,7 +129,7 @@ private:
 
     /// Internal termination.
     void
-    close(std::error_code ec);
+    shutdown(std::error_code ec);
 };
 
 // TODO: Rename to `comrade`, because in Soviet Russia slave owns you!

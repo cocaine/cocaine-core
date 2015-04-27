@@ -123,7 +123,12 @@ public:
     /// Closes the worker from new requests
     /// Then forces the slave to send terminate event. Start timer.
     /// On timeout or on response erases slave.
-    void despawn(std::string, bool graceful = true);
+    void
+    despawn(std::string, bool graceful = true);
+
+private:
+    void
+    on_slave_death(const std::error_code& ec, std::string uuid);
 };
 
 }

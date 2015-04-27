@@ -27,7 +27,7 @@ terminating_t::terminate(const std::error_code& ec) {
     } catch (...) {
     }
 
-    slave->close(ec);
+    slave->shutdown(ec);
 }
 
 void
@@ -43,6 +43,6 @@ terminating_t::on_timeout(const std::error_code& ec) {
     if (!ec) {
         COCAINE_LOG_ERROR(slave->log, "unable to terminate slave: timeout");
 
-        slave->close(error::teminate_timeout);
+        slave->shutdown(error::teminate_timeout);
     }
 }

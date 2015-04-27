@@ -53,7 +53,7 @@ control_t::discard(const std::error_code& ec) const {
     if (ec && !closed) {
         COCAINE_LOG_DEBUG(slave->log, "control channel has been discarded: %s", ec.message());
 
-        slave->close(error::conrol_ipc_error);
+        slave->shutdown(error::conrol_ipc_error);
     }
 }
 
@@ -69,7 +69,7 @@ control_t::on_terminate(int /*ec*/, const std::string& reason) {
     COCAINE_LOG_DEBUG(slave->log, "processing terminate message: %s", reason);
 
     // TODO: Check the error code to diverge between normal and abnormal slave shutdown.
-    slave->close(error::committed_suicide);
+    slave->shutdown(error::committed_suicide);
 }
 
 void
@@ -89,6 +89,6 @@ control_t::on_timeout(const std::error_code& ec) {
         COCAINE_LOG_TRACE(slave->log, "heartbeat timer has called its completion handler: cancelled");
     } else {
         COCAINE_LOG_TRACE(slave->log, "heartbeat timer has called its completion handler: timeout");
-        slave->close(error::heartbeat_timeout);
+        slave->shutdown(error::heartbeat_timeout);
     }
 }

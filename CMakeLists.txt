@@ -129,6 +129,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/node.v2/slave/state/state.cpp
     src/service/node.v2/slave/state/broken.cpp
     src/service/node.v2/slave/state/terminating.cpp
+    src/service/node.v2/slave/state/active.cpp
 
     src/service/node/manifest.cpp
     src/service/node/profile.cpp

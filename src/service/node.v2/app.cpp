@@ -126,6 +126,7 @@ app_t::~app_t() {
     COCAINE_LOG_TRACE(log, "removing application service from the context");
 
     overseer->balance();
+    overseer->get_pool()->clear();
 
     context.remove(manifest->name);
 
