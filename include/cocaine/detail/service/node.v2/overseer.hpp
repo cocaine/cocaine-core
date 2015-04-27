@@ -85,14 +85,9 @@ public:
     void
     balance(std::unique_ptr<balancer_t> balancer = nullptr);
 
-    /// If uuid provided - find uuid in pool.
-    ///  - found - attach without balancer.
-    ///  - not found - ask balancer for create worker with tag and queue (with tag).
-    /// If uuid not provided - ask balancer for rebalance.
-    /// BALANCER:
-    ///  - pool is empty - create adapter, cache event and return. Save adapter in queue.
-    ///  - pool is not empty - all unattached - create adapter, cache event and return. Save adapter in queue.
-    ///  - pool is not empty - get session (attached) - inject in session. Get upstream.
+    /// Enqueues the new event into the more appropriate slave.
+    ///
+    /// Puts the event into the queue if there are no slaves available.
     ///
     /// \param upstream represents the client <- worker stream.
     /// \param event an invocation event name.
@@ -113,12 +108,6 @@ public:
     handshaker();
 
     /// Spawns a new slave using current manifest and profile.
-    ///
-    /// Check current pool size. Return if already >=.
-    /// Spawn.
-    /// Add uuid to map.
-    /// Wait for startup timeout. Erase on timeout.
-    /// Wait for uuid on acceptor.
     void
     spawn();
 
@@ -130,8 +119,8 @@ public:
     assign(const std::string& id, slave_handler_t& slave, queue_value& payload);
 
     /// Closes the worker from new requests
-    /// Then calls the overlord to send terminate event. Start timer.
-    /// On timeout or on response erases drone.
+    /// Then forces the slave to send terminate event. Start timer.
+    /// On timeout or on response erases slave.
     void despawn(std::string, bool graceful = true);
 };
 
