@@ -34,6 +34,9 @@ public:
     void
     attach(upstream<outcoming_tag> stream, std::function<void()> close);
 
+    /// The client has been disconnected without closing its opened channels.
+    ///
+    /// In this case we should call close callback to prevend resource leak.
     virtual
     void
     discard(const std::error_code& ec) const override;
