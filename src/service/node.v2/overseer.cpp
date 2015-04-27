@@ -49,6 +49,7 @@ public:
         const auto preceding = closed.fetch_or(state);
 
         BOOST_ASSERT((state & preceding) != state);
+        (void)preceding;
 
         if (closed.load() == close_state_t::both) {
             callback();

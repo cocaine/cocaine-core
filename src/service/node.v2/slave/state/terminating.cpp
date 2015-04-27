@@ -31,7 +31,7 @@ terminating_t::terminate(const std::error_code& ec) {
 }
 
 void
-terminating_t::start(unsigned int timeout) {
+terminating_t::start(unsigned long timeout) {
     COCAINE_LOG_DEBUG(slave->log, "slave is terminating, timeout: %.2f ms", timeout);
 
     timer.expires_from_now(boost::posix_time::milliseconds(timeout));

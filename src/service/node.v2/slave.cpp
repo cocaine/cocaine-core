@@ -146,7 +146,7 @@ public:
     }
 
     void
-    spawn(unsigned int timeout) {
+    spawn(unsigned long timeout) {
         COCAINE_LOG_DEBUG(slave->log, "slave is spawning using '%s', timeout: %.2f ms",
                           slave->context.manifest.executable, timeout);
 

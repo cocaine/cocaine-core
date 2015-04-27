@@ -30,7 +30,7 @@ public:
     terminate(const std::error_code& ec);
 
     void
-    start(unsigned int timeout);
+    start(unsigned long timeout);
 
 private:
     void
