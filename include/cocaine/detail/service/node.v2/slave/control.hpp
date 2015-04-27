@@ -13,7 +13,7 @@ class state_machine_t;
 ///
 /// NOTE: Worker should shut itself down after sending terminate message back (even if it initiates)
 /// to the runtime.
-class control_t :
+class control_t:
     public dispatch<io::worker::control_tag>,
     public std::enable_shared_from_this<control_t>
 {

@@ -27,6 +27,7 @@
 namespace cocaine {
 
 class control_t;
+class fetcher_t;
 
 typedef std::shared_ptr<
     const dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>
@@ -52,8 +53,6 @@ struct slave_context {
 class state_machine_t:
     public std::enable_shared_from_this<state_machine_t>
 {
-    class fetcher_t;
-
     class state_t;
     class spawning_t;
     class handshaking_t;
@@ -64,6 +63,7 @@ class state_machine_t:
     class closed_t;
 
     friend class control_t;
+    friend class fetcher_t;
 
 public:
     typedef std::function<void(const std::error_code&)> cleanup_handler;

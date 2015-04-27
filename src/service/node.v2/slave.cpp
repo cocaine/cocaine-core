@@ -7,81 +7,13 @@
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
 #include "cocaine/detail/service/node.v2/slave/control.hpp"
+#include "cocaine/detail/service/node.v2/slave/fetcher.hpp"
 #include "cocaine/detail/service/node.v2/dispatch/worker.hpp"
 #include "cocaine/detail/service/node.v2/util.hpp"
 
 namespace ph = std::placeholders;
 
 using namespace cocaine;
-
-/// The slave's output fetcher.
-///
-/// \reentrant all methods must be called from the event loop thread, otherwise the behavior is
-/// undefined.
-class state_machine_t::fetcher_t:
-    public std::enable_shared_from_this<fetcher_t>
-{
-    std::shared_ptr<state_machine_t> slave;
-
-    std::array<char, 4096> buffer;
-    asio::posix::stream_descriptor watcher;
-
-public:
-    explicit fetcher_t(std::shared_ptr<state_machine_t> slave) :
-        slave(slave),
-        watcher(slave->loop)
-    {}
-
-    /// Assigns an existing native descriptor to the output watcher and starts watching over it.
-    ///
-    /// \throws std::system_error on any system error while assigning an fd.
-    void assign(int fd) {
-        watcher.assign(fd);
-
-        COCAINE_LOG_DEBUG(slave->log, "slave has started fetching standard output");
-        watch();
-    }
-
-    /// Cancels all asynchronous operations associated with the descriptor by closing it.
-    void close() {
-        if (watcher.is_open()) {
-            COCAINE_LOG_TRACE(slave->log, "slave has cancelled fetching standard output");
-
-            try {
-                watcher.close();
-            } catch (const std::system_error&) {
-                // Eat.
-            }
-        }
-    }
-
-private:
-    void watch() {
-        COCAINE_LOG_TRACE(slave->log, "slave is fetching more standard output");
-
-        watcher.async_read_some(
-            asio::buffer(buffer.data(), buffer.size()),
-            std::bind(&fetcher_t::on_read, shared_from_this(), ph::_1, ph::_2)
-        );
-    }
-
-    void on_read(const std::error_code& ec, size_t len) {
-        switch (ec.value()) {
-        case 0:
-            COCAINE_LOG_TRACE(slave->log, "slave has received %d bytes of output", len);
-            slave->output(buffer.data(), len);
-            watch();
-            break;
-        case asio::error::operation_aborted:
-            break;
-        case asio::error::eof:
-            COCAINE_LOG_DEBUG(slave->log, "slave has closed its output");
-            break;
-        default:
-            COCAINE_LOG_WARNING(slave->log, "slave has failed to read output: %s", ec.message());
-        }
-    }
-};
 
 class state_machine_t::state_t {
 public:
