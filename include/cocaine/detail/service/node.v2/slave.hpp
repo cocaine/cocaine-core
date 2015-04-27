@@ -95,9 +95,6 @@ public:
     bool
     active() const noexcept;
 
-    size_t
-    load() const noexcept;
-
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 

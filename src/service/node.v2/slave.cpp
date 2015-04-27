@@ -95,12 +95,6 @@ public:
         return false;
     }
 
-    virtual
-    size_t
-    load() const noexcept {
-        return 0;
-    }
-
     /// Cancels all pending asynchronous operations.
     ///
     /// Should be invoked on slave destruction, indicating that the current state should cancel all
@@ -158,12 +152,6 @@ public:
     bool
     active() const noexcept {
         return true;
-    }
-
-    virtual
-    size_t
-    load() const noexcept {
-        return session->active_channels().size();
     }
 
     void
@@ -456,11 +444,6 @@ state_machine_t::stop() {
 bool
 state_machine_t::active() const noexcept {
     return (*state.synchronize())->active();
-}
-
-size_t
-state_machine_t::load() const noexcept {
-    return (*state.synchronize())->load();
 }
 
 std::shared_ptr<control_t>
