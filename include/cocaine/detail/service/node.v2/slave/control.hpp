@@ -32,6 +32,7 @@ class control_t:
 public:
     control_t(std::shared_ptr<state_machine_t> slave, upstream<io::worker::control_tag> stream);
 
+    virtual
     ~control_t();
 
     /// Starts health checking explicitly.
