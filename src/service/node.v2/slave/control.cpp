@@ -31,10 +31,17 @@ control_t::start() {
     breath();
 }
 
-void control_t::terminate(const std::error_code& ec) {
+void
+control_t::terminate(const std::error_code& ec) {
+    BOOST_ASSERT(ec);
+
     COCAINE_LOG_TRACE(slave->log, "sending terminate message");
 
-    stream = stream.send<io::worker::terminate>(ec.value(), ec.message());
+    try {
+        stream = stream.send<io::worker::terminate>(ec.value(), ec.message());
+    } catch (const error_t& err) {
+        COCAINE_LOG_WARNING(slave->log, "failed to send terminate message: %s", err.what());
+    }
 }
 
 void
