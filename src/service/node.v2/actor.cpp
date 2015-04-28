@@ -1,5 +1,7 @@
 #include "cocaine/detail/service/node.v2/actor.hpp"
 
+#include <boost/filesystem/operations.hpp>
+
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
@@ -138,4 +140,13 @@ unix_actor_t::terminate() {
 
     // Be ready to restart the actor.
     m_asio->reset();
+
+    const auto endpoint = boost::lexical_cast<std::string>(this->endpoint);
+
+    try {
+        COCAINE_LOG_DEBUG(m_log, "removing local endpoint '%s'", endpoint);
+        boost::filesystem::remove(endpoint);
+    } catch (const std::exception& err) {
+        COCAINE_LOG_WARNING(m_log, "unable to clean local endpoint '%s': %s", endpoint, err.what());
+    }
 }
