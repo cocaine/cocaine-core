@@ -75,6 +75,7 @@ private:
     const std::unique_ptr<logging::log_t> log;
 
     const slave_context context;
+    // TODO: In current implementation this can be invalid, when engine is stopped.
     asio::io_service& loop;
 
     /// The flag means that the overseer has been destroyed and we shouldn't call the callback.
@@ -85,10 +86,12 @@ private:
     std::shared_ptr<fetcher_t> fetcher;
     boost::circular_buffer<std::string> lines;
 
+    std::atomic<bool> shutdowned;
+
     synchronized<std::shared_ptr<state_t>> state;
 
 public:
-    state_machine_t(slave_context ctx, asio::io_service& loop, cleanup_handler cleanup);
+    state_machine_t(slave_context context, asio::io_service& loop, cleanup_handler cleanup);
     ~state_machine_t();
 
     /// Starts the state machine.
@@ -108,15 +111,19 @@ public:
     bool
     active() const noexcept;
 
+    /// \pre state != nullptr.
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 
+    /// \pre state != nullptr.
     io::upstream_ptr_t
     inject(inject_dispatch_ptr_t dispatch);
 
     /// External termination.
     ///
     /// We shouldn't call the cleanup callback after this call.
+    ///
+    /// \pre state != nullptr.
     void
     terminate(std::error_code ec);
 
@@ -128,6 +135,8 @@ private:
     migrate(std::shared_ptr<state_t> desired);
 
     /// Internal termination.
+    ///
+    /// Can be called multiple times, but only the first one takes an effect.
     void
     shutdown(std::error_code ec);
 };

@@ -252,13 +252,14 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-state_machine_t::state_machine_t(slave_context ctx, asio::io_service& loop, cleanup_handler cleanup):
-    log(ctx.context.log(format("%s/slave", ctx.manifest.name), {{ "uuid", ctx.id }})),
-    context(ctx),
+state_machine_t::state_machine_t(slave_context context, asio::io_service& loop, cleanup_handler cleanup):
+    log(context.context.log(format("%s/slave", context.manifest.name), {{ "uuid", context.id }})),
+    context(context),
     loop(loop),
     closed(false),
     cleanup(std::move(cleanup)),
-    lines(context.profile.crashlog_limit)
+    lines(context.profile.crashlog_limit),
+    shutdowned(false)
 {
     COCAINE_LOG_TRACE(log, "slave state machine has been initialized");
 }
@@ -309,11 +310,13 @@ state_machine_t::inject(inject_dispatch_ptr_t dispatch) {
 
 void
 state_machine_t::terminate(std::error_code ec) {
+    BOOST_ASSERT(ec);
+
     if (closed.exchange(true)) {
         return;
     }
 
-    COCAINE_LOG_TRACE(log, "slave state machine is terminating");
+    COCAINE_LOG_TRACE(log, "slave state machine is terminating: %s", ec.message());
 
     auto state = *this->state.synchronize();
     BOOST_ASSERT(state);
@@ -347,6 +350,10 @@ state_machine_t::migrate(std::shared_ptr<state_t> desired) {
 
 void
 state_machine_t::shutdown(std::error_code ec) {
+    if (shutdowned.exchange(true)) {
+        return;
+    }
+
     migrate(std::make_shared<broken_t>(ec));
 
     fetcher->close();
@@ -365,6 +372,7 @@ state_machine_t::shutdown(std::error_code ec) {
 }
 
 slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn):
+    ec(error::overseer_shutdowning),
     machine(std::make_shared<state_machine_t>(context, loop, fn))
 {
     machine->start();
