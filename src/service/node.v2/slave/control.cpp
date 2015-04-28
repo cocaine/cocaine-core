@@ -75,7 +75,8 @@ void
 control_t::on_terminate(int /*ec*/, const std::string& reason) {
     COCAINE_LOG_DEBUG(slave->log, "processing terminate message: %s", reason);
 
-    // TODO: Check the error code to diverge between normal and abnormal slave shutdown.
+    // TODO: Check the error code to diverge between normal and abnormal slave shutdown. More will
+    // be implemented after error_categories come.
     slave->shutdown(error::committed_suicide);
 }
 
