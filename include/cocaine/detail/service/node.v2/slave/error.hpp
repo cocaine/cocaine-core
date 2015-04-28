@@ -5,21 +5,46 @@
 namespace cocaine { namespace error {
 
 enum slave_errors {
+    /// The slave has failed to spawn for a timeout.spawn ms.
     spawn_timeout = 1,
+
+    /// The slave has unable to locate the Locator service from the core.
     locator_not_found,
+
+    /// The slave has failed to activate for a timeout.activate ms.
+    ///
+    /// A slave is considered active when is sends a handshake message and the runtime receives it.
     activate_timeout,
-    teminate_timeout,
-    /// The slave hasn't sent a heartbeat message during a timeout.heartbeat milliseconds.
-    heartbeat_timeout,
+
+    /// The slave has failed to activate, because of some errors.
     unknown_activate_error,
+
+    /// The slave has failed to terminate itself for a timeout.terminate ms.
+    teminate_timeout,
+
+    /// The slave hasn't sent a heartbeat message during a timeout.heartbeat ms.
+    heartbeat_timeout,
+
+    /// The operation cannot be completed, because the slave is in invalid state.
     invalid_state,
+
     /// Unexpected IPC error occurred between the runtime and worker.
     ///
-    /// In this case we cannot control
-    /// the worker anymore, so the only way to handle this error - is to mark the worker as broken
-    /// and to terminate it using TERMINATE or KILL signals.
+    /// In this case we cannot control the worker anymore, so the only way to handle this error - is
+    /// to mark the worker as broken and to terminate it using TERM or KILL signals.
     conrol_ipc_error,
-    committed_suicide
+
+    /// The overseer is shutdowning.
+    overseer_shutdowning,
+
+    /// The slave has committed suicide, i.e. sent a terminated message.
+    ///
+    /// In this case it is free to do anything, for example, kill itself. We can only mark the slave
+    /// as closed.
+    committed_suicide,
+
+    /// The slave has no active channels for a timeout.idle ms.
+    slave_idle
 };
 
 const std::error_category&
