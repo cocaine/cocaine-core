@@ -42,26 +42,36 @@ public:
     virtual
     ~balancer_t() {}
 
+    /// Called on slave spawn.
+    ///
+    /// Here is the right time to rebalance accumulated events from the queue.
     virtual
     void
     on_slave_spawn(const std::string& uuid) = 0;
 
+    /// Called after slave's death.
     virtual
     void
     on_slave_death(const std::string& uuid) = 0;
 
+    /// Called on new event.
     virtual
     slave_info
     on_request(const std::string& event, const std::string& id) = 0;
 
+    /// Called on new channel appended into the queue.
+    ///
+    /// Here is the right place to review slave count and possibly spawn more.
     virtual
     void
     on_queue() = 0;
 
+    /// Called on channel attaching.
     virtual
     std::uint64_t
     on_channel_started(const std::string& uuid) = 0;
 
+    /// Called on channel revoking.
     virtual
     void
     on_channel_finished(const std::string& uuid, std::uint64_t channel) = 0;
