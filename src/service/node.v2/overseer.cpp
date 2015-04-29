@@ -43,8 +43,10 @@ public:
     /// \pre each closing function must be called exactly once, otherwise the behavior is undefined.
     void
     close(close_state_t state) {
-        COCAINE_LOG_TRACE(overseer->log, "closing %s side of %d channel",
-                          state == tx ? "tx" : "rx", channel);
+        BOOST_ASSERT(state == tx || state == rx);
+
+        static const std::array<const char*, 2> description = {{ "tx", "rx" }};
+        COCAINE_LOG_TRACE(overseer->log, "closing %s side of %d channel", description[state - tx], channel);
 
         const auto preceding = closed.fetch_or(state);
 
