@@ -6,6 +6,7 @@
 #include "cocaine/locked_ptr.hpp"
 
 #include "cocaine/rpc/actor.hpp"
+#include "cocaine/traits/dynamic.hpp"
 
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
@@ -42,6 +43,8 @@ public:
         on<io::app::enqueue>(std::make_shared<slot_type>(
             std::bind(&app_dispatch_t::on_enqueue, this, ph::_1, ph::_2, ph::_3)
         ));
+
+        on<io::app::info>(std::bind(&app_dispatch_t::on_info, this));
     }
 
     ~app_dispatch_t() {
@@ -66,6 +69,17 @@ private:
 
             return nullptr;
         }
+    }
+
+    dynamic_t
+    on_info() const {
+        ;
+        if (auto overseer = this->overseer.lock()) {
+            return overseer->info();
+        }
+
+        // TODO: Throw system error instead.
+        throw std::runtime_error("the application has been closed");
     }
 };
 

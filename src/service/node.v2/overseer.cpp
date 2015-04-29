@@ -19,8 +19,6 @@ namespace ph = std::placeholders;
 
 using namespace cocaine;
 
-using namespace blackhole;
-
 class overseer_t::channel_watcher_t {
 public:
     /// From client to worker and vise-versa.
@@ -86,6 +84,12 @@ overseer_t::get_queue() {
     return queue.synchronize();
 }
 
+dynamic_t::object_t
+overseer_t::info() const {
+    dynamic_t::object_t info;
+    return info;
+}
+
 void
 overseer_t::balance(std::unique_ptr<balancer_t> balancer) {
     if (balancer) {
@@ -126,7 +130,7 @@ overseer_t::handshaker() {
         [=](upstream<io::worker::control_tag>&& stream, const std::string& uuid,
             std::shared_ptr<session_t> session) -> std::shared_ptr<control_t>
     {
-        scoped_attributes_t holder(*log, {{ "uuid", uuid }});
+        blackhole::scoped_attributes_t holder(*log, {{ "uuid", uuid }});
 
         COCAINE_LOG_DEBUG(log, "processing handshake message");
 

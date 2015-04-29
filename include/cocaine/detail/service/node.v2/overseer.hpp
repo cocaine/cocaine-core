@@ -84,6 +84,9 @@ public:
     locked_ptr<queue_type>
     get_queue();
 
+    dynamic_t::object_t
+    info() const;
+
     void
     balance(std::unique_ptr<balancer_t> balancer = nullptr);
 
