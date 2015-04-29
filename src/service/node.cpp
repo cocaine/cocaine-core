@@ -43,8 +43,6 @@
 
 using namespace cocaine::service;
 
-using namespace blackhole;
-
 namespace ph = std::placeholders;
 
 node_t::node_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
@@ -85,7 +83,7 @@ node_t::node_t(context_t& context, asio::io_service& asio, const std::string& na
     std::vector<std::string> errored;
 
     for(auto it = runlist.begin(); it != runlist.end(); ++it) {
-        scoped_attributes_t scope(*m_log, { attribute::make("app", it->first) });
+        blackhole::scoped_attributes_t scope(*m_log, {{ "app", it->first }});
 
         try {
             start_app(it->first, it->second);

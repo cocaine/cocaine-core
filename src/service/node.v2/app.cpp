@@ -20,8 +20,6 @@
 using namespace cocaine;
 using namespace cocaine::service::v2;
 
-using namespace blackhole;
-
 namespace ph = std::placeholders;
 
 /// App dispatch, manages incoming enqueue requests. Adds them to the queue.
