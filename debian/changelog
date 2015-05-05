@@ -1,3 +1,10 @@
+cocaine-core (0.12.0.10) unstable; urgency=low
+
+  * Bugfix: do not process sessions on dead slaves.
+  * Bugfix: fixed phantom isolate/storage plugin caching.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 05 May 2015 16:12:37 +0300
+
 cocaine-core (0.12.0.9) unstable; urgency=low
 
   * Native external services support. Standalone native services can now
