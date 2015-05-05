@@ -165,7 +165,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     m_state(states::stopped),
     m_termination_timer(m_loop),
     m_socket(m_loop),
-    m_acceptor(m_loop, protocol_type::endpoint(m_manifest.endpoint)),
+    m_acceptor(m_loop, protocol_type()),
     m_next_id(1)
 {
     m_isolate = m_context.get<api::isolate_t>(
@@ -174,18 +174,33 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
         m_manifest.name,
         m_profile.isolate.args
     );
+
+    try {
+        if(boost::filesystem::exists(m_manifest.endpoint)) {
+            COCAINE_LOG_WARNING(m_log, "found uncollected '%s' unix socket", m_manifest.name);
+
+            boost::filesystem::remove(m_manifest.endpoint);
+        }
+    } catch(const boost::filesystem::filesystem_error& err) {
+        COCAINE_LOG_WARNING(m_log, "failed to cleanup uncollected '%s' unix socket: %s", m_manifest.name, err.what());
+    }
+
+    m_acceptor.bind(protocol_type::endpoint(m_manifest.endpoint));
+
     COCAINE_LOG_DEBUG(m_log, "app '%s' engine has been published on '%s'", m_manifest.name, m_acceptor.local_endpoint().path());
+
     m_thread = std::thread(std::bind(&engine_t::run, this));
 }
 
 engine_t::~engine_t() {
-    boost::filesystem::remove(m_manifest.endpoint);
+    try {
+        boost::filesystem::remove(m_manifest.endpoint);
+    } catch(...) {
+        // None.
+    }
 
     m_loop.post(std::bind(&engine_t::migrate, this, states::stopping));
-
-    if(m_thread.joinable()) {
-        m_thread.join();
-    }
+    m_thread.join();
 
     COCAINE_LOG_DEBUG(m_log, "app '%s' engine has been destroyed", m_manifest.name);
 }
@@ -201,14 +216,10 @@ engine_t::run() {
     );
 
     m_state = states::running;
-    std::error_code ec;
-    m_loop.run(ec);
-    if(ec) {
-        COCAINE_LOG_DEBUG(m_log, "engine has been stopped with error: [%d] %s", ec.value(), ec.message());
-    } else {
-        COCAINE_LOG_DEBUG(m_log, "engine has been successfuly stopped");
-    }
+    m_loop.run();
     m_state = states::stopped;
+
+    COCAINE_LOG_DEBUG(m_log, "engine has been successfuly stopped");
 }
 
 std::shared_ptr<api::stream_t>
