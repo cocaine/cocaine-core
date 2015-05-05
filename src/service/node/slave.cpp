@@ -81,7 +81,7 @@ slave_t::slave_t(const std::string& id,
                  suicide_type suicide,
                  asio::io_service& asio) :
     m_context(context),
-    m_log(context.log(manifest.name)),
+    m_log(context.log(manifest.name, {{ "uuid", id }})),
     m_asio(asio),
     m_manifest(manifest),
     m_profile(profile),
@@ -101,7 +101,7 @@ slave_t::slave_t(const std::string& id,
 }
 
 slave_t::~slave_t() {
-    COCAINE_LOG_DEBUG(m_log, "slave %s is terminating", m_id);
+    COCAINE_LOG_DEBUG(m_log, "slave is terminating");
     BOOST_ASSERT(m_state == states::inactive);
     BOOST_ASSERT(m_sessions.empty() && m_queue.empty());
 }
@@ -155,20 +155,19 @@ slave_t::do_assign(std::shared_ptr<session_t> session) {
     BOOST_ASSERT(m_state == states::active);
     m_sessions.insert(std::make_pair(session->id, session));
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s has started processing %d session", m_id, session->id);
+    COCAINE_LOG_DEBUG(m_log, "slave has started processing %d session", session->id);
     session->attach(m_channel->writer);
 }
 
 void
 slave_t::activate() {
-    COCAINE_LOG_DEBUG(m_log, "slave %s is activating, timeout: %.02f seconds",
-        m_id,
+    COCAINE_LOG_DEBUG(m_log, "slave is activating, timeout: %.02f seconds",
         m_profile.startup_timeout
     );
     m_heartbeat_timer.expires_from_now(boost::posix_time::seconds(m_profile.startup_timeout));
     m_heartbeat_timer.async_wait(std::bind(&slave_t::on_timeout, shared_from_this(), ph::_1));
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s is spawning using '%s'", m_id, m_manifest.executable);
+    COCAINE_LOG_DEBUG(m_log, "slave is spawning using '%s'", m_manifest.executable);
 
     auto isolate = m_context.get<api::isolate_t>(
         m_profile.isolate.type,
@@ -241,13 +240,13 @@ slave_t::on_output(const std::error_code& ec, std::size_t size, std::string left
             return;
         }
 
-        COCAINE_LOG_DEBUG(m_log, "slave: %s has failed to read output: %s", m_id, ec.message());
+        COCAINE_LOG_DEBUG(m_log, "slave has failed to read output: %s", ec.message());
         return;
     }
 
     BOOST_ASSERT(m_output);
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s received %d bytes of output", m_id, size);
+    COCAINE_LOG_DEBUG(m_log, "slave received %d bytes of output", size);
     std::stringstream stream(left);
     stream << std::string(m_output->buffer.data(), size);
 
@@ -256,7 +255,7 @@ slave_t::on_output(const std::error_code& ec, std::size_t size, std::string left
         m_output->lines.push_back(line);
 
         if(m_profile.log_output) {
-            COCAINE_LOG_DEBUG(m_log, "slave %s output: %s", m_id, line);
+            COCAINE_LOG_DEBUG(m_log, "slave output: %s", line);
         }
     }
 
@@ -268,12 +267,12 @@ slave_t::on_output(const std::error_code& ec, std::size_t size, std::string left
 
 void
 slave_t::on_message(const io::decoder_t::message_type& message) {
-    COCAINE_LOG_DEBUG(m_log, "slave %s received type %d message in session %d", m_id, message.type(), message.span());
+    COCAINE_LOG_DEBUG(m_log, "slave received type %d message in session %d", message.type(), message.span());
 
     try {
         process(message);
     } catch (const std::bad_cast&) {
-        COCAINE_LOG_WARNING(m_log, "slave %s dropped unknown message in session %d: message is corrupted", m_id, message.span());
+        COCAINE_LOG_WARNING(m_log, "slave dropped unknown message in session %d: message is corrupted", message.span());
         terminate(rpc::terminate::code::abnormal, "slave has detected session corruption");
     }
 }
@@ -314,7 +313,7 @@ slave_t::process(const io::decoder_t::message_type& message) {
         on_choke(message.span());
         break;
     default:
-        COCAINE_LOG_WARNING(m_log, "slave %s dropped unknown type %d message in session %d", m_id, message.type(), message.span());
+        COCAINE_LOG_WARNING(m_log, "slave dropped unknown type %d message in session %d", message.type(), message.span());
     }
 }
 
@@ -328,7 +327,7 @@ slave_t::on_failure(const std::error_code& ec) {
         switch(m_state) {
         case states::unknown:
         case states::active:
-            COCAINE_LOG_ERROR(m_log, "slave %s has unexpectedly disconnected: [%d] %s", m_id, ec.value(), ec.message());
+            COCAINE_LOG_ERROR(m_log, "slave has unexpectedly disconnected: [%d] %s", ec.value(), ec.message());
             dump();
             terminate(rpc::terminate::code::normal, "slave has unexpectedly disconnected");
             break;
@@ -348,7 +347,7 @@ slave_t::on_ping() {
         return;
     }
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s is resetting heartbeat timeout to %.02f seconds", m_id, m_profile.heartbeat_timeout);
+    COCAINE_LOG_DEBUG(m_log, "slave is resetting heartbeat timeout to %.02f seconds", m_profile.heartbeat_timeout);
 
     m_heartbeat_timer.expires_from_now(boost::posix_time::seconds(m_profile.heartbeat_timeout));
     m_heartbeat_timer.async_wait(std::bind(&slave_t::on_timeout, shared_from_this(), ph::_1));
@@ -367,7 +366,7 @@ slave_t::on_ping() {
             std::chrono::duration<float>
         >(now - m_birthstamp);
 
-        COCAINE_LOG_DEBUG(m_log, "slave %s became active in %.03f seconds", m_id, uptime.count());
+        COCAINE_LOG_DEBUG(m_log, "slave became active in %.03f seconds", uptime.count());
 
         m_state = states::active;
 
@@ -383,7 +382,7 @@ slave_t::on_ping() {
 
 void
 slave_t::on_death(int code, const std::string& reason) {
-    COCAINE_LOG_DEBUG(m_log, "slave %s is committing suicide: %s", m_id, reason);
+    COCAINE_LOG_DEBUG(m_log, "slave is committing suicide: %s", reason);
 
     // NOTE: This is the only case where code could be abnormal, triggering
     // the engine shutdown. Socket errors are not considered abnormal.
@@ -394,20 +393,20 @@ void
 slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
     BOOST_ASSERT(m_state == states::active);
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s received chunk in session %d", m_id, session_id)(
+    COCAINE_LOG_DEBUG(m_log, "slave received chunk in session %d", session_id)(
         "size", chunk.size()
     );
 
     auto it = m_sessions.find(session_id);
     if(it == m_sessions.end()) {
-        COCAINE_LOG_WARNING(m_log, "slave %s received orphan session %d chunk", m_id, session_id);
+        COCAINE_LOG_WARNING(m_log, "slave received orphan session %d chunk", session_id);
         return;
     }
 
     try {
         it->second->upstream->write(chunk.data(), chunk.size());
     } catch (const cocaine::error_t& err) {
-        COCAINE_LOG_WARNING(m_log, "slave %s is unable to send write event to the upstream: %s", m_id, err.what());
+        COCAINE_LOG_WARNING(m_log, "slave is unable to send write event to the upstream: %s", err.what());
     }
 }
 
@@ -415,21 +414,21 @@ void
 slave_t::on_error(uint64_t session_id, int code, const std::string& reason) {
     BOOST_ASSERT(m_state == states::active);
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s received error in session %d", m_id, session_id)(
+    COCAINE_LOG_DEBUG(m_log, "slave received error in session %d", session_id)(
         "errno", code,
         "reason", reason
     );
 
     auto it = m_sessions.find(session_id);
     if(it == m_sessions.end()) {
-        COCAINE_LOG_WARNING(m_log, "slave %s received orphan session %d error", m_id, session_id);
+        COCAINE_LOG_WARNING(m_log, "slave received orphan session %d error", session_id);
         return;
     }
 
     try {
         it->second->upstream->error(code, reason);
     } catch (const cocaine::error_t& err) {
-        COCAINE_LOG_WARNING(m_log, "slave %s is unable to send error event to the upstream: %s", m_id, err.what());
+        COCAINE_LOG_WARNING(m_log, "slave is unable to send error event to the upstream: %s", err.what());
     }
 }
 
@@ -437,11 +436,11 @@ void
 slave_t::on_choke(uint64_t session_id) {
     BOOST_ASSERT(m_state == states::active);
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s has completed session %d", m_id, session_id);
+    COCAINE_LOG_DEBUG(m_log, "slave has completed session %d", session_id);
 
     auto it = m_sessions.find(session_id);
     if(it == m_sessions.end()) {
-        COCAINE_LOG_WARNING(m_log, "slave %s received orphan session %d choke", m_id, session_id);
+        COCAINE_LOG_WARNING(m_log, "slave received orphan session %d choke", session_id);
         return;
     }
 
@@ -452,7 +451,7 @@ slave_t::on_choke(uint64_t session_id) {
         session->upstream->close();
         session->detach();
     } catch (const cocaine::error_t& err) {
-        COCAINE_LOG_WARNING(m_log, "slave %s is unable to send close event to the upstream: %s", m_id, err.what());
+        COCAINE_LOG_WARNING(m_log, "slave is unable to send close event to the upstream: %s", err.what());
     }
 
     // Destroy the session before calling the potentially heavy queue pumps.
@@ -470,13 +469,13 @@ slave_t::on_timeout(const std::error_code& ec) {
     // Timer has expired.
     switch(m_state) {
     case states::unknown:
-        COCAINE_LOG_ERROR(m_log, "slave %s has failed to activate", m_id);
+        COCAINE_LOG_ERROR(m_log, "slave has failed to activate");
         break;
     case states::active:
-        COCAINE_LOG_ERROR(m_log, "slave %s has timed out", m_id);
+        COCAINE_LOG_ERROR(m_log, "slave has timed out");
         break;
     case states::inactive:
-        COCAINE_LOG_ERROR(m_log, "slave %s has failed to deactivate", m_id);
+        COCAINE_LOG_ERROR(m_log, "slave has failed to deactivate");
         break;
     }
 
@@ -493,7 +492,7 @@ slave_t::on_idle(const std::error_code& ec) {
     BOOST_ASSERT(m_state == states::active);
     BOOST_ASSERT(m_sessions.empty() && m_queue.empty());
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s is idle, deactivating", m_id);
+    COCAINE_LOG_DEBUG(m_log, "slave is idle, deactivating");
     m_state = states::inactive;
 
     m_channel->writer->write(
@@ -531,14 +530,15 @@ slave_t::pump() {
 void
 slave_t::dump() {
     if(!m_output) {
-        COCAINE_LOG_WARNING(m_log, "No output from slave - slave %s failed to create handle", m_id);
+        COCAINE_LOG_WARNING(m_log, "No output from slave - slave failed to create handle");
         return;
     }
+
     std::vector<std::string> dump;
     std::copy(m_output->lines.begin(), m_output->lines.end(), std::back_inserter(dump));
 
     if(dump.empty()) {
-        COCAINE_LOG_WARNING(m_log, "slave %s has died in silence", m_id);
+        COCAINE_LOG_WARNING(m_log, "slave has died in silence");
         return;
     }
 
@@ -547,30 +547,30 @@ slave_t::dump() {
     >(std::chrono::system_clock::now().time_since_epoch()).count();
     const auto key = cocaine::format("%lld:%s", now, m_id);
 
-    COCAINE_LOG_INFO(m_log, "slave %s is dumping output to 'crashlogs/%s'", m_id, key);
+    COCAINE_LOG_INFO(m_log, "slave is dumping output to 'crashlogs/%s'", key);
 
     try {
         api::storage(m_context, "core")->put("crashlogs", key, dump, std::vector<std::string> {
             m_manifest.name
         });
     } catch(const storage_error_t& err) {
-        COCAINE_LOG_ERROR(m_log, "slave %s is unable to save the crashlog: %s", m_id, err.what());
+        COCAINE_LOG_ERROR(m_log, "slave is unable to save the crashlog: %s", err.what());
     }
 }
 
 void
 slave_t::terminate(int code, const std::string& reason) {
-    COCAINE_LOG_DEBUG(m_log, "terminating %s slave: [%d] %d", m_id, code, reason);
+    COCAINE_LOG_DEBUG(m_log, "terminating slave: [%d] %d", code, reason);
     m_state = states::inactive;
 
     if(!m_sessions.empty()) {
-        COCAINE_LOG_WARNING(m_log, "slave %s dropping %d sessions", m_id, m_sessions.size());
+        COCAINE_LOG_WARNING(m_log, "slave dropping %d sessions", m_sessions.size());
         for(auto it = m_sessions.begin(); it != m_sessions.end(); ++it) {
             try {
                 it->second->upstream->error(error::resource_error, reason);
                 it->second->detach();
             } catch (const std::exception& err) {
-                COCAINE_LOG_WARNING(m_log, "slave %s is unable to send error event to the upstream: %s", m_id, err.what());
+                COCAINE_LOG_WARNING(m_log, "slave is unable to send error event to the upstream: %s", err.what());
             }
         }
 
@@ -591,6 +591,6 @@ slave_t::terminate(int code, const std::string& reason) {
         m_output->cancel();
     }
 
-    COCAINE_LOG_DEBUG(m_log, "slave %s has cancelled its handlers", m_id);
+    COCAINE_LOG_DEBUG(m_log, "slave has cancelled its handlers");
     m_suicide(m_id, code, reason);
 }
