@@ -137,7 +137,16 @@ slave_t::do_stop() {
 
 void
 slave_t::do_assign(std::shared_ptr<session_t> session) {
-    BOOST_ASSERT(m_state != states::inactive);
+    if(m_state == states::inactive) {
+        COCAINE_LOG_WARNING(m_log, "unable to assign session: slave is inactive");
+        try {
+            session->upstream->error(error::resource_error, "slave is inactive");
+            session->detach();
+        } catch(const std::exception& err) {
+            COCAINE_LOG_WARNING(m_log, "slave %s is unable to send error event to the upstream: %s", m_id, err.what());
+        }
+        return;
+    }
 
     typedef api::policy_t::clock_type clock_type;
     if(session->event.policy.deadline > clock_type::time_point() && session->event.policy.deadline <= clock_type::now()) {
