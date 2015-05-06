@@ -73,7 +73,6 @@ private:
 
     dynamic_t
     on_info() const {
-        ;
         if (auto overseer = this->overseer.lock()) {
             return overseer->info();
         }

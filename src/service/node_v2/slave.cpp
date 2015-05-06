@@ -179,4 +179,3 @@ void
 slave_t::terminate(std::error_code ec) {
     this->ec = std::move(ec);
 }
-
