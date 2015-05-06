@@ -143,8 +143,8 @@ load_balancer_t::purge() {
 
         try {
             overseer->assign(it->first, it->second, payload);
-            // The slave may become in invalid state and reject the assignment (or reject for any
-            // other reasons). We pop the channel only on successful assignment to achieve strong
+            // The slave may become invalid and reject the assignment (or reject for any other
+            // reasons). We pop the channel only on successful assignment to achieve strong
             // exception guarantee.
             queue->pop();
         } catch (const std::exception& err) {
