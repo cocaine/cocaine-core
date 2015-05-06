@@ -26,10 +26,12 @@
 
 namespace cocaine {
 
-class state_t;
 class active_t;
-class terminating_t;
 class broken_t;
+class handshaking_t;
+class spawning_t;
+class state_t;
+class terminating_t;
 
 class control_t;
 class fetcher_t;
@@ -58,12 +60,11 @@ struct slave_context {
 class state_machine_t:
     public std::enable_shared_from_this<state_machine_t>
 {
-    class spawning_t;
-    class handshaking_t;
-
     friend class active_t;
-    friend class terminating_t;
     friend class broken_t;
+    friend class handshaking_t;
+    friend class spawning_t;
+    friend class terminating_t;
 
     friend class control_t;
     friend class fetcher_t;
