@@ -96,6 +96,7 @@ load_balancer_t::on_slave_spawn(const std::string& /*uuid*/) {
 void
 load_balancer_t::on_slave_death(const std::string& /*uuid*/) {
     COCAINE_LOG_TRACE(overseer->log, "slave has been removed from balancer");
+    balance();
 }
 
 void
