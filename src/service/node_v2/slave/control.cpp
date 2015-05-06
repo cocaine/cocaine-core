@@ -1,11 +1,11 @@
-#include "cocaine/detail/service/node.v2/slave/control.hpp"
+#include "cocaine/detail/service/node_v2/slave/control.hpp"
 
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/traits/tuple.hpp"
 
-#include "cocaine/detail/service/node.v2/slave.hpp"
+#include "cocaine/detail/service/node_v2/slave.hpp"
 
 namespace ph = std::placeholders;
 

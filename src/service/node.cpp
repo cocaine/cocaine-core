@@ -19,7 +19,7 @@
 */
 
 #include "cocaine/detail/service/node.hpp"
-#include "cocaine/detail/service/node.v2/app.hpp"
+#include "cocaine/detail/service/node_v2/app.hpp"
 
 #include "cocaine/api/storage.hpp"
 

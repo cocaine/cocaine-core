@@ -1,4 +1,4 @@
-#include "cocaine/detail/service/node.v2/overseer.hpp"
+#include "cocaine/detail/service/node_v2/overseer.hpp"
 
 #include <blackhole/scoped_attributes.hpp>
 
@@ -7,13 +7,13 @@
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
 
-#include "cocaine/detail/service/node.v2/balancing/base.hpp"
-#include "cocaine/detail/service/node.v2/balancing/null.hpp"
-#include "cocaine/detail/service/node.v2/dispatch/client.hpp"
-#include "cocaine/detail/service/node.v2/dispatch/handshaker.hpp"
-#include "cocaine/detail/service/node.v2/dispatch/worker.hpp"
-#include "cocaine/detail/service/node.v2/slave/control.hpp"
-#include "cocaine/detail/service/node.v2/slot.hpp"
+#include "cocaine/detail/service/node_v2/balancing/base.hpp"
+#include "cocaine/detail/service/node_v2/balancing/null.hpp"
+#include "cocaine/detail/service/node_v2/dispatch/client.hpp"
+#include "cocaine/detail/service/node_v2/dispatch/handshaker.hpp"
+#include "cocaine/detail/service/node_v2/dispatch/worker.hpp"
+#include "cocaine/detail/service/node_v2/slave/control.hpp"
+#include "cocaine/detail/service/node_v2/slot.hpp"
 
 namespace ph = std::placeholders;
 

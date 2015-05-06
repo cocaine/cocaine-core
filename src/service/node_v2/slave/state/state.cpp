@@ -1,6 +1,6 @@
-#include "cocaine/detail/service/node.v2/slave/state/state.hpp"
+#include "cocaine/detail/service/node_v2/slave/state/state.hpp"
 
-#include "cocaine/detail/service/node.v2/slave/error.hpp"
+#include "cocaine/detail/service/node_v2/slave/error.hpp"
 
 using namespace cocaine;
 

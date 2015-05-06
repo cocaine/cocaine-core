@@ -1,4 +1,4 @@
-#include "cocaine/detail/service/node.v2/slave.hpp"
+#include "cocaine/detail/service/node_v2/slave.hpp"
 
 #include "cocaine/api/isolate.hpp"
 #include "cocaine/context.hpp"
@@ -6,14 +6,14 @@
 
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
-#include "cocaine/detail/service/node.v2/slave/control.hpp"
-#include "cocaine/detail/service/node.v2/slave/fetcher.hpp"
-#include "cocaine/detail/service/node.v2/slave/state/active.hpp"
-#include "cocaine/detail/service/node.v2/slave/state/broken.hpp"
-#include "cocaine/detail/service/node.v2/slave/state/state.hpp"
-#include "cocaine/detail/service/node.v2/slave/state/terminating.hpp"
-#include "cocaine/detail/service/node.v2/dispatch/worker.hpp"
-#include "cocaine/detail/service/node.v2/util.hpp"
+#include "cocaine/detail/service/node_v2/slave/control.hpp"
+#include "cocaine/detail/service/node_v2/slave/fetcher.hpp"
+#include "cocaine/detail/service/node_v2/slave/state/active.hpp"
+#include "cocaine/detail/service/node_v2/slave/state/broken.hpp"
+#include "cocaine/detail/service/node_v2/slave/state/state.hpp"
+#include "cocaine/detail/service/node_v2/slave/state/terminating.hpp"
+#include "cocaine/detail/service/node_v2/dispatch/worker.hpp"
+#include "cocaine/detail/service/node_v2/util.hpp"
 
 namespace ph = std::placeholders;
 

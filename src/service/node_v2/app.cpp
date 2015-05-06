@@ -1,4 +1,4 @@
-#include "cocaine/detail/service/node.v2/app.hpp"
+#include "cocaine/detail/service/node_v2/app.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
@@ -11,12 +11,12 @@
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
 
-#include "cocaine/detail/service/node.v2/actor.hpp"
-#include "cocaine/detail/service/node.v2/balancing/load.hpp"
-#include "cocaine/detail/service/node.v2/dispatch/client.hpp"
-#include "cocaine/detail/service/node.v2/dispatch/handshaker.hpp"
-#include "cocaine/detail/service/node.v2/dispatch/hostess.hpp"
-#include "cocaine/detail/service/node.v2/overseer.hpp"
+#include "cocaine/detail/service/node_v2/actor.hpp"
+#include "cocaine/detail/service/node_v2/balancing/load.hpp"
+#include "cocaine/detail/service/node_v2/dispatch/client.hpp"
+#include "cocaine/detail/service/node_v2/dispatch/handshaker.hpp"
+#include "cocaine/detail/service/node_v2/dispatch/hostess.hpp"
+#include "cocaine/detail/service/node_v2/overseer.hpp"
 
 using namespace cocaine;
 using namespace cocaine::service::v2;

@@ -20,7 +20,7 @@
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
 
-#include "cocaine/detail/service/node.v2/splitter.hpp"
+#include "cocaine/detail/service/node_v2/splitter.hpp"
 
 #include "slave/error.hpp"
 
