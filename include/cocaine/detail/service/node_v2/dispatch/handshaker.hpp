@@ -35,9 +35,9 @@ public:
             [=](slot_type::upstream_type&& stream, const std::string& uuid) -> std::shared_ptr<control_t>
         {
             std::unique_lock<std::mutex> lock(mutex);
-            if (!session) {
-                cv.wait(lock);
-            }
+            cv.wait(lock, [&]() -> bool {
+                return !!session;
+            });
 
             return fn(std::move(stream), uuid, std::move(session));
         }));
