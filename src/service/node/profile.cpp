@@ -53,11 +53,11 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         isolate_config.at("args", dynamic_t::object_t())
     };
 
-    timeout.spawn     = 1000.0f;
-    timeout.handshake = 5000.0f;
-    timeout.heartbeat = 30000.0f;
-    timeout.terminate = 30000.0f;
-    timeout.idle      = 60000.0f;
+    timeout.spawn     = 1000;
+    timeout.handshake = 5000;
+    timeout.heartbeat = 30000;
+    timeout.terminate = 30000;
+    timeout.idle      = 60000;
 
     // Validation
 
