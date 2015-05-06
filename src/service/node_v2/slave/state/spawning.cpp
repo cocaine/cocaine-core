@@ -100,7 +100,7 @@ spawning_t::spawn(unsigned long timeout) {
 }
 
 void
-spawning_t::on_spawn(std::unique_ptr<api::handle_t>& handle, std::chrono::steady_clock::time_point start) {
+spawning_t::on_spawn(std::unique_ptr<api::handle_t>& handle, std::chrono::high_resolution_clock::time_point start) {
     std::error_code ec;
     const size_t cancelled = timer.cancel(ec);
     if (ec || cancelled == 0) {
