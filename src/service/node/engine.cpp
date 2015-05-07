@@ -273,7 +273,7 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
 
 void
 engine_t::erase(const std::string& id, int code, const std::string& reason) {
-    COCAINE_LOG_DEBUG(m_log, "erasing slave '%s' from the pool", id);
+    COCAINE_LOG_DEBUG(m_log, "erasing slave from the pool")("uuid", id);
 
     std::lock_guard<std::mutex> lock(m_pool_mutex);
     m_pool.erase(id);
@@ -385,7 +385,8 @@ engine_t::on_maybe_handshake(const std::error_code& ec, int fd) {
 
 void
 engine_t::on_handshake(int fd, const decoder_t::message_type& message) {
-    COCAINE_LOG_DEBUG(m_log, "received possible handshake from slave on %d fd", fd);
+    COCAINE_LOG_DEBUG(m_log, "processing handshake from slave on %d fd", fd);
+
     auto fit = m_backlog.find(fd);
     if(fit == m_backlog.end()) {
         COCAINE_LOG_WARNING(m_log, "disconnecting an unexpected slave on %d fd", fd);
@@ -412,12 +413,12 @@ engine_t::on_handshake(int fd, const decoder_t::message_type& message) {
         std::lock_guard<std::mutex> lock(m_pool_mutex);
         it = m_pool.find(id);
         if(it == m_pool.end()) {
-            COCAINE_LOG_WARNING(m_log, "disconnecting an unknown '%s' slave on %d fd", id, fd);
+            COCAINE_LOG_WARNING(m_log, "disconnecting an unknown slave on %d fd", fd)("uuid", id);
             return;
         }
     }
 
-    COCAINE_LOG_DEBUG(m_log, "slave '%s' on %d fd connected", id, fd);
+    COCAINE_LOG_DEBUG(m_log, "slave on %d fd connected", fd)("uuid", id);
     it->second->bind(channel);
 }
 
