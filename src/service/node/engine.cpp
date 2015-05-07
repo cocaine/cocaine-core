@@ -301,11 +301,8 @@ engine_t::do_wake() {
     balance();
 }
 
-// Collect info about engine's status. Must be invoked only from engine's thread.
-void
-engine_t::do_info(std::function<void(dynamic_t::object_t)> callback) {
-    BOOST_ASSERT(std::this_thread::get_id() == m_thread.get_id());
-
+dynamic_t::object_t
+engine_t::info() {
     collector_t collector;
 
     std::lock_guard<std::mutex> plock(m_pool_mutex);
@@ -340,12 +337,7 @@ engine_t::do_info(std::function<void(dynamic_t::object_t)> callback) {
     );
     info["state"] = std::string(describe[static_cast<int>(m_state)]);
 
-    callback(std::move(info));
-}
-
-void
-engine_t::info(std::function<void(dynamic_t::object_t)> callback) {
-    m_loop.post(std::bind(&engine_t::do_info, this, callback));
+    return info;
 }
 
 void

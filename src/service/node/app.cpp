@@ -317,31 +317,20 @@ public:
 
 }
 
-deferred<cocaine::result_of<io::app::info>::type>
+cocaine::result_of<io::app::info>::type
 app_t::info() const {
     typedef cocaine::result_of<io::app::info>::type result_type;
 
     COCAINE_LOG_DEBUG(m_log, "handling info request");
 
-    deferred<result_type> deferred;
-
     if(!m_engine) {
         dynamic_t::object_t info;
         info["profile"] = m_profile->name;
         info["error"] = "engine is not active";
-        deferred.write(dynamic_t(info));
-        return deferred;
+        return info;
     }
 
-    auto timer = std::make_shared<asio::deadline_timer>(*m_asio);
-    auto handler = std::make_shared<info_handler_t>(deferred, timer);
-
-    timer->expires_from_now(boost::posix_time::seconds(defaults::control_timeout));
-    timer->async_wait(std::bind(&info_handler_t::timeout, handler, ph::_1));
-
-    m_engine->info(std::bind(&info_handler_t::success, handler, ph::_1));
-
-    return deferred;
+    return m_engine->info();
 }
 
 std::shared_ptr<api::stream_t>

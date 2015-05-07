@@ -78,7 +78,7 @@ public:
     void
     pause();
 
-    deferred<result_of<io::app::info>::type>
+    result_of<io::app::info>::type
     info() const;
 
     // Scheduling.

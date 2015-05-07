@@ -122,16 +122,13 @@ public:
     std::shared_ptr<api::stream_t>
     enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag);
 
-    // Get information about engine's status. Fully asynchronous and thread-safe.
-    void
-    info(std::function<void(dynamic_t::object_t)> callback);
+    // Get information about engine's status. Thread-safe.
+    dynamic_t::object_t
+    info();
 
 private:
     void
     run();
-
-    void
-    do_info(std::function<void(dynamic_t::object_t)> callback);
 
     // Called by acceptor, when a new connection from worker comes.
     void
