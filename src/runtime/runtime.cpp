@@ -264,6 +264,13 @@ main(int argc, char* argv[]) {
     // Available logging sinks.
     typedef boost::mpl::vector<
         blackhole::sink::stream_t,
+        blackhole::sink::files_t<
+            blackhole::sink::files::boost_backend_t,
+            blackhole::sink::rotator_t<
+                blackhole::sink::files::boost_backend_t,
+                blackhole::sink::rotation::watcher::move_t
+            >
+        >,
         blackhole::sink::files_t<>,
         blackhole::sink::syslog_t<logging::priorities>,
         blackhole::sink::socket_t<boost::asio::ip::tcp>,
