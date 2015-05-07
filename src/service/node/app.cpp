@@ -212,10 +212,12 @@ app_t::start() {
     // Start the engine thread.
     try {
         m_engine = std::make_shared<engine_t>(m_context, *m_manifest, *m_profile);
-    } catch(...) {
+    } catch(const std::exception& err) {
 #if defined(HAVE_GCC48)
         std::throw_with_nested(cocaine::error_t("unable to create engine"));
 #else
+        COCAINE_LOG_ERROR(m_log, "unable to initialize engine: %s", err.what());
+
         throw cocaine::error_t("unable to create engine");
 #endif
     }
