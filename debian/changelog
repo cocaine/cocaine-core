@@ -1,4 +1,4 @@
-cocaine-core (0.12.0.10) unstable; urgency=low
+cocaine-core (0.12.0.10~hangover1) unstable; urgency=low
 
   * Bugfix: do not process sessions on dead slaves.
   * Bugfix: fixed phantom isolate/storage plugin caching.
