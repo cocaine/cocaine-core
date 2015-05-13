@@ -28,6 +28,8 @@
 #include <hpack-headers/msgpack_traits.hpp>
 #include <hpack-headers/header.hpp>
 
+#include "cocaine/rpc/asio/header.hpp"
+
 namespace cocaine { namespace io {
 
 struct decoder_t;
@@ -75,6 +77,7 @@ struct decoder_t {
     COCAINE_DECLARE_NONCOPYABLE(decoder_t)
 
     decoder_t() = default;
+
    ~decoder_t() = default;
 
     typedef aux::decoded_message_t message_type;
