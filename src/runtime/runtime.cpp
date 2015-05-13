@@ -326,9 +326,12 @@ main(int argc, char* argv[]) {
 
     std::cout << "[Runtime] Initializing the server." << std::endl;
 
-    blackhole::scoped_attributes_t holder(*logger, {{ "source_host", config->network.hostname }});
+    std::unique_ptr<logging::log_t> wrapper(
+        new logging::log_t(*logger, {{ "source_host", config->network.hostname }})
+    );
+
     try {
-        context.reset(new context_t(*config, std::move(logger)));
+        context.reset(new context_t(*config, std::move(wrapper)));
     } catch(const cocaine::error_t& e) {
         std::cerr << cocaine::format("ERROR: unable to initialize the context - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;

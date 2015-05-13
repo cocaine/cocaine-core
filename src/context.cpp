@@ -39,7 +39,7 @@
 using namespace cocaine;
 using namespace cocaine::io;
 
-context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger):
+context_t::context_t(config_t config_, std::unique_ptr<logging::log_t> logger):
     config(config_),
     mapper(config_)
 {
@@ -51,7 +51,7 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> logger
 
     COCAINE_LOG_INFO(m_logger, "initializing the core");
 
-    m_repository = std::make_unique<api::repository_t>(*m_logger);
+    m_repository = std::make_unique<api::repository_t>(m_logger->log());
 
     // Load the builtin plugins.
     essentials::initialize(*m_repository);
