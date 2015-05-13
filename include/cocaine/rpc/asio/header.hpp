@@ -86,6 +86,7 @@ public:
     header_t(const header_t& other) = default;
     header_t& operator=(const header_t& other) = default;
 
+    // Create non-owning header on user-provided data
     inline
     header_t(header_key_t key, str _value) noexcept :
         name({key.name().c_str(), key.name().size()}),
@@ -123,7 +124,7 @@ private:
     header_t(const char* _name, size_t name_sz, const char* _value, size_t value_sz) noexcept;
 
     inline
-    header_t(str _name, str _value) noexcept;
+    header_t(const str& _name, const str& _value) noexcept;
 
     friend class header_table_t;
 
@@ -202,39 +203,18 @@ private:
     void
     pop();
 
-    size_t find_full(const header_t& header) {
+    size_t
+    find_full(const header_t& header) {
         return find(std::bind(&header_t::operator==, &header, std::placeholders::_1));
     }
 
-    size_t find_name(const header_t& header) {
+    size_t
+    find_name(const header_t& header) {
         return find(std::bind(&header_t::name_equal, &header, std::placeholders::_1));
     }
 
-    size_t find(const std::function<bool(const header_t&)> comp) {
-        auto it = std::find_if(static_data().begin(), static_data().end(), comp);
-        if(it != static_data().end()) {
-            return it - static_data().begin();
-        }
-        if(header_lower_bound <= header_upper_bound) {
-            auto dyn_it = std::find_if(headers.data() + header_lower_bound, headers.data() + header_upper_bound, comp);
-            if(dyn_it != headers.data() + header_upper_bound) {
-                return static_data().size() - 1 + (dyn_it - (headers.data() + header_lower_bound));
-            }
-        }
-        else {
-            auto dyn_it = std::find_if(headers.data(), headers.data() + header_upper_bound, comp);
-            if(dyn_it != headers.data() + header_upper_bound) {
-                return static_data().size() - 1 + (dyn_it - headers.data());
-            }
-            dyn_it = std::find_if(headers.data() + header_lower_bound, headers.end(), comp);
-            if(dyn_it != headers.end()) {
-                return static_data().size() - 1 + (dyn_it - (headers.data() + header_lower_bound));
-            }
-        }
-        return 0;
-    }
-
-
+    size_t
+    find(const std::function<bool(const header_t&)> comp);
 
     // Header storage. Implemented as circular buffer
     std::array<header_t, MAX_HEADER_CAPACITY> headers;
@@ -259,7 +239,6 @@ http2_integer_size(size_t sz, size_t bit_offset);
 
 // Encodes integer to dest via http2 binary protocol.
 // Note dest should be at least 10 bytes long.
-
 inline
 size_t
 http2_integer_encode(char* dest, size_t source, size_t bit_offset, char prefix);
@@ -276,7 +255,7 @@ operator==(const header_t::str& str, const header_key_t& header_key);
 // Implementation part. Header-only to be used in CNF
 // --------------------------------------------------
 
-header_t::header_t(str _name, str _value) noexcept :
+header_t::header_t(const str& _name, const str& _value) noexcept :
     name(_name),
     value(_value)
 {}
@@ -423,6 +402,31 @@ header_table_t::pop() {
     }
 }
 
+size_t
+header_table_t::find(const std::function<bool(const header_t&)> comp) {
+    auto it = std::find_if(static_data().begin(), static_data().end(), comp);
+    if(it != static_data().end()) {
+        return it - static_data().begin();
+    }
+    if(header_lower_bound <= header_upper_bound) {
+        auto dyn_it = std::find_if(headers.data() + header_lower_bound, headers.data() + header_upper_bound, comp);
+        if(dyn_it != headers.data() + header_upper_bound) {
+            return static_data().size() - 1 + (dyn_it - (headers.data() + header_lower_bound));
+        }
+    }
+    else {
+        auto dyn_it = std::find_if(headers.data(), headers.data() + header_upper_bound, comp);
+        if(dyn_it != headers.data() + header_upper_bound) {
+            return static_data().size() - 1 + (dyn_it - headers.data());
+        }
+        dyn_it = std::find_if(headers.data() + header_lower_bound, headers.end(), comp);
+        if(dyn_it != headers.end()) {
+            return static_data().size() - 1 + (dyn_it - (headers.data() + header_lower_bound));
+        }
+    }
+    return 0;
+}
+
 const header_t&
 header_table_t::operator[](size_t idx) {
     assert(idx != 0);
@@ -478,16 +482,16 @@ header_table_t::parse_headers(std::vector<header_t> &parse_to, const msgpack::ob
     return true;
 }
 
-#define COCAINE_STATIC_HEADER(name, val) header_t(name, sizeof(name)-1, val, sizeof(val)-1)
-#define COCAINE_STATIC_EMPTY_HEADER(name) COCAINE_STATIC_HEADER(name, "")
+#define COCAINE_MAKE_STATIC_HEADER(name, val) header_t(name, sizeof(name)-1, val, sizeof(val)-1)
+#define COCAINE_MAKE_STATIC_EMPTY_HEADER(name) COCAINE_MAKE_STATIC_HEADER(name, "")
 const std::vector<header_t>&
 header_table_t::static_data() {
     static std::vector<header_t> headers ({
         //Empty header is reserved as 0 is not valid index in http2
-        COCAINE_STATIC_EMPTY_HEADER(""),
-        COCAINE_STATIC_HEADER("trace_id", "\0\0\0\0\0\0\0\0"),
-        COCAINE_STATIC_HEADER("span_id", "\0\0\0\0\0\0\0\0"),
-        COCAINE_STATIC_HEADER("parent_id", "\0\0\0\0\0\0\0\0")
+        COCAINE_MAKE_STATIC_EMPTY_HEADER(""),
+        COCAINE_MAKE_STATIC_HEADER("trace_id", "\0\0\0\0\0\0\0\0"),
+        COCAINE_MAKE_STATIC_HEADER("span_id", "\0\0\0\0\0\0\0\0"),
+        COCAINE_MAKE_STATIC_HEADER("parent_id", "\0\0\0\0\0\0\0\0")
     });
 
     return headers;
