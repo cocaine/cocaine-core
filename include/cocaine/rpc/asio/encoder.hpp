@@ -24,6 +24,7 @@
 #include "cocaine/errors.hpp"
 
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/rpc/asio/header.hpp"
 
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
@@ -105,7 +106,7 @@ struct encoded:
     encoded(uint64_t span, Args&&... args) {
         msgpack::packer<aux::encoded_buffers_t> packer(buffer);
 
-        packer.pack_array(3);
+        packer.pack_array(4);
 
         packer.pack(span);
         packer.pack(static_cast<uint64_t>(event_traits<Event>::id));
@@ -113,7 +114,23 @@ struct encoded:
         typedef typename event_traits<Event>::argument_type argument_type;
 
         type_traits<argument_type>::pack(packer, std::forward<Args>(args)...);
+        packer.pack_array(3);
+
+        auto trace_id = 0; //tracer::current_span()->get_trace_id();
+        header_t::str trace_id_data{reinterpret_cast<const char*>(&trace_id), 8};
+
+        auto span_id = 0; //tracer::current_span()->get_id();
+        header_t::str span_id_data{reinterpret_cast<const char*>(&span_id), 8};
+
+        auto parent_id = 0; //tracer::current_span()->get_parent_id();
+        header_t::str parent_id_data{reinterpret_cast<const char*>(&parent_id), 8};
+
+        header_table.pack(packer, header_t(header_id::TRACE_ID, trace_id_data));
+        header_table.pack(packer, header_t(header_id::SPAN_ID, span_id_data));
+        header_table.pack(packer, header_t(header_id::PARENT_ID, parent_id_data));
     }
+
+    header_table_t header_table;
 };
 
 struct encoder_t {

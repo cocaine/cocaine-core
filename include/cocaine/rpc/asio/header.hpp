@@ -61,11 +61,11 @@ private:
     static
     const std::array<std::string, header_cnt>&
     names() {
-        static std::array<std::string, header_cnt> header_names = {
+        static std::array<std::string, header_cnt> header_names {{
             "trace_id",
             "span_id",
             "parent_id"
-        };
+        }};
         return header_names;
     }
 };
@@ -365,6 +365,7 @@ header_table_t::push(const msgpack::object& data) {
         return result;
     }
     push(result);
+    return result;
 }
 
 void
@@ -382,7 +383,7 @@ header_table_t::push(header_t& result) {
 
     //header do not fit in the table
     if(empty() && data_upper_bound - data_lower_bound + header_size > capacity) {
-        return result;
+        return;
     }
     char* dest = header_data.data();
     if(header_data.size() - data_upper_bound < header_size) {
@@ -407,7 +408,6 @@ header_table_t::push(header_t& result) {
     }
 
     data_upper_bound = dest - header_data.data();
-    return result;
 }
 
 void
@@ -438,6 +438,7 @@ header_table_t::operator[](size_t idx) {
                (idx >= header_lower_bound && idx < header_upper_bound) :
                (idx >= header_lower_bound || idx < header_upper_bound)
     );
+    return headers[idx];
 }
 
 bool
@@ -514,7 +515,7 @@ http2_integer_size(size_t sz, size_t bit_offset) {
     size_t ret = 1;
     sz -= (1 << (8 - bit_offset));
     while(sz > 127) {
-        sz << 7;
+        sz = sz << 7;
         ret++;
     }
     return ret;
@@ -527,7 +528,7 @@ http2_integer_encode(char* dest, size_t source, size_t bit_offset, char prefix) 
     char mask = 255;
     mask = ~(mask >> bit_offset);
     dest[0] &= mask;
-    char first_byte_cap = 1 << (8-bit_offset);
+    size_t first_byte_cap = 1 << (8-bit_offset);
     if(source < first_byte_cap) {
         dest[0] += source;
         return 1;

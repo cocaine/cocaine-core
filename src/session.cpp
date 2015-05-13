@@ -131,14 +131,15 @@ session_t::push_action_t::operator()(const std::shared_ptr<channel<protocol_type
 
 void
 session_t::push_action_t::finalize(const std::error_code& ec) {
-    if(ec.value() == 0) return;
+    if(ec.value() == 0) {
+        return;
+    };
 
     if(ec != asio::error::eof) {
         COCAINE_LOG_ERROR(session->log, "client disconnected: [%d] %s", ec.value(), ec.message());
     } else {
         COCAINE_LOG_DEBUG(session->log, "client disconnected");
     }
-
     return session->detach(ec);
 }
 
@@ -170,7 +171,6 @@ session_t::session_t(std::unique_ptr<logging::log_t> log_,
 void
 session_t::handle(const decoder_t::message_type& message) {
     const channel_map_t::key_type channel_id = message.span();
-
     const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {
         channel_map_t::const_iterator lb, ub;
 
@@ -308,7 +308,8 @@ session_t::push(encoder_t::message_type&& message) {
     if(const auto ptr = *transport.synchronize()) {
 #endif
         // Use dispatch() instead of a direct call for thread safety.
-        ptr->socket->get_io_service().dispatch(std::bind(&push_action_t::operator(),
+        ptr->socket->get_io_service().dispatch(std::bind(
+            &push_action_t::operator(),
             std::make_shared<push_action_t>(std::move(message), shared_from_this()),
             ptr
         ));
