@@ -182,6 +182,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     }
 
     m_acceptor.bind(protocol_type::endpoint(m_manifest.endpoint));
+    m_acceptor.listen();
 
     COCAINE_LOG_DEBUG(m_log, "app '%s' engine has been published on '%s'", m_manifest.name, m_acceptor.local_endpoint().path());
 
