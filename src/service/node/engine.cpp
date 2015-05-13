@@ -176,11 +176,7 @@ engine_t::engine_t(context_t& context, const manifest_t& manifest, const profile
     );
 
     try {
-        if(boost::filesystem::exists(m_manifest.endpoint)) {
-            COCAINE_LOG_WARNING(m_log, "found uncollected '%s' unix socket", m_manifest.name);
-
-            boost::filesystem::remove(m_manifest.endpoint);
-        }
+        boost::filesystem::remove(m_manifest.endpoint);
     } catch(const boost::filesystem::filesystem_error& err) {
         COCAINE_LOG_WARNING(m_log, "failed to cleanup uncollected '%s' unix socket: %s", m_manifest.name, err.what());
     }
