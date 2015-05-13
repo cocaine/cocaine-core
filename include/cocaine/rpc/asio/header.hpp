@@ -109,7 +109,7 @@ public:
     get_numeric_value() const;
 
     inline
-    header_t() noexcept = default;
+    header_t() = default;
 
     bool operator==(const header_t& other) const {
         return name == other.name && value == other.value;
@@ -190,10 +190,10 @@ public:
     bool
     empty() const;
 
-    static constexpr const size_t MAX_DATA_CAPACITY = 4096;
+    static constexpr size_t MAX_DATA_CAPACITY = 4096;
 
     //32 bytes overhead per record and 2 bytes for nil-nil header
-    static constexpr const size_t MAX_HEADER_CAPACITY = MAX_DATA_CAPACITY/34;
+    static constexpr size_t MAX_HEADER_CAPACITY = MAX_DATA_CAPACITY/34;
 private:
     inline
     static const std::vector<header_t>&
@@ -203,16 +203,19 @@ private:
     void
     pop();
 
+    inline
     size_t
     find_full(const header_t& header) {
         return find(std::bind(&header_t::operator==, &header, std::placeholders::_1));
     }
 
+    inline
     size_t
     find_name(const header_t& header) {
         return find(std::bind(&header_t::name_equal, &header, std::placeholders::_1));
     }
 
+    inline
     size_t
     find(const std::function<bool(const header_t&)> comp);
 
@@ -529,7 +532,7 @@ http2_integer_size(size_t sz, size_t bit_offset) {
 size_t
 http2_integer_encode(char* dest, size_t source, size_t bit_offset, char prefix) {
     dest[0] = prefix;
-    char mask = 255;
+    unsigned char mask = 255;
     mask = ~(mask >> bit_offset);
     dest[0] &= mask;
     size_t first_byte_cap = 1 << (8-bit_offset);
