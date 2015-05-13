@@ -305,10 +305,10 @@ header_table_t::header_table_t() :
 size_t
 header_table_t::size() const {
     if(data_upper_bound > data_lower_bound) {
-        return data_upper_bound - data_lower_bound;
+        return static_data().size() + data_upper_bound - data_lower_bound;
     }
     else {
-        return data_lower_bound_end - data_lower_bound + data_upper_bound;
+        return static_data().size() + data_lower_bound_end - data_lower_bound + data_upper_bound;
     }
 }
 

@@ -93,7 +93,7 @@ struct decoder_t {
                 error = error || message.object.via.array.ptr[2].type != msgpack::type::ARRAY;
                 if(message.object.via.array.size > 3) {
                     error = error || message.object.via.array.ptr[3].type != msgpack::type::ARRAY;
-                    error = error || header_table.parse_headers(message.headers, message.object);
+                    error = error || !header_table.parse_headers(message.headers, message.object);
                 }
                 if(error) {
                     ec = error::frame_format_error;
