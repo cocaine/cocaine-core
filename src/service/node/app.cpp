@@ -165,11 +165,14 @@ private:
         } else {
             downstream = parent->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
         }
+
         if(!downstream) {
             typedef io::protocol<event_traits<app::enqueue>::upstream_type>::scope protocol;
-            upstream.template send<protocol::error>(cocaine::error::dispatch_errors::service_error, "application was stopped");
+            upstream.send<protocol::error>(cocaine::error::dispatch_errors::service_error, "application was stopped");
+
             return nullptr;
         }
+
         return std::make_shared<const streaming_service_t>(name(), downstream);
     }
 
