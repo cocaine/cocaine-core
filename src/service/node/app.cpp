@@ -98,7 +98,7 @@ private:
 class app_service_t:
     public dispatch<app_tag>
 {
-    app_t *const parent;
+    std::shared_ptr<app_t> parent;
 
 private:
     struct enqueue_slot_t:
@@ -165,14 +165,18 @@ private:
         } else {
             downstream = parent->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
         }
-
+        if(!downstream) {
+            typedef io::protocol<event_traits<app::enqueue>::upstream_type>::scope protocol;
+            upstream.template send<protocol::error>(cocaine::error::dispatch_errors::service_error, "application was stopped");
+            return nullptr;
+        }
         return std::make_shared<const streaming_service_t>(name(), downstream);
     }
 
 public:
-    app_service_t(const std::string& name_, app_t *const parent_):
+    app_service_t(const std::string& name_, std::shared_ptr<app_t> parent_):
         dispatch<app_tag>(name_),
-        parent(parent_)
+        parent(std::move(parent_))
     {
         on<app::enqueue>(std::make_shared<enqueue_slot_t>(this));
         on<app::info>(std::bind(&app_t::info, parent));
@@ -228,7 +232,7 @@ app_t::start() {
     m_context.insert(m_manifest->name, std::make_unique<actor_t>(
         m_context,
         m_asio,
-        std::make_unique<app_service_t>(m_manifest->name, this)
+        std::make_unique<app_service_t>(m_manifest->name, shared_from_this())
     ));
 }
 
@@ -323,22 +327,31 @@ app_t::info() const {
 
     COCAINE_LOG_DEBUG(m_log, "handling info request");
 
-    if(!m_engine) {
+    auto engine = m_engine;
+    if(!engine) {
         dynamic_t::object_t info;
         info["profile"] = m_profile->name;
         info["error"] = "engine is not active";
         return info;
     }
 
-    return m_engine->info();
+    return engine->info();
 }
 
 std::shared_ptr<api::stream_t>
 app_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
-    return m_engine->enqueue(event, upstream);
+    auto engine = m_engine;
+    if(!engine) {
+        return nullptr;
+    }
+    return engine->enqueue(event, upstream);
 }
 
 std::shared_ptr<api::stream_t>
 app_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag) {
-    return m_engine->enqueue(event, upstream, tag);
+    auto engine = m_engine;
+    if(!engine) {
+        return nullptr;
+    }
+    return engine->enqueue(event, upstream, tag);
 }
