@@ -53,7 +53,9 @@ struct profile_t;
 
 namespace cocaine {
 
-class app_t {
+class app_t:
+public std::enable_shared_from_this<app_t>
+{
     COCAINE_DECLARE_NONCOPYABLE(app_t)
 
     context_t& m_context;
