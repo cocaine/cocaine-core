@@ -53,7 +53,7 @@ struct decoded_message_t {
 
     boost::optional<header_t>
     get_header(const header_key_t& key) const {
-        for(auto& header : headers) {
+        for(const auto& header : headers) {
             if(header.get_name() == key) {
                 return boost::make_optional(header);
             }
