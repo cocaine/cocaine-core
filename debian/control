@@ -26,17 +26,22 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core3 (= ${binary:Versio
 Description: Cocaine - Development Headers
  Cocaine development headers package.
 
-Package: cocaine-dbg
+Package: cocaine-v12-dbg
 Architecture: any
 Section: debug
+Conflicts: cocaine-dbg
+Replaces: cocaine-dbg
+Provides: cocaine-dbg
 Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core3 (= ${binary:Version})
 Description: Cocaine - Debug Files
- Cocaine debug files and symbols.
+ Cocaine debug files and symbols for cocaine v12.
 
-Package: cocaine-runtime
+Package: cocaine-v12-runtime
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core3 (= ${binary:Version}),
  adduser
-Conflicts: cocaine-server
+Conflicts: cocaine-server, cocaine-runtime
+Replaces: cocaine-runtime
+Provides: cocaine-runtime
 Description: Cocaine - Runtime
  Cocaine runtime components package.
