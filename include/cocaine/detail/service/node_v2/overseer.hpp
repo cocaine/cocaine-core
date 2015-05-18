@@ -119,6 +119,9 @@ public:
     void
     spawn(locked_ptr<pool_type>& pool);
 
+    void
+    spawn(locked_ptr<pool_type>&& pool);
+
     /// \warning must be called under pool & queue lock.
     void
     assign(const std::string& id, slave_handler_t& slave, queue_value& payload);

@@ -171,8 +171,7 @@ overseer_t::handshaker() {
 
 void
 overseer_t::spawn() {
-    auto pool = this->pool.synchronize();
-    spawn(pool);
+    spawn(pool.synchronize());
 }
 
 void
@@ -188,6 +187,11 @@ overseer_t::spawn(locked_ptr<pool_type>& pool) {
         uuid,
         slave_t(std::move(ctx), *loop, std::bind(&overseer_t::on_slave_death, shared_from_this(), ph::_1, uuid))
     ));
+}
+
+void
+overseer_t::spawn(locked_ptr<pool_type>&& pool) {
+    spawn(pool);
 }
 
 void
