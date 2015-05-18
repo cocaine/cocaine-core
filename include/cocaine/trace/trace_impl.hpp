@@ -1,4 +1,22 @@
-#pragma once
+/*
+    Copyright (c) 2011-2015 Anton Matveenko <antmat@me.com>
+    Copyright (c) 2011-2015 Other contributors as noted in the AUTHORS file.
+
+    This file is part of Cocaine.
+
+    Cocaine is free software; you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    Cocaine is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser Gene ral Public License
+    along with this program. If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <blackhole/scoped_attributes.hpp>
 #include "cocaine/forwards.hpp"
@@ -51,13 +69,15 @@ private:
     }
 
     inline
-    static void
+    static
+    void
     set_service_name(std::string name) {
         service_name() = std::move(name);
     }
 
     inline
-    static const std::string&
+    static
+    const std::string&
     get_service_name() {
         return service_name();
     }
@@ -73,7 +93,8 @@ private:
     {}
 
     inline
-    static trace_context_t&
+    static
+    trace_context_t&
     get_context() {
         if(thread_context().get() == nullptr) {
             thread_context().reset(new trace_context_t());
@@ -108,7 +129,9 @@ private:
     }
 
     inline
-    static std::string& service_name() {
+    static
+    std::string&
+    service_name() {
         static std::string service_name;
         return service_name;
     }
