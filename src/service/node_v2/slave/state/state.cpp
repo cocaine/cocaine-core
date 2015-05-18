@@ -4,6 +4,9 @@
 
 using namespace cocaine;
 
+void
+state_t::cancel() {}
+
 bool
 state_t::active() const noexcept {
     return false;

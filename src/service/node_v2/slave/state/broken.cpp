@@ -8,6 +8,9 @@ broken_t::broken_t(std::error_code ec):
     ec(std::move(ec))
 {}
 
+void
+broken_t::cancel() {}
+
 const char*
 broken_t::name() const noexcept {
     switch (ec.value()) {

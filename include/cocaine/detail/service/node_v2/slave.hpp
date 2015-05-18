@@ -69,6 +69,8 @@ class state_machine_t:
     friend class control_t;
     friend class fetcher_t;
 
+    class lock_t {};
+
 public:
     typedef std::function<void(const std::error_code&)> cleanup_handler;
 
@@ -92,43 +94,39 @@ private:
     synchronized<std::shared_ptr<state_t>> state;
 
 public:
-    state_machine_t(slave_context context, asio::io_service& loop, cleanup_handler cleanup);
+    /// Creates the state machine instance and immediately starts it.
+    static
+    std::shared_ptr<state_machine_t>
+    create(slave_context context, asio::io_service& loop, cleanup_handler cleanup);
+
+    state_machine_t(lock_t, slave_context context, asio::io_service& loop, cleanup_handler cleanup);
+
     ~state_machine_t();
 
-    /// Starts the state machine.
-    ///
-    /// \pre state == nullptr.
-    ///
-    /// \note this method should be called once just after creating an instance of this class.
-    /// The reason is - we start processing asynchronous operations with providing shared pointer
-    /// on this object, which is impossible in constructor.
-    /// Calling this method twice or more will result in undefined behavior.
-    void
-    start();
-
     /// Returns true is the slave is in active state.
-    ///
-    /// \pre state != nullptr.
     bool
     active() const noexcept;
 
-    /// \pre state != nullptr.
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 
-    /// \pre state != nullptr.
     io::upstream_ptr_t
     inject(inject_dispatch_ptr_t dispatch);
 
-    /// External termination.
+    /// Terminates the slave by sending terminate message to the worker instance.
     ///
-    /// We shouldn't call the cleanup callback after this call.
-    ///
-    /// \pre state != nullptr.
+    /// The cleanup callback won't be called after this call.
     void
     terminate(std::error_code ec);
 
 private:
+    /// Spawns a slave.
+    ///
+    /// \pre state == nullptr.
+    /// \post state != nullptr.
+    void
+    start();
+
     void
     output(const char* data, size_t size);
 

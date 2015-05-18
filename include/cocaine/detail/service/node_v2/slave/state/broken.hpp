@@ -14,6 +14,10 @@ public:
     broken_t(std::error_code ec);
 
     virtual
+    void
+    cancel();
+
+    virtual
     const char*
     name() const noexcept;
 };

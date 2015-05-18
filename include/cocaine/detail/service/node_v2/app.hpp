@@ -30,6 +30,9 @@ class app_t {
     std::unique_ptr<unix_actor_t> engine;
     std::shared_ptr<overseer_t> overseer;
 
+    std::unique_ptr<asio::io_service::work> work;
+    boost::thread thread;
+
 public:
     app_t(context_t& context, const std::string& manifest, const std::string& profile);
     app_t(const app_t& other) = delete;

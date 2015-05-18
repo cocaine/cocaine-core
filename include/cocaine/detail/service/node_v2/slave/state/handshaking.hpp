@@ -28,6 +28,10 @@ public:
 
     virtual
     void
+    cancel();
+
+    virtual
+    void
     terminate(const std::error_code& ec);
 
     /// Activates the slave by transferring it to the active state using given session and control

@@ -23,17 +23,18 @@ public:
     const char*
     name() const noexcept = 0;
 
+    /// Cancels all pending asynchronous operations.
+    ///
+    /// Should be invoked on slave shutdown, indicating that the current state should cancel all
+    /// its asynchronous operations to break cyclic references.
+    virtual
+    void
+    cancel();
+
+    /// True for slaves that can handle new channels.
     virtual
     bool
     active() const noexcept;
-
-    /// Cancels all pending asynchronous operations.
-    ///
-    /// Should be invoked on slave destruction, indicating that the current state should cancel all
-    /// its asynchronous operations to break cyclic references.
-//    virtual
-//    void
-//    cancel();
 
     virtual
     std::shared_ptr<control_t>

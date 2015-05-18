@@ -28,6 +28,10 @@ public:
 
     virtual
     void
+    cancel();
+
+    virtual
+    void
     terminate(const std::error_code& ec);
 
     void

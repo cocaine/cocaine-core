@@ -23,14 +23,17 @@ handshaking_t::name() const noexcept {
     return "handshaking";
 }
 
-void
-handshaking_t::terminate(const std::error_code& ec) {
+void handshaking_t::cancel() {
     try {
         timer->cancel();
     } catch (...) {
         // We don't care.
     }
+}
 
+void
+handshaking_t::terminate(const std::error_code& ec) {
+    cancel();
     slave->shutdown(ec);
 }
 

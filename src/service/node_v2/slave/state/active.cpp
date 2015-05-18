@@ -22,6 +22,10 @@ active_t::~active_t() {
     if (control) {
         control->cancel();
     }
+
+    if (session) {
+        session->detach(asio::error::operation_aborted);
+    }
 }
 
 const char*
@@ -36,16 +40,18 @@ active_t::active() const noexcept {
 
 io::upstream_ptr_t
 active_t::inject(inject_dispatch_ptr_t dispatch) {
+    BOOST_ASSERT(session);
+
     return session->fork(dispatch);
 }
 
 void
 active_t::terminate(const std::error_code& ec) {
-    auto terminating = std::make_shared<terminating_t>(slave, std::move(handle));
-
-    control->terminate(ec);
+    auto terminating = std::make_shared<terminating_t>(
+        slave, std::move(handle), std::move(control), std::move(session)
+    );
 
     slave->migrate(terminating);
 
-    terminating->start(slave->context.profile.timeout.terminate);
+    terminating->start(slave->context.profile.timeout.terminate, ec);
 }

@@ -45,14 +45,15 @@ public:
 
     /// Cancels all asynchronous operations on channel (e.g. timers).
     ///
-    /// \note this method is required to be explicitly called on slave shutdown, because it breakes
+    /// \note this method is required to be explicitly called on slave shutdown, because it breaks
     /// all cycle references inside the control channel.
     void
     cancel();
 
+    /// Called on any I/O error.
     virtual
     void
-    discard(const std::error_code& ec) const ;
+    discard(const std::error_code& ec) const;
 
 private:
     void

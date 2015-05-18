@@ -21,7 +21,15 @@ namespace ph = std::placeholders;
 
 using namespace cocaine;
 
-state_machine_t::state_machine_t(slave_context context, asio::io_service& loop, cleanup_handler cleanup):
+std::shared_ptr<state_machine_t>
+state_machine_t::create(slave_context context, asio::io_service& loop, cleanup_handler cleanup) {
+    auto machine = std::make_shared<state_machine_t>(lock_t(), context, loop, cleanup);
+    machine->start();
+
+    return machine;
+}
+
+state_machine_t::state_machine_t(lock_t, slave_context context, asio::io_service& loop, cleanup_handler cleanup):
     log(context.context.log(format("%s/slave", context.manifest.name), {{ "uuid", context.id }})),
     context(context),
     loop(loop),
@@ -48,9 +56,8 @@ state_machine_t::start() {
     auto spawning = std::make_shared<spawning_t>(shared_from_this());
     migrate(spawning);
 
-    loop.post([=]{
-        spawning->spawn(context.profile.timeout.spawn);
-    });
+    // This call can perform state machine shutdowning on any error occurred.
+    spawning->spawn(context.profile.timeout.spawn);
 }
 
 bool
@@ -111,7 +118,8 @@ state_machine_t::migrate(std::shared_ptr<state_t> desired) {
 
     state.apply([=](std::shared_ptr<state_t>& state){
         COCAINE_LOG_DEBUG(log, "slave has changed its state from '%s' to '%s'",
-                          state ? state->name() : "null", desired->name());
+            state ? state->name() : "null", desired->name()
+        );
 
         state = std::move(desired);
     });
@@ -123,12 +131,16 @@ state_machine_t::shutdown(std::error_code ec) {
         return;
     }
 
+    COCAINE_LOG_TRACE(log, "slave is shutdowning: %s", ec.message());
+
+    auto state = *this->state.synchronize();
+    state->cancel();
     migrate(std::make_shared<broken_t>(ec));
 
     fetcher->close();
     fetcher.reset();
 
-    // Check is the slave has been terminated externally. If so, do not call the cleanup callback.
+    // Check if the slave has been terminated externally. If so, do not call the cleanup callback.
     if (closed) {
         return;
     }
@@ -142,10 +154,8 @@ state_machine_t::shutdown(std::error_code ec) {
 
 slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn):
     ec(error::overseer_shutdowning),
-    machine(std::make_shared<state_machine_t>(context, loop, fn))
-{
-    machine->start();
-}
+    machine(state_machine_t::create(context, loop, fn))
+{}
 
 slave_t::~slave_t() {
     // This condition is required, because the class itself is movable.

@@ -21,13 +21,17 @@ spawning_t::name() const noexcept {
 }
 
 void
-spawning_t::terminate(const std::error_code& ec) {
+spawning_t::cancel() {
     try {
         timer.cancel();
     } catch (...) {
         // We don't care.
     }
+}
 
+void
+spawning_t::terminate(const std::error_code& ec) {
+    cancel();
     slave->shutdown(ec);
 }
 

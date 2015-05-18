@@ -16,21 +16,31 @@ class terminating_t:
 {
     std::shared_ptr<state_machine_t> slave;
     std::unique_ptr<api::handle_t> handle;
+    std::shared_ptr<control_t> control;
+    std::shared_ptr<session_t> session;
 
     asio::deadline_timer timer;
 
 public:
-    terminating_t(std::shared_ptr<state_machine_t> slave, std::unique_ptr<api::handle_t> handle);
+    terminating_t(std::shared_ptr<state_machine_t> slave,
+                  std::unique_ptr<api::handle_t> handle,
+                  std::shared_ptr<control_t> control,
+                  std::shared_ptr<session_t> session);
+    ~terminating_t();
 
     const char*
     name() const noexcept;
 
     virtual
     void
+    cancel();
+
+    virtual
+    void
     terminate(const std::error_code& ec);
 
     void
-    start(unsigned long timeout);
+    start(unsigned long timeout, const std::error_code& ec);
 
 private:
     void

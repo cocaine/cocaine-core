@@ -88,7 +88,8 @@ app_t::app_t(context_t& context_, const std::string& manifest_, const std::strin
     log(context.log(format("%s/app", manifest_))),
     manifest(new manifest_t(context, manifest_)),
     profile(new profile_t(context, profile_)),
-    loop(std::make_shared<asio::io_service>())
+    loop(std::make_shared<asio::io_service>()),
+    work(std::make_unique<asio::io_service::work>(*loop))
 {
     auto isolate = context.get<api::isolate_t>(
         this->profile->isolate.type,
@@ -114,7 +115,7 @@ app_t::app_t(context_t& context_, const std::string& manifest_, const std::strin
     COCAINE_LOG_TRACE(log, "publishing application service with the context");
     context.insert(manifest->name, std::make_unique<actor_t>(
         context,
-        loop,
+        std::make_shared<asio::io_service>(),
         std::make_unique<app_dispatch_t>(context, manifest->name, overseer)
     ));
 
@@ -131,6 +132,10 @@ app_t::app_t(context_t& context_, const std::string& manifest_, const std::strin
         std::make_unique<hostess_t>(manifest->name)
     ));
     engine->run();
+
+    thread = std::move(boost::thread([=]{
+        loop->run();
+    }));
 }
 
 app_t::~app_t() {
@@ -141,6 +146,10 @@ app_t::~app_t() {
 
     context.remove(manifest->name);
 
-    // TOOD: I need event loop for graceful shutdowning.
     engine->terminate();
+
+    COCAINE_LOG_TRACE(log, "stopping the overseer thread");
+    work.reset();
+    thread.join();
+    COCAINE_LOG_TRACE(log, "stopping the overseer thread: done");
 }
