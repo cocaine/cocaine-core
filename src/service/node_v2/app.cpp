@@ -97,14 +97,14 @@ app_t::app_t(context_t& context_, const std::string& manifest_, const std::strin
         this->profile->isolate.args
     );
 
-    // TODO: Start the service immediately, but set its state to `spooling` or somethinh else.
+    // TODO: Start the service immediately, but set its state to `spooling` or something else.
     // Do not publish the service until it started.
     COCAINE_LOG_TRACE(log, "spooling");
     if(this->manifest->source() != cached<dynamic_t>::sources::cache) {
         isolate->spool();
     }
 
-    // Create the Overseer - slaves spawner/despawner plus the event queue dispatcher.
+    // Create the Overseer - slave spawner/despawner plus the event queue dispatcher.
     overseer.reset(new overseer_t(context, *manifest, *profile, loop));
 
     // Create the event balancer.
@@ -119,7 +119,7 @@ app_t::app_t(context_t& context_, const std::string& manifest_, const std::strin
     ));
 
     // Create an unix actor and bind to {manifest->name}.{int} unix-socket.
-    COCAINE_LOG_TRACE(log, "publishing Worker service");
+    COCAINE_LOG_TRACE(log, "publishing worker service");
     engine.reset(new unix_actor_t(
         context,
         manifest->endpoint,
