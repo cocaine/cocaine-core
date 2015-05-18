@@ -3,7 +3,7 @@
 include /usr/share/cdbs/1/class/cmake.mk
 include /usr/share/cdbs/1/rules/debhelper.mk
 
-DEB_DBG_PACKAGES := cocaine-dbg
+DEB_DBG_PACKAGES := cocaine-v12-dbg
 DEB_DH_INSTALLINIT_ARGS := -r
 
 install/cocaine-runtime::
