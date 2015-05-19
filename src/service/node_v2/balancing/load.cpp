@@ -101,6 +101,7 @@ load_balancer_t::on_slave_death(const std::string& /*uuid*/) {
 
 void
 load_balancer_t::on_queue() {
+    purge();
     balance();
 }
 
@@ -155,22 +156,22 @@ load_balancer_t::purge() {
 
 void
 load_balancer_t::balance() {
+    const auto queue_size = overseer->get_queue()->size();
+
+    const auto profile = overseer->profile;
+
     auto pool = overseer->get_pool();
-    auto queue = overseer->get_queue();
-
-    const auto& profile = overseer->profile;
-
-    if (pool->size() >= profile.pool_limit || pool->size() * profile.grow_threshold >= queue->size()) {
+    if (pool->size() >= profile.pool_limit || pool->size() * profile.grow_threshold >= queue_size) {
         return;
     }
 
-    const auto target = ::bound(1UL, queue->size() / profile.grow_threshold, profile.pool_limit);
+    const auto target = ::bound(1UL, queue_size / profile.grow_threshold, profile.pool_limit);
 
     if (target <= pool->size()) {
         return;
     }
 
-    while(pool->size() != target) {
+    while(pool->size() < target) {
         overseer->spawn(pool);
     }
 }

@@ -108,24 +108,15 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstre
                     const std::string& event,
                     const std::string& id)
 {
+    queue.apply([&](queue_type& queue) {
+        if (profile.queue_limit > 0 && queue.size() >= profile.queue_limit) {
+            throw std::system_error(error::queue_is_full);
+        }
+    });
+
     auto dispatch = std::make_shared<streaming_dispatch_t>(manifest.name);
 
-    queue_value payload { event, id, dispatch, std::move(upstream) };
-
-    if (auto slave = balancer->on_request(event, id)) {
-        COCAINE_LOG_TRACE(log, "found a slave with load %d", slave.load);
-
-        try {
-            assign(slave.id, *slave.slave, payload);
-            return dispatch;
-        } catch (const std::exception& err) {
-            COCAINE_LOG_WARNING(log, "unable to assign channel: %s", err.what());
-        }
-    }
-
-    COCAINE_LOG_TRACE(log, "all slaves are busy - delaying the event");
-
-    queue->push(payload);
+    queue->push({ event, id, dispatch, std::move(upstream) });
 
     balancer->on_queue();
 
