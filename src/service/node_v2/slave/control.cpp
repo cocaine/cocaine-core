@@ -11,11 +11,11 @@ namespace ph = std::placeholders;
 
 using namespace cocaine;
 
-control_t::control_t(std::shared_ptr<state_machine_t> slave, upstream<io::worker::control_tag> stream):
-    dispatch<io::worker::control_tag>(format("%s/control", slave->context.manifest.name)),
-    slave(std::move(slave)),
-    stream(std::move(stream)),
-    timer(this->slave->loop),
+control_t::control_t(std::shared_ptr<state_machine_t> slave_, upstream<io::worker::control_tag> stream_):
+    dispatch<io::worker::control_tag>(format("%s/control", slave_->context.manifest.name)),
+    slave(std::move(slave_)),
+    stream(std::move(stream_)),
+    timer(slave->loop),
     closed(false)
 {
     on<io::worker::heartbeat>(std::bind(&control_t::on_heartbeat, this));
@@ -28,7 +28,10 @@ control_t::~control_t() {
 
 void
 control_t::start() {
-    breath();
+    COCAINE_LOG_TRACE(slave->log, "heartbeat timer has been started");
+
+    timer.expires_from_now(boost::posix_time::milliseconds(slave->context.profile.timeout.heartbeat));
+    timer.async_wait(std::bind(&control_t::on_timeout, shared_from_this(), ph::_1));
 }
 
 void
@@ -39,8 +42,9 @@ control_t::terminate(const std::error_code& ec) {
 
     try {
         stream = stream.send<io::worker::terminate>(ec.value(), ec.message());
-    } catch (const error_t& err) {
+    } catch (const cocaine::error_t& err) {
         COCAINE_LOG_WARNING(slave->log, "failed to send terminate message: %s", err.what());
+        slave->shutdown(error::conrol_ipc_error);
     }
 }
 
@@ -68,7 +72,14 @@ void
 control_t::on_heartbeat() {
     COCAINE_LOG_DEBUG(slave->log, "processing heartbeat message");
 
-    breath();
+    if (closed) {
+        COCAINE_LOG_TRACE(slave->log, "heartbeat message has been dropped: control is closed");
+    } else {
+        COCAINE_LOG_TRACE(slave->log, "heartbeat timer has been restarted");
+
+        timer.expires_from_now(boost::posix_time::milliseconds(slave->context.profile.timeout.heartbeat));
+        timer.async_wait(std::bind(&control_t::on_timeout, shared_from_this(), ph::_1));
+    }
 }
 
 void
@@ -78,14 +89,6 @@ control_t::on_terminate(int /*ec*/, const std::string& reason) {
     // TODO: Check the error code to diverge between normal and abnormal slave shutdown. More will
     // be implemented after error_categories come.
     slave->shutdown(error::committed_suicide);
-}
-
-void
-control_t::breath() {
-    COCAINE_LOG_TRACE(slave->log, "heartbeat timer has been restarted");
-
-    timer.expires_from_now(boost::posix_time::milliseconds(slave->context.profile.timeout.heartbeat));
-    timer.async_wait(std::bind(&control_t::on_timeout, shared_from_this(), ph::_1));
 }
 
 void

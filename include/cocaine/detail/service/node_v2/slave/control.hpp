@@ -63,9 +63,6 @@ private:
     on_terminate(int ec, const std::string& reason);
 
     void
-    breath();
-
-    void
     on_timeout(const std::error_code& ec);
 };
 
