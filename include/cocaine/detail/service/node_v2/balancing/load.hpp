@@ -22,7 +22,7 @@ public:
     on_slave_death(const std::string& uuid) ;
 
     void
-    on_queue() ;
+    on_queue();
 
     std::uint64_t
     on_channel_started(const std::string& uuid) ;
