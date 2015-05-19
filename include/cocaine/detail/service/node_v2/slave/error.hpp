@@ -4,6 +4,14 @@
 
 namespace cocaine { namespace error {
 
+enum overseer_errors {
+    /// The queue is full.
+    queue_is_full = 1,
+
+    /// Unable to spawn more tagged slaves, because it is full.
+    pool_is_full
+};
+
 enum slave_errors {
     /// The slave has failed to spawn for a timeout.spawn ms.
     spawn_timeout = 1,
@@ -48,6 +56,12 @@ enum slave_errors {
 };
 
 const std::error_category&
+overseer_category();
+
+std::error_code
+make_error_code(overseer_errors err);
+
+const std::error_category&
 slave_category();
 
 std::error_code
@@ -56,6 +70,12 @@ make_error_code(slave_errors err);
 }} // namespace cocaine::error
 
 namespace std {
+
+/// Extends the type trait std::is_error_code_enum to identify `overseer_errors` error codes.
+template<>
+struct is_error_code_enum<cocaine::error::overseer_errors>:
+    public true_type
+{};
 
 /// Extends the type trait std::is_error_code_enum to identify `slave_errors` error codes.
 template<>
