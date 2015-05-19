@@ -240,6 +240,12 @@ overseer_t::on_slave_death(const std::error_code& ec, std::string uuid) {
         COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool");
     }
 
-    pool->erase(uuid);
+    pool.apply([&](pool_type& pool) {
+        auto it = pool.find(uuid);
+        if (it != pool.end()) {
+            it->second.slave.terminate(ec);
+            pool.erase(it);
+        }
+    });
     balancer->on_slave_death(uuid);
 }
