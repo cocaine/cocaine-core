@@ -3,35 +3,33 @@
 using namespace cocaine;
 
 worker_client_dispatch_t::worker_client_dispatch_t(upstream<outcoming_tag>& stream_,
-                                                   std::function<void()> callback):
+                                                   close_handler handler):
     dispatch<incoming_tag>("W2C"),
     stream(std::move(stream_))
 {
     on<protocol::chunk>([&](const std::string& chunk) {
         try {
             stream = stream.send<protocol::chunk>(chunk);
-        } catch (const std::exception&) {
-            // TODO: Log.
+        } catch (std::exception& err) {
+            handler(&err);
         }
     });
 
     on<protocol::error>([=](int id, const std::string& reason) {
         try {
             stream.send<protocol::error>(id, reason);
-        } catch (const std::exception&) {
-            // TODO: Log.
+            handler(nullptr);
+        } catch (std::exception& err) {
+            handler(&err);
         }
-
-        callback();
     });
 
     on<protocol::choke>([=]() {
         try {
             stream.send<protocol::choke>();
-        } catch (const std::exception&) {
-            // TODO: Log.
+            handler(nullptr);
+        } catch (std::exception& err) {
+            handler(&err);
         }
-
-        callback();
     });
 }

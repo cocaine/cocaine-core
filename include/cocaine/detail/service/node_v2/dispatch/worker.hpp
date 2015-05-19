@@ -15,10 +15,12 @@ class worker_client_dispatch_t:
     typedef io::event_traits<io::app::enqueue>::upstream_type outcoming_tag;
     typedef io::protocol<incoming_tag>::scope protocol;
 
+    typedef std::function<void(std::exception*)> close_handler;
+
     upstream<incoming_tag> stream;
 
 public:
-    worker_client_dispatch_t(upstream<outcoming_tag>& stream, std::function<void()> callback);
+    worker_client_dispatch_t(upstream<outcoming_tag>& stream, close_handler handler);
 };
 
 } // namespace cocaine

@@ -40,11 +40,15 @@ public:
 
     /// \pre each closing function must be called exactly once, otherwise the behavior is undefined.
     void
-    close(close_state_t state) {
+    close(close_state_t state, std::exception* err) {
         BOOST_ASSERT(state == tx || state == rx);
 
         static const std::array<const char*, 2> description = {{ "tx", "rx" }};
-        COCAINE_LOG_TRACE(overseer->log, "closing %s side of %d channel", description[state - tx], channel);
+        if (err) {
+            COCAINE_LOG_TRACE(overseer->log, "closing %s side of %d channel: %s", description[state - tx], channel, err->what());
+        } else {
+            COCAINE_LOG_TRACE(overseer->log, "closing %s side of %d channel", description[state - tx], channel);
+        }
 
         const auto preceding = closed.fetch_or(state);
 
@@ -214,7 +218,7 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
 
     auto dispatch = std::make_shared<const worker_client_dispatch_t>(
         payload.upstream,
-        std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::rx)
+        std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::rx, ph::_1)
     );
 
     slave.load++;
@@ -225,7 +229,7 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
 
     payload.dispatch->attach(
         std::move(stream),
-        std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::tx)
+        std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::tx, nullptr)
     );
 }
 
