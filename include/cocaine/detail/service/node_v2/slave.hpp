@@ -149,6 +149,10 @@ private:
     /// Termination reason.
     std::error_code ec;
 
+    struct {
+        const std::chrono::high_resolution_clock::time_point birthstamp;
+    } data;
+
     /// The slave state machine implementation.
     std::shared_ptr<state_machine_t> machine;
 
@@ -161,6 +165,9 @@ public:
 
     slave_t& operator=(const slave_t& other) = delete;
     slave_t& operator=(slave_t&&) = default;
+
+    long long
+    uptime() const;
 
     bool
     active() const noexcept;

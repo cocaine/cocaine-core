@@ -154,6 +154,7 @@ state_machine_t::shutdown(std::error_code ec) {
 
 slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn):
     ec(error::overseer_shutdowning),
+    data{ std::chrono::high_resolution_clock::now() },
     machine(state_machine_t::create(context, loop, fn))
 {}
 
@@ -162,6 +163,13 @@ slave_t::~slave_t() {
     if (machine) {
         machine->terminate(std::move(ec));
     }
+}
+
+long long
+slave_t::uptime() const {
+    return std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::high_resolution_clock::now() - data.birthstamp
+    ).count();
 }
 
 bool
