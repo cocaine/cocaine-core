@@ -111,7 +111,7 @@ overseer_t::balance(std::unique_ptr<balancer_t> balancer) {
 std::shared_ptr<streaming_dispatch_t>
 overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstream,
                     const std::string& event,
-                    const std::string& id)
+                    const std::string& /*id*/)
 {
     queue.apply([&](queue_type& queue) {
         if (profile.queue_limit > 0 && queue.size() >= profile.queue_limit) {
@@ -121,7 +121,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstre
 
     auto dispatch = std::make_shared<streaming_dispatch_t>(manifest.name);
 
-    queue->push({ event, id, dispatch, std::move(upstream) });
+    queue->push({ event, dispatch, std::move(upstream) });
 
     balancer->on_queue();
 

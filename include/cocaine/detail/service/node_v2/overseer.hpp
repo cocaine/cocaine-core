@@ -59,7 +59,6 @@ public:
     /// Pending queue.
     struct queue_value {
         std::string event;
-        std::string tag;
         std::shared_ptr<streaming_dispatch_t> dispatch;
         io::streaming_slot<io::app::enqueue>::upstream_type upstream;
     };
