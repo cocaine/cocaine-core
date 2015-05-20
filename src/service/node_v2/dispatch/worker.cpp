@@ -7,7 +7,7 @@ worker_client_dispatch_t::worker_client_dispatch_t(upstream<outcoming_tag>& stre
     dispatch<incoming_tag>("W2C"),
     stream(std::move(stream_))
 {
-    on<protocol::chunk>([&](const std::string& chunk) {
+    on<protocol::chunk>([=](const std::string& chunk) {
         try {
             stream = stream.send<protocol::chunk>(chunk);
         } catch (std::exception& err) {
