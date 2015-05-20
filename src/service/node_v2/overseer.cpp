@@ -69,7 +69,8 @@ overseer_t::overseer_t(context_t& context,
     name(manifest.name),
     loop(loop),
     manifest(manifest),
-    profile(profile)
+    profile(profile),
+    uptime(std::chrono::high_resolution_clock::now())
 {
     COCAINE_LOG_TRACE(log, "overseer has been initialized");
 }
@@ -91,6 +92,11 @@ overseer_t::get_queue() {
 dynamic_t::object_t
 overseer_t::info() const {
     dynamic_t::object_t info;
+
+    info["uptime"] = dynamic_t::uint_t(std::chrono::duration<
+        double,
+        std::chrono::seconds::period
+    >(std::chrono::high_resolution_clock::now() - uptime).count());
     return info;
 }
 

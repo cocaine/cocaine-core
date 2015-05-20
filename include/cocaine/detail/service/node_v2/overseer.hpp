@@ -72,6 +72,7 @@ public:
     manifest_t manifest;
     profile_t profile;
 
+    const std::chrono::high_resolution_clock::time_point uptime;
 public:
     overseer_t(context_t& context,
                manifest_t manifest, profile_t profile,
