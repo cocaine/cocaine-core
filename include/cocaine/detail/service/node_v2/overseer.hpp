@@ -42,6 +42,12 @@ class overseer_t:
     class channel_watcher_t;
 
 public:
+    enum class despawn_policy_t {
+        graceful,
+        force
+    };
+
+public:
     const std::unique_ptr<logging::log_t> log;
 
     context_t& context;
@@ -101,7 +107,7 @@ public:
             const std::string& event,
             const std::string& id);
 
-    /// Creates a new authenticate dispatch for incoming connection.
+    /// Creates a new handshake dispatch for incoming connection.
     ///
     /// Called when an unix-socket client (probably, a worker) has been accepted. The first message
     /// from it should be a handshake to be sure, that the remote peer is the worker we are waiting
@@ -116,13 +122,15 @@ public:
     void
     spawn();
 
+    /// \overload
     void
     spawn(locked_ptr<pool_type>& pool);
 
+    /// \overload
     void
     spawn(locked_ptr<pool_type>&& pool);
 
-    /// \warning must be called under pool & queue lock.
+    /// \warning must be called under the pool lock.
     void
     assign(const std::string& id, slave_handler_t& slave, queue_value& payload);
 
@@ -130,7 +138,7 @@ public:
     /// Then forces the slave to send terminate event. Start timer.
     /// On timeout or on response erases slave.
     void
-    despawn(std::string, bool graceful = true);
+    despawn(const std::string& id, despawn_policy_t policy);
 
 private:
     void

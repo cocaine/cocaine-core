@@ -230,7 +230,9 @@ overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& p
 }
 
 void
-overseer_t::despawn(std::string, bool /*graceful*/) {}
+overseer_t::despawn(const std::string& /*id*/, despawn_policy_t /*policy*/) {
+    throw std::runtime_error("overseer_t::despawn: not implemented yet");
+}
 
 void
 overseer_t::on_slave_death(const std::error_code& ec, std::string uuid) {
