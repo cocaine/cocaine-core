@@ -6,6 +6,6 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 DEB_DBG_PACKAGES := cocaine-v12-dbg
 DEB_DH_INSTALLINIT_ARGS := -r
 
-install/cocaine-runtime::
+install/cocaine-v12-runtime::
 	install -d $(DEB_DESTDIR)etc/cocaine
 	install -m644 debian/cocaine-runtime.conf $(DEB_DESTDIR)etc/cocaine/cocaine-default.conf
