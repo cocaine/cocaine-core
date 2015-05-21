@@ -1,15 +1,10 @@
-cocaine-core (0.12.0.10~hangover4) unstable; urgency=low
+cocaine-core (0.12.0.10~nightly1) unstable; urgency=low
 
-  * Bugfix: Fix race condition on app restart/stop
-
- -- Anton Matveenko <antmat@me.com>  Fri, 15 May 2015 17:20:37 +0300
-
-cocaine-core (0.12.0.10~hangover3) unstable; urgency=low
-
-  * Bugfix: do not process sessions on dead slaves.
+  * Bugfix: fixed processing sessions on dead slaves.
   * Bugfix: fixed phantom isolate/storage plugin caching.
+  * Bugfix: fixed race condition on app restart/stop.
 
- -- Evgeny Safronov <division494@gmail.com>  Tue, 05 May 2015 16:12:37 +0300
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 21 May 2015 13:51:25 +0300
 
 cocaine-core (0.12.0.9) unstable; urgency=low
 
