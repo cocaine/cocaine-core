@@ -105,18 +105,12 @@ load_balancer_t::on_queue() {
     balance();
 }
 
-std::uint64_t
-load_balancer_t::on_channel_started(const std::string& /*uuid*/) {
-    const auto channel = ++counter;
-    COCAINE_LOG_DEBUG(overseer->log, "slave has started processing new %d channel", channel);
-
-    return channel;
+void
+load_balancer_t::on_channel_started(const std::string& /*uuid*/, std::uint64_t /*channel*/) {
 }
 
 void
-load_balancer_t::on_channel_finished(const std::string& /*uuid*/, std::uint64_t channel) {
-    COCAINE_LOG_DEBUG(overseer->log, "slave has closed its %d channel", channel);
-
+load_balancer_t::on_channel_finished(const std::string& /*uuid*/, std::uint64_t /*channel*/) {
     purge();
 }
 

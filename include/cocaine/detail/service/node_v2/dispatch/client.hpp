@@ -17,6 +17,10 @@ namespace cocaine {
 class streaming_dispatch_t:
     public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
 {
+public:
+    typedef std::function<void()> close_handler;
+
+private:
     typedef io::event_traits<io::app::enqueue>::dispatch_type incoming_tag;
     typedef io::event_traits<io::worker::rpc::invoke>::dispatch_type outcoming_tag;
     typedef io::protocol<incoming_tag>::scope protocol;
@@ -25,17 +29,23 @@ class streaming_dispatch_t:
     streamed<std::string> stream;
 
     /// On close callback.
-    boost::optional<std::function<void()>> close;
+    boost::optional<close_handler> handler;
 
     std::mutex mutex;
-    bool closed;
+
+    enum class state_t {
+        open,
+        closed
+    };
+
+    state_t state;
 
 public:
     explicit
     streaming_dispatch_t(const std::string& name);
 
     void
-    attach(upstream<outcoming_tag> stream, std::function<void()> close);
+    attach(upstream<outcoming_tag> stream, close_handler handler);
 
     /// The client has been disconnected without closing its opened channels.
     ///
@@ -46,7 +56,7 @@ public:
 
 private:
     void
-    notify();
+    finalize();
 };
 
 } // namespace cocaine

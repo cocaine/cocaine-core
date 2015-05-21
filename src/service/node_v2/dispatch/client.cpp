@@ -4,7 +4,7 @@ using namespace cocaine;
 
 streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
     dispatch<incoming_tag>(format("%s/C2W", name)),
-    closed(false)
+    state(state_t::open)
 {
     on<protocol::chunk>([&](const std::string& chunk){
         stream.write(chunk);
@@ -12,41 +12,44 @@ streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
 
     on<protocol::error>([&](int id, const std::string& reason){
         stream.abort(id, reason);
-        notify();
+        finalize();
     });
 
     on<protocol::choke>([&]{
         stream.close();
-        notify();
+        finalize();
     });
 }
 
 void
-streaming_dispatch_t::attach(upstream<outcoming_tag> stream, std::function<void()> close) {
+streaming_dispatch_t::attach(upstream<outcoming_tag> stream, close_handler handler) {
     this->stream.attach(std::move(stream));
 
     std::lock_guard<std::mutex> lock(mutex);
-    if (closed) {
-        close();
+    if (state == state_t::closed) {
+        handler();
     } else {
-        this->close.reset(std::move(close));
+        this->handler.reset(std::move(handler));
     }
 }
 
 void
 streaming_dispatch_t::discard(const std::error_code& ec) const {
     if (ec) {
-        const_cast<streaming_dispatch_t*>(this)->notify();
+        const_cast<streaming_dispatch_t*>(this)->finalize();
     }
 }
 
 void
-streaming_dispatch_t::notify() {
+streaming_dispatch_t::finalize() {
     std::lock_guard<std::mutex> lock(mutex);
-    BOOST_ASSERT(!closed);
 
-    closed = true;
-    if (close) {
-        (*close)();
+    // Ensure that we call this method only once.
+    BOOST_ASSERT(state == state_t::open);
+
+    state = state_t::closed;
+
+    if (handler) {
+        handler->operator()();
     }
 }

@@ -113,9 +113,14 @@ private:
     synchronized<std::shared_ptr<state_t>> state;
 
     std::atomic<std::uint64_t> counter;
-    enum load_t { none = 0x00, tx = 0x01, rx = 0x02, both = tx | rx };
-    struct load_ctx { int load; channel_handler handler; };
+    enum side_t { none = 0x00, tx = 0x01, rx = 0x02, both = tx | rx };
+    struct load_ctx {
+        int side;
+        channel_handler handler;
+    };
     typedef std::unordered_map<std::uint64_t, load_ctx> load_map_t;
+
+public:
     synchronized<load_map_t> load_;
 
 public:
@@ -172,6 +177,9 @@ private:
 
     void
     on_rx_channel_close(std::uint64_t id);
+
+    void
+    on_channel_close(std::uint64_t id, side_t side);
 };
 
 // TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
@@ -209,6 +217,15 @@ public:
 
     std::uint64_t
     load() const;
+
+    struct channel_stats_t {
+        std::uint64_t tx;
+        std::uint64_t rx;
+        std::uint64_t load;
+    };
+
+    channel_stats_t
+    stats() const;
 
     bool
     active() const noexcept;

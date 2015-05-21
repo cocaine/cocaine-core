@@ -86,6 +86,8 @@ stacktrace(int signum, siginfo_t* COCAINE_UNUSED_(info), void* context) {
     std::_Exit(EXIT_FAILURE);
 }
 
+asio::io_service* loop;
+
 struct runtime_t {
     runtime_t():
         m_signals(m_asio, SIGINT, SIGTERM, SIGQUIT)
@@ -125,6 +127,17 @@ struct runtime_t {
         sigaddset(&signals, SIGPIPE);
 
         ::sigprocmask(SIG_BLOCK, &signals, nullptr);
+
+        loop = &m_asio;
+        int ec = ::pthread_atfork(
+            []() { loop->notify_fork(asio::io_service::fork_prepare); },
+            []() { loop->notify_fork(asio::io_service::fork_parent); },
+            []() { loop->notify_fork(asio::io_service::fork_child); }
+        );
+
+        if (ec) {
+            std::cerr << "ERROR: Unable to register atfork handlers" << std::endl;
+        }
     }
 
    ~runtime_t() {

@@ -65,8 +65,8 @@ public:
 
     /// Called on channel attaching.
     virtual
-    std::uint64_t
-    on_channel_started(const std::string& uuid) = 0;
+    void
+    on_channel_started(const std::string& uuid, std::uint64_t channel) = 0;
 
     /// Called on channel revoking.
     virtual

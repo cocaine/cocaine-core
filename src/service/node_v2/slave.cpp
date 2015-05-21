@@ -94,8 +94,8 @@ state_machine_t::inject(slave::channel_t& channel, channel_handler handler) {
     auto dispatch = std::make_shared<const worker_client_dispatch_t>(
         channel.upstream,
         [=](std::exception*) {
-            // Error here usually indicates about either client or worker disconnection.
-            // TODO: If the client disappears we can send error to worker (ECONNRESET).
+            // Error here usually indicates about client disconnection.
+            // TODO: If the client disappears we can send an error to the worker (ECONNRESET).
             // TODO: Here this callback can be called multiple times (?), which leads to the UB.
             rxcb();
         }
@@ -105,11 +105,12 @@ state_machine_t::inject(slave::channel_t& channel, channel_handler handler) {
     upstream->send<io::worker::rpc::invoke>(channel.event);
 
     const auto load = load_.apply([&](load_map_t& load) -> std::uint64_t {
-        load[id] = { load_t::both, handler };
+        load[id] = { side_t::both, handler };
         return load.size();
     });
 
-    COCAINE_LOG_TRACE(log, "increased slave load to %d (id: %d)", load, id);
+    COCAINE_LOG_DEBUG(log, "slave has started processing %d channel", id);
+    COCAINE_LOG_TRACE(log, "slave has increased its load to %d (channel: %d)", load, id);
 
     // C2W dispatch.
     channel.dispatch->attach(
@@ -190,45 +191,42 @@ state_machine_t::shutdown(std::error_code ec) {
 
 void
 state_machine_t::on_tx_channel_close(std::uint64_t id) {
-    load_.apply([&](load_map_t& load) {
-        auto it = load.find(id);
-
-        // Ensure that we call this callback once.
-        BOOST_ASSERT(it != load.end());
-        COCAINE_LOG_TRACE(log, "closing tx side of %d channel", id);
-
-        it->second.load &= ~load_t::tx;
-
-        if (it->second.load == load_t::none) {
-            COCAINE_LOG_TRACE(log, "decreased slave load to %d (%d id)", load.size(), id);
-
-            it->second.handler(id);
-
-            load.erase(it);
-        }
-    });
+    on_channel_close(id, side_t::tx);
 }
 
 void
 state_machine_t::on_rx_channel_close(std::uint64_t id) {
-    load_.apply([&](load_map_t& load) {
+    on_channel_close(id, side_t::rx);
+}
+
+void
+state_machine_t::on_channel_close(std::uint64_t id, side_t side) {
+    auto handler = load_.apply([&](load_map_t& load) -> channel_handler {
         auto it = load.find(id);
 
         // Ensure that we call this callback once.
-        BOOST_ASSERT(it != load.end());
-        COCAINE_LOG_TRACE(log, "closing rx side of %d channel", id);
-
-
-        it->second.load &= ~load_t::rx;
-
-        if (it->second.load == load_t::none) {
-            COCAINE_LOG_TRACE(log, "decreased slave load to %d (%d id)", load.size(), id);
-
-            it->second.handler(id);
-
-            load.erase(it);
+        if (it == load.end()) {
+            COCAINE_LOG_WARNING(log, "fuck you: %s %d", side == side_t::tx ? "tx" : "rx", id);
+            return [](std::uint64_t){};
         }
+        COCAINE_LOG_TRACE(log, "closing %s side of %d channel", side == side_t::tx ? "tx" : "rx", id);
+
+        it->second.side &= ~side;
+
+        if (it->second.side == side_t::none) {
+            auto handler = it->second.handler;
+            load.erase(it);
+
+            COCAINE_LOG_TRACE(log, "slave has decreased its load to %d (channel: %d)", load.size(), id);
+            COCAINE_LOG_DEBUG(log, "slave has closed its %d channel", id);
+
+            return handler;
+        }
+
+        return [](std::uint64_t){};
     });
+
+    handler(id);
 }
 
 slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn):
@@ -253,7 +251,7 @@ long long
 slave_t::uptime() const {
     return std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::high_resolution_clock::now() - data.birthstamp
-                ).count();
+    ).count();
 }
 
 std::uint64_t
@@ -261,6 +259,25 @@ slave_t::load() const {
     BOOST_ASSERT(machine);
 
     return machine->load();
+}
+
+slave_t::channel_stats_t
+slave_t::stats() const {
+    auto load = *machine->load_.synchronize();
+
+    channel_stats_t stats {};
+    stats.load = load.size();
+    for (auto& it : load) {
+        if ((it.second.side & 0x01) == 0x01) {
+            stats.tx++;
+        }
+
+        if ((it.second.side & 0x02) == 0x02) {
+            stats.rx++;
+        }
+    }
+
+    return stats;
 }
 
 bool

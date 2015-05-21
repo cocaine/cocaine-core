@@ -13,22 +13,22 @@ public:
     explicit load_balancer_t(std::shared_ptr<overseer_t> overseer);
 
     slave_info
-    on_request(const std::string& event, const std::string& id) ;
+    on_request(const std::string& event, const std::string& id);
 
     void
-    on_slave_spawn(const std::string& uuid) ;
+    on_slave_spawn(const std::string& uuid);
 
     void
-    on_slave_death(const std::string& uuid) ;
+    on_slave_death(const std::string& uuid);
 
     void
     on_queue();
 
-    std::uint64_t
-    on_channel_started(const std::string& uuid) ;
+    void
+    on_channel_started(const std::string& uuid, std::uint64_t channel);
 
     void
-    on_channel_finished(const std::string& uuid, std::uint64_t channel) ;
+    on_channel_finished(const std::string& uuid, std::uint64_t channel);
 
 private:
     /// Tries to clear the queue by assigning tasks to slaves.

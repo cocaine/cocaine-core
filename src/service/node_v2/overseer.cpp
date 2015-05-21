@@ -65,9 +65,14 @@ overseer_t::get_queue() {
 
 dynamic_t::object_t
 overseer_t::stat(const slave_t& slave) const {
+
+    const auto channel_stats = slave.stats();
+
     dynamic_t::object_t result = {
         { "uptime", slave.uptime() },
-//        { "load", slave.load },
+        { "load", channel_stats.load },
+        { "tx",   channel_stats.tx },
+        { "rx",   channel_stats.rx },
     };
 
     return result;
@@ -211,11 +216,11 @@ overseer_t::spawn(locked_ptr<pool_type>&& pool) {
 void
 overseer_t::assign(slave_t& slave, slave::channel_t& payload) {
     // Attempts to inject the new channel into the slave.
-    auto id = slave.id();
-    slave.inject(payload, [=](std::uint64_t channel) {
+    const auto id = slave.id();
+    const auto channel = slave.inject(payload, [=](std::uint64_t channel) {
         balancer->on_channel_finished(id, channel);
     });
-    balancer->on_channel_started(id);
+    balancer->on_channel_started(id, channel);
 }
 
 void
