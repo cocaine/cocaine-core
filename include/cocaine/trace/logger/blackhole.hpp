@@ -45,7 +45,13 @@ public:
      */
     inline
     blackhole_logger_t(logging::logger_t& _logger) :
-        logger(_logger)
+        logger(_logger, blackhole::attribute::set_t())
+    {
+    }
+
+    inline
+    blackhole_logger_t(logging::log_t& _logger) :
+        blackhole_logger_t(_logger.log())
     {
     }
 
@@ -59,12 +65,12 @@ public:
 
     virtual
     std::unique_ptr<attribute_scope_t>
-    get_scope(blackhole::attribute::set_t attributes) const {
-        return std::unique_ptr<attribute_scope_t>(new bh_atttribute_scope_t(logger, std::move(attributes)));
+    get_scope(blackhole::attribute::set_t attributes) {
+        return std::unique_ptr<attribute_scope_t>(new bh_atttribute_scope_t(logger.log(), std::move(attributes)));
     }
 
 private:
-    logging::logger_t& logger;
+    logging::log_t logger;
 };
 
 }}

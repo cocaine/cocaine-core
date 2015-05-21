@@ -52,7 +52,7 @@ public:
 
     virtual
     std::unique_ptr<attribute_scope_t>
-    get_scope(blackhole::attribute::set_t attributes) const = 0;
+    get_scope(blackhole::attribute::set_t attributes) = 0;
 
     virtual
     inline
