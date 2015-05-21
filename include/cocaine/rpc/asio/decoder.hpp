@@ -28,8 +28,6 @@
 #include <hpack-headers/msgpack_traits.hpp>
 #include <hpack-headers/header.hpp>
 
-#include "cocaine/common.hpp"
-
 namespace cocaine { namespace io {
 
 struct decoder_t;
