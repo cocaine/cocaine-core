@@ -24,7 +24,12 @@
 
 #include "slave/error.hpp"
 
+// TODO: Temporary.
+#include "cocaine/detail/service/node_v2/slot.hpp"
+
 namespace cocaine {
+// TODO: Temporary.
+class streaming_dispatch_t;
 
 class active_t;
 class broken_t;
@@ -41,6 +46,17 @@ typedef std::shared_ptr<
 > inject_dispatch_ptr_t;
 
 typedef std::function<void()> close_callback;
+
+namespace slave {
+
+struct channel_t {
+    /// Event name to be processed.
+    std::string event;
+    std::shared_ptr<streaming_dispatch_t> dispatch;
+    io::streaming_slot<io::app::enqueue>::upstream_type upstream;
+};
+
+}
 
 struct slave_context {
     context_t&  context;
@@ -69,9 +85,12 @@ class state_machine_t:
     friend class control_t;
     friend class fetcher_t;
 
+    class channel_watcher_t;
+
     class lock_t {};
 
 public:
+    typedef std::function<void(std::uint64_t)> channel_handler;
     typedef std::function<void(const std::error_code&)> cleanup_handler;
 
 private:
@@ -93,6 +112,12 @@ private:
 
     synchronized<std::shared_ptr<state_t>> state;
 
+    std::atomic<std::uint64_t> counter;
+    enum load_t { none = 0x00, tx = 0x01, rx = 0x02, both = tx | rx };
+    struct load_ctx { int load; channel_handler handler; };
+    typedef std::unordered_map<std::uint64_t, load_ctx> load_map_t;
+    synchronized<load_map_t> load_;
+
 public:
     /// Creates the state machine instance and immediately starts it.
     static
@@ -107,11 +132,14 @@ public:
     bool
     active() const noexcept;
 
+    std::uint64_t
+    load() const;
+
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 
-    io::upstream_ptr_t
-    inject(inject_dispatch_ptr_t dispatch);
+    std::uint64_t
+    inject(slave::channel_t& channel, channel_handler handler);
 
     /// Terminates the slave by sending terminate message to the worker instance.
     ///
@@ -138,6 +166,12 @@ private:
     /// Can be called multiple times, but only the first one takes an effect.
     void
     shutdown(std::error_code ec);
+
+    void
+    on_tx_channel_close(std::uint64_t id);
+
+    void
+    on_rx_channel_close(std::uint64_t id);
 };
 
 // TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
@@ -150,6 +184,7 @@ private:
     std::error_code ec;
 
     struct {
+        const std::string id;
         const std::chrono::high_resolution_clock::time_point birthstamp;
     } data;
 
@@ -166,8 +201,14 @@ public:
     slave_t& operator=(const slave_t& other) = delete;
     slave_t& operator=(slave_t&&) = default;
 
+    const std::string&
+    id() const noexcept;
+
     long long
     uptime() const;
+
+    std::uint64_t
+    load() const;
 
     bool
     active() const noexcept;
@@ -175,8 +216,8 @@ public:
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 
-    io::upstream_ptr_t
-    inject(inject_dispatch_ptr_t dispatch);
+    std::uint64_t
+    inject(slave::channel_t& channel, state_machine_t::channel_handler handler);
 
     /// Marks the slave for termination using the given error code.
     ///

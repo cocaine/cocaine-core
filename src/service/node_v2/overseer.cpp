@@ -19,44 +19,18 @@ namespace ph = std::placeholders;
 
 using namespace cocaine;
 
-class overseer_t::channel_watcher_t {
-public:
-    /// From client to worker and vise-versa.
-    enum close_state_t { none = 0x0, tx = 0x1, rx = 0x2, both = tx | rx };
+struct collector_t {
+    std::size_t active;
 
-private:
-    std::uint64_t channel;
-    std::atomic<int> closed;
-    std::function<void()> callback;
-    std::shared_ptr<overseer_t> overseer;
-
-public:
-    channel_watcher_t(std::uint64_t channel, std::shared_ptr<overseer_t> overseer, std::function<void()> callback):
-        channel(channel),
-        closed(0),
-        callback(std::move(callback)),
-        overseer(std::move(overseer))
-    {}
-
-    /// \pre each closing function must be called exactly once, otherwise the behavior is undefined.
-    void
-    close(close_state_t state, std::exception* err) {
-        BOOST_ASSERT(state == tx || state == rx);
-
-        static const std::array<const char*, 2> description = {{ "tx", "rx" }};
-        if (err) {
-            COCAINE_LOG_TRACE(overseer->log, "closing %s side of %d channel: %s", description[state - tx], channel, err->what());
-        } else {
-            COCAINE_LOG_TRACE(overseer->log, "closing %s side of %d channel", description[state - tx], channel);
-        }
-
-        const auto preceding = closed.fetch_or(state);
-
-        BOOST_ASSERT((state & preceding) != state);
-        (void)preceding;
-
-        if (closed.load() == close_state_t::both) {
-            callback();
+    explicit
+    collector_t(const overseer_t::pool_type& pool):
+        active{}
+    {
+        for (const auto& it : pool) {
+            const auto load = it.second.load();
+            if (it.second.active() && load) {
+                active++;
+            }
         }
     }
 };
@@ -90,12 +64,48 @@ overseer_t::get_queue() {
 }
 
 dynamic_t::object_t
+overseer_t::stat(const slave_t& slave) const {
+    dynamic_t::object_t result = {
+        { "uptime", slave.uptime() },
+//        { "load", slave.load },
+    };
+
+    return result;
+}
+
+dynamic_t::object_t
 overseer_t::info() const {
     dynamic_t::object_t info;
 
     info["uptime"] = dynamic_t::uint_t(std::chrono::duration_cast<
         std::chrono::seconds
     >(std::chrono::high_resolution_clock::now() - birthstamp).count());
+
+    info["queue"] = dynamic_t::object_t({
+        { "depth",    dynamic_t::uint_t(queue->size()) },
+        { "capacity", dynamic_t::uint_t(profile.queue_limit) }
+    });
+
+    info["channels"] = dynamic_t::object_t({
+        { "accepted", dynamic_t::uint_t(stats.accepted) }
+    });
+
+    pool.apply([&](const pool_type& pool) {
+        collector_t collector(pool);
+
+        dynamic_t::object_t slaves;
+        for (auto it = pool.begin(); it != pool.end(); ++it) {
+            slaves[it->first] = stat(it->second);
+        }
+
+        info["pool"] = dynamic_t::object_t({
+            { "active",   collector.active },
+            { "idle",     pool.size() - collector.active },
+            { "capacity", profile.pool_limit },
+            { "slaves", slaves }
+        });
+    });
+
     return info;
 }
 
@@ -113,6 +123,10 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstre
                     const std::string& event,
                     const std::string& /*id*/)
 {
+    // TODO: Handle id parameter somehow.
+
+    ++stats.accepted;
+
     queue.apply([&](queue_type& queue) {
         if (profile.queue_limit > 0 && queue.size() >= profile.queue_limit) {
             throw std::system_error(error::queue_is_full);
@@ -148,7 +162,7 @@ overseer_t::handshaker() {
 
             COCAINE_LOG_DEBUG(log, "activating slave");
             try {
-                return it->second.slave.activate(session, std::move(stream));
+                return it->second.activate(session, std::move(stream));
             } catch (const std::exception& err) {
                 // The slave can be in invalid state; broken, for example, or because the
                 // overseer is overloaded. In fact I hope it never happens.
@@ -195,38 +209,13 @@ overseer_t::spawn(locked_ptr<pool_type>&& pool) {
 }
 
 void
-overseer_t::assign(const std::string& id, slave_handler_t& slave, queue_value& payload) {
-    const auto channel = balancer->on_channel_started(id);
-
-    auto watcher = std::make_shared<channel_watcher_t>(channel, shared_from_this(), [=]{
-        pool.apply([=](pool_type& pool){
-            auto it = pool.find(id);
-            if (it == pool.end()) {
-                return;
-            }
-
-            it->second.load--;
-            COCAINE_LOG_TRACE(log, "decrease slave load to %d", it->second.load)("uuid", id);
-        });
-
+overseer_t::assign(slave_t& slave, slave::channel_t& payload) {
+    // Attempts to inject the new channel into the slave.
+    auto id = slave.id();
+    slave.inject(payload, [=](std::uint64_t channel) {
         balancer->on_channel_finished(id, channel);
     });
-
-    auto dispatch = std::make_shared<const worker_client_dispatch_t>(
-        payload.upstream,
-        std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::rx, ph::_1)
-    );
-
-    slave.load++;
-    COCAINE_LOG_TRACE(log, "increase slave load to %d", slave.load)("uuid", id);
-
-    auto stream = slave.slave.inject(dispatch);
-    stream->send<io::worker::rpc::invoke>(payload.event);
-
-    payload.dispatch->attach(
-        std::move(stream),
-        std::bind(&channel_watcher_t::close, watcher, channel_watcher_t::tx, nullptr)
-    );
+    balancer->on_channel_started(id);
 }
 
 void
@@ -245,7 +234,7 @@ overseer_t::on_slave_death(const std::error_code& ec, std::string uuid) {
     pool.apply([&](pool_type& pool) {
         auto it = pool.find(uuid);
         if (it != pool.end()) {
-            it->second.slave.terminate(ec);
+            it->second.terminate(ec);
             pool.erase(it);
         }
     });

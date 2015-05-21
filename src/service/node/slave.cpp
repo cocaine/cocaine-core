@@ -594,3 +594,4 @@ slave_t::terminate(int code, const std::string& reason) {
     COCAINE_LOG_DEBUG(m_log, "slave %s has cancelled its handlers", m_id);
     m_suicide(m_id, code, reason);
 }
+

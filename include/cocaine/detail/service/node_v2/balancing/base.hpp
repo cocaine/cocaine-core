@@ -5,24 +5,21 @@
 
 namespace cocaine {
 
-struct slave_handler_t;
+struct slave_t;
 
 class overseer_t;
 
 struct slave_info {
-    slave_handler_t* slave;
-    std::string id;
-    std::uint64_t load;
+    slave_t* slave;
 
-    slave_info() :
-        slave(nullptr),
-        load(0)
+    constexpr
+    slave_info():
+        slave(nullptr)
     {}
 
-    slave_info(slave_handler_t* slave, std::string id, std::uint64_t load) :
-        slave(slave),
-        id(std::move(id)),
-        load(load)
+    constexpr
+    slave_info(slave_t* slave):
+        slave(slave)
     {}
 
     operator bool() const {

@@ -14,6 +14,7 @@
 #include "cocaine/detail/service/node_v2/slave/state/spawning.hpp"
 #include "cocaine/detail/service/node_v2/slave/state/state.hpp"
 #include "cocaine/detail/service/node_v2/slave/state/terminating.hpp"
+#include "cocaine/detail/service/node_v2/dispatch/client.hpp"
 #include "cocaine/detail/service/node_v2/dispatch/worker.hpp"
 #include "cocaine/detail/service/node_v2/util.hpp"
 
@@ -36,7 +37,8 @@ state_machine_t::state_machine_t(lock_t, slave_context context, asio::io_service
     closed(false),
     cleanup(std::move(cleanup)),
     lines(context.profile.crashlog_limit),
-    shutdowned(false)
+    shutdowned(false),
+    counter{}
 {
     COCAINE_LOG_TRACE(log, "slave state machine has been initialized");
 }
@@ -68,6 +70,11 @@ state_machine_t::active() const noexcept {
     return state->active();
 }
 
+std::uint64_t
+state_machine_t::load() const {
+    return load_->size();
+}
+
 std::shared_ptr<control_t>
 state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream) {
     auto state = *this->state.synchronize();
@@ -76,12 +83,41 @@ state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worke
     return state->activate(std::move(session), std::move(stream));
 }
 
-io::upstream_ptr_t
-state_machine_t::inject(inject_dispatch_ptr_t dispatch) {
+std::uint64_t
+state_machine_t::inject(slave::channel_t& channel, channel_handler handler) {
     auto state = *this->state.synchronize();
-    BOOST_ASSERT(state);
 
-    return state->inject(std::move(dispatch));
+    const auto id = ++counter;
+    auto rxcb = std::bind(&state_machine_t::on_rx_channel_close, shared_from_this(), id);
+
+    // W2C dispatch.
+    auto dispatch = std::make_shared<const worker_client_dispatch_t>(
+        channel.upstream,
+        [=](std::exception*) {
+            // Error here usually indicates about either client or worker disconnection.
+            // TODO: If the client disappears we can send error to worker (ECONNRESET).
+            // TODO: Here this callback can be called multiple times (?), which leads to the UB.
+            rxcb();
+        }
+    );
+
+    auto upstream = state->inject(dispatch);
+    upstream->send<io::worker::rpc::invoke>(channel.event);
+
+    const auto load = load_.apply([&](load_map_t& load) -> std::uint64_t {
+        load[id] = { load_t::both, handler };
+        return load.size();
+    });
+
+    COCAINE_LOG_TRACE(log, "increased slave load to %d (id: %d)", load, id);
+
+    // C2W dispatch.
+    channel.dispatch->attach(
+        std::move(upstream),
+        std::bind(&state_machine_t::on_tx_channel_close, shared_from_this(), id)
+    );
+
+    return id;
 }
 
 void
@@ -152,9 +188,52 @@ state_machine_t::shutdown(std::error_code ec) {
     }
 }
 
+void
+state_machine_t::on_tx_channel_close(std::uint64_t id) {
+    load_.apply([&](load_map_t& load) {
+        auto it = load.find(id);
+
+        // Ensure that we call this callback once.
+        BOOST_ASSERT(it != load.end());
+        COCAINE_LOG_TRACE(log, "closing tx side of %d channel", id);
+
+        it->second.load &= ~load_t::tx;
+
+        if (it->second.load == load_t::none) {
+            COCAINE_LOG_TRACE(log, "decreased slave load to %d (%d id)", load.size(), id);
+
+            it->second.handler(id);
+
+            load.erase(it);
+        }
+    });
+}
+
+void
+state_machine_t::on_rx_channel_close(std::uint64_t id) {
+    load_.apply([&](load_map_t& load) {
+        auto it = load.find(id);
+
+        // Ensure that we call this callback once.
+        BOOST_ASSERT(it != load.end());
+        COCAINE_LOG_TRACE(log, "closing rx side of %d channel", id);
+
+
+        it->second.load &= ~load_t::rx;
+
+        if (it->second.load == load_t::none) {
+            COCAINE_LOG_TRACE(log, "decreased slave load to %d (%d id)", load.size(), id);
+
+            it->second.handler(id);
+
+            load.erase(it);
+        }
+    });
+}
+
 slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn):
     ec(error::overseer_shutdowning),
-    data{ std::chrono::high_resolution_clock::now() },
+    data{ context.id, std::chrono::high_resolution_clock::now() },
     machine(state_machine_t::create(context, loop, fn))
 {}
 
@@ -165,11 +244,23 @@ slave_t::~slave_t() {
     }
 }
 
+const std::string&
+slave_t::id() const noexcept {
+    return data.id;
+}
+
 long long
 slave_t::uptime() const {
     return std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::high_resolution_clock::now() - data.birthstamp
-    ).count();
+                ).count();
+}
+
+std::uint64_t
+slave_t::load() const {
+    BOOST_ASSERT(machine);
+
+    return machine->load();
 }
 
 bool
@@ -186,11 +277,11 @@ slave_t::activate(std::shared_ptr<session_t> session, upstream<io::worker::contr
     return machine->activate(std::move(session), std::move(stream));
 }
 
-io::upstream_ptr_t
-slave_t::inject(inject_dispatch_ptr_t dispatch) {
+std::uint64_t
+slave_t::inject(slave::channel_t& channel, state_machine_t::channel_handler handler) {
     BOOST_ASSERT(machine);
 
-    return machine->inject(std::move(dispatch));
+    return machine->inject(channel, handler);
 }
 
 void

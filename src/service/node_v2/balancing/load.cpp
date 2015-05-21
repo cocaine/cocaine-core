@@ -33,7 +33,7 @@ struct load {
     template<class T>
     bool
     operator()(const T& lhs, const T& rhs) const {
-        return lhs.second.load < rhs.second.load;
+        return lhs.second.load() < rhs.second.load();
     }
 };
 
@@ -41,7 +41,7 @@ struct available {
     template<class T>
     bool
     operator()(const T& it) const {
-        return it.second.slave.active() && it.second.load < max;
+        return it.second.active() && it.second.load() < max;
     }
 
     const size_t max;
@@ -84,7 +84,7 @@ load_balancer_t::on_request(const std::string&, const std::string& /*id*/) {
     }
 
     // Otherwise return the slave.
-    return slave_info { &it->second, it->first, it->second.load };
+    return slave_info { &it->second };
 }
 
 void
@@ -143,7 +143,7 @@ load_balancer_t::purge() {
         auto& payload = queue->front();
 
         try {
-            overseer->assign(it->first, it->second, payload);
+            overseer->assign(it->second, payload);
             // The slave may become invalid and reject the assignment (or reject for any other
             // reasons). We pop the channel only on successful assignment to achieve strong
             // exception guarantee.

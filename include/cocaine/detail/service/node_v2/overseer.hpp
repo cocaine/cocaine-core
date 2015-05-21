@@ -15,17 +15,6 @@
 
 namespace cocaine {
 
-struct slave_handler_t {
-    slave_t slave;
-    std::uint64_t load;
-
-    template<class... Args>
-    slave_handler_t(Args&&... args) :
-        slave(std::forward<Args>(args)...),
-        load(0)
-    {}
-};
-
 class balancer_t;
 class unix_actor_t;
 class slave_t;
@@ -39,8 +28,6 @@ namespace cocaine {
 class overseer_t:
     public std::enable_shared_from_this<overseer_t>
 {
-    class channel_watcher_t;
-
 public:
     enum class despawn_policy_t {
         graceful,
@@ -59,17 +46,11 @@ public:
     std::shared_ptr<asio::io_service> loop;
 
     /// Slave pool.
-    typedef std::unordered_map<std::string, slave_handler_t> pool_type;
+    typedef std::unordered_map<std::string, slave_t> pool_type;
     synchronized<pool_type> pool;
 
     /// Pending queue.
-    struct queue_value {
-        std::string event;
-        std::shared_ptr<streaming_dispatch_t> dispatch;
-        io::streaming_slot<io::app::enqueue>::upstream_type upstream;
-    };
-
-    typedef std::queue<queue_value> queue_type;
+    typedef std::queue<slave::channel_t> queue_type;
     synchronized<queue_type> queue;
 
     std::shared_ptr<balancer_t> balancer;
@@ -78,6 +59,26 @@ public:
     profile_t profile;
 
     const std::chrono::high_resolution_clock::time_point birthstamp;
+
+    /////// STATS ///////
+
+    struct slave_stats_t {
+        // load: current channels count.
+        // processed: closed channels count.
+    };
+
+    struct stats_t {
+        std::atomic<std::uint64_t> accepted;
+
+        synchronized<std::unordered_map<std::string, slave_stats_t>> slaves;
+
+        stats_t():
+            accepted{}
+        {}
+    };
+
+    stats_t stats;
+
 public:
     overseer_t(context_t& context,
                manifest_t manifest, profile_t profile,
@@ -89,6 +90,9 @@ public:
 
     locked_ptr<queue_type>
     get_queue();
+
+    dynamic_t::object_t
+    stat(const slave_t& slave) const;
 
     dynamic_t::object_t
     info() const;
@@ -132,7 +136,7 @@ public:
 
     /// \warning must be called under the pool lock.
     void
-    assign(const std::string& id, slave_handler_t& slave, queue_value& payload);
+    assign(slave_t& slave, slave::channel_t& payload);
 
     /// Closes the worker from new requests
     /// Then forces the slave to send terminate event. Start timer.
