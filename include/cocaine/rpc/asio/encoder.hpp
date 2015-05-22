@@ -101,7 +101,6 @@ private:
 
 } // namespace aux
 
-
 template<class Event>
 struct encoded:
     public aux::encoded_message_t
