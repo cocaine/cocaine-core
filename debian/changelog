@@ -1,3 +1,9 @@
+cocaine-core (0.12.0.10~nightly2) unstable; urgency=low
+
+  * Bugfix: reuse the same logger on "core" backend.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 22 May 2015 16:32:01 +0400
+
 cocaine-core (0.12.0.10~nightly1) unstable; urgency=low
 
   * Bugfix: fixed processing sessions on dead slaves.
