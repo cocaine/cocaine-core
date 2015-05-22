@@ -42,39 +42,40 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
     const auto backend = args.as_object().at("backend", "core").as_string();
 
     try {
-        m_logger = std::make_unique<logger_t>(repository_t::instance().create<logger_t>(
-            backend,
-            context.config.logging.loggers.at(backend).verbosity
-        ));
+        if(backend == "core") {
+            wrapper = context.log(format("%s/core", name));
+        } else {
+            logger.reset(new logger_t(repository_t::instance().create<logger_t>(
+                backend,
+                context.config.logging.loggers.at(backend).verbosity
+            )));
+            wrapper.reset(new log_t(*logger, {{ "source",  format("%s/%s", name, backend)}}));
+        }
     } catch(const std::out_of_range&) {
         throw cocaine::error_t("logger '%s' is not configured", backend);
     }
 
-    const auto getter = &logger_t::verbosity;
-    const auto setter = static_cast<void(logger_t::*)(priorities)>(&logger_t::set_filter);
-
     on<io::log::emit>(std::bind(&logging_t::on_emit, this, ph::_1, ph::_2, ph::_3, ph::_4));
-    on<io::log::verbosity>(std::bind(getter, std::ref(*m_logger)));
-    on<io::log::set_verbosity>(std::bind(setter, std::ref(*m_logger), ph::_1));
+    on<io::log::verbosity>([&]() {
+        return wrapper->log().verbosity();
+    });
 }
 
-const io::basic_dispatch_t&
-logging_t::prototype() const {
+auto
+logging_t::prototype() const -> const io::basic_dispatch_t& {
     return *this;
 }
 
 void
-logging_t::on_emit(logging::priorities level, std::string&& source, std::string&& message,
-                   blackhole::attribute::set_t&& attributes)
+logging_t::on_emit(logging::priorities level,
+                   const std::string& source,
+                   const std::string& message,
+                   blackhole::attribute::set_t attributes)
 {
-    auto record = m_logger->open_record(level, std::move(attributes));
+    if(auto record = wrapper->open_record(level, std::move(attributes))) {
+        record.insert(cocaine::logging::keyword::source() = std::move(source));
+        record.message(std::move(message));
 
-    if(!record.valid()) {
-        return;
+        wrapper->push(std::move(record));
     }
-
-    record.insert(cocaine::logging::keyword::source() = std::move(source));
-    record.message(std::move(message));
-
-    m_logger->push(std::move(record));
 }
