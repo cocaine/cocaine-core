@@ -73,6 +73,7 @@ overseer_t::stat(const slave_t& slave) const {
         { "load", channel_stats.load },
         { "tx",   channel_stats.tx },
         { "rx",   channel_stats.rx },
+        { "total", channel_stats.total },
     };
 
     return result;

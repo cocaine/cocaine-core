@@ -112,6 +112,7 @@ private:
 
     synchronized<std::shared_ptr<state_t>> state;
 
+public:
     std::atomic<std::uint64_t> counter;
     enum side_t { none = 0x00, tx = 0x01, rx = 0x02, both = tx | rx };
     struct load_ctx {
@@ -173,12 +174,6 @@ private:
     shutdown(std::error_code ec);
 
     void
-    on_tx_channel_close(std::uint64_t id);
-
-    void
-    on_rx_channel_close(std::uint64_t id);
-
-    void
     on_channel_close(std::uint64_t id, side_t side);
 };
 
@@ -222,6 +217,7 @@ public:
         std::uint64_t tx;
         std::uint64_t rx;
         std::uint64_t load;
+        std::uint64_t total;
     };
 
     channel_stats_t

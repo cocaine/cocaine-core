@@ -20,10 +20,26 @@ private:
     typedef io::protocol<incoming_tag>::scope protocol;
 
     upstream<incoming_tag> stream;
-    close_handler handler;
+
+    /// On close callback.
+    boost::optional<close_handler> handler;
+    std::exception* err;
+
+    enum class state_t {
+        open,
+        closed
+    };
+
+    state_t state;
+
+    std::mutex mutex;
 
 public:
-    worker_client_dispatch_t(upstream<outcoming_tag>& stream, close_handler handler);
+    explicit
+    worker_client_dispatch_t(upstream<outcoming_tag>& stream);
+
+    void
+    attach(close_handler handler);
 
     virtual
     void
@@ -31,7 +47,7 @@ public:
 
 private:
     void
-    finalize(std::exception* err);
+    finalize(std::exception* err = nullptr);
 };
 
 } // namespace cocaine

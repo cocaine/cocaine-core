@@ -36,6 +36,7 @@ streaming_dispatch_t::attach(upstream<outcoming_tag> stream, close_handler handl
 void
 streaming_dispatch_t::discard(const std::error_code& ec) const {
     if (ec) {
+        // We need to send error to worker indicating that no other messages will be sent.
         const_cast<streaming_dispatch_t*>(this)->finalize();
     }
 }
