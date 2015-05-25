@@ -124,7 +124,7 @@ overseer_t::balance(std::unique_ptr<balancer_t> balancer) {
     }
 }
 
-std::shared_ptr<streaming_dispatch_t>
+std::shared_ptr<enqueue_dispatch_t>
 overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstream,
                     const std::string& event,
                     const std::string& /*id*/)
@@ -139,7 +139,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstre
         }
     });
 
-    auto dispatch = std::make_shared<streaming_dispatch_t>(manifest.name);
+    auto dispatch = std::make_shared<enqueue_dispatch_t>(manifest.name);
 
     queue->push({ event, dispatch, std::move(upstream) });
 

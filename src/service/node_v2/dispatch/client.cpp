@@ -2,7 +2,7 @@
 
 using namespace cocaine;
 
-streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
+enqueue_dispatch_t::enqueue_dispatch_t(const std::string& name):
     dispatch<incoming_tag>(format("%s/C2W", name)),
     state(state_t::open)
 {
@@ -22,7 +22,7 @@ streaming_dispatch_t::streaming_dispatch_t(const std::string& name):
 }
 
 void
-streaming_dispatch_t::attach(upstream<outcoming_tag> stream, close_handler handler) {
+enqueue_dispatch_t::attach(upstream<outcoming_tag> stream, close_handler handler) {
     this->stream.attach(std::move(stream));
 
     std::lock_guard<std::mutex> lock(mutex);
@@ -34,15 +34,15 @@ streaming_dispatch_t::attach(upstream<outcoming_tag> stream, close_handler handl
 }
 
 void
-streaming_dispatch_t::discard(const std::error_code& ec) const {
+enqueue_dispatch_t::discard(const std::error_code& ec) const {
     if (ec) {
         // We need to send error to worker indicating that no other messages will be sent.
-        const_cast<streaming_dispatch_t*>(this)->finalize();
+        const_cast<enqueue_dispatch_t*>(this)->finalize();
     }
 }
 
 void
-streaming_dispatch_t::finalize() {
+enqueue_dispatch_t::finalize() {
     std::lock_guard<std::mutex> lock(mutex);
 
     // Ensure that we call this method only once.

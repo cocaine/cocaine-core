@@ -29,7 +29,7 @@
 
 namespace cocaine {
 // TODO: Temporary.
-class streaming_dispatch_t;
+class enqueue_dispatch_t;
 
 class active_t;
 class broken_t;
@@ -52,7 +52,7 @@ namespace slave {
 struct channel_t {
     /// Event name to be processed.
     std::string event;
-    std::shared_ptr<streaming_dispatch_t> dispatch;
+    std::shared_ptr<enqueue_dispatch_t> dispatch;
     io::streaming_slot<io::app::enqueue>::upstream_type upstream;
 };
 

@@ -14,7 +14,7 @@
 namespace cocaine {
 
 /// An adapter for [Client -> Worker] message passing.
-class streaming_dispatch_t:
+class enqueue_dispatch_t:
     public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
 {
 public:
@@ -42,7 +42,7 @@ private:
 
 public:
     explicit
-    streaming_dispatch_t(const std::string& name);
+    enqueue_dispatch_t(const std::string& name);
 
     void
     attach(upstream<outcoming_tag> stream, close_handler handler);
