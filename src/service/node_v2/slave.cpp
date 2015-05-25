@@ -88,7 +88,7 @@ state_machine_t::inject(slave::channel_t& channel, channel_handler handler) {
     auto state = *this->state.synchronize();
 
     const auto id = ++counter;
-    auto rxcb = std::bind(&state_machine_t::on_channel_close, shared_from_this(), id, side_t::rx);
+    auto rxcb = std::bind(&state_machine_t::on_channel_close, shared_from_this(), id, side_t::rx, false);
 
     // W2C dispatch.
     auto dispatch = std::make_shared<const worker_client_dispatch_t>(channel.upstream);
@@ -102,7 +102,7 @@ state_machine_t::inject(slave::channel_t& channel, channel_handler handler) {
     });
 
     COCAINE_LOG_DEBUG(log, "slave has started processing %d channel", id);
-    COCAINE_LOG_TRACE(log, "slave has increased its load to %d (channel: %d)", load, id);
+    COCAINE_LOG_TRACE(log, "slave has increased its load to %d", load)("channel", id);
 
     std::const_pointer_cast<worker_client_dispatch_t>(dispatch)->attach([=](std::exception*) {
         // Error here usually indicates about client disconnection.
@@ -113,7 +113,8 @@ state_machine_t::inject(slave::channel_t& channel, channel_handler handler) {
     // C2W dispatch.
     channel.dispatch->attach(
         std::move(upstream),
-        std::bind(&state_machine_t::on_channel_close, shared_from_this(), id, side_t::tx)
+        id,
+        shared_from_this()
     );
 
     return id;
@@ -188,21 +189,26 @@ state_machine_t::shutdown(std::error_code ec) {
 }
 
 void
-state_machine_t::on_channel_close(std::uint64_t id, side_t side) {
+state_machine_t::on_tx_channel_close(std::uint64_t id, bool force) {
+    on_channel_close(id, side_t::tx, force);
+}
+
+void
+state_machine_t::on_channel_close(std::uint64_t id, side_t side, bool force) {
     auto handler = load_.apply([&](load_map_t& load) -> channel_handler {
         auto it = load.find(id);
 
         // Ensure that we call this callback once.
-        COCAINE_LOG_TRACE(log, "closing %s side of %d channel", side == side_t::tx ? "tx" : "rx", id);
+        COCAINE_LOG_TRACE(log, "closing %s side of %d channel", side == side_t::tx ? "↑" : "↓", id);
         BOOST_ASSERT(it != load.end());
 
         it->second.side &= ~side;
 
-        if (it->second.side == side_t::none) {
+        if (it->second.side == side_t::none || force) {
             auto handler = it->second.handler;
             load.erase(it);
 
-            COCAINE_LOG_TRACE(log, "slave has decreased its load to %d (channel: %d)", load.size(), id);
+            COCAINE_LOG_TRACE(log, "slave has decreased its load to %d", load.size())("channel", id);
             COCAINE_LOG_DEBUG(log, "slave has closed its %d channel", id);
 
             return handler;

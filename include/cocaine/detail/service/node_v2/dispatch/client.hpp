@@ -13,6 +13,8 @@
 
 namespace cocaine {
 
+class state_machine_t;
+
 /// An adapter for [Client -> Worker] message passing.
 class enqueue_dispatch_t:
     public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
@@ -28,13 +30,23 @@ private:
     /// Upstream to the worker.
     streamed<std::string> stream;
 
-    /// On close callback.
-    boost::optional<close_handler> handler;
+    /// Channel id.
+    boost::optional<std::uint64_t> id;
+
+    std::shared_ptr<state_machine_t> slave;
+
+    /// Closed state error code.
+    ///
+    /// Non-null error code means that the dispatch is closed abnormally, i.e. client has been
+    /// disconnected without closing its channels.
+    std::error_code ec;
 
     std::mutex mutex;
 
     enum class state_t {
+        /// The dispatch is ready for processing requests.
         open,
+        /// The dispatch is closed normally or abnormally depending on `ec` variable.
         closed
     };
 
@@ -45,7 +57,7 @@ public:
     enqueue_dispatch_t(const std::string& name);
 
     void
-    attach(upstream<outcoming_tag> stream, close_handler handler);
+    attach(upstream<outcoming_tag> stream, std::uint64_t id, std::shared_ptr<state_machine_t> slave);
 
     /// The client has been disconnected without closing its opened channels.
     ///
@@ -53,6 +65,9 @@ public:
     virtual
     void
     discard(const std::error_code& ec) const;
+
+    void
+    discard(const std::error_code& ec);
 
 private:
     void

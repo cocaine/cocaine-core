@@ -85,6 +85,8 @@ class state_machine_t:
     friend class control_t;
     friend class fetcher_t;
 
+    friend class enqueue_dispatch_t;
+
     class channel_watcher_t;
 
     class lock_t {};
@@ -174,7 +176,10 @@ private:
     shutdown(std::error_code ec);
 
     void
-    on_channel_close(std::uint64_t id, side_t side);
+    on_tx_channel_close(std::uint64_t id, bool force = false);
+
+    void
+    on_channel_close(std::uint64_t id, side_t side, bool force = false);
 };
 
 // TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
