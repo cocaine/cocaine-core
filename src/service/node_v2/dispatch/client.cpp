@@ -6,16 +6,16 @@ enqueue_dispatch_t::enqueue_dispatch_t(const std::string& name):
     dispatch<incoming_tag>(format("%s/C2W", name)),
     state(state_t::open)
 {
-    on<protocol::chunk>([&](const std::string& chunk){
+    on<protocol::chunk>([&](const std::string& chunk) {
         stream.write(chunk);
     });
 
-    on<protocol::error>([&](int id, const std::string& reason){
+    on<protocol::error>([&](int id, const std::string& reason) {
         stream.abort(id, reason);
         finalize();
     });
 
-    on<protocol::choke>([&]{
+    on<protocol::choke>([&] {
         stream.close();
         finalize();
     });
