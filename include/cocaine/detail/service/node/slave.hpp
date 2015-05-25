@@ -135,16 +135,16 @@ public:
         return m_sessions.size();
     }
 
+    // Prepare all timers and spawn a worker instance.
+    void
+    activate();
+
 private:
     void
     do_assign(std::shared_ptr<session_t> session);
 
     void
     do_stop();
-
-    // Prepare all timers and spawn a worker instance.
-    void
-    activate();
 
     // Called on any read event from the worker.
     void

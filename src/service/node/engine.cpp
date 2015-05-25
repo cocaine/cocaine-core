@@ -257,20 +257,18 @@ engine_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t
                 throw cocaine::error_t("the pool is full");
             }
 
-            std::tie(it, std::ignore) = m_pool.insert(
-                std::make_pair(
-                    tag,
-                    std::make_shared<slave_t>(
-                        tag,
-                        m_manifest,
-                        m_profile,
-                        m_context,
-                        std::bind(&engine_t::wake, this),
-                        std::bind(&engine_t::erase, this, ph::_1, ph::_2, ph::_3),
-                        m_loop
-                    )
-                )
+            auto slave = std::make_shared<slave_t>(
+                tag,
+                m_manifest,
+                m_profile,
+                m_context,
+                std::bind(&engine_t::wake, this),
+                std::bind(&engine_t::erase, this, ph::_1, ph::_2, ph::_3),
+                m_loop
             );
+            m_loop.post(std::bind(&slave_t::activate, slave));
+            std::tie(it, std::ignore) = m_pool.insert(std::make_pair(tag, slave));
+
         }
     }
 
@@ -510,7 +508,7 @@ engine_t::balance() {
 
     while(m_pool.size() != target) {
         const auto id = unique_id_t().string();
-        m_pool[id] = std::make_shared<slave_t>(
+        auto slave = std::make_shared<slave_t>(
             id,
             m_manifest,
             m_profile,
@@ -519,6 +517,9 @@ engine_t::balance() {
             std::bind(&engine_t::erase, this, ph::_1, ph::_2, ph::_3),
             m_loop
         );
+        slave->activate();
+        m_pool[id] = std::move(slave);
+
     }
 }
 
@@ -537,10 +538,18 @@ engine_t::migrate(states target) {
 
         // Abort all the outstanding sessions.
         while(!m_queue.empty()) {
-            m_queue.front()->upstream->error(
-                error::resource_error,
-                "engine is shutting down"
-            );
+            try {
+                m_queue.front()->upstream->error(
+                    error::resource_error,
+                    "engine is shutting down"
+                );
+            } catch (const error_t& e) {
+                COCAINE_LOG_WARNING(
+                    m_log,
+                    "unable to send engine shutdown error to client: %s",
+                    e.what()
+                );
+            }
 
             m_queue.pop_front();
         }
