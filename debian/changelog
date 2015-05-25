@@ -1,3 +1,11 @@
+cocaine-core (0.12.0.10~nightly3) unstable; urgency=low
+
+  * Bugfix: race condition in engine_t::activate
+  * Bugfix: uncaught exception in app_t::enqueue during sending an error to disconnected client
+  * Bugfix: uncaught exception in engine_t::migration during sending an error to disconnected client
+
+ -- Anton Matveenko <antmat@me.com>  Mon, 25 May 2015 14:22:01 +0400
+
 cocaine-core (0.12.0.10~nightly2) unstable; urgency=low
 
   * Bugfix: reuse the same logger on "core" backend.
