@@ -169,9 +169,12 @@ private:
         if(!downstream) {
             typedef io::protocol<event_traits<app::enqueue>::upstream_type>::scope protocol;
             try {
-                upstream.send<protocol::error>(cocaine::error::dispatch_errors::service_error, "application was stopped");
-            } catch (const error_t& e) {
-                COCAINE_LOG_WARNING(&log, "unable to send application stop event to client: %s", e.what());
+                upstream.send<protocol::error>(
+                    cocaine::error::dispatch_errors::service_error,
+                    "application was stopped"
+                );
+            } catch(const cocaine::error_t& err) {
+                COCAINE_LOG_WARNING(&log, "unable to send application stop event to client: %s", err.what());
             }
             return nullptr;
         }

@@ -543,11 +543,11 @@ engine_t::migrate(states target) {
                     error::resource_error,
                     "engine is shutting down"
                 );
-            } catch (const error_t& e) {
+            } catch(const cocaine::error_t& err) {
                 COCAINE_LOG_WARNING(
                     m_log,
                     "unable to send engine shutdown error to client: %s",
-                    e.what()
+                    err.what()
                 );
             }
 
