@@ -99,6 +99,7 @@ class app_service_t:
     public dispatch<app_tag>
 {
     std::shared_ptr<app_t> parent;
+    logging::log_t& log;
 
 private:
     struct enqueue_slot_t:
@@ -159,7 +160,6 @@ private:
     std::shared_ptr<const enqueue_slot_t::dispatch_type>
     enqueue(enqueue_slot_t::upstream_type& upstream, const std::string& event, const std::string& tag) {
         api::stream_ptr_t downstream;
-
         if(tag.empty()) {
             downstream = parent->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream));
         } else {
@@ -168,8 +168,11 @@ private:
 
         if(!downstream) {
             typedef io::protocol<event_traits<app::enqueue>::upstream_type>::scope protocol;
-            upstream.send<protocol::error>(cocaine::error::dispatch_errors::service_error, "application was stopped");
-
+            try {
+                upstream.send<protocol::error>(cocaine::error::dispatch_errors::service_error, "application was stopped");
+            } catch (const error_t& e) {
+                COCAINE_LOG_WARNING(&log, "unable to send application stop event to client: %s", e.what());
+            }
             return nullptr;
         }
 
@@ -177,9 +180,10 @@ private:
     }
 
 public:
-    app_service_t(const std::string& name_, std::shared_ptr<app_t> parent_):
+    app_service_t(const std::string& name_, std::shared_ptr<app_t> parent_, logging::log_t& log_):
         dispatch<app_tag>(name_),
-        parent(std::move(parent_))
+        parent(std::move(parent_)),
+        log(log_)
     {
         on<app::enqueue>(std::make_shared<enqueue_slot_t>(this));
         on<app::info>(std::bind(&app_t::info, parent));
@@ -235,7 +239,7 @@ app_t::start() {
     m_context.insert(m_manifest->name, std::make_unique<actor_t>(
         m_context,
         m_asio,
-        std::make_unique<app_service_t>(m_manifest->name, shared_from_this())
+        std::make_unique<app_service_t>(m_manifest->name, shared_from_this(), *m_log)
     ));
 }
 

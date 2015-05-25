@@ -97,7 +97,6 @@ slave_t::slave_t(const std::string& id,
     m_heartbeat_timer(asio),
     m_idle_timer(asio)
 {
-    asio.post(std::bind(&slave_t::activate, this));
 }
 
 slave_t::~slave_t() {
