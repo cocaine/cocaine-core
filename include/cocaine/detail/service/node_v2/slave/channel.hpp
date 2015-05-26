@@ -20,9 +20,12 @@ public:
         both = tx | rx
     };
 
-private:
     const std::uint64_t id;
-    int state;
+
+private:
+    struct {
+        int state;
+    } data;
 
     callback_type callback;
 
@@ -33,6 +36,9 @@ public:
 
     void
     close(state_t side, const std::error_code& ec);
+
+    state_t
+    state() const;
 };
 
 }

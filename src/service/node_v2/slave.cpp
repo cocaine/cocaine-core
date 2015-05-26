@@ -78,9 +78,19 @@ state_machine_t::load() const {
 
 slave::channel_stats_t
 state_machine_t::stats() const {
-    slave::channel_stats_t result;
+    slave::channel_stats_t result {};
 
     data.channels.apply([&](const channels_map_t& channels) {
+        for (const auto& channel : channels) {
+            if ((channel.second->state() & channel_t::state_t::rx) == channel_t::state_t::rx) {
+                ++result.rx;
+            }
+
+            if ((channel.second->state() & channel_t::state_t::tx) == channel_t::state_t::tx) {
+                ++result.tx;
+            }
+        }
+
         result.load = channels.size();
         result.total = counter;
     });

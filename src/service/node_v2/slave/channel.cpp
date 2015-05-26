@@ -7,7 +7,7 @@ using namespace cocaine;
 
 channel_t::channel_t(std::uint64_t id, callback_type callback):
     id(id),
-    state(none),
+    data{both},
     callback(std::move(callback))
 {}
 
@@ -15,17 +15,24 @@ void
 channel_t::close(state_t side, const std::error_code& ec) {
     std::lock_guard<std::mutex> lock(mutex);
 
-    BOOST_ASSERT(state != both);
+    if (data.state == none) {
+        return;
+    }
 
-    state |= side;
+    data.state &= ~side;
 
     if (ec) {
-        state = both;
+        data.state = none;
         callback();
         return;
     }
 
-    if (state == both) {
+    if (data.state == none) {
         callback();
     }
+}
+
+channel_t::state_t
+channel_t::state() const {
+    return static_cast<state_t>(data.state);
 }
