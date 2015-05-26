@@ -30,6 +30,7 @@ private:
     callback_type callback;
 
     std::mutex mutex;
+    bool watched;
 
 public:
     channel_t(std::uint64_t id, callback_type callback);
@@ -39,6 +40,9 @@ public:
 
     state_t
     state() const;
+
+    void
+    watch();
 };
 
 }

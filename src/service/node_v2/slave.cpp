@@ -148,6 +148,8 @@ state_machine_t::inject(slave::channel_t& channel_data, channel_handler handler)
         channel->close(channel_t::tx, ec);
     });
 
+    channel->watch();
+
     return id;
 }
 
