@@ -124,8 +124,8 @@ overseer_t::balance(std::unique_ptr<balancer_t> balancer) {
     }
 }
 
-std::shared_ptr<enqueue_dispatch_t>
-overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstream,
+std::shared_ptr<client_rpc_dispatch_t>
+overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downstream,
                     const std::string& event,
                     const std::string& /*id*/)
 {
@@ -139,9 +139,9 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstre
         }
     });
 
-    auto dispatch = std::make_shared<enqueue_dispatch_t>(manifest.name);
+    auto dispatch = std::make_shared<client_rpc_dispatch_t>(manifest.name);
 
-    queue->push({ event, dispatch, std::move(upstream) });
+    queue->push({ event, dispatch, std::move(downstream) });
 
     balancer->on_queue();
 
@@ -218,6 +218,7 @@ void
 overseer_t::assign(slave_t& slave, slave::channel_t& payload) {
     // Attempts to inject the new channel into the slave.
     const auto id = slave.id();
+    // TODO: Race possible.
     const auto channel = slave.inject(payload, [=](std::uint64_t channel) {
         balancer->on_channel_finished(id, channel);
     });

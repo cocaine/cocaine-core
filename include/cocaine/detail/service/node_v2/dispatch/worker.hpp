@@ -7,12 +7,14 @@
 
 namespace cocaine {
 
+class channel_t;
+
 /// An adapter for [Client <- Worker] message passing.
-class worker_client_dispatch_t:
+class worker_rpc_dispatch_t:
     public dispatch<io::event_traits<io::worker::rpc::invoke>::dispatch_type>
 {
 public:
-    typedef std::function<void(std::exception*)> close_handler;
+    typedef std::function<void(const std::error_code&)> callback_type;
 
 private:
     typedef io::event_traits<io::worker::rpc::invoke>::upstream_type incoming_tag;
@@ -21,10 +23,6 @@ private:
 
     upstream<incoming_tag> stream;
 
-    /// On close callback.
-    boost::optional<close_handler> handler;
-    std::exception* err;
-
     enum class state_t {
         open,
         closed
@@ -32,22 +30,17 @@ private:
 
     state_t state;
 
+    /// On close callback.
+    callback_type callback;
+
     std::mutex mutex;
 
 public:
-    explicit
-    worker_client_dispatch_t(upstream<outcoming_tag>& stream);
-
-    void
-    attach(close_handler handler);
-
-    virtual
-    void
-    discard(const std::error_code& ec) const;
+    worker_rpc_dispatch_t(upstream<outcoming_tag>& stream, callback_type callback);
 
 private:
     void
-    finalize(std::exception* err = nullptr);
+    finalize(const std::error_code& ec = {});
 };
 
 } // namespace cocaine

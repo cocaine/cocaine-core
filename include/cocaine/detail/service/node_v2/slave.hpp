@@ -29,10 +29,11 @@
 
 namespace cocaine {
 // TODO: Temporary.
-class enqueue_dispatch_t;
+class client_rpc_dispatch_t;
 
 class active_t;
 class broken_t;
+class channel_t;
 class handshaking_t;
 class spawning_t;
 class state_t;
@@ -52,8 +53,15 @@ namespace slave {
 struct channel_t {
     /// Event name to be processed.
     std::string event;
-    std::shared_ptr<enqueue_dispatch_t> dispatch;
-    io::streaming_slot<io::app::enqueue>::upstream_type upstream;
+    std::shared_ptr<client_rpc_dispatch_t> dispatch;
+    io::streaming_slot<io::app::enqueue>::upstream_type downstream;
+};
+
+struct channel_stats_t {
+    std::uint64_t tx;
+    std::uint64_t rx;
+    std::uint64_t load;
+    std::uint64_t total;
 };
 
 }
@@ -85,9 +93,9 @@ class state_machine_t:
     friend class control_t;
     friend class fetcher_t;
 
-    friend class enqueue_dispatch_t;
+    friend class client_rpc_dispatch_t;
 
-    class channel_watcher_t;
+    friend class channel_t;
 
     class lock_t {};
 
@@ -114,17 +122,13 @@ private:
 
     synchronized<std::shared_ptr<state_t>> state;
 
-public:
     std::atomic<std::uint64_t> counter;
-    enum side_t { none = 0x00, tx = 0x01, rx = 0x02, both = tx | rx };
-    struct load_ctx {
-        int side;
-        channel_handler handler;
-    };
-    typedef std::unordered_map<std::uint64_t, load_ctx> load_map_t;
 
-public:
-    synchronized<load_map_t> load_;
+    typedef std::unordered_map<std::uint64_t, std::shared_ptr<channel_t>> channels_map_t;
+
+    struct {
+        synchronized<channels_map_t> channels;
+    } data;
 
 public:
     /// Creates the state machine instance and immediately starts it.
@@ -142,6 +146,9 @@ public:
 
     std::uint64_t
     load() const;
+
+    slave::channel_stats_t
+    stats() const;
 
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
@@ -176,10 +183,7 @@ private:
     shutdown(std::error_code ec);
 
     void
-    on_tx_channel_close(std::uint64_t id, bool force = false);
-
-    void
-    on_channel_close(std::uint64_t id, side_t side, bool force = false);
+    revoke(std::uint64_t id, channel_handler handler);
 };
 
 // TODO: Rename to `comrade`, because in Soviet Russia slave owns you!
@@ -218,14 +222,7 @@ public:
     std::uint64_t
     load() const;
 
-    struct channel_stats_t {
-        std::uint64_t tx;
-        std::uint64_t rx;
-        std::uint64_t load;
-        std::uint64_t total;
-    };
-
-    channel_stats_t
+    slave::channel_stats_t
     stats() const;
 
     bool

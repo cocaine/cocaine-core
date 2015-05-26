@@ -16,24 +16,36 @@ namespace cocaine {
 class state_machine_t;
 
 /// An adapter for [Client -> Worker] message passing.
-class enqueue_dispatch_t:
+class client_rpc_dispatch_t:
     public dispatch<io::event_traits<io::app::enqueue>::dispatch_type>
 {
 public:
-    typedef std::function<void()> close_handler;
+    /// Called on channel close.
+    ///
+    /// Guaranteed to be called once on either first error or close.
+    typedef std::function<void(const std::error_code&)> callback_type;
 
 private:
     typedef io::event_traits<io::app::enqueue>::dispatch_type incoming_tag;
     typedef io::event_traits<io::worker::rpc::invoke>::dispatch_type outcoming_tag;
     typedef io::protocol<incoming_tag>::scope protocol;
 
+    enum class state_t {
+        /// The dispatch is collecting messages into the queue.
+        open,
+        /// The dispatch is delegating incoming messages to the attached upstream.
+        bound,
+        /// The dispatch is closed normally or abnormally depending on `ec` variable.
+        closed
+    };
+
+    /// Current state.
+    state_t state;
+
     /// Upstream to the worker.
     streamed<std::string> stream;
 
-    /// Channel id.
-    boost::optional<std::uint64_t> id;
-
-    std::shared_ptr<state_machine_t> slave;
+    callback_type callback;
 
     /// Closed state error code.
     ///
@@ -43,21 +55,12 @@ private:
 
     std::mutex mutex;
 
-    enum class state_t {
-        /// The dispatch is ready for processing requests.
-        open,
-        /// The dispatch is closed normally or abnormally depending on `ec` variable.
-        closed
-    };
-
-    state_t state;
-
 public:
     explicit
-    enqueue_dispatch_t(const std::string& name);
+    client_rpc_dispatch_t(const std::string& name);
 
     void
-    attach(upstream<outcoming_tag> stream, std::uint64_t id, std::shared_ptr<state_machine_t> slave);
+    attach(upstream<outcoming_tag> stream, callback_type callback);
 
     /// The client has been disconnected without closing its opened channels.
     ///

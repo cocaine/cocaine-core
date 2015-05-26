@@ -123,6 +123,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/node_v2/dispatch/worker.cpp
     src/service/node_v2/overseer.cpp
     src/service/node_v2/slave.cpp
+    src/service/node_v2/slave/channel.cpp
     src/service/node_v2/slave/control.cpp
     src/service/node_v2/slave/error.cpp
     src/service/node_v2/slave/fetcher.cpp

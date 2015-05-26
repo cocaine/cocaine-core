@@ -6,6 +6,7 @@
 
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
+#include "cocaine/detail/service/node_v2/slave/channel.hpp"
 #include "cocaine/detail/service/node_v2/slave/control.hpp"
 #include "cocaine/detail/service/node_v2/slave/fetcher.hpp"
 #include "cocaine/detail/service/node_v2/slave/state/active.hpp"
@@ -72,7 +73,19 @@ state_machine_t::active() const noexcept {
 
 std::uint64_t
 state_machine_t::load() const {
-    return load_->size();
+    return data.channels->size();
+}
+
+slave::channel_stats_t
+state_machine_t::stats() const {
+    slave::channel_stats_t result;
+
+    data.channels.apply([&](const channels_map_t& channels) {
+        result.load = channels.size();
+        result.total = counter;
+    });
+
+    return result;
 }
 
 std::shared_ptr<control_t>
@@ -84,38 +97,46 @@ state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worke
 }
 
 std::uint64_t
-state_machine_t::inject(slave::channel_t& channel, channel_handler handler) {
+state_machine_t::inject(slave::channel_t& channel_data, channel_handler handler) {
     auto state = *this->state.synchronize();
 
     const auto id = ++counter;
-    auto rxcb = std::bind(&state_machine_t::on_channel_close, shared_from_this(), id, side_t::rx, false);
+
+    // keep slave callback to erase itself.
+    // keep id.
+    // tracks both callbacks and error cases.
+    // may throw.
+    auto channel = std::make_shared<channel_t>(
+        id,
+        std::bind(&state_machine_t::revoke, shared_from_this(), id, handler)
+    );
 
     // W2C dispatch.
-    auto dispatch = std::make_shared<const worker_client_dispatch_t>(channel.upstream);
+    // may throw - it's ok.
+    auto dispatch = std::make_shared<const worker_rpc_dispatch_t>(
+        channel_data.downstream, [=](const std::error_code& ec) {
+            channel->close(channel_t::rx, ec);
+        }
+    );
 
+    // may throw both.
     auto upstream = state->inject(dispatch);
-    upstream->send<io::worker::rpc::invoke>(channel.event);
+    upstream->send<io::worker::rpc::invoke>(channel_data.event);
 
-    const auto load = load_.apply([&](load_map_t& load) -> std::uint64_t {
-        load[id] = { side_t::both, handler };
-        return load.size();
+    // register channel.
+    // nothrow.
+    const auto load = data.channels.apply([&](channels_map_t& channels) -> std::uint64_t {
+        channels[id] = channel;
+        return channels.size();
     });
 
     COCAINE_LOG_DEBUG(log, "slave has started processing %d channel", id);
     COCAINE_LOG_TRACE(log, "slave has increased its load to %d", load)("channel", id);
 
-    std::const_pointer_cast<worker_client_dispatch_t>(dispatch)->attach([=](std::exception*) {
-        // Error here usually indicates about client disconnection.
-        // TODO: If the client disappears we can send an error to the worker (ECONNRESET).
-        rxcb();
-    });
-
     // C2W dispatch.
-    channel.dispatch->attach(
-        std::move(upstream),
-        id,
-        shared_from_this()
-    );
+    channel_data.dispatch->attach(upstream, [=](const std::error_code& ec) {
+        channel->close(channel_t::tx, ec);
+    });
 
     return id;
 }
@@ -189,33 +210,14 @@ state_machine_t::shutdown(std::error_code ec) {
 }
 
 void
-state_machine_t::on_tx_channel_close(std::uint64_t id, bool force) {
-    on_channel_close(id, side_t::tx, force);
-}
-
-void
-state_machine_t::on_channel_close(std::uint64_t id, side_t side, bool force) {
-    auto handler = load_.apply([&](load_map_t& load) -> channel_handler {
-        auto it = load.find(id);
-
-        // Ensure that we call this callback once.
-        COCAINE_LOG_TRACE(log, "closing %s side of %d channel", side == side_t::tx ? "↑" : "↓", id);
-        BOOST_ASSERT(it != load.end());
-
-        it->second.side &= ~side;
-
-        if (it->second.side == side_t::none || force) {
-            auto handler = it->second.handler;
-            load.erase(it);
-
-            COCAINE_LOG_TRACE(log, "slave has decreased its load to %d", load.size())("channel", id);
-            COCAINE_LOG_DEBUG(log, "slave has closed its %d channel", id);
-
-            return handler;
-        }
-
-        return [](std::uint64_t){};
+state_machine_t::revoke(std::uint64_t id, channel_handler handler) {
+    const auto load = data.channels.apply([&](channels_map_t& channels) -> std::uint64_t {
+        channels.erase(id);
+        return channels.size();
     });
+
+    COCAINE_LOG_TRACE(log, "slave has decreased its load to %d", load)("channel", id);
+    COCAINE_LOG_DEBUG(log, "slave has closed its %d channel", id);
 
     handler(id);
 }
@@ -252,24 +254,10 @@ slave_t::load() const {
     return machine->load();
 }
 
-slave_t::channel_stats_t
+slave::channel_stats_t
 slave_t::stats() const {
-    auto load = *machine->load_.synchronize();
-
-    channel_stats_t stats {};
-    stats.load = load.size();
-    for (auto& it : load) {
-        if ((it.second.side & 0x01) == 0x01) {
-            stats.tx++;
-        }
-
-        if ((it.second.side & 0x02) == 0x02) {
-            stats.rx++;
-        }
-    }
-    stats.total = machine->counter;
-
-    return stats;
+    BOOST_ASSERT(machine);
+    return machine->stats();
 }
 
 bool
