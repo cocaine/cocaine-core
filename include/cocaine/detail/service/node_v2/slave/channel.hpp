@@ -13,7 +13,8 @@ class channel_t:
 public:
     typedef std::function<void()> callback_type;
 
-    enum state_t {
+private:
+    enum side_t {
         none = 0x00,
         tx = 0x01,
         rx = 0x02,
@@ -21,28 +22,39 @@ public:
     };
 
     const std::uint64_t id;
+    const callback_type callback;
 
-private:
-    struct {
-        int state;
-    } data;
-
-    callback_type callback;
-
-    std::mutex mutex;
+    std::atomic<int> state;
     bool watched;
+    std::mutex mutex;
 
 public:
     channel_t(std::uint64_t id, callback_type callback);
 
-    void
-    close(state_t side, const std::error_code& ec);
+    bool
+    closed() const;
 
-    state_t
-    state() const;
+    bool
+    send_closed() const;
+
+    bool
+    recv_closed() const;
 
     void
     watch();
+
+    void
+    close_send();
+
+    void
+    close_recv();
+
+    void
+    close_both();
+
+private:
+    void
+    maybe_notify();
 };
 
 }

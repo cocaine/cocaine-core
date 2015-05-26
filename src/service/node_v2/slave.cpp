@@ -82,13 +82,15 @@ state_machine_t::stats() const {
 
     data.channels.apply([&](const channels_map_t& channels) {
         for (const auto& channel : channels) {
-            if ((channel.second->state() & channel_t::state_t::rx) == channel_t::state_t::rx) {
+            if (channel.second->send_closed()) {
+                ++result.tx;
+            }
+
+            if (channel.second->recv_closed()) {
                 ++result.rx;
             }
 
-            if ((channel.second->state() & channel_t::state_t::tx) == channel_t::state_t::tx) {
-                ++result.tx;
-            }
+//            result.pending.push_back(channel.second->id);
         }
 
         result.load = channels.size();
@@ -107,35 +109,30 @@ state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worke
 }
 
 std::uint64_t
-state_machine_t::inject(slave::channel_t& channel_data, channel_handler handler) {
-    auto state = *this->state.synchronize();
-
+state_machine_t::inject(slave::channel_t& data, channel_handler handler) {
     const auto id = ++counter;
 
-    // keep slave callback to erase itself.
-    // keep id.
-    // tracks both callbacks and error cases.
-    // may throw.
     auto channel = std::make_shared<channel_t>(
         id,
         std::bind(&state_machine_t::revoke, shared_from_this(), id, handler)
     );
 
     // W2C dispatch.
-    // may throw - it's ok.
     auto dispatch = std::make_shared<const worker_rpc_dispatch_t>(
-        channel_data.downstream, [=](const std::error_code& ec) {
-            channel->close(channel_t::rx, ec);
+        data.downstream, [=](const std::error_code& ec) {
+            if (ec) {
+                channel->close_both();
+            } else {
+                channel->close_recv();
+            }
         }
     );
 
-    // may throw both.
+    auto state = *this->state.synchronize();
     auto upstream = state->inject(dispatch);
-    upstream->send<io::worker::rpc::invoke>(channel_data.event);
+    upstream->send<io::worker::rpc::invoke>(data.event);
 
-    // register channel.
-    // nothrow.
-    const auto load = data.channels.apply([&](channels_map_t& channels) -> std::uint64_t {
+    const auto load = this->data.channels.apply([&](channels_map_t& channels) -> std::uint64_t {
         channels[id] = channel;
         return channels.size();
     });
@@ -144,8 +141,12 @@ state_machine_t::inject(slave::channel_t& channel_data, channel_handler handler)
     COCAINE_LOG_TRACE(log, "slave has increased its load to %d", load)("channel", id);
 
     // C2W dispatch.
-    channel_data.dispatch->attach(upstream, [=](const std::error_code& ec) {
-        channel->close(channel_t::tx, ec);
+    data.dispatch->attach(upstream, [=](const std::error_code& ec) {
+        if (ec) {
+            channel->close_both();
+        } else {
+            channel->close_send();
+        }
     });
 
     channel->watch();

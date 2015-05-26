@@ -61,6 +61,7 @@ struct channel_stats_t {
     std::uint64_t tx;
     std::uint64_t rx;
     std::uint64_t load;
+    std::vector<std::uint64_t> pending;
     std::uint64_t total;
 };
 

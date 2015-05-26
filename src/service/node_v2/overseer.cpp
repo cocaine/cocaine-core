@@ -66,14 +66,20 @@ overseer_t::get_queue() {
 dynamic_t::object_t
 overseer_t::stat(const slave_t& slave) const {
 
-    const auto channel_stats = slave.stats();
+    const auto stats = slave.stats();
+
+    dynamic_t::array_t pending;
+    for (auto id : stats.pending) {
+        pending.push_back(id);
+    }
 
     dynamic_t::object_t result = {
         { "uptime", slave.uptime() },
-        { "load", channel_stats.load },
-        { "tx",   channel_stats.tx },
-        { "rx",   channel_stats.rx },
-        { "total", channel_stats.total },
+        { "load", stats.load },
+        { "tx",   stats.tx },
+        { "rx",   stats.rx },
+        { "pending", pending },
+        { "total", stats.total },
     };
 
     return result;

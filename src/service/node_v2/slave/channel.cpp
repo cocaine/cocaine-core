@@ -7,46 +7,59 @@ using namespace cocaine;
 
 channel_t::channel_t(std::uint64_t id, callback_type callback):
     id(id),
-    data{both},
     callback(std::move(callback)),
+    state(both),
     watched(false)
 {}
 
 void
-channel_t::close(state_t side, const std::error_code& ec) {
+channel_t::close_send() {
     std::lock_guard<std::mutex> lock(mutex);
-
-    if (data.state == none) {
-        return;
-    }
-
-    data.state &= ~side;
-
-    if (ec) {
-        data.state = none;
-        if (watched) {
-            callback();
-        }
-        return;
-    }
-
-    if (data.state == none) {
-        if (watched) {
-            callback();
-        }
-    }
+    state &= ~side_t::tx;
+    maybe_notify();
 }
 
-channel_t::state_t
-channel_t::state() const {
-    return static_cast<state_t>(data.state);
+void
+channel_t::close_recv() {
+    std::lock_guard<std::mutex> lock(mutex);
+    state &= ~side_t::rx;
+    maybe_notify();
+}
+
+void
+channel_t::close_both() {
+    std::lock_guard<std::mutex> lock(mutex);
+    state &= ~(side_t::tx | side_t::rx);
+    maybe_notify();
+}
+
+bool
+channel_t::closed() const {
+    return state == side_t::none;
+}
+
+bool
+channel_t::send_closed() const {
+    return (state & side_t::tx) == side_t::tx;
+}
+
+bool
+channel_t::recv_closed() const {
+    return (state & side_t::rx) == side_t::rx;
 }
 
 void
 channel_t::watch() {
     std::lock_guard<std::mutex> lock(mutex);
     watched = true;
-    if (data.state == none) {
+    if (closed()) {
+        callback();
+    }
+}
+
+void
+channel_t::maybe_notify() {
+    if (closed() && watched) {
         callback();
     }
 }
