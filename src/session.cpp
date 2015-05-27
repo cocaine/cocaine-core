@@ -18,6 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "cocaine/trace/core.hpp"
+
 #include "cocaine/rpc/session.hpp"
 
 #include "cocaine/logging.hpp"
@@ -59,7 +61,7 @@ private:
 
 void
 session_t::pull_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
-    ptr->reader->read(message, tracer::bind(&pull_action_t::finalize,
+    ptr->reader->read(message, trace_t::bind(&pull_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -125,7 +127,7 @@ private:
 
 void
 session_t::push_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
-    ptr->writer->write(message, tracer::bind("finalize", &push_action_t::finalize,
+    ptr->writer->write(message, trace_t::bind("finalize", &push_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -173,10 +175,7 @@ session_t::session_t(std::unique_ptr<logging::log_t> log_,
 void
 session_t::handle(const decoder_t::message_type& message) {
     const channel_map_t::key_type channel_id = message.span();
-    tracer::trace_restore_scope_t trace_scope;
-    if(message.trace_id() != 0) {
-        trace_scope.restore("sr", prototype->name(), message.trace_id(), message.span_id(), message.parent_id());
-    }
+
     const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {
         channel_map_t::const_iterator lb, ub;
 
@@ -202,13 +201,25 @@ session_t::handle(const decoder_t::message_type& message) {
         return lb->second;
     });
 
-    blackhole::scoped_attributes_t attr(*log, tracer::current_span()->attributes());
-
     if(!channel->dispatch) {
         throw std::system_error(error::unbound_dispatch);
     }
 
     COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
+    
+	auto t = boost::make_optional<trace_t>(
+                message.trace_id() != 0,
+                trace_t(
+                    message.trace_id(),
+                    message.span_id(),
+                    message.parent_id(),
+                    std::get<0>(channel->dispatch->root().at(message.type())),
+                    prototype->name()
+                )
+    );
+    trace_t::restore_scope_t trace_scope(t);
+    COCAINE_LOG_INFO(log, "sr");
+    COCAINE_LOG_DEBUG(log, "handling %d: '%s' message in channel %d, dispatch: '%s'",
         message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
         channel->dispatch->name());
 
@@ -299,7 +310,7 @@ session_t::pull() {
     if(const auto ptr = *transport.synchronize()) {
 #endif
         // Use dispatch() instead of a direct call for thread safety.
-        ptr->socket->get_io_service().dispatch(tracer::bind("session_pull", &pull_action_t::operator(),
+        ptr->socket->get_io_service().dispatch(trace_t::bind(&pull_action_t::operator(),
             std::make_shared<pull_action_t>(shared_from_this()),
             ptr
         ));

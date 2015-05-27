@@ -30,7 +30,6 @@
 #include "cocaine/logging.hpp"
 
 #include "cocaine/rpc/actor.hpp"
-#include "cocaine/trace/logger/blackhole.hpp"
 #include "cocaine/trace/trace.hpp"
 #include <blackhole/scoped_attributes.hpp>
 
@@ -226,8 +225,7 @@ context_t::engine() {
 void
 context_t::bootstrap() {
 
-    tracer::set_logger(std::unique_ptr<tracer::logger_t>(new tracer::blackhole_logger_t(*m_logger)));
-    tracer::set_service_name("cocaine");
+    trace_t::set_logger(&m_logger->log());
 
     COCAINE_LOG_INFO(m_logger, "starting %d execution unit(s)", config.network.pool);
 

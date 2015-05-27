@@ -78,7 +78,7 @@ public:
             if(!ec) {
                 m_rx_offset += bytes_decoded;
             }
-            return m_channel->get_io_service().post(tracer::bind("message_read_handle", handle, ec));
+            return m_channel->get_io_service().post(trace_t::bind(handle, ec));
         }
 
         if(m_rx_offset) {
@@ -126,4 +126,5 @@ private:
 
 }} // namespace cocaine::io
 
+#include "cocaine/trace/trace_impl.hpp"
 #endif

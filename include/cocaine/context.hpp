@@ -33,11 +33,11 @@
 #include "cocaine/repository.hpp"
 
 #include <blackhole/blackhole.hpp>
+#include <blackhole/scoped_attributes.hpp>
 
 #include <boost/optional.hpp>
 
 namespace cocaine {
-
 // Context
 
 class actor_t;

@@ -27,7 +27,7 @@
 
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
-#include "cocaine/trace/trace.hpp"
+#include "cocaine/trace/core.hpp"
 
 #include <hpack-headers/header.hpp>
 #include <hpack-headers/msgpack_traits.hpp>
