@@ -57,8 +57,7 @@ bound(const T& min, const T& value, const T& max) {
 }
 
 load_balancer_t::load_balancer_t(std::shared_ptr<overseer_t> overseer):
-    balancer_t(std::move(overseer)),
-    counter(0)
+    balancer_t(std::move(overseer))
 {}
 
 slave_info
@@ -89,13 +88,13 @@ load_balancer_t::on_request(const std::string&, const std::string& /*id*/) {
 
 void
 load_balancer_t::on_slave_spawn(const std::string& /*uuid*/) {
-    COCAINE_LOG_TRACE(overseer->log, "slave has been added to balancer");
+    COCAINE_LOG_TRACE(overseer->logger(), "slave has been added to balancer");
     purge();
 }
 
 void
 load_balancer_t::on_slave_death(const std::string& /*uuid*/) {
-    COCAINE_LOG_TRACE(overseer->log, "slave has been removed from balancer");
+    COCAINE_LOG_TRACE(overseer->logger(), "slave has been removed from balancer");
     balance();
 }
 
@@ -143,7 +142,7 @@ load_balancer_t::purge() {
             // exception guarantee.
             queue->pop();
         } catch (const std::exception& err) {
-            COCAINE_LOG_DEBUG(overseer->log, "slave has rejected assignment: %s", err.what());
+            COCAINE_LOG_DEBUG(overseer->logger(), "slave has rejected assignment: %s", err.what());
         }
     }
 }

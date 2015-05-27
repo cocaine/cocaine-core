@@ -7,10 +7,9 @@ namespace cocaine {
 class load_balancer_t:
     public balancer_t
 {
-    std::uint64_t counter;
-
 public:
-    explicit load_balancer_t(std::shared_ptr<overseer_t> overseer);
+    explicit
+    load_balancer_t(std::shared_ptr<overseer_t> overseer);
 
     slave_info
     on_request(const std::string& event, const std::string& id);

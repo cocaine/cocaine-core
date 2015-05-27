@@ -34,14 +34,15 @@ public:
         force
     };
 
-public:
+private:
     const std::unique_ptr<logging::log_t> log;
 
     context_t& context;
 
-    /// Application name.
-    std::string name;
+    /// The application manifest.
+    const manifest_t manifest;
 
+public:
     /// IO loop for timers and standard output fetchers.
     std::shared_ptr<asio::io_service> loop;
 
@@ -55,22 +56,14 @@ public:
 
     std::shared_ptr<balancer_t> balancer;
 
-    manifest_t manifest;
     profile_t profile;
 
     const std::chrono::high_resolution_clock::time_point birthstamp;
 
     /////// STATS ///////
 
-    struct slave_stats_t {
-        // load: current channels count.
-        // processed: closed channels count.
-    };
-
     struct stats_t {
         std::atomic<std::uint64_t> accepted;
-
-        synchronized<std::unordered_map<std::string, slave_stats_t>> slaves;
 
         stats_t():
             accepted{}
@@ -81,9 +74,15 @@ public:
 
 public:
     overseer_t(context_t& context,
-               manifest_t manifest, profile_t profile,
+               manifest_t manifest,
+               profile_t profile,
                std::shared_ptr<asio::io_service> loop);
     ~overseer_t();
+
+    const logging::log_t&
+    logger() const {
+        return *log;
+    }
 
     locked_ptr<pool_type>
     get_pool();

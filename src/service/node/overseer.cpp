@@ -36,13 +36,13 @@ struct collector_t {
 };
 
 overseer_t::overseer_t(context_t& context,
-           manifest_t manifest, profile_t profile,
-           std::shared_ptr<asio::io_service> loop) :
+                       manifest_t manifest,
+                       profile_t profile,
+                       std::shared_ptr<asio::io_service> loop):
     log(context.log(format("%s/overseer", manifest.name))),
     context(context),
-    name(manifest.name),
+    manifest(std::move(manifest)),
     loop(loop),
-    manifest(manifest),
     profile(profile),
     birthstamp(std::chrono::high_resolution_clock::now())
 {
@@ -151,7 +151,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downst
 io::dispatch_ptr_t
 overseer_t::handshaker() {
     return std::make_shared<const handshaker_t>(
-        name,
+        manifest.name,
         [=](upstream<io::worker::control_tag>&& stream, const std::string& uuid,
             std::shared_ptr<session_t> session) -> std::shared_ptr<control_t>
     {
