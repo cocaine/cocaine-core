@@ -10,8 +10,8 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
-#include "cocaine/detail/service/node_v2/slot.hpp"
-#include "cocaine/detail/service/node_v2/slave.hpp"
+#include "cocaine/detail/service/node/slot.hpp"
+#include "cocaine/detail/service/node/slave.hpp"
 
 namespace cocaine {
 

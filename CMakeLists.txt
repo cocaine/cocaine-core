@@ -116,23 +116,23 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/logging.cpp
 
     src/service/node.cpp
-    src/service/node_v2/actor.cpp
-    src/service/node_v2/app.cpp
-    src/service/node_v2/balancing/load.cpp
-    src/service/node_v2/dispatch/client.cpp
-    src/service/node_v2/dispatch/worker.cpp
-    src/service/node_v2/overseer.cpp
-    src/service/node_v2/slave.cpp
-    src/service/node_v2/slave/channel.cpp
-    src/service/node_v2/slave/control.cpp
-    src/service/node_v2/slave/error.cpp
-    src/service/node_v2/slave/fetcher.cpp
-    src/service/node_v2/slave/state/active.cpp
-    src/service/node_v2/slave/state/broken.cpp
-    src/service/node_v2/slave/state/handshaking.cpp
-    src/service/node_v2/slave/state/spawning.cpp
-    src/service/node_v2/slave/state/state.cpp
-    src/service/node_v2/slave/state/terminating.cpp
+    src/service/node/actor.cpp
+    src/service/node/app.cpp
+    src/service/node/balancing/load.cpp
+    src/service/node/dispatch/client.cpp
+    src/service/node/dispatch/worker.cpp
+    src/service/node/overseer.cpp
+    src/service/node/slave.cpp
+    src/service/node/slave/channel.cpp
+    src/service/node/slave/control.cpp
+    src/service/node/slave/error.cpp
+    src/service/node/slave/fetcher.cpp
+    src/service/node/slave/state/active.cpp
+    src/service/node/slave/state/broken.cpp
+    src/service/node/slave/state/handshaking.cpp
+    src/service/node/slave/state/spawning.cpp
+    src/service/node/slave/state/state.cpp
+    src/service/node/slave/state/terminating.cpp
 
     src/service/node/manifest.cpp
     src/service/node/profile.cpp

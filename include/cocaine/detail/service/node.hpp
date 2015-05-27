@@ -23,8 +23,6 @@
 
 #include "cocaine/api/service.hpp"
 
-#include "cocaine/detail/service/node/forwards.hpp"
-
 #include "cocaine/idl/context.hpp"
 #include "cocaine/idl/node.hpp"
 
@@ -34,6 +32,8 @@
 
 namespace cocaine { namespace service {
 
+class app_t;
+
 class node_t:
     public api::service_t,
     public dispatch<io::node_tag>
@@ -42,10 +42,10 @@ class node_t:
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    synchronized<std::map<std::string, std::shared_ptr<v2::app_t>>> m_apps;
+    synchronized<std::map<std::string, std::shared_ptr<app_t>>> m_apps;
 
     // Slot for context signals.
-    std::shared_ptr<dispatch<io::context_tag>> signals;
+    std::shared_ptr<dispatch<io::context_tag>> signal;
 
 public:
     node_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);

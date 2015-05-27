@@ -1,7 +1,7 @@
-#include "cocaine/detail/service/node_v2/slave/channel.hpp"
+#include "cocaine/detail/service/node/slave/channel.hpp"
 
-#include "cocaine/detail/service/node_v2/dispatch/client.hpp"
-#include "cocaine/detail/service/node_v2/dispatch/worker.hpp"
+#include "cocaine/detail/service/node/dispatch/client.hpp"
+#include "cocaine/detail/service/node/dispatch/worker.hpp"
 
 using namespace cocaine;
 

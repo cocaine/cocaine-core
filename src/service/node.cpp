@@ -19,7 +19,7 @@
 */
 
 #include "cocaine/detail/service/node.hpp"
-#include "cocaine/detail/service/node_v2/app.hpp"
+#include "cocaine/detail/service/node/app.hpp"
 
 #include "cocaine/api/storage.hpp"
 
@@ -102,11 +102,10 @@ node_t::node_t(context_t& context, asio::io_service& asio, const std::string& na
         COCAINE_LOG_WARNING(m_log, "couldn't start %d app(s): %s", errored.size(), stream.str());
     }
 
-    // Context signals slot
-
-    signals = std::make_shared<dispatch<io::context_tag>>(name);
-    signals->on<io::context::shutdown>(std::bind(&node_t::on_context_shutdown, this));
-    context.listen(signals, asio);
+    // Context signal/slot.
+    signal = std::make_shared<dispatch<io::context_tag>>(name);
+    signal->on<io::context::shutdown>(std::bind(&node_t::on_context_shutdown, this));
+    context.listen(signal, asio);
 }
 
 node_t::~node_t() {}
@@ -122,21 +121,21 @@ node_t::on_context_shutdown() {
 
     m_apps->clear();
 
-    signals = nullptr;
+    signal = nullptr;
 }
 
 void
 node_t::start_app(const std::string& name, const std::string& profile) {
     COCAINE_LOG_DEBUG(m_log, "processing `start_app` request, app: '%s'", name);
 
-    m_apps.apply([&](std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
+    m_apps.apply([&](std::map<std::string, std::shared_ptr<app_t>>& apps) {
         auto it = apps.find(name);
 
         if(it != apps.end()) {
             throw cocaine::error_t("app '%s' is already running", name);
         }
 
-        apps.insert({ name, std::make_shared<v2::app_t>(m_context, name, profile) });
+        apps.insert({ name, std::make_shared<app_t>(m_context, name, profile) });
     });
 }
 
@@ -144,7 +143,7 @@ void
 node_t::pause_app(const std::string& name) {
     COCAINE_LOG_DEBUG(m_log, "processing `pause_app` request, app: '%s' ", name);
 
-    m_apps.apply([&](std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
+    m_apps.apply([&](std::map<std::string, std::shared_ptr<app_t>>& apps) {
         auto it = apps.find(name);
 
         if(it == apps.end()) {
@@ -160,7 +159,7 @@ node_t::list() const -> dynamic_t {
     dynamic_t::array_t result;
     auto builder = std::back_inserter(result);
 
-    m_apps.apply([&](const std::map<std::string, std::shared_ptr<v2::app_t>>& apps){
+    m_apps.apply([&](const std::map<std::string, std::shared_ptr<app_t>>& apps) {
         std::transform(apps.begin(), apps.end(), builder, tuple::nth_element<0>());
     });
 

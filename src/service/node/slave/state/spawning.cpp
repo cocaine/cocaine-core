@@ -1,10 +1,10 @@
-#include "cocaine/detail/service/node_v2/slave/state/spawning.hpp"
+#include "cocaine/detail/service/node/slave/state/spawning.hpp"
 
 #include "cocaine/rpc/actor.hpp"
 
-#include "cocaine/detail/service/node_v2/slave.hpp"
-#include "cocaine/detail/service/node_v2/slave/state/handshaking.hpp"
-#include "cocaine/detail/service/node_v2/util.hpp"
+#include "cocaine/detail/service/node/slave.hpp"
+#include "cocaine/detail/service/node/slave/state/handshaking.hpp"
+#include "cocaine/detail/service/node/util.hpp"
 
 namespace ph = std::placeholders;
 

@@ -1,6 +1,6 @@
-#include "cocaine/detail/service/node_v2/slave/fetcher.hpp"
+#include "cocaine/detail/service/node/slave/fetcher.hpp"
 
-#include "cocaine/detail/service/node_v2/slave.hpp"
+#include "cocaine/detail/service/node/slave.hpp"
 
 namespace ph = std::placeholders;
 

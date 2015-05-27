@@ -1,4 +1,4 @@
-#include "cocaine/detail/service/node_v2/dispatch/worker.hpp"
+#include "cocaine/detail/service/node/dispatch/worker.hpp"
 
 using namespace cocaine;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cocaine/detail/service/node_v2/balancing/base.hpp"
+#include "cocaine/detail/service/node/balancing/base.hpp"
 
 namespace cocaine {
 

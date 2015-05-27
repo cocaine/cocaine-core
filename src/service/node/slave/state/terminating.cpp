@@ -1,7 +1,7 @@
-#include "cocaine/detail/service/node_v2/slave/state/terminating.hpp"
+#include "cocaine/detail/service/node/slave/state/terminating.hpp"
 
-#include "cocaine/detail/service/node_v2/slave.hpp"
-#include "cocaine/detail/service/node_v2/slave/control.hpp"
+#include "cocaine/detail/service/node/slave.hpp"
+#include "cocaine/detail/service/node/slave/control.hpp"
 
 namespace ph = std::placeholders;
 

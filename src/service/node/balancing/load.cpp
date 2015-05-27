@@ -1,6 +1,6 @@
-#include "cocaine/detail/service/node_v2/balancing/load.hpp"
+#include "cocaine/detail/service/node/balancing/load.hpp"
 
-#include "cocaine/detail/service/node_v2/overseer.hpp"
+#include "cocaine/detail/service/node/overseer.hpp"
 
 using namespace cocaine;
 
