@@ -28,8 +28,8 @@
 #include <blackhole/logger/wrapper.hpp>
 
 #define COCAINE_LOG(_log_, _level_, ...) \
-    if(auto _record_ = (_log_)->open_record(_level_)) \
-        ::blackhole::aux::logger::make_pusher(*(_log_), _record_, __VA_ARGS__)
+    if(auto _record_ = ::cocaine::logging::detail::logger_ptr(_log_)->open_record(_level_)) \
+        ::blackhole::aux::logger::make_pusher(*(::cocaine::logging::detail::logger_ptr(_log_)), _record_, __VA_ARGS__)
 
 #define COCAINE_LOG_TRACE(_log_, ...) \
     COCAINE_LOG(_log_, ::cocaine::logging::trace, __VA_ARGS__)
@@ -49,6 +49,38 @@
 namespace cocaine { namespace logging {
 
 DECLARE_KEYWORD(source, std::string)
+
+namespace detail {
+
+template<class T>
+inline
+const T*
+logger_ptr(const T& log) {
+    return &log;
+}
+
+template<class T>
+inline
+const T*
+logger_ptr(const T* log) {
+    return log;
+}
+
+template<class T>
+inline
+const T*
+logger_ptr(const std::unique_ptr<T>& log) {
+    return log.get();
+}
+
+template<class T>
+inline
+const T*
+logger_ptr(const std::shared_ptr<T>& log) {
+    return log.get();
+}
+
+} // namespace detail
 
 // C++ typename demangling
 
