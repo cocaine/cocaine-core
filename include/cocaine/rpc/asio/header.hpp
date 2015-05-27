@@ -93,6 +93,10 @@ public:
         value(_value)
     {}
 
+    // Use ONLY when unpacking from external data. For creating new header use previous ctor.
+    inline
+    header_t(const str& _name, const str& _value) noexcept;
+
     inline
     str
     get_name() const;
@@ -123,9 +127,6 @@ private:
     inline
     header_t(const char* _name, size_t name_sz, const char* _value, size_t value_sz) noexcept;
 
-    inline
-    header_t(const str& _name, const str& _value) noexcept;
-
     friend class header_table_t;
 
     // Returns size of the header entry in http2 header table
@@ -149,26 +150,30 @@ public:
     operator[](size_t idx);
 
     inline
-    bool
-    parse_headers(std::vector<header_t>& parse_to, const msgpack::object& parse_from);
-
-    inline
-    header_t
-    push(const msgpack::object& data);
-
-    inline
     void
     push(header_t& header);
 
+    inline
+    size_t
+    find_by_full_match(const header_t& header) {
+        return find(std::bind(&header_t::operator==, &header, std::placeholders::_1));
+    }
+
+    inline
+    size_t
+    find_by_name(const header_t& header) {
+        return find(std::bind(&header_t::name_equal, &header, std::placeholders::_1));
+    }
+
     template<class Packer>
     void pack(Packer& packer, header_t header) {
-        size_t pos = find_full(header);
+        size_t pos = find_by_full_match(header);
         if(pos) {
             packer.pack_fix_uint64(pos);
             return;
         }
         packer.pack_array(3);
-        pos = find_name(header);
+        pos = find_by_name(header);
         packer.pack_true();
         push(header);
         if(pos) {
@@ -202,18 +207,6 @@ private:
     inline
     void
     pop();
-
-    inline
-    size_t
-    find_full(const header_t& header) {
-        return find(std::bind(&header_t::operator==, &header, std::placeholders::_1));
-    }
-
-    inline
-    size_t
-    find_name(const header_t& header) {
-        return find(std::bind(&header_t::name_equal, &header, std::placeholders::_1));
-    }
 
     inline
     size_t
@@ -316,40 +309,6 @@ bool header_table_t::empty() const {
     return data_lower_bound == data_upper_bound;
 }
 
-
-header_t
-header_table_t::push(const msgpack::object& data) {
-    header_t result;
-    //If header is fully from the table just fill it and return
-    if(data.type == msgpack::type::POSITIVE_INTEGER) {
-        if(data.via.u64 >= size() || data.via.u64 == 0) {
-            throw cocaine::error_t("Invalid index for header table");
-        }
-        result = operator [](data.via.u64);
-        return result;
-    }
-
-    // Encode name to header
-    if(data.via.array.ptr[1].type == msgpack::type::POSITIVE_INTEGER) {
-        result.name = operator [](data.via.array.ptr[1].via.u64).name;
-    }
-    else {
-        result.name.data = data.via.array.ptr[1].via.raw.ptr;
-        result.name.size = data.via.array.ptr[1].via.raw.size;
-    }
-
-    // Encode value to header
-    auto value = data.via.array.ptr[2];
-    result.value.data = value.via.raw.ptr;
-    result.value.size = value.via.raw.size;
-    //We don't need to store header in the table
-    if(!data.via.array.ptr[0].via.boolean) {
-        return result;
-    }
-    push(result);
-    return result;
-}
-
 void
 header_table_t::push(header_t& result) {
 
@@ -446,43 +405,6 @@ header_table_t::operator[](size_t idx) {
                (idx >= header_lower_bound || idx < header_upper_bound)
     );
     return headers[idx];
-}
-
-bool
-header_table_t::parse_headers(std::vector<header_t> &parse_to, const msgpack::object &parse_from) {
-    if(parse_from.via.array.size < 4) {
-        return true;
-    }
-    parse_to.reserve(parse_from.via.array.ptr[3].via.array.size);
-    for (size_t i = 0; i < parse_from.via.array.ptr[3].via.array.size; i++) {
-        msgpack::object& obj = parse_from.via.array.ptr[3].via.array.ptr[i];
-        if(obj.type == msgpack::type::POSITIVE_INTEGER || (
-               obj.type == msgpack::type::ARRAY &&
-               obj.via.array.size == 3 &&
-               //Either to add header to dynamic table or not
-               obj.via.array.ptr[0].type == msgpack::type::BOOLEAN && (
-                    //Either reference to table or raw data
-                    obj.via.array.ptr[1].type == msgpack::type::POSITIVE_INTEGER ||
-                    obj.via.array.ptr[1].type == msgpack::type::RAW
-               ) && (
-                    //Either raw data or a number.
-                    obj.via.array.ptr[2].type == msgpack::type::RAW ||
-                    obj.via.array.ptr[2].type == msgpack::type::POSITIVE_INTEGER
-               )
-           )
-        ) {
-            try {
-                parse_to.push_back(push(obj));
-            }
-            catch(const cocaine::error_t& e) {
-                return false;
-            }
-        }
-        else {
-            return false;
-        }
-    }
-    return true;
 }
 
 #define COCAINE_MAKE_STATIC_HEADER(name, val) header_t(name, sizeof(name)-1, val, sizeof(val)-1)

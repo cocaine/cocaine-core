@@ -23,9 +23,11 @@
 
 #include "cocaine/errors.hpp"
 
-#include "cocaine/traits.hpp"
-
+#include "cocaine/rpc/asio/errors.hpp"
 #include "cocaine/rpc/asio/header.hpp"
+
+#include "cocaine/traits.hpp"
+#include "cocaine/traits/header.hpp"
 
 namespace cocaine { namespace io {
 
@@ -73,7 +75,6 @@ struct decoder_t {
     COCAINE_DECLARE_NONCOPYABLE(decoder_t)
 
     decoder_t() = default;
-
    ~decoder_t() = default;
 
     typedef aux::decoded_message_t message_type;
@@ -93,7 +94,7 @@ struct decoder_t {
                 error = error || message.object.via.array.ptr[2].type != msgpack::type::ARRAY;
                 if(message.object.via.array.size > 3) {
                     error = error || message.object.via.array.ptr[3].type != msgpack::type::ARRAY;
-                    error = error || !header_table.parse_headers(message.headers, message.object);
+                    error = error || type_traits<std::vector<header_t>>::unpack(message.object.via.array.ptr[3], header_table, message.headers);
                 }
                 if(error) {
                     ec = error::frame_format_error;
