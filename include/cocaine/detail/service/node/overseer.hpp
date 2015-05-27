@@ -34,34 +34,42 @@ public:
         force
     };
 
+    typedef std::unordered_map<
+        std::string,
+        slave_t
+    > pool_type;
+
+    typedef std::queue<
+        slave::channel_t
+    > queue_type;
+
 private:
     const std::unique_ptr<logging::log_t> log;
 
     context_t& context;
 
+    /// Time point, when the application was created.
+    const std::chrono::high_resolution_clock::time_point birthstamp;
+
     /// The application manifest.
     const manifest_t manifest;
 
-public:
+    /// The application profile.
+    synchronized<profile_t> profile_;
+
     /// IO loop for timers and standard output fetchers.
     std::shared_ptr<asio::io_service> loop;
 
     /// Slave pool.
-    typedef std::unordered_map<std::string, slave_t> pool_type;
     synchronized<pool_type> pool;
 
     /// Pending queue.
-    typedef std::queue<slave::channel_t> queue_type;
     synchronized<queue_type> queue;
 
+    /// The application balancing policy.
     std::shared_ptr<balancer_t> balancer;
 
-    profile_t profile;
-
-    const std::chrono::high_resolution_clock::time_point birthstamp;
-
-    /////// STATS ///////
-
+    /// Statistics.
     struct stats_t {
         std::atomic<std::uint64_t> accepted;
 
@@ -83,6 +91,9 @@ public:
     logger() const {
         return *log;
     }
+
+    profile_t
+    profile() const;
 
     locked_ptr<pool_type>
     get_pool();

@@ -41,16 +41,21 @@ overseer_t::overseer_t(context_t& context,
                        std::shared_ptr<asio::io_service> loop):
     log(context.log(format("%s/overseer", manifest.name))),
     context(context),
+    birthstamp(std::chrono::high_resolution_clock::now()),
     manifest(std::move(manifest)),
-    loop(loop),
-    profile(profile),
-    birthstamp(std::chrono::high_resolution_clock::now())
+    profile_(profile),
+    loop(loop)
 {
     COCAINE_LOG_TRACE(log, "overseer has been initialized");
 }
 
 overseer_t::~overseer_t() {
     COCAINE_LOG_TRACE(log, "overseer has been destroyed");
+}
+
+profile_t
+overseer_t::profile() const {
+    return *profile_.synchronize();
 }
 
 locked_ptr<overseer_t::pool_type>
@@ -89,7 +94,7 @@ overseer_t::info() const {
 
     info["queue"] = dynamic_t::object_t({
         { "depth",    dynamic_t::uint_t(queue->size()) },
-        { "capacity", dynamic_t::uint_t(profile.queue_limit) }
+        { "capacity", dynamic_t::uint_t(profile().queue_limit) }
     });
 
     info["channels"] = dynamic_t::object_t({
@@ -107,7 +112,7 @@ overseer_t::info() const {
         info["pool"] = dynamic_t::object_t({
             { "active",   collector.active },
             { "idle",     pool.size() - collector.active },
-            { "capacity", profile.pool_limit },
+            { "capacity", profile().pool_limit },
             { "slaves", slaves }
         });
     });
@@ -134,7 +139,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downst
     ++stats.accepted;
 
     queue.apply([&](queue_type& queue) {
-        if (profile.queue_limit > 0 && queue.size() >= profile.queue_limit) {
+        if (profile().queue_limit > 0 && queue.size() >= profile().queue_limit) {
             throw std::system_error(error::queue_is_full);
         }
     });
@@ -198,7 +203,7 @@ void
 overseer_t::spawn(locked_ptr<pool_type>& pool) {
     COCAINE_LOG_INFO(log, "enlarging the slaves pool to %d", pool->size() + 1);
 
-    slave_context ctx(context, manifest, profile);
+    slave_context ctx(context, manifest, profile());
 
     // It is guaranteed that the cleanup handler will not be invoked from within the slave's
     // constructor.

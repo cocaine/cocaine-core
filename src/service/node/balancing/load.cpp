@@ -74,7 +74,7 @@ load_balancer_t::on_request(const std::string&, const std::string& /*id*/) {
 
     // Otherwise find an active slave with minimum load.
     auto it = ::min_element_if(pool->begin(), pool->end(), load(), available {
-        overseer->profile.concurrency
+        overseer->profile().concurrency
     });
 
     // If all slaves are busy - just delay processing.
@@ -126,7 +126,7 @@ load_balancer_t::purge() {
 
     while (!queue->empty()) {
         auto it = ::min_element_if(pool->begin(), pool->end(), load(), available {
-            overseer->profile.concurrency
+            overseer->profile().concurrency
         });
 
         if(it == pool->end()) {
@@ -151,7 +151,7 @@ void
 load_balancer_t::balance() {
     const auto queue_size = overseer->get_queue()->size();
 
-    const auto profile = overseer->profile;
+    const auto profile = overseer->profile();
 
     auto pool = overseer->get_pool();
     if (pool->size() >= profile.pool_limit || pool->size() * profile.grow_threshold >= queue_size) {
