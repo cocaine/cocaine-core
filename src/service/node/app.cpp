@@ -82,10 +82,9 @@ private:
     }
 };
 
-/// Represents a single application. Starts TCP and UNIX servers.
-app_t::app_t(context_t& context_, const std::string& manifest_, const std::string& profile_) :
-    context(context_),
+app_t::app_t(context_t& context, const std::string& manifest_, const std::string& profile_) :
     log(context.log(format("%s/app", manifest_))),
+    context(context),
     manifest(new manifest_t(context, manifest_)),
     profile(new profile_t(context, profile_)),
     loop(std::make_shared<asio::io_service>()),

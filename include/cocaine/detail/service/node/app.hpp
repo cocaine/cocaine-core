@@ -17,10 +17,15 @@ class unix_actor_t;
 
 namespace cocaine { namespace service {
 
+/// Represents a single application.
+///
+/// Starts TCP and UNIX servers.
 class app_t {
-    context_t& context;
+    COCAINE_DECLARE_NONCOPYABLE(app_t)
 
     const std::unique_ptr<logging::log_t> log;
+
+    context_t& context;
 
     // Configuration.
     std::unique_ptr<const manifest_t> manifest;
@@ -35,14 +40,7 @@ class app_t {
 
 public:
     app_t(context_t& context, const std::string& manifest, const std::string& profile);
-    app_t(const app_t& other) = delete;
-
-    ~app_t();
-
-    app_t& operator=(const app_t& other) = delete;
-
-private:
-    void start();
+   ~app_t();
 };
 
 }} // namespace cocaine::service
