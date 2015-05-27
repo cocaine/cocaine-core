@@ -68,17 +68,11 @@ overseer_t::stat(const slave_t& slave) const {
 
     const auto stats = slave.stats();
 
-    dynamic_t::array_t pending;
-    for (auto id : stats.pending) {
-        pending.push_back(id);
-    }
-
     dynamic_t::object_t result = {
         { "uptime", slave.uptime() },
         { "load", stats.load },
         { "tx",   stats.tx },
         { "rx",   stats.rx },
-        { "pending", pending },
         { "total", stats.total },
     };
 

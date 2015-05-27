@@ -40,7 +40,7 @@ public:
 
 private:
     void
-    finalize(const std::error_code& ec = {});
+    finalize(const std::error_code& ec = std::error_code());
 };
 
 } // namespace cocaine

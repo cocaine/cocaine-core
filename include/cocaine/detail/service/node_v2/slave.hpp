@@ -61,7 +61,6 @@ struct channel_stats_t {
     std::uint64_t tx;
     std::uint64_t rx;
     std::uint64_t load;
-    std::vector<std::uint64_t> pending;
     std::uint64_t total;
 };
 
@@ -197,8 +196,8 @@ private:
     std::error_code ec;
 
     struct {
-        const std::string id;
-        const std::chrono::high_resolution_clock::time_point birthstamp;
+        std::string id;
+        std::chrono::high_resolution_clock::time_point birthstamp;
     } data;
 
     /// The slave state machine implementation.

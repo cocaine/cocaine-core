@@ -78,7 +78,7 @@ state_machine_t::load() const {
 
 slave::channel_stats_t
 state_machine_t::stats() const {
-    slave::channel_stats_t result {};
+    slave::channel_stats_t result { 0, 0, 0, 0 };
 
     data.channels.apply([&](const channels_map_t& channels) {
         for (const auto& channel : channels) {
@@ -89,8 +89,6 @@ state_machine_t::stats() const {
             if (channel.second->recv_closed()) {
                 ++result.rx;
             }
-
-//            result.pending.push_back(channel.second->id);
         }
 
         result.load = channels.size();
@@ -237,9 +235,11 @@ state_machine_t::revoke(std::uint64_t id, channel_handler handler) {
 
 slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn):
     ec(error::overseer_shutdowning),
-    data{ context.id, std::chrono::high_resolution_clock::now() },
     machine(state_machine_t::create(context, loop, fn))
-{}
+{
+    data.id = context.id;
+    data.birthstamp = std::chrono::high_resolution_clock::now();
+}
 
 slave_t::~slave_t() {
     // This condition is required, because the class itself is movable.
