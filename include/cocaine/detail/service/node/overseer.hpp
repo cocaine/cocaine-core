@@ -86,11 +86,17 @@ public:
                std::shared_ptr<asio::io_service> loop);
     ~overseer_t();
 
+    /// \todo not sure about this method necessarity, consider passing a shared logger pointer to
+    /// the balancer.
     const logging::log_t&
     logger() const {
         return *log;
     }
 
+    /// Returns copy of the current profile, which is used to spawn new slaves.
+    ///
+    /// \note the current profile may change in any moment. Moveover some slaves can be in some kind
+    /// of transition state, i.e. migrating from one profile to another.
     profile_t
     profile() const;
 
@@ -100,6 +106,7 @@ public:
     locked_ptr<queue_type>
     get_queue();
 
+    /// Returns the complete info about how the application works.
     dynamic_t::object_t
     info() const;
 
@@ -108,11 +115,15 @@ public:
 
     /// Enqueues the new event into the most appropriate slave.
     ///
-    /// Puts the event into the queue if there are no slaves available.
+    /// The event will be put into the queue if there are no slaves available at this moment or all
+    /// of them are busy.
+    ///
+    /// \return the dispatch object, which is ready for processing the appropriate protocol
+    /// messages.
     ///
     /// \param downstream represents the [Client <- Worker] stream.
-    /// \param event an invocation event name.
-    /// \param id represents slave id to be enqueued (may be empty, which means any slave).
+    /// \param event an invocation event.
+    /// \param id represents slave id to be enqueued (may be none, which means any slave).
     ///
     /// \todo consult with E. guys about deadline policy.
     std::shared_ptr<client_rpc_dispatch_t>
