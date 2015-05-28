@@ -69,22 +69,6 @@ overseer_t::get_queue() {
 }
 
 dynamic_t::object_t
-overseer_t::stat(const slave_t& slave) const {
-
-    const auto stats = slave.stats();
-
-    dynamic_t::object_t result = {
-        { "uptime", slave.uptime() },
-        { "load", stats.load },
-        { "tx",   stats.tx },
-        { "rx",   stats.rx },
-        { "total", stats.total },
-    };
-
-    return result;
-}
-
-dynamic_t::object_t
 overseer_t::info() const {
     dynamic_t::object_t info;
 
@@ -106,7 +90,15 @@ overseer_t::info() const {
 
         dynamic_t::object_t slaves;
         for (auto it = pool.begin(); it != pool.end(); ++it) {
-            slaves[it->first] = stat(it->second);
+            const auto stats = it->second.stats();
+
+            slaves[it->first] = dynamic_t::object_t {
+                { "uptime", it->second.uptime() },
+                { "load", stats.load },
+                { "tx",   stats.tx },
+                { "rx",   stats.rx },
+                { "total", stats.total },
+            };
         }
 
         info["pool"] = dynamic_t::object_t({

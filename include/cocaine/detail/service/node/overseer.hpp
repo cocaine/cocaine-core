@@ -102,22 +102,22 @@ public:
     get_queue();
 
     dynamic_t::object_t
-    stat(const slave_t& slave) const;
-
-    dynamic_t::object_t
     info() const;
 
     void
     balance(std::unique_ptr<balancer_t> balancer = nullptr);
 
-    /// Enqueues the new event into the more appropriate slave.
+    /// Enqueues the new event into the most appropriate slave.
     ///
     /// Puts the event into the queue if there are no slaves available.
     ///
-    /// \param upstream represents the client <- worker stream.
+    /// \param downstream represents the [Client <- Worker] stream.
     /// \param event an invocation event name.
+    /// \param id represents slave id to be enqueued (may be empty, which means any slave).
+    ///
+    /// \todo consul with E. guys about deadline policy.
     std::shared_ptr<client_rpc_dispatch_t>
-    enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& upstream,
+    enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downstream,
             const std::string& event,
             const std::string& id);
 

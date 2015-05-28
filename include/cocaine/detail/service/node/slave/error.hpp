@@ -4,6 +4,10 @@
 
 namespace cocaine { namespace error {
 
+enum app_errors {
+    invalid_app_state = 1
+};
+
 enum overseer_errors {
     /// The queue is full.
     queue_is_full = 1,

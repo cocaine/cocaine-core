@@ -90,7 +90,7 @@ spawning_t::spawn(unsigned long timeout) {
         // a callback funtion to the Isolate.
         // NOTE: The callback must be called from the event loop thread, otherwise the behavior
         // is undefined.
-        slave->loop.post(move_handler(std::bind(
+        slave->loop.post(detail::move_handler(std::bind(
             &spawning_t::on_spawn, shared_from_this(), std::move(handle), std::chrono::high_resolution_clock::now()
         )));
 
