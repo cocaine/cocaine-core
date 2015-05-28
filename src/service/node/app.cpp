@@ -57,7 +57,11 @@ private:
         COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event", event);
 
         if (auto overseer = this->overseer.lock()) {
-            return overseer->enqueue(std::move(upstream), event, slave::id_t(id));
+            if (id.empty()) {
+                return overseer->enqueue(std::move(upstream), event, boost::none);
+            } else {
+                return overseer->enqueue(std::move(upstream), event, slave::id_t(id));
+            }
         } else {
             // TODO: Assign an error code instead of magic.
             const int ec = 42;
