@@ -116,7 +116,7 @@ public:
     /// \param event an invocation event name.
     /// \param id represents slave id to be enqueued (may be empty, which means any slave).
     ///
-    /// \todo consul with E. guys about deadline policy.
+    /// \todo consult with E. guys about deadline policy.
     std::shared_ptr<client_rpc_dispatch_t>
     enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downstream,
             app::event_t event,
