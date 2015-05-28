@@ -123,8 +123,8 @@ overseer_t::balance(std::unique_ptr<balancer_t> balancer) {
 
 std::shared_ptr<client_rpc_dispatch_t>
 overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downstream,
-                    const std::string& event,
-                    const std::string& /*id*/)
+                    app::event_t event,
+                    boost::optional<slave::id_t> /*id*/)
 {
     // TODO: Handle id parameter somehow.
 
@@ -138,7 +138,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downst
 
     auto dispatch = std::make_shared<client_rpc_dispatch_t>(manifest.name);
 
-    queue->push({ event, dispatch, std::move(downstream) });
+    queue->push({ std::move(event), dispatch, std::move(downstream) });
 
     balancer->on_queue();
 

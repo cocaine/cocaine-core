@@ -10,6 +10,7 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
+#include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/slot.hpp"
 #include "cocaine/detail/service/node/slave.hpp"
 
@@ -118,8 +119,11 @@ public:
     /// \todo consul with E. guys about deadline policy.
     std::shared_ptr<client_rpc_dispatch_t>
     enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downstream,
-            const std::string& event,
-            const std::string& id);
+            app::event_t event,
+            boost::optional<slave::id_t> id);
+
+//    std::shared_ptr<stream_t>
+//    enqueue(std::shared_ptr<stream_t>&& downstream, event_t event, boost::optional<slave::id_t> id);
 
     /// Creates a new handshake dispatch for incoming connection.
     ///

@@ -17,9 +17,9 @@
 #include "cocaine/idl/node.hpp"
 
 #include "cocaine/detail/unique_id.hpp"
+#include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/profile.hpp"
-
 #include "cocaine/detail/service/node/splitter.hpp"
 
 #include "slave/error.hpp"
@@ -28,7 +28,7 @@
 #include "cocaine/detail/service/node/slot.hpp"
 
 namespace cocaine {
-// TODO: Temporary.
+
 class client_rpc_dispatch_t;
 
 class active_t;
@@ -50,9 +50,18 @@ typedef std::function<void()> close_callback;
 
 namespace slave {
 
+struct id_t {
+    const std::string id;
+
+    id_t(std::string id):
+        id(std::move(id))
+    {}
+};
+
 struct channel_t {
-    /// Event name to be processed.
-    std::string event;
+    /// Event to be processed.
+    app::event_t event;
+
     std::shared_ptr<client_rpc_dispatch_t> dispatch;
     io::streaming_slot<io::app::enqueue>::upstream_type downstream;
 };
