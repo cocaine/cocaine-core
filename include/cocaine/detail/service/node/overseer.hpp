@@ -14,6 +14,10 @@
 #include "cocaine/detail/service/node/slot.hpp"
 #include "cocaine/detail/service/node/slave.hpp"
 
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics.hpp>
+#include <boost/accumulators/statistics/density.hpp>
+
 namespace cocaine {
 
 class balancer_t;
@@ -71,12 +75,29 @@ private:
     std::shared_ptr<balancer_t> balancer;
 
     /// Statistics.
-    struct {
+    struct stats_t {
         /// The number of requests, that are pushed into the queue.
         std::atomic<std::uint64_t> accepted;
 
         /// The number of requests, that were rejected due to queue overflow or other circumstances.
         std::atomic<std::uint64_t> rejected;
+
+        typedef boost::accumulators::accumulator_set<
+            double,
+            boost::accumulators::stats<
+                boost::accumulators::tag::extended_p_square_quantile
+            >
+        > timings_t;
+
+        const std::array<double, 8> probabilities;
+        synchronized<timings_t> timings;
+
+        stats_t():
+            accepted(0),
+            rejected(0),
+            probabilities({ 0.25, 0.50, 0.75, 0.90, 0.95, 0.98, 0.99, 0.9995 }),
+            timings(boost::accumulators::tag::extended_p_square::probabilities = probabilities)
+        {}
     } stats;
 
 public:

@@ -87,6 +87,18 @@ overseer_t::info() const {
         { "rejected", stats.rejected.load() }
     });
 
+    dynamic_t::object_t t;
+
+    stats.timings.apply([&](const stats_t::timings_t& timings) {
+        for (std::size_t i = 0; i < stats.probabilities.size(); ++i) {
+            std::stringstream out;
+            out << std::fixed << std::setprecision(2) << 100 * stats.probabilities[i] << "%";
+            t[out.str()] = boost::accumulators::extended_p_square(timings)[i];
+        }
+    });
+
+    info["timings"] = t;
+
     pool.apply([&](const pool_type& pool) {
         collector_t collector(pool);
 
@@ -144,7 +156,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downst
     queue->push({
         std::move(event),
         dispatch,
-        std::move(downstream)
+        std::move(downstream),
     });
 
     ++stats.accepted;
@@ -223,8 +235,20 @@ void
 overseer_t::assign(slave_t& slave, slave::channel_t& payload) {
     // Attempts to inject the new channel into the slave.
     const auto id = slave.id();
+    const auto timestamp = payload.event.birthstamp;
     // TODO: Race possible.
     const auto channel = slave.inject(payload, [=](std::uint64_t channel) {
+        const auto now = std::chrono::high_resolution_clock::now();
+        const auto elapsed = std::chrono::duration<
+            double,
+            std::chrono::milliseconds::period
+        >(now - timestamp).count();
+
+        COCAINE_LOG_DEBUG(log, "COMPLETED IN %s", elapsed);
+        stats.timings.apply([&](stats_t::timings_t& timings) {
+            timings(elapsed);
+        });
+
         balancer->on_channel_finished(id, channel);
     });
     balancer->on_channel_started(id, channel);
