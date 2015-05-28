@@ -95,7 +95,7 @@ private:
         stats_t():
             accepted(0),
             rejected(0),
-            probabilities({ 0.25, 0.50, 0.75, 0.90, 0.95, 0.98, 0.99, 0.9995 }),
+            probabilities({{ 0.25, 0.50, 0.75, 0.90, 0.95, 0.98, 0.99, 0.9995 }}),
             timings(boost::accumulators::tag::extended_p_square::probabilities = probabilities)
         {}
     } stats;
