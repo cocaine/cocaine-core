@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HEADER_HPP
-#define HEADER_HPP
+#ifndef COCAINE_RPC_ASIO_HEADER_HPP
+#define COCAINE_RPC_ASIO_HEADER_HPP
 
 #include "cocaine/traits.hpp"
 #include "cocaine/exceptions.hpp"
@@ -476,5 +476,5 @@ http2_integer_encode(char* dest, size_t source, size_t bit_offset, char prefix) 
 
 }}
 
-#endif // HEADER_HPP
+#endif // COCAINE_RPC_ASIO_HEADER_HPP
 
