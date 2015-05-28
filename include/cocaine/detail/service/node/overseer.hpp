@@ -71,15 +71,13 @@ private:
     std::shared_ptr<balancer_t> balancer;
 
     /// Statistics.
-    struct stats_t {
+    struct {
+        /// The number of requests, that are pushed into the queue.
         std::atomic<std::uint64_t> accepted;
 
-        stats_t():
-            accepted{}
-        {}
-    };
-
-    stats_t stats;
+        /// The number of requests, that were rejected due to queue overflow or other circumstances.
+        std::atomic<std::uint64_t> rejected;
+    } stats;
 
 public:
     overseer_t(context_t& context,

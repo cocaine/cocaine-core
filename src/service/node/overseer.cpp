@@ -44,7 +44,8 @@ overseer_t::overseer_t(context_t& context,
     birthstamp(std::chrono::high_resolution_clock::now()),
     manifest(std::move(manifest)),
     profile_(profile),
-    loop(loop)
+    loop(loop),
+    stats{}
 {
     COCAINE_LOG_TRACE(log, "overseer has been initialized");
 }
@@ -82,7 +83,8 @@ overseer_t::info() const {
     });
 
     info["channels"] = dynamic_t::object_t({
-        { "accepted", dynamic_t::uint_t(stats.accepted) }
+        { "accepted", dynamic_t::uint_t(stats.accepted) },
+        { "rejected", stats.rejected.load() }
     });
 
     pool.apply([&](const pool_type& pool) {
@@ -128,18 +130,24 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downst
 {
     // TODO: Handle id parameter somehow.
 
-    ++stats.accepted;
-
     queue.apply([&](queue_type& queue) {
-        if (profile().queue_limit > 0 && queue.size() >= profile().queue_limit) {
+        const auto limit = profile().queue_limit;
+
+        if (queue.size() >= limit && limit > 0) {
+            ++stats.rejected;
             throw std::system_error(error::queue_is_full);
         }
     });
 
     auto dispatch = std::make_shared<client_rpc_dispatch_t>(manifest.name);
 
-    queue->push({ std::move(event), dispatch, std::move(downstream) });
+    queue->push({
+        std::move(event),
+        dispatch,
+        std::move(downstream)
+    });
 
+    ++stats.accepted;
     balancer->on_queue();
 
     return dispatch;
