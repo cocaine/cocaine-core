@@ -128,7 +128,7 @@ state_machine_t::inject(slave::channel_t& data, channel_handler handler) {
 
     auto state = *this->state.synchronize();
     auto upstream = state->inject(dispatch);
-    upstream->send<io::worker::rpc::invoke>(data.event.name());
+    upstream->send<io::worker::rpc::invoke>(data.event.name);
 
     const auto load = this->data.channels.apply([&](channels_map_t& channels) -> std::uint64_t {
         channels[id] = channel;

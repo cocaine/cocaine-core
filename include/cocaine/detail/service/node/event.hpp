@@ -1,21 +1,19 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 
 namespace cocaine { namespace app {
 
 class event_t {
-    std::string name_;
-
 public:
-    event_t(std::string name):
-        name_(std::move(name))
-    {}
+    const std::string name;
+    const std::chrono::high_resolution_clock::time_point birthstamp;
 
-    std::string
-    name() const {
-        return name_;
-    }
+    event_t(std::string name):
+        name(std::move(name)),
+        birthstamp(std::chrono::high_resolution_clock::now())
+    {}
 };
 
 }} // namespace cocaine::app
