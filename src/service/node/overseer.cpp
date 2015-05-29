@@ -171,44 +171,11 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downst
 }
 
 io::dispatch_ptr_t
-overseer_t::handshaker() {
+overseer_t::prototype() {
     return std::make_shared<const handshaker_t>(
         manifest.name,
-        [=](upstream<io::worker::control_tag>&& stream, const std::string& uuid,
-            std::shared_ptr<session_t> session) -> std::shared_ptr<control_t>
-    {
-        blackhole::scoped_attributes_t holder(*log, {{ "uuid", uuid }});
-
-        COCAINE_LOG_DEBUG(log, "processing handshake message");
-
-        auto control = pool.apply([=](pool_type& pool) -> std::shared_ptr<control_t> {
-            auto it = pool.find(uuid);
-            if (it == pool.end()) {
-                COCAINE_LOG_DEBUG(log, "rejecting slave as unexpected");
-                return nullptr;
-            }
-
-            COCAINE_LOG_DEBUG(log, "activating slave");
-            try {
-                return it->second.activate(session, std::move(stream));
-            } catch (const std::exception& err) {
-                // The slave can be in invalid state; broken, for example, or because the
-                // overseer is overloaded. In fact I hope it never happens.
-                // Also unlikely we can receive here std::bad_alloc if unable to allocate more
-                // memory for control dispatch.
-                // If this happens the session will be closed.
-                COCAINE_LOG_ERROR(log, "failed to activate the slave: %s", err.what());
-            }
-
-            return nullptr;
-        });
-
-        if (control) {
-            balancer->on_slave_spawn(uuid);
-        }
-
-        return control;
-    });
+        std::bind(&overseer_t::on_handshake, shared_from_this(), ph::_1, ph::_2, ph::_3)
+    );
 }
 
 void
@@ -262,6 +229,44 @@ overseer_t::assign(slave_t& slave, slave::channel_t& payload) {
 void
 overseer_t::despawn(const std::string& /*id*/, despawn_policy_t /*policy*/) {
     throw std::runtime_error("overseer_t::despawn: not implemented yet");
+}
+
+std::shared_ptr<control_t>
+overseer_t::on_handshake(const std::string& id,
+                         std::shared_ptr<session_t> session,
+                         upstream<io::worker::control_tag>&& stream)
+{
+    blackhole::scoped_attributes_t holder(*log, {{ "uuid", id }});
+
+    COCAINE_LOG_DEBUG(log, "processing handshake message");
+
+    auto control = pool.apply([&](pool_type& pool) -> std::shared_ptr<control_t> {
+        auto it = pool.find(id);
+        if (it == pool.end()) {
+            COCAINE_LOG_DEBUG(log, "rejecting slave as unexpected");
+            return nullptr;
+        }
+
+        COCAINE_LOG_DEBUG(log, "activating slave");
+        try {
+            return it->second.activate(std::move(session), std::move(stream));
+        } catch (const std::exception& err) {
+            // The slave can be in invalid state; broken, for example, or because the overseer is
+            // overloaded. In fact I hope it never happens.
+            // Also unlikely we can receive here std::bad_alloc if unable to allocate more memory
+            // for control dispatch.
+            // If this happens the session will be closed.
+            COCAINE_LOG_ERROR(log, "failed to activate the slave: %s", err.what());
+        }
+
+        return nullptr;
+    });
+
+    if (control) {
+        balancer->on_slave_spawn(id);
+    }
+
+    return control;
 }
 
 void

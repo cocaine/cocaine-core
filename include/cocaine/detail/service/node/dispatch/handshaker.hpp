@@ -39,7 +39,7 @@ public:
                 return !!session;
             });
 
-            return fn(std::move(stream), uuid, std::move(session));
+            return fn(uuid ,std::move(session), std::move(stream));
         }));
     }
 

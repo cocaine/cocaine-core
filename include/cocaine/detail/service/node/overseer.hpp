@@ -11,8 +11,9 @@
 #include "cocaine/rpc/dispatch.hpp"
 
 #include "cocaine/detail/service/node/event.hpp"
-#include "cocaine/detail/service/node/slot.hpp"
 #include "cocaine/detail/service/node/slave.hpp"
+#include "cocaine/detail/service/node/slot.hpp"
+#include "cocaine/detail/service/node/stream.hpp"
 
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/statistics.hpp>
@@ -152,8 +153,8 @@ public:
             app::event_t event,
             boost::optional<slave::id_t> id);
 
-//    std::shared_ptr<stream_t>
-//    enqueue(std::shared_ptr<stream_t>&& downstream, event_t event, boost::optional<slave::id_t> id);
+    std::shared_ptr<stream_t>
+    enqueue(std::shared_ptr<stream_t>&& downstream, app::event_t event, boost::optional<slave::id_t> id);
 
     /// Creates a new handshake dispatch for incoming connection.
     ///
@@ -164,7 +165,7 @@ public:
     /// accept the session or drop it.
     /// After successful accepting the balancer should be notified about pool's changes.
     io::dispatch_ptr_t
-    handshaker();
+    prototype();
 
     /// Spawns a new slave using current manifest and profile.
     void
@@ -189,6 +190,11 @@ public:
     despawn(const std::string& id, despawn_policy_t policy);
 
 private:
+    std::shared_ptr<control_t>
+    on_handshake(const std::string& id,
+                 std::shared_ptr<session_t> session,
+                 upstream<io::worker::control_tag>&& stream);
+
     void
     on_slave_death(const std::error_code& ec, std::string uuid);
 };

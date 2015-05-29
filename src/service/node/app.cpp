@@ -127,7 +127,7 @@ app_t::app_t(context_t& context, const std::string& manifest_, const std::string
     engine.reset(new unix_actor_t(
         context,
         manifest->endpoint,
-        std::bind(&overseer_t::handshaker, overseer),
+        std::bind(&overseer_t::prototype, overseer),
         [](io::dispatch_ptr_t handshaker, std::shared_ptr<session_t> session) {
             std::static_pointer_cast<const handshaker_t>(handshaker)->bind(session);
         },
