@@ -10,14 +10,11 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
+#include "cocaine/detail/service/node/app/stats.hpp"
 #include "cocaine/detail/service/node/event.hpp"
 #include "cocaine/detail/service/node/slave.hpp"
 #include "cocaine/detail/service/node/slot.hpp"
 #include "cocaine/detail/service/node/stream.hpp"
-
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics.hpp>
-#include <boost/accumulators/statistics/density.hpp>
 
 namespace cocaine {
 
@@ -76,30 +73,7 @@ private:
     std::shared_ptr<balancer_t> balancer;
 
     /// Statistics.
-    struct stats_t {
-        /// The number of requests, that are pushed into the queue.
-        std::atomic<std::uint64_t> accepted;
-
-        /// The number of requests, that were rejected due to queue overflow or other circumstances.
-        std::atomic<std::uint64_t> rejected;
-
-        typedef boost::accumulators::accumulator_set<
-            double,
-            boost::accumulators::stats<
-                boost::accumulators::tag::extended_p_square_quantile
-            >
-        > quantiles_t;
-
-        const std::vector<double> probabilities;
-        synchronized<quantiles_t> timings;
-
-        stats_t():
-            accepted(0),
-            rejected(0),
-            probabilities({{ 0.50, 0.75, 0.90, 0.95, 0.98, 0.99, 0.9995 }}),
-            timings(boost::accumulators::tag::extended_p_square::probabilities = probabilities)
-        {}
-    } stats;
+    stats_t stats;
 
 public:
     overseer_t(context_t& context,
@@ -108,8 +82,8 @@ public:
                std::shared_ptr<asio::io_service> loop);
     ~overseer_t();
 
-    /// \todo not sure about this method necessarity, consider passing a shared logger pointer to
-    /// the balancer.
+    /// \todo not sure about this method necessity, consider passing a shared logger pointer to the
+    /// balancer.
     const logging::log_t&
     logger() const {
         return *log;

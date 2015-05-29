@@ -133,6 +133,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/node/slave/state/spawning.cpp
     src/service/node/slave/state/state.cpp
     src/service/node/slave/state/terminating.cpp
+    src/service/node/app/stats.cpp
 
     src/service/node/manifest.cpp
     src/service/node/profile.cpp

@@ -15,6 +15,8 @@
 #include "cocaine/detail/service/node/slave/control.hpp"
 #include "cocaine/detail/service/node/slot.hpp"
 
+#include <boost/accumulators/statistics/extended_p_square.hpp>
+
 namespace ph = std::placeholders;
 
 using namespace cocaine;
@@ -90,17 +92,11 @@ overseer_t::info() const {
     dynamic_t::object_t quantiles;
 
     char buf[16];
-
-    stats.timings.apply([&](const stats_t::quantiles_t& timings) {
-        for (std::size_t i = 0; i < stats.probabilities.size(); ++i) {
-            const auto rc = std::snprintf(buf, sizeof(buf) / sizeof(char), "%.2f%%", 100 * stats.probabilities[i]);
-            if (rc > 0) {
-                const auto quantile = boost::accumulators::extended_p_square(timings)[i];
-
-                quantiles[buf] = std::ceil(quantile * 1000) / 1000;
-            }
+    for (const auto& quantile : stats.quantiles()) {
+        if (std::snprintf(buf, sizeof(buf) / sizeof(char), "%.2f%%", quantile.probability)) {
+            quantiles[buf] = quantile.value;
         }
-    });
+    }
 
     info["timings"] = quantiles;
 
