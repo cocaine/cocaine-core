@@ -13,6 +13,7 @@ class channel_t:
 {
 public:
     typedef std::function<void()> callback_type;
+    typedef std::chrono::high_resolution_clock::time_point time_point;
 
 private:
     enum side_t {
@@ -23,6 +24,7 @@ private:
     };
 
     const std::uint64_t id;
+    const time_point birthstamp_;
     const callback_type callback;
 
     std::atomic<int> state;
@@ -30,7 +32,10 @@ private:
     std::mutex mutex;
 
 public:
-    channel_t(std::uint64_t id, callback_type callback);
+    channel_t(std::uint64_t id, time_point birthstamp, callback_type callback);
+
+    time_point
+    birthstamp() const;
 
     bool
     closed() const;

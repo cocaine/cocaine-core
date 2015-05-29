@@ -104,6 +104,8 @@ overseer_t::info() const {
 
     info["timings"] = quantiles;
 
+    const auto now = std::chrono::high_resolution_clock::now();
+
     pool.apply([&](const pool_type& pool) {
         collector_t collector(pool);
 
@@ -111,13 +113,25 @@ overseer_t::info() const {
         for (auto it = pool.begin(); it != pool.end(); ++it) {
             const auto stats = it->second.stats();
 
-            slaves[it->first] = dynamic_t::object_t {
+            dynamic_t::object_t stat = {
                 { "uptime", it->second.uptime() },
                 { "load", stats.load },
                 { "tx",   stats.tx },
                 { "rx",   stats.rx },
                 { "total", stats.total },
             };
+
+            if (stats.age) {
+                const auto age = std::chrono::duration<
+                    double,
+                    std::chrono::milliseconds::period
+                >(now - *stats.age).count();
+                stat["age"] = age;
+            } else {
+                stat["age"] = dynamic_t::null;
+            }
+
+            slaves[it->first] = stat;
         }
 
         info["pool"] = dynamic_t::object_t({

@@ -78,7 +78,7 @@ state_machine_t::load() const {
 
 slave::channel_stats_t
 state_machine_t::stats() const {
-    slave::channel_stats_t result { 0, 0, 0, 0 };
+    slave::channel_stats_t result { 0, 0, 0, 0, boost::none };
 
     data.channels.apply([&](const channels_map_t& channels) {
         for (const auto& channel : channels) {
@@ -93,6 +93,19 @@ state_machine_t::stats() const {
 
         result.load = channels.size();
         result.total = counter;
+
+        auto it = std::min_element(
+            channels.begin(),
+            channels.end(),
+            [&](const std::pair<std::uint64_t, std::shared_ptr<channel_t>>& current,
+                const std::pair<std::uint64_t, std::shared_ptr<channel_t>>& first) -> bool
+        {
+            return current.second->birthstamp() < first.second->birthstamp();
+        });
+
+        if (it != channels.end()) {
+            result.age.reset(it->second->birthstamp());
+        }
     });
 
     return result;
@@ -112,6 +125,7 @@ state_machine_t::inject(slave::channel_t& data, channel_handler handler) {
 
     auto channel = std::make_shared<channel_t>(
         id,
+        data.event.birthstamp,
         std::bind(&state_machine_t::revoke, shared_from_this(), id, handler)
     );
 

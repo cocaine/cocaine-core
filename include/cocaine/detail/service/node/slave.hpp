@@ -71,6 +71,7 @@ struct channel_stats_t {
     std::uint64_t rx;
     std::uint64_t load;
     std::uint64_t total;
+    boost::optional<std::chrono::high_resolution_clock::time_point> age;
 };
 
 }

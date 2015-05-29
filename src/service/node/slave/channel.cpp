@@ -5,12 +5,18 @@
 
 using namespace cocaine;
 
-channel_t::channel_t(std::uint64_t id, callback_type callback):
+channel_t::channel_t(std::uint64_t id, time_point birthstamp, callback_type callback):
     id(id),
+    birthstamp_(birthstamp),
     callback(std::move(callback)),
     state(both),
     watched(false)
 {}
+
+channel_t::time_point
+channel_t::birthstamp() const {
+    return birthstamp_;
+}
 
 void
 channel_t::close_send() {
