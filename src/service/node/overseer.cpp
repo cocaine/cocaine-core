@@ -87,17 +87,22 @@ overseer_t::info() const {
         { "rejected", stats.rejected.load() }
     });
 
-    dynamic_t::object_t t;
+    dynamic_t::object_t quantiles;
 
-    stats.timings.apply([&](const stats_t::timings_t& timings) {
+    char buf[16];
+
+    stats.timings.apply([&](const stats_t::quantiles_t& timings) {
         for (std::size_t i = 0; i < stats.probabilities.size(); ++i) {
-            std::stringstream out;
-            out << std::fixed << std::setprecision(2) << 100 * stats.probabilities[i] << "%";
-            t[out.str()] = boost::accumulators::extended_p_square(timings)[i];
+            const auto rc = std::snprintf(buf, sizeof(buf) / sizeof(char), "%.2f%%", 100 * stats.probabilities[i]);
+            if (rc > 0) {
+                const auto quantile = boost::accumulators::extended_p_square(timings)[i];
+
+                quantiles[buf] = std::ceil(quantile * 1000) / 1000;
+            }
         }
     });
 
-    info["timings"] = t;
+    info["timings"] = quantiles;
 
     pool.apply([&](const pool_type& pool) {
         collector_t collector(pool);
@@ -245,7 +250,7 @@ overseer_t::assign(slave_t& slave, slave::channel_t& payload) {
         >(now - timestamp).count();
 
         COCAINE_LOG_DEBUG(log, "COMPLETED IN %s", elapsed);
-        stats.timings.apply([&](stats_t::timings_t& timings) {
+        stats.timings.apply([&](stats_t::quantiles_t& timings) {
             timings(elapsed);
         });
 

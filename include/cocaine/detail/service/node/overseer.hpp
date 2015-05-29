@@ -87,15 +87,15 @@ private:
             boost::accumulators::stats<
                 boost::accumulators::tag::extended_p_square_quantile
             >
-        > timings_t;
+        > quantiles_t;
 
-        const std::array<double, 8> probabilities;
-        synchronized<timings_t> timings;
+        const std::vector<double> probabilities;
+        synchronized<quantiles_t> timings;
 
         stats_t():
             accepted(0),
             rejected(0),
-            probabilities({{ 0.25, 0.50, 0.75, 0.90, 0.95, 0.98, 0.99, 0.9995 }}),
+            probabilities({{ 0.50, 0.75, 0.90, 0.95, 0.98, 0.99, 0.9995 }}),
             timings(boost::accumulators::tag::extended_p_square::probabilities = probabilities)
         {}
     } stats;
