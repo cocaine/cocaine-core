@@ -15,7 +15,7 @@ class unix_actor_t;
 
 } // namespace cocaine
 
-namespace cocaine { namespace service {
+namespace cocaine { namespace service { namespace node {
 
 /// Represents a single application.
 ///
@@ -43,4 +43,4 @@ public:
    ~app_t();
 };
 
-}} // namespace cocaine::service
+}}} // namespace cocaine::service::node

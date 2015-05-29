@@ -32,7 +32,9 @@
 
 namespace cocaine { namespace service {
 
+namespace node {
 class app_t;
+}
 
 class node_t:
     public api::service_t,
@@ -42,7 +44,7 @@ class node_t:
 
     const std::unique_ptr<logging::log_t> m_log;
 
-    synchronized<std::map<std::string, std::shared_ptr<app_t>>> m_apps;
+    synchronized<std::map<std::string, std::shared_ptr<node::app_t>>> m_apps;
 
     // Slot for context signals.
     std::shared_ptr<dispatch<io::context_tag>> signal;

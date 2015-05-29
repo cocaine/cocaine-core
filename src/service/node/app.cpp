@@ -20,6 +20,7 @@
 
 using namespace cocaine;
 using namespace cocaine::service;
+using namespace cocaine::service::node;
 
 namespace ph = std::placeholders;
 

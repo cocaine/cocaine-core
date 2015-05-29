@@ -128,14 +128,14 @@ void
 node_t::start_app(const std::string& name, const std::string& profile) {
     COCAINE_LOG_DEBUG(m_log, "processing `start_app` request, app: '%s'", name);
 
-    m_apps.apply([&](std::map<std::string, std::shared_ptr<app_t>>& apps) {
+    m_apps.apply([&](std::map<std::string, std::shared_ptr<node::app_t>>& apps) {
         auto it = apps.find(name);
 
         if(it != apps.end()) {
             throw cocaine::error_t("app '%s' is already running", name);
         }
 
-        apps.insert({ name, std::make_shared<app_t>(m_context, name, profile) });
+        apps.insert({ name, std::make_shared<node::app_t>(m_context, name, profile) });
     });
 }
 
@@ -143,7 +143,7 @@ void
 node_t::pause_app(const std::string& name) {
     COCAINE_LOG_DEBUG(m_log, "processing `pause_app` request, app: '%s' ", name);
 
-    m_apps.apply([&](std::map<std::string, std::shared_ptr<app_t>>& apps) {
+    m_apps.apply([&](std::map<std::string, std::shared_ptr<node::app_t>>& apps) {
         auto it = apps.find(name);
 
         if(it == apps.end()) {
@@ -159,7 +159,7 @@ node_t::list() const -> dynamic_t {
     dynamic_t::array_t result;
     auto builder = std::back_inserter(result);
 
-    m_apps.apply([&](const std::map<std::string, std::shared_ptr<app_t>>& apps) {
+    m_apps.apply([&](const std::map<std::string, std::shared_ptr<node::app_t>>& apps) {
         std::transform(apps.begin(), apps.end(), builder, tuple::nth_element<0>());
     });
 
