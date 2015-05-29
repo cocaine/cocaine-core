@@ -88,6 +88,19 @@ stacktrace(int signum, siginfo_t* COCAINE_UNUSED_(info), void* context) {
 
 asio::io_service* loop;
 
+void
+terminate(int signum) {
+    static const std::map<int, std::string> description = {
+        { SIGINT,  "SIGINT"  },
+        { SIGQUIT, "SIGQUIT" },
+        { SIGTERM, "SIGTERM" }
+    };
+
+    std::cout << "[Runtime] Caught " << description.at(signum) << ", exiting." << std::endl;
+
+    loop->stop();
+}
+
 struct runtime_t {
     runtime_t():
         m_signals(m_asio, SIGINT, SIGTERM, SIGQUIT)
@@ -108,9 +121,10 @@ struct runtime_t {
 
         // Reroute the core-generating signals.
 
-        struct sigaction action;
+        struct sigaction action, termaction;
 
         std::memset(&action, 0, sizeof(action));
+        std::memset(&termaction, 0, sizeof(termaction));
 
         action.sa_sigaction = &stacktrace;
         action.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND | SA_SIGINFO;
@@ -118,6 +132,13 @@ struct runtime_t {
         ::sigaction(SIGABRT, &action, nullptr);
         ::sigaction(SIGBUS,  &action, nullptr);
         ::sigaction(SIGSEGV, &action, nullptr);
+
+        termaction.sa_handler = terminate;
+        termaction.sa_flags = 0;
+
+        ::sigaction(SIGINT,  &termaction, nullptr);
+        ::sigaction(SIGTERM, &termaction, nullptr);
+        ::sigaction(SIGQUIT, &termaction, nullptr);
 
         // Block the deprecated signals.
 
@@ -129,15 +150,6 @@ struct runtime_t {
         ::sigprocmask(SIG_BLOCK, &signals, nullptr);
 
         loop = &m_asio;
-        int ec = ::pthread_atfork(
-            []() { loop->notify_fork(asio::io_service::fork_prepare); },
-            []() { loop->notify_fork(asio::io_service::fork_parent); },
-            []() { loop->notify_fork(asio::io_service::fork_child); }
-        );
-
-        if (ec) {
-            std::cerr << "ERROR: Unable to register atfork handlers" << std::endl;
-        }
     }
 
    ~runtime_t() {
