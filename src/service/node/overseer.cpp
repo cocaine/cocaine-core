@@ -105,8 +105,6 @@ overseer_t::info() const {
 
     const auto now = std::chrono::high_resolution_clock::now();
 
-    std::uint64_t cumload{};
-
     pool.apply([&](const pool_type& pool) {
         collector_t collector(pool);
 
@@ -142,7 +140,8 @@ overseer_t::info() const {
             { "slaves", slaves }
         });
 
-        info["load"] = cumload;
+        // Cumulative load on the app.
+        info["load"] = collector.cumload;
     });
 
 

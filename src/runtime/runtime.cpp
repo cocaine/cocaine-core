@@ -142,12 +142,12 @@ struct runtime_t {
 
         // Block the deprecated signals.
 
-        sigset_t signals;
+        sigset_t sigset;
 
-        sigemptyset(&signals);
-        sigaddset(&signals, SIGPIPE);
+        sigemptyset(&sigset);
+        sigaddset(&sigset, SIGPIPE);
 
-        ::sigprocmask(SIG_BLOCK, &signals, nullptr);
+        ::sigprocmask(SIG_BLOCK, &sigset, nullptr);
 
         loop = &m_asio;
     }

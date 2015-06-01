@@ -177,9 +177,7 @@ state_machine_t::terminate(std::error_code ec) {
     COCAINE_LOG_TRACE(log, "slave state machine is terminating: %s", ec.message());
 
     auto state = *this->state.synchronize();
-    BOOST_ASSERT(state);
-
-    return state->terminate(ec);
+    state->terminate(ec);
 }
 
 void
