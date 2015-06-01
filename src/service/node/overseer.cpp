@@ -23,15 +23,18 @@ using namespace cocaine;
 
 struct collector_t {
     std::size_t active;
+    std::size_t cumload;
 
     explicit
     collector_t(const overseer_t::pool_type& pool):
-        active{}
+        active{},
+        cumload{}
     {
         for (const auto& it : pool) {
             const auto load = it.second.load();
             if (it.second.active() && load) {
                 active++;
+                cumload += load;
             }
         }
     }
@@ -102,26 +105,28 @@ overseer_t::info() const {
 
     const auto now = std::chrono::high_resolution_clock::now();
 
+    std::uint64_t cumload{};
+
     pool.apply([&](const pool_type& pool) {
         collector_t collector(pool);
 
         dynamic_t::object_t slaves;
         for (auto it = pool.begin(); it != pool.end(); ++it) {
-            const auto stats = it->second.stats();
+            const auto slave_stats = it->second.stats();
 
             dynamic_t::object_t stat = {
                 { "uptime", it->second.uptime() },
-                { "load", stats.load },
-                { "tx",   stats.tx },
-                { "rx",   stats.rx },
-                { "total", stats.total },
+                { "load", slave_stats.load },
+                { "tx",   slave_stats.tx },
+                { "rx",   slave_stats.rx },
+                { "total", slave_stats.total },
             };
 
-            if (stats.age) {
+            if (slave_stats.age) {
                 const auto age = std::chrono::duration<
                     double,
                     std::chrono::milliseconds::period
-                >(now - *stats.age).count();
+                >(now - *slave_stats.age).count();
                 stat["age"] = age;
             } else {
                 stat["age"] = dynamic_t::null;
@@ -136,7 +141,10 @@ overseer_t::info() const {
             { "capacity", profile().pool_limit },
             { "slaves", slaves }
         });
+
+        info["load"] = cumload;
     });
+
 
     return info;
 }
