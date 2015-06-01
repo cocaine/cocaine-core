@@ -20,9 +20,10 @@ class control_t;
 class handshaker_t:
     public dispatch<io::worker_tag>
 {
-    mutable std::shared_ptr<session_t> session;
-    mutable std::mutex mutex;
-    mutable std::condition_variable cv;
+    std::shared_ptr<session_t> session;
+
+    std::mutex mutex;
+    std::condition_variable cv;
 
 public:
     template<class F>
@@ -35,6 +36,8 @@ public:
             [=](slot_type::upstream_type&& stream, const std::string& uuid) -> std::shared_ptr<control_t>
         {
             std::unique_lock<std::mutex> lock(mutex);
+            // TODO: Perhaps we should use here `wait_for` to prevent forever waiting on slave, that
+            // have been immediately killed.
             cv.wait(lock, [&]() -> bool {
                 return !!session;
             });
@@ -43,9 +46,13 @@ public:
         }));
     }
 
-    /// Here we need mutable variables, because io::dispatch_ptr_t is a shared pointer over constant
-    /// dispatch.
+    /// Here we need that shitty const cast, because `io::dispatch_ptr_t` is a shared pointer over
+    /// constant dispatch.
     void bind(std::shared_ptr<session_t> session) const {
+        const_cast<handshaker_t*>(this)->bind(std::move(session));
+    }
+
+    void bind(std::shared_ptr<session_t> session) {
         std::unique_lock<std::mutex> lock(mutex);
         this->session = std::move(session);
         lock.unlock();
