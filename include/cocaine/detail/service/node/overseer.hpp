@@ -130,14 +130,17 @@ public:
     std::shared_ptr<stream_t>
     enqueue(std::shared_ptr<stream_t>&& downstream, app::event_t event, boost::optional<slave::id_t> id);
 
-    /// Creates a new handshake dispatch for incoming connection.
+    /// Creates a new handshake dispatch, which will be consumed after a new incoming connection
+    /// attached.
     ///
-    /// Called when an unix-socket client (probably, a worker) has been accepted. The first message
-    /// from it should be a handshake to be sure, that the remote peer is the worker we are waiting
-    /// for.
+    /// This method is called when an unix-socket client (probably, a worker) has been accepted.
+    /// The first message from it should be a handshake to be sure, that the remote peer is the
+    /// worker we are waiting for.
+    ///
     /// The handshake message should contain its peer id (likely uuid) by comparing that we either
     /// accept the session or drop it.
-    /// After successful accepting the balancer should be notified about pool's changes.
+    ///
+    /// \note after successful accepting the balancer will be notified about pool's changes.
     io::dispatch_ptr_t
     prototype();
 

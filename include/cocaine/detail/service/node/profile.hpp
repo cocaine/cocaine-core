@@ -51,9 +51,6 @@ struct profile_t:
         unsigned long idle;
     } timeout;
 
-    float startup_timeout;
-    float termination_timeout;
-
     // Limits.
     unsigned long concurrency;
     unsigned long crashlog_limit;

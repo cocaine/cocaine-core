@@ -33,8 +33,6 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     log_output          = as_object().at("log-output", defaults::log_output).as_bool();
     heartbeat_timeout   = as_object().at("heartbeat-timeout", defaults::heartbeat_timeout).to<double>();
     idle_timeout        = as_object().at("idle-timeout", defaults::idle_timeout).to<double>();
-    startup_timeout     = as_object().at("startup-timeout", defaults::startup_timeout).to<double>();
-    termination_timeout = as_object().at("termination-timeout", defaults::termination_timeout).to<double>();
     concurrency         = as_object().at("concurrency", defaults::concurrency).to<uint64_t>();
     crashlog_limit      = as_object().at("crashlog-limit", defaults::crashlog_limit).to<uint64_t>();
     pool_limit          = as_object().at("pool-limit", defaults::pool_limit).to<uint64_t>();
@@ -67,14 +65,6 @@ profile_t::profile_t(context_t& context, const std::string& name_):
 
     if(idle_timeout < 0.0f) {
         throw cocaine::error_t("slave idle timeout must non-negative");
-    }
-
-    if(startup_timeout <= 0.0f) {
-        throw cocaine::error_t("slave startup timeout must be positive");
-    }
-
-    if(termination_timeout <= 0.0f) {
-        throw cocaine::error_t("engine termination timeout must be non-negative");
     }
 
     if(pool_limit == 0) {
