@@ -56,6 +56,12 @@ struct id_t {
     id_t(std::string id):
         id(std::move(id))
     {}
+
+    static
+    id_t
+    generate() {
+        return id_t(unique_id_t().string());
+    }
 };
 
 struct channel_t {
