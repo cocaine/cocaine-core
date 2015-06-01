@@ -76,32 +76,44 @@ overseer_t::get_queue() {
 
 dynamic_t::object_t
 overseer_t::info() const {
-    dynamic_t::object_t info;
+    dynamic_t::object_t result;
 
-    info["uptime"] = dynamic_t::uint_t(std::chrono::duration_cast<
+    // Application total uptime in seconds.
+    result["uptime"] = std::chrono::duration_cast<
         std::chrono::seconds
-    >(std::chrono::high_resolution_clock::now() - birthstamp).count());
+    >(std::chrono::high_resolution_clock::now() - birthstamp).count();
 
-    info["queue"] = dynamic_t::object_t({
-        { "depth",    dynamic_t::uint_t(queue->size()) },
-        { "capacity", dynamic_t::uint_t(profile().queue_limit) }
-    });
+    {
+        // Incoming requests.
+        dynamic_t::object_t ichannels;
+        ichannels["accepted"] = stats.accepted.load();
+        ichannels["rejected"] = stats.rejected.load();
 
-    info["channels"] = dynamic_t::object_t({
-        { "accepted", dynamic_t::uint_t(stats.accepted) },
-        { "rejected", stats.rejected.load() }
-    });
-
-    dynamic_t::object_t quantiles;
-
-    char buf[16];
-    for (const auto& quantile : stats.quantiles()) {
-        if (std::snprintf(buf, sizeof(buf) / sizeof(char), "%.2f%%", quantile.probability)) {
-            quantiles[buf] = quantile.value;
-        }
+        result["channels"] = ichannels;
     }
 
-    info["timings"] = quantiles;
+    {
+        // Pending events queue.
+        dynamic_t::object_t iqueue;
+        iqueue["depth"]    = queue->size();
+        iqueue["capacity"] = profile().queue_limit;
+
+        result["queue"] = iqueue;
+    }
+
+    {
+        // Response time quantiles over all events.
+        dynamic_t::object_t iquantiles;
+
+        char buf[16];
+        for (const auto& quantile : stats.quantiles()) {
+            if (std::snprintf(buf, sizeof(buf) / sizeof(char), "%.2f%%", quantile.probability)) {
+                iquantiles[buf] = quantile.value;
+            }
+        }
+
+        result["timings"] = iquantiles;
+    }
 
     const auto now = std::chrono::high_resolution_clock::now();
 
@@ -133,19 +145,19 @@ overseer_t::info() const {
             slaves[it->first] = stat;
         }
 
-        info["pool"] = dynamic_t::object_t({
+        result["pool"] = dynamic_t::object_t({
             { "active",   collector.active },
             { "idle",     pool.size() - collector.active },
             { "capacity", profile().pool_limit },
             { "slaves", slaves }
         });
 
-        // Cumulative load on the app.
-        info["load"] = collector.cumload;
+        // Cumulative load on the app over all the slaves.
+        result["load"] = collector.cumload;
     });
 
 
-    return info;
+    return result;
 }
 
 void
