@@ -220,6 +220,10 @@ state_machine_t::shutdown(std::error_code ec) {
     fetcher->close();
     fetcher.reset();
 
+    if (ec && ec != error::overseer_shutdowning) {
+        dump();
+    }
+
     // Check if the slave has been terminated externally. If so, do not call the cleanup callback.
     if (closed) {
         return;
@@ -243,6 +247,44 @@ state_machine_t::revoke(std::uint64_t id, channel_handler handler) {
     COCAINE_LOG_DEBUG(log, "slave has closed its %d channel", id);
 
     handler(id);
+}
+
+void
+state_machine_t::dump() {
+    if (lines.empty()) {
+        COCAINE_LOG_WARNING(log, "slave has died in silence");
+        return;
+    }
+
+    std::vector<std::string> dump;
+    std::copy(lines.begin(), lines.end(), std::back_inserter(dump));
+
+    const auto now = std::chrono::system_clock::now().time_since_epoch();
+
+    const auto us = std::chrono::duration_cast<
+        std::chrono::microseconds
+    >(now).count();
+
+    const time_t sec = std::chrono::duration_cast<
+        std::chrono::seconds
+    >(now).count();
+
+    const auto key = format("%lld:%s", us, context.id);
+
+    std::stringstream index;
+    struct tm tm;
+    index << std::put_time(::localtime_r(&sec, &tm), "cocaine-%Y-%m-%d");
+
+    COCAINE_LOG_INFO(log, "slave is dumping output to 'crashlogs/%s' using '%s' index", key, index.str());
+
+    try {
+        api::storage(context.context, "core")->put("crashlogs", key, dump, std::vector<std::string> {
+            context.manifest.name,
+            index.str()
+        });
+    } catch (const storage_error_t& err) {
+        COCAINE_LOG_WARNING(log, "slave is unable to save the crashlog: %s", err.what());
+    }
 }
 
 slave_t::slave_t(slave_context context, asio::io_service& loop, cleanup_handler fn):

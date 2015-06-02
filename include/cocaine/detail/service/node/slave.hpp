@@ -200,6 +200,9 @@ private:
 
     void
     revoke(std::uint64_t id, channel_handler handler);
+
+    void
+    dump();
 };
 
 // TODO: Rename to `comrade`, because in Soviet Russia slave owns you!

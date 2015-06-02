@@ -137,7 +137,7 @@ app_t::app_t(context_t& context, const std::string& manifest_, const std::string
     ));
     engine->run();
 
-    thread = std::move(boost::thread([=]{
+    thread = std::move(boost::thread([=] {
         loop->run();
     }));
 }
