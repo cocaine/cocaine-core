@@ -265,23 +265,23 @@ state_machine_t::dump() {
         std::chrono::microseconds
     >(now).count();
 
-    const time_t sec = std::chrono::duration_cast<
-        std::chrono::seconds
-    >(now).count();
-
     const auto key = format("%lld:%s", us, context.id);
 
-    std::stringstream index;
-    struct tm tm;
-    index << std::put_time(::localtime_r(&sec, &tm), "cocaine-%Y-%m-%d");
+    std::vector<std::string> indexes {
+        context.manifest.name
+    };
 
-    COCAINE_LOG_INFO(log, "slave is dumping output to 'crashlogs/%s' using '%s' index", key, index.str());
+    std::time_t time = std::time(nullptr);
+    char buf[64];
+    if (auto len = std::strftime(buf, sizeof(buf), "cocaine-%Y-%m-%d", std::gmtime(&time))) {
+        indexes.emplace_back(buf, len);
+    }
+
+    COCAINE_LOG_INFO(log, "slave is dumping output to 'crashlogs/%s' using [%s] indexes",
+                     key, boost::join(indexes, ", "));
 
     try {
-        api::storage(context.context, "core")->put("crashlogs", key, dump, std::vector<std::string> {
-            context.manifest.name,
-            index.str()
-        });
+        api::storage(context.context, "core")->put("crashlogs", key, dump, indexes);
     } catch (const storage_error_t& err) {
         COCAINE_LOG_WARNING(log, "slave is unable to save the crashlog: %s", err.what());
     }
