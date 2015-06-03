@@ -29,101 +29,103 @@
 #include <cassert>
 #include <functional>
 
+#include <boost/mpl/vector.hpp>
+#include <boost/mpl/find.hpp>
+#include <boost/mpl/size.hpp>
+#include <boost/mpl/contains.hpp>
+#include <boost/mpl/for_each.hpp>
+
 namespace cocaine { namespace io  {
+namespace header {
 
-enum class header_id {
-    TRACE_ID,
-    SPAN_ID,
-    PARENT_ID,
-    //Not used. Just indicates size of headers.
-    LAST
-};
-
-// Represents header name. Can be constructed only from headers enum.
-class header_key_t {
-public:
-    constexpr
-    header_key_t(header_id _id) :
-        id(_id)
-    {}
-
-    inline
-    const std::string&
-    name() const {
-        return names()[static_cast<size_t>(id)];
+struct data_t {
+    const char* blob;
+    size_t size;
+    bool operator==(const data_t& other) const {
+        return size == other.size && (memcmp(blob, other.blob, size) == 0);
     }
 
-private:
-    header_id id;
-    static constexpr size_t header_cnt = static_cast<size_t>(header_id::LAST);
-
-    inline
-    static
-    const std::array<std::string, header_cnt>&
-    names() {
-        static std::array<std::string, header_cnt> header_names {{
-            "trace_id",
-            "span_id",
-            "parent_id"
-        }};
-        return header_names;
+    template <class To>
+    To
+    convert() {
+        static_assert(std::is_pod<typename std::remove_reference<To>::type>::value &&
+                      !std::is_pointer<typename std::remove_reference<To>::type>::value &&
+                      !std::is_array<typename std::remove_reference<To>::type>::value,
+                      "only POD non pointer, non array data type is allowed to convert header data"
+                      );
+        if(size != sizeof(typename std::remove_reference<To>::type)) {
+            throw cocaine::error_t("invalid header data size");
+        }
+        return *(reinterpret_cast<const To*>(blob));
     }
 };
+
+template <size_t N>
+static
+constexpr
+data_t
+create_data(char const (&source)[N]) {
+    return data_t{source, N-1};
+}
+
+template<class From>
+header::data_t
+create_data(From&& source) {
+    static_assert(std::is_lvalue_reference<From>::value &&
+                  std::is_pod<typename std::remove_reference<From>::type>::value &&
+                  !std::is_same<const char*, From>::value,
+                  "only lreference to POD is allowed to create header data"
+                  );
+    data_t result;
+    result.blob = reinterpret_cast<const char*>(&source);
+    result.size = sizeof(typename std::remove_reference<From>::type);
+    return result;
+}
+
+}
 
 // Header class.
 // Represents non-owning header referring to some external memory.
 // Can be constructed only via header table
 class header_t {
 public:
-    struct str {
-        const char* data;
-        size_t size;
-        bool operator==(const str& other) const {
-            return size == other.size && (memcmp(data, other.data, size) == 0);
-        }
-    };
 
-    header_t(const header_t& other) = default;
-    header_t& operator=(const header_t& other) = default;
+    header_t(const header_t&) = default;
+    header_t& operator=(const header_t&) = default;
+    header_t() = default;
 
     // Create non-owning header on user-provided data
-    inline
-    header_t(header_key_t key, str _value) noexcept :
-        name({key.name().c_str(), key.name().size()}),
-        value(_value)
-    {}
-
-    // Use ONLY when unpacking from external data. For creating new header use previous ctor.
-    inline
-    header_t(const str& _name, const str& _value) noexcept;
+    template <class Header>
+    static
+    header_t
+    create(header::data_t _value) {
+        return header_t(Header::name, _value);
+    }
 
     inline
-    str
+    header::data_t
     get_name() const;
 
     inline
-    str
-    get_string_value() const;
+    header::data_t
+    get_value() const;
 
-    // Just a convience conversion of chunk of data to uint64_t.
-    // Header has no type information, so
-    // it's up to user to determine what he expects to see - string or integer.
-    inline
-    uint64_t
-    get_numeric_value() const;
-
-    inline
-    header_t() = default;
-
-    bool operator==(const header_t& other) const {
+    bool
+    operator==(const header_t& other) const {
         return name == other.name && value == other.value;
     }
 
-    bool name_equal(const header_t& other) const {
+    bool
+    name_equal(const header_t& other) const {
         return name == other.name;
     }
 
+    friend struct header_traits;
+    friend struct header_static_table_t;
 private:
+    inline
+    header_t(const header::data_t& _name, const header::data_t& _value) noexcept;
+
     inline
     header_t(const char* _name, size_t name_sz, const char* _value, size_t value_sz) noexcept;
 
@@ -134,8 +136,132 @@ private:
     size_t
     http2_size() const;
 
-    str name;
-    str value;
+    header::data_t name;
+    header::data_t value;
+    size_t table_index;
+};
+
+struct headers {
+    struct default_values_t {
+        struct zero_uint_value_t {
+            static
+            constexpr
+            header::data_t
+            value() {
+                return header::create_data("\0\0\0\0\0\0\0\0");
+            }
+        };
+
+        struct empty_string_value_t {
+            static
+            constexpr
+            header::data_t
+            value() {
+                return header::create_data("");
+            }
+        };
+    };
+
+    template <class DefaultValue = default_values_t::zero_uint_value_t>
+    struct span_id {
+        static
+        constexpr
+        header::data_t
+        name() {
+            return header::create_data("span_id");
+        }
+
+        static
+        constexpr
+        header::data_t
+        value() {
+            return DefaultValue::value();
+        }
+    };
+
+    template <class DefaultValue = default_values_t::zero_uint_value_t>
+    struct trace_id {
+        static
+        constexpr
+        header::data_t
+        name() {
+            return header::create_data("trace_id");
+        }
+
+        static
+        constexpr
+        header::data_t
+        value() {
+            return DefaultValue::value();
+        }
+    };
+
+    template <class DefaultValue = default_values_t::zero_uint_value_t>
+    struct parent_id {
+        static
+        constexpr
+        header::data_t
+        name() {
+            return header::create_data("parent_id");
+        }
+
+        static
+        constexpr
+        header::data_t
+        value() {
+            return DefaultValue::value();
+        }
+    };
+};
+
+struct header_static_table_t {
+    typedef boost::mpl::vector<
+        headers::span_id<>,
+        headers::trace_id<>,
+        headers::parent_id<>
+    > headers;
+
+    static constexpr size_t size = boost::mpl::size<headers>::type::value;
+
+    static
+    const std::array<header_t, size>&
+    get_headers() {
+        static bool placeholder = init_data();
+        return data();
+    }
+
+    template<class Header>
+    constexpr
+    static
+    size_t
+    idx() {
+        static_assert(boost::mpl::contains<headers, Header>::type::value, "Could not find header in statis table");
+        return boost::mpl::find<headers, Header>::type::pos::value;
+    }
+
+private:
+    struct init_header {
+    template<class Header>
+    void
+    operator()(Header h) {
+        data()[boost::mpl::find<headers, Header>::type::pos::value].name = Header::name();
+        data()[boost::mpl::find<headers, Header>::type::pos::value].value = Header::value();
+    }
+    };
+
+    static
+    bool
+    init_data() {
+        boost::mpl::for_each<headers>(init_header());
+        return true;
+    }
+
+    static
+    std::array<header_t, size>&
+    data() {
+        static std::array<header_t, size> storage;
+        return storage;
+    }
 };
 
 // Header static and dynamic table as described in http2
@@ -165,28 +291,6 @@ public:
         return find(std::bind(&header_t::name_equal, &header, std::placeholders::_1));
     }
 
-    template<class Packer>
-    void pack(Packer& packer, header_t header) {
-        size_t pos = find_by_full_match(header);
-        if(pos) {
-            packer.pack_fix_uint64(pos);
-            return;
-        }
-        packer.pack_array(3);
-        pos = find_by_name(header);
-        packer.pack_true();
-        push(header);
-        if(pos) {
-            packer.pack_fix_uint64(pos);
-        }
-        else {
-            packer.pack_raw(header.name.size);
-            packer.pack_raw_body(header.name.data, header.name.size);
-        }
-        packer.pack_raw(header.value.size);
-        packer.pack_raw_body(header.value.data, header.value.size);
-    }
-
     inline
     size_t
     size() const;
@@ -195,14 +299,14 @@ public:
     bool
     empty() const;
 
-    static constexpr size_t MAX_DATA_CAPACITY = 4096;
-
+    static constexpr size_t max_data_capacity = 4096;
+    static constexpr size_t http2_header_overhead = 32;
     //32 bytes overhead per record and 2 bytes for nil-nil header
-    static constexpr size_t MAX_HEADER_CAPACITY = MAX_DATA_CAPACITY/34;
+    static constexpr size_t max_header_capacity = max_data_capacity/(http2_header_overhead + 2);
 private:
-    inline
-    static const std::vector<header_t>&
-    static_data();
+//    inline
+//    static const std::vector<header_t>&
+//    static_data();
 
     inline
     void
@@ -213,14 +317,15 @@ private:
     find(const std::function<bool(const header_t&)> comp);
 
     // Header storage. Implemented as circular buffer
-    std::array<header_t, MAX_HEADER_CAPACITY> headers;
+    std::array<header_t, max_header_capacity> headers;
     size_t header_lower_bound;
     size_t header_upper_bound;
 
     // Header data storage. Stores all data which headers can reference.
     // Implemented as a sort of circular buffer.
-    // We multiply by 2 as data can be padded and we don't want to move it in memory
-    std::array<char, MAX_DATA_CAPACITY*2> header_data;
+    // We multiply by 2 as data can be padded and we don't want to move it in memory.
+    // 2 multiplier guarantee that we can add new value to the end or beginning without data overlap.
+    std::array<char, max_data_capacity*2> header_data;
     size_t data_lower_bound;
     size_t data_lower_bound_end;
     size_t data_upper_bound;
@@ -239,46 +344,29 @@ inline
 size_t
 http2_integer_encode(char* dest, size_t source, size_t bit_offset, char prefix);
 
-inline
-bool
-operator==(const header_key_t& header_key, const header_t::str& str);
-
-inline
-bool
-operator==(const header_t::str& str, const header_key_t& header_key);
-
 // --------------------------------------------------
 // Implementation part. Header-only to be used in CNF
 // --------------------------------------------------
 
-header_t::header_t(const str& _name, const str& _value) noexcept :
+header_t::header_t(const header::data_t& _name, const header::data_t& _value) noexcept :
     name(_name),
     value(_value)
-{}
+{
+}
 
 header_t::header_t(const char* _name, size_t name_sz, const char* _value, size_t value_sz) noexcept :
     name({_name, name_sz}),
     value({_value, value_sz})
 {}
 
-header_t::str
+header::data_t
 header_t::get_name() const {
     return name;
 }
 
-header_t::str
-header_t::get_string_value() const {
+header::data_t
+header_t::get_value() const {
     return value;
-}
-
-uint64_t
-header_t::get_numeric_value() const {
-    return *reinterpret_cast<const uint64_t*>(value.data);
-    /*
-    uint64_t res;
-    memcpy(&res, value.data, 8);
-    return res;
-    */
 }
 
 size_t
@@ -292,20 +380,21 @@ header_table_t::header_table_t() :
     header_upper_bound(0),
     data_lower_bound(0),
     data_upper_bound(0),
-    capacity(MAX_DATA_CAPACITY)
+    capacity(max_data_capacity)
 {}
 
 size_t
 header_table_t::size() const {
     if(data_upper_bound > data_lower_bound) {
-        return static_data().size() + data_upper_bound - data_lower_bound;
+        return header_static_table_t::size + data_upper_bound - data_lower_bound;
     }
     else {
-        return static_data().size() + data_lower_bound_end - data_lower_bound + data_upper_bound;
+        return header_static_table_t::size + data_lower_bound_end - data_lower_bound + data_upper_bound;
     }
 }
 
-bool header_table_t::empty() const {
+bool
+header_table_t::empty() const {
     return data_lower_bound == data_upper_bound;
 }
 
@@ -315,32 +404,32 @@ header_table_t::push(header_t& result) {
     // Proceed to encode header to table
     size_t value_size_size = http2_integer_size(result.value.size, 1);
     size_t value_size = result.value.size;
-    size_t header_size = 32 + result.name.size + http2_integer_size(result.name.size, 1) + value_size_size + value_size;
+    size_t header_size = http2_header_overhead + result.name.size + http2_integer_size(result.name.size, 1) + value_size_size + value_size;
 
     //pop headers from table until there is enough room for new one
-    while(data_upper_bound - data_lower_bound + header_size > capacity && data_lower_bound != data_upper_bound) {
+    while(size() + header_size > capacity && !empty()) {
         pop();
     }
 
     //header do not fit in the table
-    if(empty() && data_upper_bound - data_lower_bound + header_size > capacity) {
+    if(empty() && size() + header_size > capacity) {
         return;
     }
+
     char* dest = header_data.data();
     if(header_data.size() - data_upper_bound < header_size) {
         data_lower_bound_end = data_upper_bound;
-    }
-    else {
+    } else {
         dest += data_upper_bound;
     }
     dest += http2_integer_encode(dest, result.name.size, 1, 0);
-    memcpy(dest, result.name.data, result.name.size);
-    result.name.data = dest;
+    memcpy(dest, result.name.blob, result.name.size);
+    result.name.blob = dest;
     dest += result.name.size;
     dest += http2_integer_encode(dest, value_size, 1, 0);
-    memcpy(dest, result.value.data, value_size);
+    memcpy(dest, result.value.blob, value_size);
     result.value.size = value_size;
-    result.value.data = dest;
+    result.value.blob = dest;
     dest += value_size;
     headers[header_upper_bound] = result;
     header_upper_bound++;
@@ -366,24 +455,24 @@ header_table_t::pop() {
 
 size_t
 header_table_t::find(const std::function<bool(const header_t&)> comp) {
-    auto it = std::find_if(static_data().begin(), static_data().end(), comp);
-    if(it != static_data().end()) {
-        return it - static_data().begin();
+    auto it = std::find_if(header_static_table_t::get_headers().begin(), header_static_table_t::get_headers().end(), comp);
+    if(it != header_static_table_t::get_headers().end()) {
+        return it - header_static_table_t::get_headers().begin();
     }
     if(header_lower_bound <= header_upper_bound) {
         auto dyn_it = std::find_if(headers.data() + header_lower_bound, headers.data() + header_upper_bound, comp);
         if(dyn_it != headers.data() + header_upper_bound) {
-            return static_data().size() - 1 + (dyn_it - (headers.data() + header_lower_bound));
+            return header_static_table_t::size - 1 + (dyn_it - (headers.data() + header_lower_bound));
         }
     }
     else {
         auto dyn_it = std::find_if(headers.data(), headers.data() + header_upper_bound, comp);
         if(dyn_it != headers.data() + header_upper_bound) {
-            return static_data().size() - 1 + (dyn_it - headers.data());
+            return header_static_table_t::size - 1 + (dyn_it - headers.data());
         }
         dyn_it = std::find_if(headers.data() + header_lower_bound, headers.end(), comp);
         if(dyn_it != headers.end()) {
-            return static_data().size() - 1 + (dyn_it - (headers.data() + header_lower_bound));
+            return header_static_table_t::size - 1 + (dyn_it - (headers.data() + header_lower_bound));
         }
     }
     return 0;
@@ -392,10 +481,10 @@ header_table_t::find(const std::function<bool(const header_t&)> comp) {
 const header_t&
 header_table_t::operator[](size_t idx) {
     assert(idx != 0);
-    if(idx < static_data().size()) {
-        return static_data()[idx];
+    if(idx < header_static_table_t::size) {
+        return header_static_table_t::get_headers()[idx];
     }
-    idx -= static_data().size();
+    idx -= header_static_table_t::size;
     idx += header_lower_bound;
     if(idx > headers.size()) {
         idx -= headers.size();
@@ -407,12 +496,13 @@ header_table_t::operator[](size_t idx) {
     return headers[idx];
 }
 
-#define COCAINE_MAKE_STATIC_HEADER(name, val) header_t(name, sizeof(name)-1, val, sizeof(val)-1)
-#define COCAINE_MAKE_STATIC_EMPTY_HEADER(name) COCAINE_MAKE_STATIC_HEADER(name, "")
+/*
 const std::vector<header_t>&
 header_table_t::static_data() {
     static std::vector<header_t> headers ({
         //Empty header is reserved as 0 is not valid index in http2
+        header_t("","",0),
+        header_t::create<headers::trace_id>()
         COCAINE_MAKE_STATIC_EMPTY_HEADER(""),
         COCAINE_MAKE_STATIC_HEADER("trace_id", "\0\0\0\0\0\0\0\0"),
         COCAINE_MAKE_STATIC_HEADER("span_id", "\0\0\0\0\0\0\0\0"),
@@ -421,23 +511,12 @@ header_table_t::static_data() {
 
     return headers;
 }
-
-bool
-operator==(const header_key_t& header_key, const header_t::str& str) {
-    //fast check first
-    if(header_key.name().size() != str.size) {
-        return false;
-    }
-    return header_key.name() == str.data;
-}
-
-bool
-operator==(const header_t::str& str, const header_key_t& header_key) {
-    return operator==(header_key, str);
-}
+*/
 
 size_t
 http2_integer_size(size_t sz, size_t bit_offset) {
+    // See packing here https://httpwg.github.io/specs/rfc7541.html#integer.representation
+    // if integer fits to 8 - bit_offset bits
     if(sz < (1 << (8 - bit_offset))) {
         return 1;
     }
@@ -450,9 +529,10 @@ http2_integer_size(size_t sz, size_t bit_offset) {
     return ret;
 }
 
-//Note dest should be at least 10 bytes long
+// Note dest should be at least 10 bytes long
+// See packing here https://httpwg.github.io/specs/rfc7541.html#integer.representation
 size_t
-http2_integer_encode(char* dest, size_t source, size_t bit_offset, char prefix) {
+http2_integer_encode(char* dest, size_t source, size_t bit_offset, char prefix) { 
     dest[0] = prefix;
     unsigned char mask = 255;
     mask = ~(mask >> bit_offset);
@@ -477,4 +557,5 @@ http2_integer_encode(char* dest, size_t source, size_t bit_offset, char prefix) 
 }}
 
 #endif // COCAINE_RPC_ASIO_HEADER_HPP
+
 

@@ -53,10 +53,11 @@ struct decoded_message_t {
         return object.via.array.ptr[2];
     }
 
+    template<class Header>
     boost::optional<header_t>
-    get_header(const header_key_t& key) const {
+    get_header() const {
         for(const auto& header : headers) {
-            if(header.get_name() == key) {
+            if(header.get_name() == Header::name) {
                 return boost::make_optional(header);
             }
         }
@@ -94,7 +95,7 @@ struct decoder_t {
                 error = error || message.object.via.array.ptr[2].type != msgpack::type::ARRAY;
                 if(message.object.via.array.size > 3) {
                     error = error || message.object.via.array.ptr[3].type != msgpack::type::ARRAY;
-                    error = error || type_traits<std::vector<header_t>>::unpack(message.object.via.array.ptr[3], header_table, message.headers);
+                    error = error || header_traits::unpack_vector(message.object.via.array.ptr[3], header_table, message.headers);
                 }
                 if(error) {
                     ec = error::frame_format_error;
