@@ -226,8 +226,8 @@ struct header_static_table_t {
     static
     const std::array<header_t, size>&
     get_headers() {
-        static bool placeholder = init_data();
-        return data();
+        static std::array<header_t, size> storage = init_data();
+        return storage;
     }
 
     template<class Header>
@@ -240,27 +240,30 @@ struct header_static_table_t {
     }
 
 private:
+    template<size_t Size>
     struct init_header {
     template<class Header>
-    void
-    operator()(Header h) {
-        data()[boost::mpl::find<headers, Header>::type::pos::value].name = Header::name();
-        data()[boost::mpl::find<headers, Header>::type::pos::value].value = Header::value();
-    }
+        void
+        operator()(Header) {
+            data[boost::mpl::find<headers, Header>::type::pos::value].name = Header::name();
+            data[boost::mpl::find<headers, Header>::type::pos::value].value = Header::value();
+        }
+        std::array<header_t, size> data;
+    };
+
+    struct placeholder_t {
+        // Used to suppress unused variable notice
+        placeholder_t() {}
+        placeholder_t(const placeholder_t&) {}
+        placeholder_t& operator=(const placeholder_t&) {return *this;}
     };
 
     static
-    bool
+    std::array<header_t, size>
     init_data() {
-        boost::mpl::for_each<headers>(init_header());
-        return true;
-    }
-
-    static
-    std::array<header_t, size>&
-    data() {
-        static std::array<header_t, size> storage;
-        return storage;
+        init_header<size> initer;
+        boost::mpl::for_each<headers>(initer);
+        return initer.data;
     }
 };
 
@@ -303,11 +306,8 @@ public:
     static constexpr size_t http2_header_overhead = 32;
     //32 bytes overhead per record and 2 bytes for nil-nil header
     static constexpr size_t max_header_capacity = max_data_capacity/(http2_header_overhead + 2);
-private:
-//    inline
-//    static const std::vector<header_t>&
-//    static_data();
 
+private:
     inline
     void
     pop();
@@ -375,6 +375,7 @@ header_t::http2_size() const {
     // See https://tools.ietf.org/html/draft-ietf-httpbis-header-compression-12#section-5.2
     return name.size + http2_integer_size(name.size, 1) + value.size + http2_integer_size(value.size, 1);
 }
+
 header_table_t::header_table_t() :
     header_lower_bound(0),
     header_upper_bound(0),
@@ -495,23 +496,6 @@ header_table_t::operator[](size_t idx) {
     );
     return headers[idx];
 }
-
-/*
-const std::vector<header_t>&
-header_table_t::static_data() {
-    static std::vector<header_t> headers ({
-        //Empty header is reserved as 0 is not valid index in http2
-        header_t("","",0),
-        header_t::create<headers::trace_id>()
-        COCAINE_MAKE_STATIC_EMPTY_HEADER(""),
-        COCAINE_MAKE_STATIC_HEADER("trace_id", "\0\0\0\0\0\0\0\0"),
-        COCAINE_MAKE_STATIC_HEADER("span_id", "\0\0\0\0\0\0\0\0"),
-        COCAINE_MAKE_STATIC_HEADER("parent_id", "\0\0\0\0\0\0\0\0")
-    });
-
-    return headers;
-}
-*/
 
 size_t
 http2_integer_size(size_t sz, size_t bit_offset) {
