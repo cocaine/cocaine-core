@@ -12,6 +12,11 @@ state_t::active() const noexcept {
     return false;
 }
 
+bool
+state_t::sealing() const noexcept {
+    return false;
+}
+
 std::shared_ptr<control_t>
 state_t::activate(std::shared_ptr<session_t> /*session*/, upstream<io::worker::control_tag> /*stream*/) {
     throw_invalid_state();
@@ -19,6 +24,11 @@ state_t::activate(std::shared_ptr<session_t> /*session*/, upstream<io::worker::c
 
 io::upstream_ptr_t
 state_t::inject(inject_dispatch_ptr_t /*dispatch*/) {
+    throw_invalid_state();
+}
+
+void
+state_t::seal() {
     throw_invalid_state();
 }
 

@@ -46,6 +46,8 @@ public:
             return "timed out while activating";
         case error::unknown_activate_error:
             return "unknown activate error";
+        case error::seal_timeout:
+            return "timed out while sealing";
         case error::teminate_timeout:
             return "timed out while terminating";
         case error::heartbeat_timeout:
@@ -60,6 +62,8 @@ public:
             return "slave has committed suicide";
         case error::slave_idle:
             return "slave is idle";
+        case error::slave_is_sealing:
+            return "slave is sealing";
         default:
             return "unexpected slave error";
         }

@@ -47,6 +47,7 @@ struct profile_t:
         unsigned long spawn;
         unsigned long handshake;
         unsigned long heartbeat;
+        unsigned long seal;
         unsigned long terminate;
         unsigned long idle;
     } timeout;

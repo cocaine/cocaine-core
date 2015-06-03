@@ -39,6 +39,11 @@ class spawning_t;
 class state_t;
 class terminating_t;
 
+namespace service { namespace node { namespace slave { namespace state {
+class sealing_t;
+}}}}
+
+
 class control_t;
 class fetcher_t;
 
@@ -48,7 +53,7 @@ typedef std::shared_ptr<
 
 typedef std::function<void()> close_callback;
 
-namespace slave {
+namespace service { namespace node { namespace slave {
 
 struct id_t {
     const std::string id;
@@ -63,6 +68,10 @@ struct id_t {
         return id_t(unique_id_t().string());
     }
 };
+
+}}}
+
+namespace slave {
 
 struct channel_t {
     /// Event to be processed.
@@ -105,6 +114,7 @@ class state_machine_t:
     friend class handshaking_t;
     friend class spawning_t;
     friend class terminating_t;
+    friend class service::node::slave::state::sealing_t;
 
     friend class control_t;
     friend class fetcher_t;
@@ -171,6 +181,9 @@ public:
 
     std::uint64_t
     inject(slave::channel_t& channel, channel_handler handler);
+
+    void
+    seal();
 
     /// Terminates the slave by sending terminate message to the worker instance.
     ///
@@ -252,6 +265,9 @@ public:
 
     std::uint64_t
     inject(slave::channel_t& channel, state_machine_t::channel_handler handler);
+
+    void
+    seal();
 
     /// Marks the slave for termination using the given error code.
     ///

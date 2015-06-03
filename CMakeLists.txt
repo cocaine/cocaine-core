@@ -132,6 +132,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/node/slave/state/handshaking.cpp
     src/service/node/slave/state/spawning.cpp
     src/service/node/slave/state/state.cpp
+    src/service/node/slave/state/sealing.cpp
     src/service/node/slave/state/terminating.cpp
     src/service/node/app/stats.cpp
 

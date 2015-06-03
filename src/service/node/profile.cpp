@@ -54,7 +54,8 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     timeout.spawn     = 1000;
     timeout.handshake = 5000;
     timeout.heartbeat = 30000;
-    timeout.terminate = 30000;
+    timeout.seal      = 60000;
+    timeout.terminate = 10000;
     timeout.idle      = 60000;
 
     // Validation

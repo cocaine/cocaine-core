@@ -195,7 +195,7 @@ overseer_t::balance(std::unique_ptr<balancer_t> balancer) {
 std::shared_ptr<client_rpc_dispatch_t>
 overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downstream,
                     app::event_t event,
-                    boost::optional<slave::id_t> /*id*/)
+                    boost::optional<service::node::slave::id_t> /*id*/)
 {
     // TODO: Handle id parameter somehow.
 
@@ -280,8 +280,31 @@ overseer_t::assign(slave_t& slave, slave::channel_t& payload) {
 }
 
 void
-overseer_t::despawn(const std::string& /*id*/, despawn_policy_t /*policy*/) {
-    throw std::runtime_error("overseer_t::despawn: not implemented yet");
+overseer_t::despawn(const std::string& id, despawn_policy_t policy) {
+    pool.apply([&](pool_type& pool) {
+        auto it = pool.find(id);
+        if (it != pool.end()) {
+            switch (policy) {
+            case despawn_policy_t::graceful:
+                it->second.seal();
+                break;
+            case despawn_policy_t::force:
+                pool.erase(it);
+                balancer->on_slave_death(id);
+                break;
+            default:
+                BOOST_ASSERT(false);
+            }
+        }
+    });
+}
+
+void
+overseer_t::terminate() {
+    COCAINE_LOG_DEBUG(log, "overseer is processing terminate request");
+
+    balance();
+    pool->clear();
 }
 
 std::shared_ptr<control_t>

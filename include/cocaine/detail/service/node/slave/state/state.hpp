@@ -37,12 +37,20 @@ public:
     active() const noexcept;
 
     virtual
+    bool
+    sealing() const noexcept;
+
+    virtual
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 
     virtual
     io::upstream_ptr_t
     inject(inject_dispatch_ptr_t dispatch);
+
+    virtual
+    void
+    seal();
 
     /// Terminates the slave with the given error code.
     virtual

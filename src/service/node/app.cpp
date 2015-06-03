@@ -36,16 +36,36 @@ class app_dispatch_t:
     std::weak_ptr<overseer_t> overseer;
 
 public:
-    app_dispatch_t(context_t& context, const std::string& name, std::shared_ptr<overseer_t> overseer) :
+    app_dispatch_t(context_t& context, const std::string& name, std::shared_ptr<overseer_t> overseer_) :
         dispatch<io::app_tag>(name),
         log(context.log(format("%s/dispatch", name))),
-        overseer(std::move(overseer))
+        overseer(std::move(overseer_))
     {
         on<io::app::enqueue>(std::make_shared<slot_type>(
             std::bind(&app_dispatch_t::on_enqueue, this, ph::_1, ph::_2, ph::_3)
         ));
 
         on<io::app::info>(std::bind(&app_dispatch_t::on_info, this));
+
+        on<io::app::test>([&](const std::string& v) {
+            COCAINE_LOG_DEBUG(log, "processing test '%s' event", v);
+
+            if (v == "0") {
+                overseer.lock()->terminate();
+            } else {
+                std::vector<std::string> slaves;
+                {
+                    auto pool = overseer.lock()->get_pool();
+                    for (const auto& p : *pool) {
+                        slaves.push_back(p.first);
+                    }
+                }
+
+                for (auto& s : slaves) {
+                    overseer.lock()->despawn(s, overseer_t::despawn_policy_t::graceful);
+                }
+            }
+        });
     }
 
     ~app_dispatch_t() {
@@ -61,7 +81,7 @@ private:
             if (id.empty()) {
                 return overseer->enqueue(std::move(upstream), event, boost::none);
             } else {
-                return overseer->enqueue(std::move(upstream), event, slave::id_t(id));
+                return overseer->enqueue(std::move(upstream), event, service::node::slave::id_t(id));
             }
         } else {
             // TODO: Assign an error code instead of magic.
@@ -145,8 +165,7 @@ app_t::app_t(context_t& context, const std::string& manifest_, const std::string
 app_t::~app_t() {
     COCAINE_LOG_TRACE(log, "removing application service from the context");
 
-    overseer->balance();
-    overseer->get_pool()->clear();
+    overseer->terminate();
 
     context.remove(manifest->name);
 

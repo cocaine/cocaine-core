@@ -125,10 +125,10 @@ public:
     std::shared_ptr<client_rpc_dispatch_t>
     enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downstream,
             app::event_t event,
-            boost::optional<slave::id_t> id);
+            boost::optional<service::node::slave::id_t> id);
 
     std::shared_ptr<stream_t>
-    enqueue(std::shared_ptr<stream_t>&& downstream, app::event_t event, boost::optional<slave::id_t> id);
+    enqueue(std::shared_ptr<stream_t>&& downstream, app::event_t event, boost::optional<service::node::slave::id_t> id);
 
     /// Creates a new handshake dispatch, which will be consumed after a new incoming connection
     /// attached.
@@ -160,11 +160,15 @@ public:
     void
     assign(slave_t& slave, slave::channel_t& payload);
 
-    /// Closes the worker from new requests
-    /// Then forces the slave to send terminate event. Start timer.
-    /// On timeout or on response erases slave.
+    /// Seals the worker, preventing it from new requests.
+    ///
+    /// Then forces the slave to send terminate event. Starts the timer. On timeout or on response
+    /// erases slave.
     void
     despawn(const std::string& id, despawn_policy_t policy);
+
+    void
+    terminate();
 
 private:
     std::shared_ptr<control_t>

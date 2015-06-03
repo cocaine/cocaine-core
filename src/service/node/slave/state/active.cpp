@@ -2,6 +2,7 @@
 
 #include "cocaine/detail/service/node/slave.hpp"
 #include "cocaine/detail/service/node/slave/control.hpp"
+#include "cocaine/detail/service/node/slave/state/sealing.hpp"
 #include "cocaine/detail/service/node/slave/state/terminating.hpp"
 
 using namespace cocaine;
@@ -43,6 +44,19 @@ active_t::inject(inject_dispatch_ptr_t dispatch) {
     BOOST_ASSERT(session);
 
     return session->fork(dispatch);
+}
+
+void
+active_t::seal() {
+    using namespace cocaine::service::node::slave::state;
+
+    auto sealing = std::make_shared<sealing_t>(
+        slave, std::move(handle), std::move(control), std::move(session)
+    );
+
+    slave->migrate(sealing);
+
+    sealing->start(slave->context.profile.timeout.seal);
 }
 
 void

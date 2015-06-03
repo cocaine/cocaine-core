@@ -31,6 +31,9 @@ enum slave_errors {
     /// The slave has failed to activate, because of some errors.
     unknown_activate_error,
 
+    /// The slave has failed to seal for a timeout.seal ms.
+    seal_timeout,
+
     /// The slave has failed to terminate itself for a timeout.terminate ms.
     teminate_timeout,
 
@@ -56,7 +59,10 @@ enum slave_errors {
     committed_suicide,
 
     /// The slave has no active channels for a timeout.idle ms.
-    slave_idle
+    slave_idle,
+
+    /// The slave has exhaused its channels and ready to die.
+    slave_is_sealing
 };
 
 const std::error_category&

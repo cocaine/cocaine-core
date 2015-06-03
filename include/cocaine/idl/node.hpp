@@ -72,6 +72,18 @@ struct info {
     >::tag upstream_type;
 };
 
+struct test {
+    typedef app_tag tag;
+
+    static const char* alias() {
+        return "test";
+    }
+
+    typedef boost::mpl::list<
+        std::string
+    >::type argument_type;
+};
+
 }; // struct app
 
 template<>
@@ -82,7 +94,8 @@ struct protocol<app_tag> {
 
     typedef boost::mpl::list<
         app::enqueue,
-        app::info
+        app::info,
+        app::test
     >::type messages;
 
     typedef app scope;

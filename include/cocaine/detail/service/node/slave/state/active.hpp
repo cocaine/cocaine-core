@@ -39,6 +39,10 @@ public:
     io::upstream_ptr_t
     inject(inject_dispatch_ptr_t dispatch);
 
+    virtual
+    void
+    seal();
+
     /// Migrates the current state to the terminating one.
     ///
     /// This is achieved by sending the terminate event to the slave and waiting for its response

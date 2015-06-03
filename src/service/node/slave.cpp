@@ -167,6 +167,13 @@ state_machine_t::inject(slave::channel_t& data, channel_handler handler) {
 }
 
 void
+state_machine_t::seal() {
+    auto state = *this->state.synchronize();
+
+    state->seal();
+}
+
+void
 state_machine_t::terminate(std::error_code ec) {
     BOOST_ASSERT(ec);
 
@@ -245,6 +252,16 @@ state_machine_t::revoke(std::uint64_t id, channel_handler handler) {
 
     COCAINE_LOG_TRACE(log, "slave has decreased its load to %d", load)("channel", id);
     COCAINE_LOG_DEBUG(log, "slave has closed its %d channel", id);
+
+    // Terminate the state machine if the current state is sealing and there are no more channels
+    // left.
+    {
+        auto state = *this->state.synchronize();
+        if (state->sealing() && data.channels->empty()) {
+            COCAINE_LOG_DEBUG(log, "sealing completed");
+            state->terminate(error::slave_is_sealing);
+        }
+    }
 
     handler(id);
 }
@@ -346,6 +363,11 @@ slave_t::inject(slave::channel_t& channel, state_machine_t::channel_handler hand
     BOOST_ASSERT(machine);
 
     return machine->inject(channel, handler);
+}
+
+void
+slave_t::seal() {
+    return machine->seal();
 }
 
 void
