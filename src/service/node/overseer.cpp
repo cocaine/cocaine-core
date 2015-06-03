@@ -78,6 +78,8 @@ dynamic_t::object_t
 overseer_t::info() const {
     dynamic_t::object_t result;
 
+    result["state"] = "running";
+
     // Application total uptime in seconds.
     result["uptime"] = std::chrono::duration_cast<
         std::chrono::seconds
