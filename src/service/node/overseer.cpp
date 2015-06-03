@@ -80,10 +80,12 @@ overseer_t::info() const {
 
     result["state"] = "running";
 
+    const auto now = std::chrono::high_resolution_clock::now();
+
     // Application total uptime in seconds.
     result["uptime"] = std::chrono::duration_cast<
         std::chrono::seconds
-    >(std::chrono::high_resolution_clock::now() - birthstamp).count();
+    >(now - birthstamp).count();
 
     {
         // Incoming requests.
@@ -97,8 +99,29 @@ overseer_t::info() const {
     {
         // Pending events queue.
         dynamic_t::object_t iqueue;
-        iqueue["depth"]    = queue->size();
         iqueue["capacity"] = profile().queue_limit;
+        queue.apply([&](const queue_type& queue) {
+            typedef queue_type::value_type value_type;
+
+            const auto it = std::min_element(queue.begin(), queue.end(),
+                [&](const value_type& current, const value_type& first) -> bool {
+                    return current.event.birthstamp < first.event.birthstamp;
+                }
+            );
+
+            if (it != queue.end()) {
+                const auto age = std::chrono::duration<
+                    double,
+                    std::chrono::milliseconds::period
+                >(now - it->event.birthstamp).count();
+
+                iqueue["age"] = age;
+            } else {
+                iqueue["age"] = 0;
+            }
+
+            iqueue["depth"] = queue.size();
+        });
 
         result["queue"] = iqueue;
     }
@@ -116,8 +139,6 @@ overseer_t::info() const {
 
         result["timings"] = iquantiles;
     }
-
-    const auto now = std::chrono::high_resolution_clock::now();
 
     pool.apply([&](const pool_type& pool) {
         collector_t collector(pool);
