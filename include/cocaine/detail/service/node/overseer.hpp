@@ -1,7 +1,7 @@
 #pragma once
 
+#include <deque>
 #include <string>
-#include <queue>
 
 #include "cocaine/logging.hpp"
 
@@ -42,7 +42,7 @@ public:
         slave_t
     > pool_type;
 
-    typedef std::queue<
+    typedef std::deque<
         slave::channel_t
     > queue_type;
 

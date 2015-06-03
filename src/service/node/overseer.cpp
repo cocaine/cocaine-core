@@ -189,7 +189,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downst
 
     auto dispatch = std::make_shared<client_rpc_dispatch_t>(manifest.name);
 
-    queue->push({
+    queue->push_back({
         std::move(event),
         dispatch,
         std::move(downstream),

@@ -140,7 +140,7 @@ load_balancer_t::purge() {
             // The slave may become invalid and reject the assignment (or reject for any other
             // reasons). We pop the channel only on successful assignment to achieve strong
             // exception guarantee.
-            queue->pop();
+            queue->pop_front();
         } catch (const std::exception& err) {
             COCAINE_LOG_DEBUG(overseer->logger(), "slave has rejected assignment: %s", err.what());
         }
