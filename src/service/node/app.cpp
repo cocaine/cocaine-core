@@ -47,6 +47,7 @@ public:
 
         on<io::app::info>(std::bind(&app_dispatch_t::on_info, this));
 
+        // TODO: Temporary.
         on<io::app::test>([&](const std::string& v) {
             COCAINE_LOG_DEBUG(log, "processing test '%s' event", v);
 
