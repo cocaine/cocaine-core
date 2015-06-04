@@ -123,7 +123,7 @@ class cocaine::service::node::app_state_t:
         /// The application was unable to start.
         broken,
         /// The application is stopped.
-        stopped,
+        stopped
     };
 
     state_t state;
