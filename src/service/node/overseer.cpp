@@ -78,8 +78,6 @@ dynamic_t::object_t
 overseer_t::info() const {
     dynamic_t::object_t result;
 
-    result["state"] = "running";
-
     const auto now = std::chrono::high_resolution_clock::now();
 
     // Application total uptime in seconds.

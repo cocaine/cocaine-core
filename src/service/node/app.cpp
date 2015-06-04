@@ -183,17 +183,17 @@ public:
 
         switch (state) {
         case state_t::stopped:
-            info["status"] = "stopped";
+            info["state"] = "stopped";
             break;
         case state_t::spooling:
-            info["status"] = "spooling";
+            info["state"] = "spooling";
             break;
         case state_t::running:
             info = overseer->info();
-            info["status"] = "running";
+            info["state"] = "running";
             break;
         case state_t::broken:
-            info["status"] = "broken";
+            info["state"] = "broken";
             break;
         default:
             break;
