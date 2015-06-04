@@ -63,7 +63,7 @@ private:
     void
     on_context_shutdown();
 
-    void
+    deferred<void>
     start_app(const std::string& name, const std::string& profile);
 
     void
@@ -71,6 +71,9 @@ private:
 
     auto
     list() const -> dynamic_t;
+
+    dynamic_t
+    info(const std::string& name) const;
 };
 
 }} // namespace cocaine::service

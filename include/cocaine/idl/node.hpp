@@ -133,6 +133,24 @@ struct pause_app {
     >::type argument_type;
 };
 
+struct info {
+    typedef node_tag tag;
+
+    static const char* alias() {
+        return "info";
+    }
+
+    typedef boost::mpl::list<
+     /* Application name. */
+        std::string
+    >::type argument_type;
+
+    typedef option_of<
+     /* Various runtime information about the running app. */
+        dynamic_t
+    >::tag upstream_type;
+};
+
 struct list {
     typedef node_tag tag;
 
@@ -157,7 +175,8 @@ struct protocol<node_tag> {
     typedef boost::mpl::list<
         node::start_app,
         node::pause_app,
-        node::list
+        node::list,
+        node::info
     >::type messages;
 
     typedef node scope;

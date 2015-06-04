@@ -41,6 +41,7 @@
 #include <boost/spirit/include/karma_list.hpp>
 #include <boost/spirit/include/karma_string.hpp>
 
+using namespace cocaine;
 using namespace cocaine::service;
 
 namespace ph = std::placeholders;
@@ -54,6 +55,7 @@ node_t::node_t(context_t& context, asio::io_service& asio, const std::string& na
     on<io::node::start_app>(std::bind(&node_t::start_app, this, ph::_1, ph::_2));
     on<io::node::pause_app>(std::bind(&node_t::pause_app, this, ph::_1));
     on<io::node::list>     (std::bind(&node_t::list, this));
+    on<io::node::info>     (std::bind(&node_t::info, this, ph::_1));
 
     const auto runname = args.as_object().at("runlist", "").as_string();
 
@@ -124,9 +126,11 @@ node_t::on_context_shutdown() {
     signal = nullptr;
 }
 
-void
+deferred<void>
 node_t::start_app(const std::string& name, const std::string& profile) {
     COCAINE_LOG_DEBUG(log, "processing `start_app` request, app: '%s'", name);
+
+    cocaine::deferred<void> deferred;
 
     apps.apply([&](std::map<std::string, std::shared_ptr<node::app_t>>& apps) {
         auto it = apps.find(name);
@@ -135,8 +139,10 @@ node_t::start_app(const std::string& name, const std::string& profile) {
             throw cocaine::error_t("app '%s' is already running", name);
         }
 
-        apps.insert({ name, std::make_shared<node::app_t>(context, name, profile) });
+        apps.insert({ name, std::make_shared<node::app_t>(context, name, profile, deferred) });
     });
+
+    return deferred;
 }
 
 void
@@ -164,4 +170,23 @@ node_t::list() const -> dynamic_t {
     });
 
     return result;
+}
+
+dynamic_t
+node_t::info(const std::string& name) const {
+    auto app = apps.apply([&](const std::map<std::string, std::shared_ptr<node::app_t>>& apps) -> std::shared_ptr<node::app_t> {
+        auto it = apps.find(name);
+
+        if(it != apps.end()) {
+            return it->second;
+        }
+
+        return nullptr;
+    });
+
+    if (!app) {
+        throw cocaine::error_t("app '%s' is not running", name);
+    }
+
+    return app->info();
 }

@@ -27,10 +27,20 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
+using namespace cocaine;
 using namespace cocaine::isolate;
 
-void
-process_t::spool() {
+struct null_cancellation_t:
+    public api::cancellation_t
+{
+    void
+    cancel() {}
+};
+
+std::unique_ptr<api::cancellation_t>
+process_t::spool(callback_type cb) {
+    std::unique_ptr<api::cancellation_t> cancellation(new null_cancellation_t);
+
     std::string blob;
 
     COCAINE_LOG_INFO(m_log, "deploying app to %s", m_working_directory);
@@ -39,12 +49,9 @@ process_t::spool() {
 
     try {
         blob = storage->get<std::string>("apps", m_name);
-    } catch(const storage_error_t& e) {
-#if defined(HAVE_GCC48)
-        std::throw_with_nested(cocaine::error_t("app '%s' is not available", m_name));
-#else
-        throw cocaine::error_t("app '%s' is not available", m_name);
-#endif
+    } catch(const storage_error_t&) {
+        cb(asio::error::not_found);
+        return cancellation;
     }
 
     try {
@@ -55,12 +62,13 @@ process_t::spool() {
 #else
         archive.deploy(m_working_directory.string());
 #endif
-    } catch(const archive_error_t& e) {
-#if defined(HAVE_GCC48)
-        std::throw_with_nested(cocaine::error_t("app '%s' is not available", m_name));
-#else
-        throw cocaine::error_t("app '%s' is not available", m_name);
-#endif
+    } catch(const archive_error_t&) {
+        cb(asio::error::not_found);
+        return cancellation;
     }
+
+    cb(std::error_code());
+
+    return cancellation;
 }
 
