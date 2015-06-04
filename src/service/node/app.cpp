@@ -300,7 +300,10 @@ private:
 
         state = state_t::running;
 
-        deferred.close();
+        try {
+            deferred.close();
+        } catch (const cocaine::error_t&) {
+        }
     }
 
     void
