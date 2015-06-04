@@ -40,11 +40,11 @@ class node_t:
     public api::service_t,
     public dispatch<io::node_tag>
 {
-    context_t& m_context;
+    context_t& context;
 
-    const std::unique_ptr<logging::log_t> m_log;
+    const std::unique_ptr<logging::log_t> log;
 
-    synchronized<std::map<std::string, std::shared_ptr<node::app_t>>> m_apps;
+    synchronized<std::map<std::string, std::shared_ptr<node::app_t>>> apps;
 
     // Slot for context signals.
     std::shared_ptr<dispatch<io::context_tag>> signal;
