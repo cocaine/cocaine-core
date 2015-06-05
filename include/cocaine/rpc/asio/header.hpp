@@ -59,7 +59,7 @@ struct data_t {
 };
 
 template<size_t N>
-static
+inline
 constexpr
 data_t
 create_data(char const (&source)[N]) {
@@ -67,11 +67,12 @@ create_data(char const (&source)[N]) {
 }
 
 template<class From>
+inline
 header::data_t
 create_data(From&& source) {
     static_assert(std::is_lvalue_reference<From>::value &&
                   std::is_pod<typename std::remove_reference<From>::type>::value &&
-                  !std::is_same<const char*, From>::value,
+                  !std::is_same<const char*, typename std::remove_reference<From>::type>::value,
                   "only lreference to POD is allowed to create header data"
                   );
     data_t result;
@@ -79,6 +80,14 @@ create_data(From&& source) {
     result.size = sizeof(typename std::remove_reference<From>::type);
     return result;
 }
+
+template<>
+inline
+data_t
+create_data<const char*&>(const char*& source) {
+    return data_t{source, strlen(source)};
+}
+
 
 }
 
