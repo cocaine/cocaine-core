@@ -24,8 +24,10 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
+#include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/asio/encoder.hpp"
 #include "cocaine/rpc/asio/decoder.hpp"
+#include "cocaine/rpc/asio/header.hpp"
 
 #include <asio/generic/stream_protocol.hpp>
 
@@ -92,8 +94,20 @@ public:
     void
     pull();
 
+    template<class Event, class... Args>
     void
-    push(io::encoder_t::message_type&& message);
+    push(uint64_t channel_id, Args&&... args) {
+    #if defined(__clang__)
+        if(const auto ptr = std::atomic_load(&transport)) {
+    #else
+        if(const auto ptr = *transport.synchronize()) {
+    #endif
+            auto message = ptr->writer->get_encoder().encode<Event>(channel_id, std::forward<Args>(args)...);
+            push(ptr, std::move(message));
+        } else {
+            throw cocaine::error_t("session is not connected");
+        }
+    }
 
     // NOTE: Detaching a session destroys the connection but not necessarily the session itself, as
     // it might be still in use by shared upstreams even in other threads. In other words, this does
@@ -114,6 +128,9 @@ private:
 
     void
     revoke(uint64_t channel_id);
+
+    void
+    push(const std::shared_ptr<io::channel<asio::ip::tcp>>& transport, io::encoder_t::message_type&& message);
 };
 
 } // namespace cocaine

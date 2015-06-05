@@ -22,8 +22,6 @@
 
 #include "cocaine/logging.hpp"
 
-#include "cocaine/rpc/asio/channel.hpp"
-
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
@@ -299,7 +297,6 @@ session_t::pull() {
         throw std::system_error(error::not_connected);
     }
 }
-
 void
 session_t::push(encoder_t::message_type&& message) {
 #if defined(__clang__)

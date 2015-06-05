@@ -32,8 +32,6 @@
 
 namespace cocaine { namespace io {
 
-namespace ph = std::placeholders;
-
 template<class Protocol, class Encoder>
 class writable_stream:
     public std::enable_shared_from_this<writable_stream<Protocol, Encoder>>
@@ -54,12 +52,18 @@ class writable_stream:
 
     enum class states { idle, flushing } m_state;
 
+    encoder_type encoder;
 public:
     explicit
     writable_stream(const std::shared_ptr<channel_type>& channel):
         m_channel(channel),
         m_state(states::idle)
     { }
+
+    encoder_type&
+    get_encoder() {
+        return encoder;
+    }
 
     void
     write(const message_type& message, handler_type handle) {
@@ -89,6 +93,7 @@ public:
             m_state = states::flushing;
         }
 
+        namespace ph = std::placeholders;
         m_channel->async_write_some(
             m_messages,
             std::bind(&writable_stream::flush, this->shared_from_this(), ph::_1, ph::_2)
@@ -142,6 +147,7 @@ private:
             return;
         }
 
+        namespace ph = std::placeholders;
         m_channel->async_write_some(
             m_messages,
             std::bind(&writable_stream::flush, this->shared_from_this(), ph::_1, ph::_2)

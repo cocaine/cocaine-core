@@ -23,8 +23,8 @@
 
 #include "cocaine/errors.hpp"
 
-#include "cocaine/rpc/protocol.hpp"
 #include "cocaine/rpc/asio/header.hpp"
+#include "cocaine/rpc/protocol.hpp"
 
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/header.hpp"
@@ -103,8 +103,9 @@ template<class Event>
 struct encoded:
     public aux::encoded_message_t
 {
+private:
     template<class... Args>
-    encoded(uint64_t span, Args&&... args) {
+    encoded(header_table_t& /*header_table*/, uint64_t span, Args&&... args) {
         msgpack::packer<aux::encoded_buffers_t> packer(buffer);
 
         packer.pack_array(4);
@@ -121,12 +122,19 @@ struct encoded:
         header_traits::pack<headers::span_id<>>(packer);
         header_traits::pack<headers::parent_id<>>(packer);
     }
-
-    header_table_t header_table;
+    friend struct encoder_t;
 };
 
 struct encoder_t {
     typedef aux::encoded_message_t message_type;
+    template<class Event, class... Args>
+    encoded<Event>
+    encode(uint64_t span, Args&&... args) {
+        return encoded<Event>(header_table, span, std::forward<Args>(args)...);
+    }
+
+private:
+    io::header_table_t header_table;
 };
 
 }} // namespace cocaine::io
