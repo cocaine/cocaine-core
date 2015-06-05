@@ -38,7 +38,7 @@ struct header_traits {
         packer.pack_fix_uint64(header_static_table_t::idx<Header>());
     }
 
-    // Pack a header from statis table but with different value
+    // Pack a header from static table but with different value
     template<class Header, class Stream>
     static
     void
@@ -72,8 +72,7 @@ struct header_traits {
         table.push(source);
         if(pos) {
             packer.pack_fix_uint64(pos);
-        }
-        else {
+        } else {
             packer.pack_raw(source.get_name().size);
             packer.pack_raw_body(source.get_name().blob, source.get_name().size);
         }
@@ -97,8 +96,7 @@ struct header_traits {
         header::data_t header_name;
         if(source.via.array.ptr[1].type == msgpack::type::POSITIVE_INTEGER) {
             header_name = table[source.via.array.ptr[1].via.u64].get_name();
-        }
-        else {
+        } else {
             header_name.blob = source.via.array.ptr[1].via.raw.ptr;
             header_name.size = source.via.array.ptr[1].via.raw.size;
         }
@@ -140,13 +138,11 @@ struct header_traits {
             ) {
                 try {
                     target.push_back(unpack(obj, table));
-                }
-                catch (...) {
-                    //Just swallow it. We can not do anything here.
+                } catch (...) {
+                    // Just swallow it. We can not do anything here.
                     return false;
                 }
-            }
-            else {
+            } else {
                 return false;
             }
         }

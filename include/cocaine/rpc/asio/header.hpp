@@ -379,8 +379,7 @@ size_t
 header_table_t::size() const {
     if(data_upper_bound > data_lower_bound) {
         return header_static_table_t::size + data_upper_bound - data_lower_bound;
-    }
-    else {
+    } else {
         return header_static_table_t::size + data_lower_bound_end - data_lower_bound + data_upper_bound;
     }
 }
@@ -479,8 +478,7 @@ header_table_t::find(const std::function<bool(const header_t&)> comp) {
         if(dyn_it != headers.data() + header_upper_bound) {
             return header_static_table_t::size - 1 + (dyn_it - (headers.data() + header_lower_bound));
         }
-    }
-    else {
+    } else {
         auto dyn_it = std::find_if(headers.data(), headers.data() + header_upper_bound, comp);
         if(dyn_it != headers.data() + header_upper_bound) {
             return header_static_table_t::size - 1 + (dyn_it - headers.data());
