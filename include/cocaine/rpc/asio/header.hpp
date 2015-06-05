@@ -43,7 +43,7 @@ struct data_t {
         return size == other.size && (memcmp(blob, other.blob, size) == 0);
     }
 
-    template <class To>
+    template<class To>
     To
     convert() {
         static_assert(std::is_pod<typename std::remove_reference<To>::type>::value &&
@@ -58,7 +58,7 @@ struct data_t {
     }
 };
 
-template <size_t N>
+template<size_t N>
 static
 constexpr
 data_t
@@ -93,7 +93,7 @@ public:
     header_t() = default;
 
     // Create non-owning header on user-provided data
-    template <class Header>
+    template<class Header>
     static
     header_t
     create(header::data_t _value) {
@@ -120,6 +120,7 @@ public:
 
     friend struct header_traits;
     friend struct header_static_table_t;
+
 private:
     inline
     header_t(const header::data_t& _name, const header::data_t& _value) noexcept;
@@ -160,7 +161,7 @@ struct headers {
         };
     };
 
-    template <class DefaultValue = default_values_t::zero_uint_value_t>
+    template<class DefaultValue = default_values_t::zero_uint_value_t>
     struct span_id {
         static
         constexpr
@@ -177,7 +178,7 @@ struct headers {
         }
     };
 
-    template <class DefaultValue = default_values_t::zero_uint_value_t>
+    template<class DefaultValue = default_values_t::zero_uint_value_t>
     struct trace_id {
         static
         constexpr
@@ -194,7 +195,7 @@ struct headers {
         }
     };
 
-    template <class DefaultValue = default_values_t::zero_uint_value_t>
+    template<class DefaultValue = default_values_t::zero_uint_value_t>
     struct parent_id {
         static
         constexpr
@@ -238,9 +239,8 @@ struct header_static_table_t {
     }
 
 private:
-    template<size_t Size>
-    struct init_header {
-    template<class Header>
+    struct init_header_t {
+        template<class Header>
         void
         operator()(Header) {
             data[boost::mpl::find<headers, Header>::type::pos::value].name = Header::name();
@@ -249,19 +249,12 @@ private:
         std::array<header_t, size> data;
     };
 
-    struct placeholder_t {
-        // Used to suppress unused variable notice
-        placeholder_t() {}
-        placeholder_t(const placeholder_t&) {}
-        placeholder_t& operator=(const placeholder_t&) {return *this;}
-    };
-
     static
     std::array<header_t, size>
     init_data() {
-        init_header<size> initer;
-        boost::mpl::for_each<headers>(initer);
-        return initer.data;
+        init_header_t init;
+        boost::mpl::for_each<headers>(init);
+        return init.data;
     }
 };
 
@@ -303,7 +296,7 @@ public:
     static constexpr size_t max_data_capacity = 4096;
     static constexpr size_t http2_header_overhead = 32;
     //32 bytes overhead per record and 2 bytes for nil-nil header
-    static constexpr size_t max_header_capacity = max_data_capacity/(http2_header_overhead + 2);
+    static constexpr size_t max_header_capacity = max_data_capacity / (http2_header_overhead + 2);
 
 private:
     inline
@@ -405,37 +398,60 @@ header_table_t::push(header_t& result) {
     size_t value_size = result.value.size;
     size_t header_size = http2_header_overhead + result.name.size + http2_integer_size(result.name.size, 1) + value_size_size + value_size;
 
-    //pop headers from table until there is enough room for new one
+    // Pop headers from table until there is enough room for new one or table is empty
     while(size() + header_size > capacity && !empty()) {
         pop();
     }
 
-    //header do not fit in the table
+    // Header do not fit in the table. According to RFC we just clean the table and do not put the header inside.
     if(empty() && size() + header_size > capacity) {
         return;
     }
 
+    // Find the appropriate position in header table.
     char* dest = header_data.data();
     if(header_data.size() - data_upper_bound < header_size) {
+        // If header do not fit in the remaining space in the end of buffer - we write at the beginning.
+        // We also store point of end of the data in the end of buffer.
+        // Now data starts in data_lower_bound, some header ends in data_lower_bound_end and next part will start from the beginning.
+        // It is guaranteed that there is enough free space in the beginning as we've done pop before.
         data_lower_bound_end = data_upper_bound;
     } else {
+        // Ok, header fits right after previous one.
         dest += data_upper_bound;
     }
+
+    // Encode size of the name of the header
     dest += http2_integer_encode(dest, result.name.size, 1, 0);
+    // Encode value of the name of the header (plain copy)
     std::memcpy(dest, result.name.blob, result.name.size);
+
+    // Make header name point to data in the tabel. Size already was there. It did not change.
     result.name.blob = dest;
+
+    // Adjust buffer pointer
     dest += result.name.size;
+
+    // Encode size of the value of the header
     dest += http2_integer_encode(dest, value_size, 1, 0);
+    // Encode value of the value of the header (plain copy)
     std::memcpy(dest, result.value.blob, value_size);
-    result.value.size = value_size;
+
+    // Make header value point to data in the table
     result.value.blob = dest;
+
+    // Adjust buffer pointer
     dest += value_size;
+
+    // Save header itself in header circular buffer (array) to make header navigation easier
+    // It is guaranteed not to overwrite old data which is still in use, as size of dynamic table is limited.
     headers[header_upper_bound] = result;
     header_upper_bound++;
     if(header_upper_bound >= headers.size()) {
         header_upper_bound = 0;
     }
 
+    // Store index of upper_bound of data.
     data_upper_bound = dest - header_data.data();
 }
 
