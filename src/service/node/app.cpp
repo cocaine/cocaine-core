@@ -47,7 +47,7 @@ public:
 
         on<io::app::info>(std::bind(&app_dispatch_t::on_info, this));
 
-        // TODO: Temporary.
+        // TODO: Temporary here to test graceful app terminating.
         on<io::app::test>([&](const std::string& v) {
             COCAINE_LOG_DEBUG(log, "processing test '%s' event", v);
 
@@ -108,6 +108,175 @@ private:
     }
 };
 
+namespace state {
+
+/// The application is stopped either normally or abnormally.
+struct stopped_t {
+    std::string cause;
+
+    stopped_t() noexcept:
+        cause("uninitialized")
+    {}
+
+    explicit
+    stopped_t(std::string cause) noexcept:
+        cause(std::move(cause))
+    {}
+};
+
+/// The application is currently spooling.
+struct spooling_t {
+    std::shared_ptr<api::isolate_t> isolate;
+    std::unique_ptr<api::cancellation_t> spooler;
+
+    template<class F>
+    spooling_t(context_t& context, const manifest_t& manifest, const profile_t& profile, F cb) {
+        isolate = context.get<api::isolate_t>(
+            profile.isolate.type,
+            context,
+            manifest.name,
+            profile.isolate.args
+        );
+
+        spooler = isolate->spool(std::move(cb));
+    }
+
+    spooling_t(spooling_t&& other) noexcept:
+        isolate(std::move(other.isolate)),
+        spooler(std::move(other.spooler))
+    {}
+
+    ~spooling_t() {
+        if (spooler) {
+            spooler->cancel();
+        }
+    }
+
+    spooling_t&
+    operator=(spooling_t&& other) noexcept {
+        isolate = std::move(other.isolate);
+        spooler = std::move(other.spooler);
+
+        return *this;
+    }
+};
+
+/// The application has been published and currently running.
+struct running_t {
+    const logging::log_t* log;
+
+    std::unique_ptr<unix_actor_t> engine;
+    std::shared_ptr<overseer_t> overseer;
+
+    running_t(context_t& context,
+              const manifest_t& manifest,
+              const profile_t& profile,
+              const logging::log_t* log,
+              std::shared_ptr<asio::io_service> loop):
+        log(log)
+    {
+        // Create the Overseer - slave spawner/despawner plus the event queue dispatcher.
+        overseer.reset(new overseer_t(context, manifest, profile, loop));
+
+        // Create the event balancer.
+        // TODO: Rename method.
+        overseer->balance(std::make_unique<load_balancer_t>(overseer));
+
+        // Create a TCP server and publish it.
+        COCAINE_LOG_TRACE(log, "publishing application service with the context");
+        context.insert(manifest.name, std::make_unique<actor_t>(
+            context,
+            std::make_shared<asio::io_service>(),
+            std::make_unique<app_dispatch_t>(context, manifest.name, overseer)
+        ));
+
+        // Create an unix actor and bind to {manifest->name}.{pid} unix-socket.
+        COCAINE_LOG_TRACE(log, "publishing worker service with the context");
+        engine.reset(new unix_actor_t(
+            context,
+            manifest.endpoint,
+            std::bind(&overseer_t::prototype, overseer),
+            [](io::dispatch_ptr_t handshaker, std::shared_ptr<session_t> session) {
+                std::static_pointer_cast<const handshaker_t>(handshaker)->bind(session);
+            },
+            std::make_shared<asio::io_service>(),
+            std::make_unique<hostess_t>(manifest.name)
+        ));
+        engine->run();
+    }
+
+    running_t(running_t&& other) noexcept:
+        log(other.log),
+        engine(std::move(other.engine)),
+        overseer(std::move(other.overseer))
+    {}
+
+    ~running_t() {
+        if (engine && overseer) {
+            COCAINE_LOG_TRACE(log, "removing application service from the context");
+
+            engine->terminate();
+            overseer->terminate();
+        }
+    }
+
+    running_t&
+    operator=(running_t&& other) noexcept {
+        log = other.log;
+        engine = std::move(other.engine);
+        overseer = std::move(other.overseer);
+
+        return *this;
+    }
+};
+
+} // namespace state
+
+namespace visitor {
+
+struct is_stopped:
+    public boost::static_visitor<bool>
+{
+    bool
+    operator()(const state::stopped_t&) const {
+        return true;
+    }
+
+    template<class T>
+    bool
+    operator()(const T&) const {
+        return false;
+    }
+};
+
+struct info_t:
+    public boost::static_visitor<dynamic_t::object_t>
+{
+    dynamic_t::object_t
+    operator()(const state::stopped_t& state) const {
+        dynamic_t::object_t info;
+        info["state"] = "stopped";
+        info["cause"] = state.cause;
+        return info;
+    }
+
+    dynamic_t::object_t
+    operator()(const state::spooling_t&) const {
+        dynamic_t::object_t info;
+        info["state"] = "spooling";
+        return info;
+    }
+
+    dynamic_t::object_t
+    operator()(const state::running_t& state) const {
+        dynamic_t::object_t info = state.overseer->info();
+        info["state"] = "running";
+        return info;
+    }
+};
+
+} // namespace visitor
+
 class cocaine::service::node::app_state_t:
     public std::enable_shared_from_this<app_state_t>
 {
@@ -115,61 +284,60 @@ class cocaine::service::node::app_state_t:
 
     context_t& context;
 
-    enum class state_t {
-        /// The application is spooling.
-        spooling,
-        /// The application is running and published.
-        running,
-        /// The application was unable to start.
-        broken,
-        /// The application is stopped.
-        stopped
-    };
+    typedef boost::variant<
+        state::stopped_t,
+        state::spooling_t,
+        state::running_t
+    > state_type;
 
-    state_t state;
+    synchronized<state_type> state;
 
-    /// Breaking reason.
-    std::error_code ec;
-
+    /// Node start request's deferred.
     cocaine::deferred<void> deferred;
 
     // Configuration.
     const manifest_t manifest_;
     const profile_t  profile;
 
-    std::shared_ptr<api::isolate_t> isolate;
-    std::unique_ptr<api::cancellation_t> spooler;
-
     std::shared_ptr<asio::io_service> loop;
-    std::unique_ptr<unix_actor_t> engine;
-    std::shared_ptr<overseer_t> overseer;
-
     std::unique_ptr<asio::io_service::work> work;
     boost::thread thread;
 
 public:
-    app_state_t(context_t& context, manifest_t manifest_, profile_t profile_, cocaine::deferred<void> deferred) :
+    app_state_t(context_t& context,
+                manifest_t manifest_,
+                profile_t profile_,
+                cocaine::deferred<void> deferred_):
         log(context.log(format("%s/app", manifest_.name))),
         context(context),
-        state(state_t::stopped),
-        deferred(std::move(deferred)),
+        state(state::stopped_t()),
+        deferred(std::move(deferred_)),
         manifest_(std::move(manifest_)),
         profile(std::move(profile_)),
         loop(std::make_shared<asio::io_service>()),
         work(std::make_unique<asio::io_service::work>(*loop))
     {
         // TODO: Temporary here, use external thread.
-        thread = std::move(boost::thread([=] {
+        thread = boost::thread([=] {
             try {
                 // TODO: I can use node's I/O loop instead.
                 loop->run();
-            } catch (const std::system_error& err) {
-                COCAINE_LOG_WARNING(log, "app loop has been unexpectedly terminated: %s", err.code().message());
+            } catch (const std::exception& err) {
+                COCAINE_LOG_WARNING(log, "app thread has been unexpectedly terminated: %s", err.what());
 
-                ec = err.code();
-                state = state_t::broken;
+                *state.synchronize() = state::stopped_t(err.what());
             }
-        }));
+        });
+    }
+
+    ~app_state_t() {
+        // TODO: Temporary here, use external thread.
+        COCAINE_LOG_TRACE(log, "stopping the overseer thread");
+
+        work.reset();
+        thread.join();
+
+        COCAINE_LOG_TRACE(log, "stopping the overseer thread: done");
     }
 
     const manifest_t&
@@ -179,140 +347,64 @@ public:
 
     dynamic_t
     info() const {
-        dynamic_t::object_t info;
-
-        switch (state) {
-        case state_t::stopped:
-            info["state"] = "stopped";
-            break;
-        case state_t::spooling:
-            info["state"] = "spooling";
-            break;
-        case state_t::running:
-            info = overseer->info();
-            info["state"] = "running";
-            break;
-        case state_t::broken:
-            info["state"] = "broken";
-            break;
-        default:
-            break;
-        }
-
-        return info;
+        return boost::apply_visitor(visitor::info_t(), *state.synchronize());
     }
 
-    // Don't call this method twice, just don't do it.
     void
     spool() {
-        BOOST_ASSERT(state == state_t::stopped);
+        state.apply([&](state_type& state) {
+            const auto stopped = boost::apply_visitor(visitor::is_stopped(), state);
+            if (!stopped) {
+                throw std::logic_error("invalid state");
+            }
 
-        isolate = context.get<api::isolate_t>(
-            profile.isolate.type,
-            context,
-            manifest().name,
-            profile.isolate.args
-        );
-
-        // Do not publish the service until it started.
-        COCAINE_LOG_TRACE(log, "spooling");
-
-        state = state_t::spooling;
-        spooler = isolate->spool(std::bind(&app_state_t::on_spool, shared_from_this(), ph::_1));
+            COCAINE_LOG_TRACE(log, "app is spooling");
+            state = state::spooling_t(
+                context,
+                manifest(),
+                profile,
+                std::bind(&app_state_t::on_spool, shared_from_this(), ph::_1)
+            );
+        });
     }
 
     void
     cancel() {
-        loop->dispatch(std::bind(&app_state_t::on_cancel, shared_from_this()));
-    }
-
-    // TODO: Temporary here, use external thread.
-    void
-    stop() {
-        COCAINE_LOG_TRACE(log, "stopping the overseer thread");
-        work.reset();
-        thread.join();
-        COCAINE_LOG_TRACE(log, "stopping the overseer thread: done");
+        *state.synchronize() = state::stopped_t("manually stopped");
     }
 
 private:
     void
-    on_cancel() {
-        switch (state) {
-        case state_t::stopped:
-            break;
-        case state_t::spooling:
-            spooler->cancel();
-            break;
-        case state_t::running:
-            terminate();
-            break;
-        case state_t::broken:
-            break;
-        default:
-            break;
-        }
-    }
-
-    void
     on_spool(const std::error_code& ec) {
         if (ec) {
+            *state.synchronize() = state::stopped_t(ec.message());
+
+            // Attempt to finish node service's request.
             try {
                 deferred.abort(ec.value(), ec.message());
             } catch (const std::exception&) {
-                // Ignore.
+                // Ignore if the client has been disconnected.
             }
         } else {
+            // Dispatch the completion handler to be sure it will be called in a I/O thread to
+            // avoid possible deadlocks (which ones?).
             loop->dispatch(std::bind(&app_state_t::publish, shared_from_this()));
         }
     }
 
     void
     publish() {
-        // Create the Overseer - slave spawner/despawner plus the event queue dispatcher.
-        overseer.reset(new overseer_t(context, manifest(), profile, loop));
+        try {
+            *state.synchronize() = state::running_t(context, manifest(), profile, log.get(), loop);
+        } catch (const std::exception& err) {
+            *state.synchronize() = state::stopped_t(err.what());
+        }
 
-        // Create the event balancer.
-        // TODO: Rename method.
-        overseer->balance(std::make_unique<load_balancer_t>(overseer));
-
-        // Create a TCP server and publish it.
-        COCAINE_LOG_TRACE(log, "publishing application service with the context");
-        context.insert(manifest().name, std::make_unique<actor_t>(
-            context,
-            std::make_shared<asio::io_service>(),
-            std::make_unique<app_dispatch_t>(context, manifest().name, overseer)
-        ));
-
-        // Create an unix actor and bind to {manifest->name}.{int} unix-socket.
-        COCAINE_LOG_TRACE(log, "publishing worker service");
-        engine.reset(new unix_actor_t(
-            context,
-            manifest().endpoint,
-            std::bind(&overseer_t::prototype, overseer),
-            [](io::dispatch_ptr_t handshaker, std::shared_ptr<session_t> session) {
-                std::static_pointer_cast<const handshaker_t>(handshaker)->bind(session);
-            },
-            std::make_shared<asio::io_service>(),
-            std::make_unique<hostess_t>(manifest().name)
-        ));
-        engine->run();
-
-        state = state_t::running;
-
+        // Attempt to finish node service's request.
         try {
             deferred.close();
         } catch (const cocaine::error_t&) {
-        }
-    }
-
-    void
-    terminate() {
-        COCAINE_LOG_TRACE(log, "removing application service from the context");
-
-        if (overseer) {
-            engine->terminate();
-            overseer->terminate();
+            // Ignore if the client has been disconnected.
         }
     }
 };
@@ -333,8 +425,6 @@ app_t::~app_t() {
         } catch (...) {
             // Ignore.
         }
-
-        state->stop();
     }
 }
 
