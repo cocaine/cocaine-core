@@ -24,7 +24,6 @@
 #include "cocaine/errors.hpp"
 
 #include "cocaine/rpc/protocol.hpp"
-#include "cocaine/rpc/asio/header.hpp"
 
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
