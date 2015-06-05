@@ -369,15 +369,15 @@ public:
     }
 
     void
-    cancel() {
-        *state.synchronize() = state::stopped_t("manually stopped");
+    cancel(std::string cause = "manually stopped") {
+        *state.synchronize() = state::stopped_t(std::move(cause));
     }
 
 private:
     void
     on_spool(const std::error_code& ec) {
         if (ec) {
-            *state.synchronize() = state::stopped_t(ec.message());
+            loop->dispatch(std::bind(&app_state_t::cancel, shared_from_this(), ec.message()));
 
             // Attempt to finish node service's request.
             try {
@@ -397,7 +397,7 @@ private:
         try {
             *state.synchronize() = state::running_t(context, manifest(), profile, log.get(), loop);
         } catch (const std::exception& err) {
-            *state.synchronize() = state::stopped_t(err.what());
+            cancel(err.what());
         }
 
         // Attempt to finish node service's request.
