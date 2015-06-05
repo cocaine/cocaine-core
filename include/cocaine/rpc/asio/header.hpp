@@ -40,7 +40,7 @@ struct data_t {
     const char* blob;
     size_t size;
     bool operator==(const data_t& other) const {
-        return size == other.size && (memcmp(blob, other.blob, size) == 0);
+        return size == other.size && (std::memcmp(blob, other.blob, size) == 0);
     }
 
     template<class To>
