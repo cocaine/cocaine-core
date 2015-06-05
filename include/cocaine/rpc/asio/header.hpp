@@ -21,19 +21,17 @@
 #ifndef COCAINE_RPC_ASIO_HEADER_HPP
 #define COCAINE_RPC_ASIO_HEADER_HPP
 
-#include "cocaine/traits.hpp"
 #include "cocaine/exceptions.hpp"
+#include "cocaine/traits.hpp"
 
-#include <cstring>
-#include <array>
-#include <cassert>
-#include <functional>
-
-#include <boost/mpl/vector.hpp>
-#include <boost/mpl/find.hpp>
-#include <boost/mpl/size.hpp>
 #include <boost/mpl/contains.hpp>
+#include <boost/mpl/find.hpp>
 #include <boost/mpl/for_each.hpp>
+#include <boost/mpl/size.hpp>
+#include <boost/mpl/vector.hpp>
+
+#include <array>
+#include <cstring>
 
 namespace cocaine { namespace io  {
 namespace header {
@@ -424,11 +422,11 @@ header_table_t::push(header_t& result) {
         dest += data_upper_bound;
     }
     dest += http2_integer_encode(dest, result.name.size, 1, 0);
-    memcpy(dest, result.name.blob, result.name.size);
+    std::memcpy(dest, result.name.blob, result.name.size);
     result.name.blob = dest;
     dest += result.name.size;
     dest += http2_integer_encode(dest, value_size, 1, 0);
-    memcpy(dest, result.value.blob, value_size);
+    std::memcpy(dest, result.value.blob, value_size);
     result.value.size = value_size;
     result.value.blob = dest;
     dest += value_size;
