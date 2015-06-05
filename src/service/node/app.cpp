@@ -319,14 +319,7 @@ public:
     {
         // TODO: Temporary here, use external thread.
         thread = boost::thread([=] {
-            try {
-                // TODO: I can use node's I/O loop instead.
-                loop->run();
-            } catch (const std::exception& err) {
-                COCAINE_LOG_WARNING(log, "app thread has been unexpectedly terminated: %s", err.what());
-
-                *state.synchronize() = state::stopped_t(err.what());
-            }
+            loop->run();
         });
     }
 
