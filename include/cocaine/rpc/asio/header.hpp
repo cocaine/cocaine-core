@@ -87,19 +87,17 @@ data_t
 create_data<const char*&>(const char*& source) {
     return data_t{source, strlen(source)};
 }
+} // namespace header
 
-
-}
-
+struct headers;
 // Header class.
 // Represents non-owning header referring to some external memory.
 // Can be constructed only via header table
 class header_t {
 public:
-
     header_t(const header_t&) = default;
     header_t& operator=(const header_t&) = default;
-    header_t() = default;
+    header_t(): name(), value() {}
 
     // Create non-owning header on user-provided data
     template<class Header>
@@ -127,29 +125,36 @@ public:
         return name == other.name;
     }
 
+    // Returns size of the header entry in http2 header table
+    inline
+    size_t
+    http2_size() const;
+
     friend struct header_traits;
+    friend struct io::headers;
     friend struct header_static_table_t;
 
 private:
+    friend class header_table_t;
+
     inline
     header_t(const header::data_t& _name, const header::data_t& _value) noexcept;
 
     inline
     header_t(const char* _name, size_t name_sz, const char* _value, size_t value_sz) noexcept;
 
-    friend class header_table_t;
-
-    // Returns size of the header entry in http2 header table
-    inline
-    size_t
-    http2_size() const;
-
     header::data_t name;
     header::data_t value;
-    size_t table_index;
 };
 
 struct headers {
+    template<class Header>
+    static
+    header_t
+    make_header() {
+        return header_t(Header::name(), Header::value());
+    }
+
     struct default_values_t {
         struct zero_uint_value_t {
             static
@@ -168,6 +173,23 @@ struct headers {
                 return header::create_data("");
             }
         };
+    };
+
+    template<class DefaultValue = default_values_t::empty_string_value_t>
+    struct empty {
+        static
+        constexpr
+        header::data_t
+        name() {
+            return header::create_data("");
+        }
+
+        static
+        constexpr
+        header::data_t
+        value() {
+            return DefaultValue::value();
+        }
     };
 
     template<class DefaultValue = default_values_t::zero_uint_value_t>
@@ -224,17 +246,28 @@ struct headers {
 
 struct header_static_table_t {
     typedef boost::mpl::vector<
+        headers::empty<>,
         headers::span_id<>,
         headers::trace_id<>,
         headers::parent_id<>
     > headers;
 
+    typedef std::array<header_t, size> storage_t;
+
     static constexpr size_t size = boost::mpl::size<headers>::type::value;
 
     static
-    const std::array<header_t, size>&
+    constexpr
+    size_t
+    get_size() {
+        return size;
+    }
+
+
+    static
+    const storage_t&
     get_headers() {
-        static std::array<header_t, size> storage = init_data();
+        static storage_t storage = init_data();
         return storage;
     }
 
@@ -249,21 +282,25 @@ struct header_static_table_t {
 
 private:
     struct init_header_t {
+        init_header_t() :
+            data(std::make_shared<storage_t>())
+        {}
         template<class Header>
         void
         operator()(Header) {
-            data[boost::mpl::find<headers, Header>::type::pos::value].name = Header::name();
-            data[boost::mpl::find<headers, Header>::type::pos::value].value = Header::value();
+            (*data)[boost::mpl::find<headers, Header>::type::pos::value].name = Header::name();
+            (*data)[boost::mpl::find<headers, Header>::type::pos::value].value = Header::value();
         }
-        std::array<header_t, size> data;
+        //this is because mpl::for_each copies functor;
+        std::shared_ptr<storage_t> data;
     };
 
     static
-    std::array<header_t, size>
+    storage_t
     init_data() {
-        init_header_t init;
+        init_header_t init = init_header_t();
         boost::mpl::for_each<headers>(init);
-        return init.data;
+        return *(init.data);
     }
 };
 
@@ -296,7 +333,15 @@ public:
 
     inline
     size_t
+    data_size() const;
+
+    inline
+    size_t
     size() const;
+
+    inline
+    size_t
+    data_capacity() const;
 
     inline
     bool
@@ -373,11 +418,12 @@ size_t
 header_t::http2_size() const {
     // 1 refer to string literals which has size with 1-bit padding.
     // See https://tools.ietf.org/html/draft-ietf-httpbis-header-compression-12#section-5.2
-    return name.size + http2_integer_size(name.size, 1) + value.size + http2_integer_size(value.size, 1);
+    return name.size + http2_integer_size(name.size, 1) + value.size + http2_integer_size(value.size, 1) + header_table_t::http2_header_overhead;
 }
 
 header_table_t::header_table_t() :
     header_lower_bound(0),
+    data_lower_bound_end(0),
     header_upper_bound(0),
     data_lower_bound(0),
     data_upper_bound(0),
@@ -385,12 +431,26 @@ header_table_t::header_table_t() :
 {}
 
 size_t
-header_table_t::size() const {
-    if(data_upper_bound > data_lower_bound) {
-        return header_static_table_t::size + data_upper_bound - data_lower_bound;
+header_table_t::data_size() const {
+    if(data_upper_bound >= data_lower_bound) {
+        return data_upper_bound - data_lower_bound;
     } else {
-        return header_static_table_t::size + data_lower_bound_end - data_lower_bound + data_upper_bound;
+        return data_lower_bound_end - data_lower_bound + data_upper_bound;
     }
+}
+
+size_t
+header_table_t::size() const {
+    if(header_upper_bound >= header_lower_bound) {
+        return header_upper_bound - header_lower_bound;
+    } else {
+        return headers.size() - header_lower_bound + header_upper_bound;
+    }
+}
+
+size_t
+header_table_t::data_capacity() const {
+    return capacity;
 }
 
 bool
@@ -400,19 +460,15 @@ header_table_t::empty() const {
 
 void
 header_table_t::push(header_t& result) {
-
-    // Proceed to encode header to table
-    size_t value_size_size = http2_integer_size(result.value.size, 1);
-    size_t value_size = result.value.size;
-    size_t header_size = http2_header_overhead + result.name.size + http2_integer_size(result.name.size, 1) + value_size_size + value_size;
+    size_t header_size = result.http2_size();
 
     // Pop headers from table until there is enough room for new one or table is empty
-    while(size() + header_size > capacity && !empty()) {
+    while(data_size() + header_size > capacity && !empty()) {
         pop();
     }
 
     // Header do not fit in the table. According to RFC we just clean the table and do not put the header inside.
-    if(empty() && size() + header_size > capacity) {
+    if(empty() && data_size() + header_size > capacity) {
         return;
     }
 
@@ -424,6 +480,11 @@ header_table_t::push(header_t& result) {
         // Now data starts in data_lower_bound, some header ends in data_lower_bound_end and next part will start from the beginning.
         // It is guaranteed that there is enough free space in the beginning as we've done pop before.
         data_lower_bound_end = data_upper_bound;
+        // If there is no actual data, move bound to the beginning
+        if(data_lower_bound == data_lower_bound_end) {
+            data_lower_bound = 0;
+            data_lower_bound_end = 0;
+        }
     } else {
         // Ok, header fits right after previous one.
         dest += data_upper_bound;
@@ -441,15 +502,16 @@ header_table_t::push(header_t& result) {
     dest += result.name.size;
 
     // Encode size of the value of the header
-    dest += http2_integer_encode(dest, value_size, 1, 0);
+    dest += http2_integer_encode(dest, result.value.size, 1, 0);
+
     // Encode value of the value of the header (plain copy)
-    std::memcpy(dest, result.value.blob, value_size);
+    std::memcpy(dest, result.value.blob, result.value.size);
 
     // Make header value point to data in the table
     result.value.blob = dest;
 
     // Adjust buffer pointer
-    dest += value_size;
+    dest += result.value.size + http2_header_overhead;
 
     // Save header itself in header circular buffer (array) to make header navigation easier
     // It is guaranteed not to overwrite old data which is still in use, as size of dynamic table is limited.
@@ -466,13 +528,14 @@ header_table_t::push(header_t& result) {
 void
 header_table_t::pop() {
     size_t header_size = headers[header_lower_bound].http2_size();
-    header_lower_bound++;
-    if(header_lower_bound >= headers.size()) {
-        header_lower_bound = 0;
-    }
     data_lower_bound+=header_size;
     if(data_lower_bound == data_lower_bound_end) {
         data_lower_bound = 0;
+    }
+
+    header_lower_bound++;
+    if(header_lower_bound >= headers.size()) {
+        header_lower_bound = 0;
     }
 }
 
@@ -485,16 +548,16 @@ header_table_t::find(const std::function<bool(const header_t&)> comp) {
     if(header_lower_bound <= header_upper_bound) {
         auto dyn_it = std::find_if(headers.data() + header_lower_bound, headers.data() + header_upper_bound, comp);
         if(dyn_it != headers.data() + header_upper_bound) {
-            return header_static_table_t::size - 1 + (dyn_it - (headers.data() + header_lower_bound));
+            return header_static_table_t::size + (dyn_it - (headers.data() + header_lower_bound));
         }
     } else {
         auto dyn_it = std::find_if(headers.data(), headers.data() + header_upper_bound, comp);
         if(dyn_it != headers.data() + header_upper_bound) {
-            return header_static_table_t::size - 1 + (dyn_it - headers.data());
+            return header_static_table_t::size + (dyn_it - headers.data());
         }
         dyn_it = std::find_if(headers.data() + header_lower_bound, headers.end(), comp);
         if(dyn_it != headers.end()) {
-            return header_static_table_t::size - 1 + (dyn_it - (headers.data() + header_lower_bound));
+            return header_static_table_t::size + (dyn_it - (headers.data() + header_lower_bound));
         }
     }
     return 0;
@@ -503,6 +566,7 @@ header_table_t::find(const std::function<bool(const header_t&)> comp) {
 const header_t&
 header_table_t::operator[](size_t idx) {
     assert(idx != 0);
+    assert(idx < headers.size());
     if(idx < header_static_table_t::size) {
         return header_static_table_t::get_headers()[idx];
     }
@@ -525,10 +589,11 @@ http2_integer_size(size_t sz, size_t bit_offset) {
     if(sz < (1 << (8 - bit_offset))) {
         return 1;
     }
-    size_t ret = 1;
+    // One byte is first and we start to write in second one
+    size_t ret = 2;
     sz -= (1 << (8 - bit_offset));
     while(sz > 127) {
-        sz = sz << 7;
+        sz = sz >> 7;
         ret++;
     }
     return ret;
@@ -549,6 +614,7 @@ http2_integer_encode(char* dest, size_t source, size_t bit_offset, char prefix) 
     }
     dest[0] += first_byte_cap;
     source -= first_byte_cap;
+    // One byte is first and we start to write in second one
     size_t ret = 2;
     while(source > 127) {
         dest[ret-1] = 128 + source % 128;
