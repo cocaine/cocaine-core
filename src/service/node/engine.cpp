@@ -517,9 +517,8 @@ engine_t::balance() {
             std::bind(&engine_t::erase, this, ph::_1, ph::_2, ph::_3),
             m_loop
         );
-        slave->activate();
+        m_loop.post(std::bind(&slave_t::activate, slave));
         m_pool[id] = std::move(slave);
-
     }
 }
 
