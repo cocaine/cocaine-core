@@ -108,12 +108,32 @@ private:
     }
 };
 
+/// \note originally there was `boost::variant`, but in 1.46 it has no idea about move-only types.
 namespace state {
 
+class base_t {
+public:
+    virtual
+    ~base_t() {}
+
+    virtual
+    bool
+    stopped() noexcept {
+        return false;
+    }
+
+    virtual
+    dynamic_t::object_t
+    info() const = 0;
+};
+
 /// The application is stopped either normally or abnormally.
-struct stopped_t {
+class stopped_t:
+    public base_t
+{
     std::string cause;
 
+public:
     stopped_t() noexcept:
         cause("uninitialized")
     {}
@@ -122,13 +142,31 @@ struct stopped_t {
     stopped_t(std::string cause) noexcept:
         cause(std::move(cause))
     {}
+
+    virtual
+    bool
+    stopped() noexcept {
+        return true;
+    }
+
+    virtual
+    dynamic_t::object_t
+    info() const {
+        dynamic_t::object_t info;
+        info["state"] = "stopped";
+        info["cause"] = cause;
+        return info;
+    }
 };
 
 /// The application is currently spooling.
-struct spooling_t {
+class spooling_t:
+    public base_t
+{
     std::shared_ptr<api::isolate_t> isolate;
     std::unique_ptr<api::cancellation_t> spooler;
 
+public:
     template<class F>
     spooling_t(context_t& context, const manifest_t& manifest, const profile_t& profile, F cb) {
         isolate = context.get<api::isolate_t>(
@@ -141,33 +179,29 @@ struct spooling_t {
         spooler = isolate->spool(std::move(cb));
     }
 
-    spooling_t(spooling_t&& other) noexcept:
-        isolate(std::move(other.isolate)),
-        spooler(std::move(other.spooler))
-    {}
-
     ~spooling_t() {
-        if (spooler) {
-            spooler->cancel();
-        }
+        spooler->cancel();
     }
 
-    spooling_t&
-    operator=(spooling_t&& other) noexcept {
-        isolate = std::move(other.isolate);
-        spooler = std::move(other.spooler);
-
-        return *this;
+    virtual
+    dynamic_t::object_t
+    info() const {
+        dynamic_t::object_t info;
+        info["state"] = "spooling";
+        return info;
     }
 };
 
 /// The application has been published and currently running.
-struct running_t {
+class running_t:
+    public base_t
+{
     const logging::log_t* log;
 
     std::unique_ptr<unix_actor_t> engine;
     std::shared_ptr<overseer_t> overseer;
 
+public:
     running_t(context_t& context,
               const manifest_t& manifest,
               const profile_t& profile,
@@ -205,77 +239,23 @@ struct running_t {
         engine->run();
     }
 
-    running_t(running_t&& other) noexcept:
-        log(other.log),
-        engine(std::move(other.engine)),
-        overseer(std::move(other.overseer))
-    {}
-
     ~running_t() {
-        if (engine && overseer) {
-            COCAINE_LOG_TRACE(log, "removing application service from the context");
+        COCAINE_LOG_TRACE(log, "removing application service from the context");
 
-            engine->terminate();
-            overseer->terminate();
-        }
+        engine->terminate();
+        overseer->terminate();
     }
 
-    running_t&
-    operator=(running_t&& other) noexcept {
-        log = other.log;
-        engine = std::move(other.engine);
-        overseer = std::move(other.overseer);
-
-        return *this;
-    }
-};
-
-} // namespace state
-
-namespace visitor {
-
-struct is_stopped:
-    public boost::static_visitor<bool>
-{
-    bool
-    operator()(const state::stopped_t&) const {
-        return true;
-    }
-
-    template<class T>
-    bool
-    operator()(const T&) const {
-        return false;
-    }
-};
-
-struct info_t:
-    public boost::static_visitor<dynamic_t::object_t>
-{
+    virtual
     dynamic_t::object_t
-    operator()(const state::stopped_t& state) const {
-        dynamic_t::object_t info;
-        info["state"] = "stopped";
-        info["cause"] = state.cause;
-        return info;
-    }
-
-    dynamic_t::object_t
-    operator()(const state::spooling_t&) const {
-        dynamic_t::object_t info;
-        info["state"] = "spooling";
-        return info;
-    }
-
-    dynamic_t::object_t
-    operator()(const state::running_t& state) const {
-        dynamic_t::object_t info = state.overseer->info();
+    info() const {
+        dynamic_t::object_t info = overseer->info();
         info["state"] = "running";
         return info;
     }
 };
 
-} // namespace visitor
+} // namespace state
 
 class cocaine::service::node::app_state_t:
     public std::enable_shared_from_this<app_state_t>
@@ -284,11 +264,7 @@ class cocaine::service::node::app_state_t:
 
     context_t& context;
 
-    typedef boost::variant<
-        state::stopped_t,
-        state::spooling_t,
-        state::running_t
-    > state_type;
+    typedef std::unique_ptr<state::base_t> state_type;
 
     synchronized<state_type> state;
 
@@ -310,27 +286,27 @@ public:
                 cocaine::deferred<void> deferred_):
         log(context.log(format("%s/app", manifest_.name))),
         context(context),
-        state(state::stopped_t()),
+        state(new state::stopped_t),
         deferred(std::move(deferred_)),
         manifest_(std::move(manifest_)),
         profile(std::move(profile_)),
         loop(std::make_shared<asio::io_service>()),
         work(std::make_unique<asio::io_service::work>(*loop))
     {
-        // TODO: Temporary here, use external thread.
+        COCAINE_LOG_TRACE(log, "application has initialized its internal state");
+
         thread = boost::thread([=] {
             loop->run();
         });
     }
 
     ~app_state_t() {
-        // TODO: Temporary here, use external thread.
-        COCAINE_LOG_TRACE(log, "stopping the overseer thread");
+        COCAINE_LOG_TRACE(log, "application is destroying its internal state");
 
         work.reset();
         thread.join();
 
-        COCAINE_LOG_TRACE(log, "stopping the overseer thread: done");
+        COCAINE_LOG_TRACE(log, "application has destroyed its internal state");
     }
 
     const manifest_t&
@@ -340,30 +316,29 @@ public:
 
     dynamic_t
     info() const {
-        return boost::apply_visitor(visitor::info_t(), *state.synchronize());
+        return (*state.synchronize())->info();
     }
 
     void
     spool() {
         state.apply([&](state_type& state) {
-            const auto stopped = boost::apply_visitor(visitor::is_stopped(), state);
-            if (!stopped) {
+            if (!state->stopped()) {
                 throw std::logic_error("invalid state");
             }
 
             COCAINE_LOG_TRACE(log, "app is spooling");
-            state = state::spooling_t(
+            state.reset(new state::spooling_t(
                 context,
                 manifest(),
                 profile,
                 std::bind(&app_state_t::on_spool, shared_from_this(), ph::_1)
-            );
+            ));
         });
     }
 
     void
     cancel(std::string cause = "manually stopped") {
-        *state.synchronize() = state::stopped_t(std::move(cause));
+        state.synchronize()->reset(new state::stopped_t(std::move(cause)));
     }
 
 private:
@@ -388,7 +363,9 @@ private:
     void
     publish() {
         try {
-            *state.synchronize() = state::running_t(context, manifest(), profile, log.get(), loop);
+            state.synchronize()->reset(
+                new state::running_t(context, manifest(), profile, log.get(), loop)
+            );
         } catch (const std::exception& err) {
             cancel(err.what());
         }
@@ -402,7 +379,10 @@ private:
     }
 };
 
-app_t::app_t(context_t& context, const std::string& manifest, const std::string& profile, cocaine::deferred<void> deferred):
+app_t::app_t(context_t& context,
+             const std::string& manifest,
+             const std::string& profile,
+             cocaine::deferred<void> deferred):
     context(context),
     state(std::make_shared<app_state_t>(context, manifest_t(context, manifest), profile_t(context, profile), deferred))
 {
