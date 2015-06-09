@@ -23,9 +23,12 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/trace/logger/blackhole.hpp"
+
 #include <blackhole/blackhole.hpp>
 #include <blackhole/keyword.hpp>
 #include <blackhole/logger/wrapper.hpp>
+
 
 #define COCAINE_LOG(_log_, _level_, ...) \
     if(auto _record_ = ::cocaine::logging::detail::logger_ptr(_log_)->open_record(_level_)) \

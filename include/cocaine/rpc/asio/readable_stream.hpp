@@ -32,6 +32,7 @@
 #include <asio/basic_stream_socket.hpp>
 
 #include <cstring>
+#include <functional>
 
 namespace cocaine { namespace io {
 
@@ -78,7 +79,7 @@ public:
             if(!ec) {
                 m_rx_offset += bytes_decoded;
             }
-            return m_channel->get_io_service().post(trace_t::bind(handle, ec));
+            return m_channel->get_io_service().post(cocaine::trace_t::bind(handle, ec));
         }
 
         if(m_rx_offset) {

@@ -225,8 +225,6 @@ context_t::engine() {
 void
 context_t::bootstrap() {
 
-    trace_t::set_logger(&m_logger->log());
-
     COCAINE_LOG_INFO(m_logger, "starting %d execution unit(s)", config.network.pool);
 
     while(m_pool.size() != config.network.pool) {

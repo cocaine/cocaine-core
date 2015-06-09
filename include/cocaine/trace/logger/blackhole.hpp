@@ -21,56 +21,61 @@
 #ifndef COCAINE_TRACER_LOGGER_BLACKHOLE
 #define COCAINE_TRACER_LOGGER_BLACKHOLE
 
-#include <cocaine/context.hpp>
-#include "cocaine/trace/logger.hpp"
-namespace cocaine { namespace tracer {
+#include "cocaine/trace/trace.hpp"
 
-class bh_atttribute_scope_t : public attribute_scope_t {
-public:
-    bh_atttribute_scope_t(logging::logger_t& logger, blackhole::attribute::set_t attributes) :
-        scope(logger, std::move(attributes))
-    {}
+#include <blackhole/logger/wrapper.hpp>
 
-    virtual
-    ~bh_atttribute_scope_t() {}
-private:
-    blackhole::scoped_attributes_t scope;
+namespace cocaine { namespace logging {
+//class blackhole_logger :public cocaine::logging::log_t
+
+struct trace_attribute_fetcher_t {
+    blackhole::attribute::set_t
+    operator()() const {
+        return trace_t::current().attributes<blackhole::attribute::set_t>();
+    }
 };
 
+template<class Wrapped, class AttributeFetcher>
+class dynamic_wrapper_t:
+public blackhole::wrapper_base_t<Wrapped>
+{
+    static_assert(std::is_same<
+                  typename blackhole::unwrap<Wrapped>::logger_type,
+                  blackhole::verbose_logger_t<typename blackhole::unwrap<Wrapped>::logger_type::level_type>
+              >::value, "Invalid logger type for dynamic wrapper");
+    typedef blackhole::wrapper_base_t<Wrapped> base_type;
 
-class blackhole_logger_t : public logger_t {
 public:
-    /*
-     * Valid only when logger is in scope, so lifetime should be controlled manually.
-     */
-    inline
-    blackhole_logger_t(logging::logger_t& _logger) :
-        logger(_logger, blackhole::attribute::set_t())
-    {
+    typedef typename base_type::underlying_type underlying_type;
+
+public:
+    dynamic_wrapper_t(underlying_type& wrapped, blackhole::attribute::set_t attributes) :
+        base_type(wrapped, std::move(attributes))
+    {}
+
+    dynamic_wrapper_t(const dynamic_wrapper_t& wrapper, const blackhole::attribute::set_t& attributes) :
+        base_type(wrapper, attributes)
+    {}
+
+    dynamic_wrapper_t(dynamic_wrapper_t&& other) :
+        base_type(std::move(other))
+    {}
+
+    dynamic_wrapper_t& operator=(dynamic_wrapper_t&& other) {
+        base_type::operator =(std::move(other));
+        return *this;
     }
 
-    inline
-    blackhole_logger_t(logging::log_t& _logger) :
-        blackhole_logger_t(_logger.log())
-    {
+    template<typename Level>
+    blackhole::record_t
+    open_record(Level level, blackhole::attribute::set_t attributes = blackhole::attribute::set_t()) const {
+        // TODO: Do this under lock or drop assignment.
+        AttributeFetcher fetcher;
+        const auto& dynamic_attributes = fetcher();
+        std::copy(this->attributes.begin(), this->attributes.end(), std::back_inserter(attributes));
+        std::copy(dynamic_attributes.begin(), dynamic_attributes.end(), std::back_inserter(attributes));
+        return this->wrapped->open_record(level, std::move(attributes));
     }
-
-    virtual
-    void
-    log_impl(std::string message, blackhole::attribute::set_t attributes) {
-        if(auto record = logger.open_record(::cocaine::logging::info, std::move(attributes))) {
-            ::blackhole::aux::logger::make_pusher(logger, record, message.c_str());
-        }
-    }
-
-    virtual
-    std::unique_ptr<attribute_scope_t>
-    get_scope(blackhole::attribute::set_t attributes) {
-        return std::unique_ptr<attribute_scope_t>(new bh_atttribute_scope_t(logger.log(), std::move(attributes)));
-    }
-
-private:
-    logging::log_t logger;
 };
 
 }}

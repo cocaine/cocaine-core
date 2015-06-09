@@ -26,50 +26,72 @@
 
 namespace cocaine {
 
-template<class Logger, class ScopedAttribute, class AttributeSet>
+class trace_t::restore_scope_t {
+public:
+    restore_scope_t(const boost::optional<trace_t>& new_trace) :
+        old_span(new_trace)
+    {
+        if(new_trace) {
+            trace_t::current() = new_trace.get();
+        }
+    }
+    ~restore_scope_t() {
+        if(old_span) {
+            trace_t::current() = old_span.get();
+        }
+    }
+private:
+    boost::optional<trace_t> old_span;
+};
+
+class trace_t::push_scope_t {
+public:
+    template<class RpcStr>
+    push_scope_t(const RpcStr& _rpc_name){
+        trace_t::current().push(_rpc_name);
+    }
+
+    ~push_scope_t() {
+        trace_t::current().pop();
+    }
+};
+
 template <class F>
-class trace<Logger, ScopedAttribute, AttributeSet>::callable_wrapper_t
+class trace_t::callable_wrapper_t
 {
 public:
-    typedef trace<Logger, ScopedAttribute, AttributeSet> trace_type;
     inline
     callable_wrapper_t(F&& _f) :
         f(std::move(_f)),
-        stored_trace(trace_type::current())
+        stored_trace(trace_t::current())
     {}
 
     template<class ...Args>
     auto
     operator()(Args&& ...args) -> decltype(std::declval<F>()(args...)) {
         restore_scope_t scope(stored_trace);
-        ScopedAttribute attr_scope(*trace_type::get_logger(), stored_trace.attributes());
         return f(std::forward<Args>(args)...);
     }
 
 private:
     F f;
-    trace_type stored_trace;
+    trace_t stored_trace;
 };
 
-template<class Logger, class ScopedAttribute, class AttributeSet>
 template<class... Args>
 auto
-trace<Logger, ScopedAttribute, AttributeSet>::bind(Args&& ...args)
--> callable_wrapper_t<decltype(std::bind(std::forward<Args>(args)...))>
-{
+trace_t::bind(Args&& ...args) -> callable_wrapper_t<decltype(std::bind(std::forward<Args>(args)...))> {
     typedef callable_wrapper_t<decltype(std::bind(std::forward<Args>(args)...))> Result;
     return Result(std::bind(std::forward<Args>(args)...));
 }
 
-template<class Logger, class ScopedAttribute, class AttributeSet>
 template<class Method>
 auto
-trace<Logger, ScopedAttribute, AttributeSet>::mem_fn(Method m)
--> callable_wrapper_t<decltype(std::mem_fn(std::forward<Method>(m)))>
-{
+trace_t::mem_fn(Method m) -> callable_wrapper_t<decltype(std::mem_fn(std::forward<Method>(m)))> {
     typedef callable_wrapper_t<decltype(std::mem_fn(std::forward<Method>(m)))> Result;
     return Result(std::mem_fn(std::forward<Method>(m)));
 }
-}
+
+} // namespace cocaine
 #endif // TRACE_IMPL_HPP
 

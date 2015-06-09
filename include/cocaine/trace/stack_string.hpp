@@ -18,16 +18,43 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <string>
 
-#ifndef COCAINE_TRACE_CORE_HPP
-#define COCAINE_TRACE_CORE_HPP
-
-#include "cocaine/trace/trace.hpp"
-#include "cocaine/logging.hpp"
-
-#include <blackhole/scoped_attributes.hpp>
+#ifndef COCAINE_TRACE_STACK_STRING_HPP
+#define COCAINE_TRACE_STACK_STRING_HPP
 namespace cocaine {
-typedef trace<logging::logger_t, blackhole::scoped_attributes_t, blackhole::attribute::set_t> trace_t;
+
+template<size_t N>
+struct stack_str_t {
+    static constexpr size_t max_size = N;
+    char blob[N+1];
+    size_t size;
+
+    stack_str_t(const char* lit) {
+        memcpy(blob, lit, std::min(N, strlen(lit)));
+        blob[N] = '\0';
+    }
+
+    stack_str_t(const char* lit, size_t sz) {
+        memcpy(blob, lit, std::min(N, sz));
+        blob[N] = '\0';
+    }
+
+    stack_str_t(const std::string& source) {
+        memcpy(blob, source.c_str(), std::min(N, source.size()));
+        blob[N] = '\0';
+    }
+
+    stack_str_t() :
+        blob(),
+        size(0)
+    {}
+
+    void reset() {
+        size = 0;
+    }
+};
+
 }
-#endif // COCAINE_TRACE_CORE_HPP
+#endif // COCAINE_TRACE_STACK_STRING_HPP
 
