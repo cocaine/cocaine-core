@@ -152,7 +152,7 @@ actor_t::endpoints() const {
             if(ptr) {
                 return ptr->local_endpoint();
             } else {
-                throw std::system_error(asio::error::not_connected);
+                throw std::system_error(std::make_error_code(std::errc::not_connected));
             }
         });
 
@@ -205,8 +205,7 @@ actor_t::run() {
             });
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
-                e.code().value(),
-                e.code().message());
+                e.code().value(), e.code().message());
             throw;
         }
 

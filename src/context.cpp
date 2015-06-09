@@ -83,7 +83,7 @@ context_t::~context_t() {
     for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
         try {
             actors.push_back(remove(it->first));
-        } catch(const cocaine::error_t& e) {
+        } catch(...) {
             // A service might be absent because it has failed to start during the bootstrap.
             continue;
         }
@@ -250,34 +250,32 @@ context_t::bootstrap() {
                 it->first,
                 it->second.args
             )));
-        } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_logger, "unable to initialize service: %s", e.what());
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(m_logger, "unable to initialize service: [%d] %s", e.code().value(),
+                e.code().message());
             errored.push_back(it->first);
-        } catch(...) {
-            COCAINE_LOG_ERROR(m_logger, "unable to initialize service");
+        } catch(const std::exception& e) {
+            COCAINE_LOG_ERROR(m_logger, "unable to initialize service: %s",
+                e.what());
             errored.push_back(it->first);
         }
     }
 
     if(!errored.empty()) {
+        COCAINE_LOG_ERROR(m_logger, "emergency core shutdown");
+
         std::ostringstream stream;
         std::ostream_iterator<char> builder(stream);
 
-        boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
-
-        COCAINE_LOG_ERROR(m_logger, "coudn't start %d service(s): %s", errored.size(), stream.str());
-
-        m_signals.invoke<context::shutdown>();
+        m_signals.invoke<io::context::shutdown>();
 
         while(!m_services->empty()) {
             m_services->back().second->terminate();
             m_services->pop_back();
         }
 
-        COCAINE_LOG_ERROR(m_logger, "emergency core shutdown");
+        boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
 
-        throw cocaine::error_t("couldn't start %d service(s)", errored.size());
-    } else {
-        m_signals.invoke<context::prepared>();
+        throw cocaine::error_t("couldn't start %d service(s): %s", errored.size(), stream.str());
     }
 }

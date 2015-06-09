@@ -220,7 +220,7 @@ main(int argc, char* argv[]) {
 
     try {
         config.reset(new config_t(vm["configuration"].as<std::string>()));
-    } catch(const cocaine::error_t& e) {
+    } catch(const std::system_error& e) {
         std::cerr << cocaine::format("ERROR: unable to initialize the configuration - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
@@ -244,7 +244,7 @@ main(int argc, char* argv[]) {
 
         try {
             pidfile.reset(new pid_file_t(pid_path));
-        } catch(const cocaine::error_t& e) {
+        } catch(const std::system_error& e) {
             std::cerr << cocaine::format("ERROR: unable to create the pidfile - %s.", e.what()) << std::endl;
             return EXIT_FAILURE;
         }
@@ -274,7 +274,7 @@ main(int argc, char* argv[]) {
 
     try {
         context.reset(new context_t(*config, std::move(wrapper)));
-    } catch(const cocaine::error_t& e) {
+    } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(logger, "unable to initialize the context - %s.", e.what());
         return EXIT_FAILURE;
     }

@@ -64,19 +64,19 @@ cached<T>::cached(context_t& context, const std::string& collection, const std::
 
     try {
         cache = api::storage(context, "cache");
-    } catch(const api::repository_error_t& e) {
+    } catch(const std::system_error& e) {
         download(context, collection, name);
         return;
     }
 
     try {
         object() = cache->get<T>(collection, name);
-    } catch(const storage_error_t& e) {
+    } catch(const std::system_error& e) {
         download(context, collection, name);
 
         try {
             cache->put(collection, name, object(), std::vector<std::string>());
-        } catch(const storage_error_t& e) {
+        } catch(const std::system_error& e) {
             // Ignore.
         }
 

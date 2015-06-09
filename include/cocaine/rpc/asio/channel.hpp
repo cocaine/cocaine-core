@@ -49,7 +49,7 @@ struct channel {
         try {
             socket->shutdown(socket_type::shutdown_both);
             socket->close();
-        } catch(const std::system_error&) {
+        } catch(...) {
             // Might be already disconnected by the remote peer, so ignore all errors.
         }
     }

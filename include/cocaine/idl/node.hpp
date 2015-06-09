@@ -152,4 +152,26 @@ struct protocol<node_tag> {
 
 }} // namespace cocaine::io
 
+namespace cocaine { namespace error {
+
+enum node_errors {
+    deadline_error = 1,
+    resource_error,
+    timeout_error
+};
+
+auto
+make_error_code(node_errors code) -> std::error_code;
+
+}} // namespace cocaine::error
+
+namespace std {
+
+template<>
+struct is_error_code_enum<cocaine::error::node_errors>:
+    public true_type
+{ };
+
+} // namespace std
+
 #endif

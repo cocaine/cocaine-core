@@ -62,4 +62,13 @@ public:
 
 }} // namespace cocaine::isolate
 
+#ifdef COCAINE_ALLOW_CGROUPS
+namespace cocaine { namespace error {
+
+auto
+cgroup_category() -> const std::error_category&;
+
+}} // namespace cocaine::error
+#endif
+
 #endif

@@ -108,7 +108,7 @@ struct cgroup_configurator_t:
     template<class T>
     void
     operator()(const T& COCAINE_UNUSED_(value)) const {
-        throw cocaine::error_t("parameter type is not supported");
+        throw std::system_error(std::make_error_code(std::errc::invalid_argument));
     }
 
 private:
@@ -125,7 +125,7 @@ struct cgroup_category_t:
     virtual
     auto
     name() const throw() -> const char* {
-        return "cocaine.isolate.cgroups";
+        return "cocaine.isolate.process.cgroups";
     }
 
     virtual
@@ -134,15 +134,21 @@ struct cgroup_category_t:
         return cgroup_strerror(code);
     }
 };
+#endif
+
+} // namespace
+
+#ifdef COCAINE_ALLOW_CGROUPS
+namespace cocaine { namespace error {
 
 auto
 cgroup_category() -> const std::error_category& {
     static cgroup_category_t instance;
     return instance;
 }
-#endif
 
-} // namespace
+}} // namespace cocaine::error
+#endif
 
 process_t::process_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
@@ -155,7 +161,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     int rv = 0;
 
     if((rv = cgroup_init()) != 0) {
-        throw std::system_error(rv, cgroup_category(), "unable to initialize cgroups");
+        throw std::system_error(rv, error::cgroup_category(), "unable to initialize cgroups");
     }
 
     m_cgroup = cgroup_new_cgroup(m_name.c_str());
@@ -177,7 +183,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
 
             try {
                 it->second.apply(cgroup_configurator_t(ptr, it->first.c_str()));
-            } catch(const cocaine::error_t& e) {
+            } catch(const std::system_error& e) {
                 COCAINE_LOG_ERROR(m_log, "unable to set cgroup controller '%s' parameter '%s' - %s",
                     type->first, it->first, e.what()
                 );
@@ -188,7 +194,7 @@ process_t::process_t(context_t& context, const std::string& name, const dynamic_
     if((rv = cgroup_create_cgroup(m_cgroup, false)) != 0) {
         cgroup_free(&m_cgroup);
 
-        throw std::system_error(rv, cgroup_category(), "unable to create cgroup");
+        throw std::system_error(rv, error::cgroup_category(), "unable to create cgroup");
     }
 #endif
 }

@@ -1,6 +1,6 @@
 /*
-    Copyright (c) 2013-2014 Andrey Goryachev <andrey.goryachev@gmail.com>
-    Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
+    Copyright (c) 2011-2015 Andrey Sibiryov <me@kobology.ru>
+    Copyright (c) 2011-2015 Other contributors as noted in the AUTHORS file.
 
     This file is part of Cocaine.
 
@@ -18,29 +18,39 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_IO_FROZEN_SERIALIZATION_TRAITS_HPP
-#define COCAINE_IO_FROZEN_SERIALIZATION_TRAITS_HPP
+#ifndef COCAINE_ERROR_CODE_SERIALIZATION_TRAITS_HPP
+#define COCAINE_ERROR_CODE_SERIALIZATION_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
 
-#include "cocaine/rpc/frozen.hpp"
+#include <system_error>
 
 namespace cocaine { namespace io {
 
-template<class Event>
-struct type_traits<frozen<Event>> {
+template<>
+struct type_traits<std::error_code> {
+    typedef boost::mpl::list<int, int>::type sequence_type;
+
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& target, const frozen<Event>& source) {
-        type_traits<typename frozen<Event>::tuple_type>::pack(target, source.tuple);
+    pack(msgpack::packer<Stream>& target, const std::error_code& source) {
+        int category_id = error::registrar::map(source.category());
+        int ec          = source.value();
+
+        type_traits<sequence_type>::pack(target, category_id, ec);
     }
 
     static inline
     void
-    unpack(const msgpack::object& source, frozen<Event>& target) {
-        type_traits<typename frozen<Event>::tuple_type>::unpack(source, target.tuple);
+    unpack(const msgpack::object& source, std::error_code& target) {
+        int category_id;
+        int ec;
+
+        type_traits<sequence_type>::unpack(source, category_id, ec);
+
+        target.assign(ec, error::registrar::map(category_id));
     }
 };
 

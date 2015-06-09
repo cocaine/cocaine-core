@@ -84,8 +84,8 @@ private:
     }
 
     void
-    error(int code, const std::string& reason) {
-        downstream->error(code, reason);
+    error(const std::error_code& ec, const std::string& reason) {
+        downstream->error(ec.value(), reason);
         downstream->close();
     }
 
@@ -144,7 +144,7 @@ private:
         virtual
         void
         error(int code, const std::string& reason) {
-            upstream.send<protocol::error>(code, reason);
+            upstream.send<protocol::error>(std::error_code(code, std::system_category()), reason);
         }
 
         virtual
@@ -170,7 +170,7 @@ private:
             typedef io::protocol<event_traits<app::enqueue>::upstream_type>::scope protocol;
             try {
                 upstream.send<protocol::error>(
-                    cocaine::error::dispatch_errors::service_error,
+                    cocaine::error::dispatch_errors::not_connected,
                     "application was stopped"
                 );
             } catch(const cocaine::error_t& err) {

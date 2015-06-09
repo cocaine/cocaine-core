@@ -36,7 +36,7 @@ struct type_traits<boost::optional<T>> {
         if(source) {
             type_traits<T>::pack(target, *source);
         } else {
-            target << msgpack::type::nil();
+            target.pack_nil();
         }
     }
 
