@@ -23,30 +23,20 @@
 
 #include "cocaine/common.hpp"
 
-// Blackhole support
-
-#include <blackhole/blackhole.hpp>
-#include <blackhole/frontend/syslog.hpp>
-
-BLACKHOLE_BEG_NS
-
-namespace sink {
-
-template<>
-struct priority_traits<cocaine::logging::priorities> {
-    static
-    priority_t
-    map(cocaine::logging::priorities level);
-};
-
-} // namespace sink
-
-BLACKHOLE_END_NS
+#include "cocaine/context/config.hpp"
 
 namespace cocaine { namespace logging {
 
-void
-map_severity(blackhole::aux::attachable_ostringstream& stream, const logging::priorities& level);
+class init_t {
+    std::map<std::string, config_t::logging_t::logger_t> config;
+
+public:
+    explicit
+    init_t(const std::map<std::string, config_t::logging_t::logger_t>& config);
+
+    std::unique_ptr<logger_t>
+    logger(const std::string& backend) const;
+};
 
 }} // namespace cocaine::logging
 

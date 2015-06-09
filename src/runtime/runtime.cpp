@@ -33,14 +33,10 @@
 #include <asio/io_service.hpp>
 #include <asio/signal_set.hpp>
 
-#include <blackhole/formatter/json.hpp>
-#include <blackhole/frontend/files.hpp>
-#include <blackhole/frontend/syslog.hpp>
-#include <blackhole/scoped_attributes.hpp>
-#include <blackhole/sink/socket.hpp>
-
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+
+#include <blackhole/blackhole.hpp>
 
 #if defined(__linux__)
     #define BACKWARD_HAS_BFD 1
@@ -256,84 +252,30 @@ main(int argc, char* argv[]) {
 #endif
 
     // Logging
+    const auto backend = vm["logging"].as<std::string>();
 
-    auto  logging_id = vm["logging"].as<std::string>();
-    auto& repository = blackhole::repository_t::instance();
-
-    std::cout << cocaine::format("[Runtime] Initializing the logging, backend: %s.", logging_id) << std::endl;
-
-    // Available logging sinks.
-    typedef boost::mpl::vector<
-        blackhole::sink::stream_t,
-        blackhole::sink::files_t<
-            blackhole::sink::files::boost_backend_t,
-            blackhole::sink::rotator_t<
-                blackhole::sink::files::boost_backend_t,
-                blackhole::sink::rotation::watcher::move_t
-            >
-        >,
-        blackhole::sink::files_t<>,
-        blackhole::sink::syslog_t<logging::priorities>,
-        blackhole::sink::socket_t<boost::asio::ip::tcp>,
-        blackhole::sink::socket_t<boost::asio::ip::udp>
-    > sinks_t;
-
-    // Available logging formatters.
-    typedef boost::mpl::vector<
-        blackhole::formatter::string_t,
-        blackhole::formatter::json_t
-    > formatters_t;
-
-    // Register frontends with all combinations of formatters and sinks with the logging repository.
-    repository.registrate<sinks_t, formatters_t>();
+    std::cout << cocaine::format("[Runtime] Initializing the logging system, backend: %s.", backend)
+              << std::endl;
 
     std::unique_ptr<logging::logger_t> logger;
+    std::unique_ptr<logging::log_t>    wrapper;
 
     try {
-        using blackhole::keyword::tag::timestamp_t;
-        using blackhole::keyword::tag::severity_t;
-
-        // For each logging config define mappers. Then add them into the repository.
-        for(auto it = config->logging.loggers.begin(); it != config->logging.loggers.end(); ++it) {
-            // Configure some mappings for timestamps and severity attributes.
-            blackhole::mapping::value_t mapper;
-
-            mapper.add<severity_t<logging::priorities>>(&logging::map_severity);
-            mapper.add<timestamp_t>(it->second.timestamp);
-
-            // Attach them to the logging config.
-            auto  config    = it->second.config;
-            auto& frontends = config.frontends;
-
-            for(auto it = frontends.begin(); it != frontends.end(); ++it) {
-                it->formatter.mapper = mapper;
-            }
-
-            // Register logger configuration with the Blackhole's repository.
-            repository.add_config(config);
-        }
-
-        logger = std::make_unique<logging::logger_t>(
-            repository.create<logging::logger_t>(logging_id,
-                                                 config->logging.loggers.at(logging_id).verbosity)
-        );
-    } catch(const std::out_of_range& e) {
+        logger = cocaine::logging::init_t(config->logging.loggers).logger(backend);
+        wrapper.reset(new logging::log_t(*logger, {{ "source_host", config->network.hostname }}));
+    } catch(const std::out_of_range&) {
         std::cerr << "ERROR: unable to initialize the logging - backend does not exist." << std::endl;
         return EXIT_FAILURE;
     }
 
+    COCAINE_LOG_INFO(wrapper, "initializing the server");
+
     std::unique_ptr<context_t> context;
-
-    std::cout << "[Runtime] Initializing the server." << std::endl;
-
-    std::unique_ptr<logging::log_t> wrapper(
-        new logging::log_t(*logger, {{ "source_host", config->network.hostname }})
-    );
 
     try {
         context.reset(new context_t(*config, std::move(wrapper)));
     } catch(const cocaine::error_t& e) {
-        std::cerr << cocaine::format("ERROR: unable to initialize the context - %s.", e.what()) << std::endl;
+        COCAINE_LOG_ERROR(logger, "unable to initialize the context - %s.", e.what());
         return EXIT_FAILURE;
     }
 
