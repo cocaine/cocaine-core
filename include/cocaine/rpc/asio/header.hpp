@@ -252,9 +252,8 @@ struct header_static_table_t {
         headers::parent_id<>
     > headers;
 
-    typedef std::array<header_t, size> storage_t;
-
     static constexpr size_t size = boost::mpl::size<headers>::type::value;
+    typedef std::array<header_t, size> storage_t;
 
     static
     constexpr
