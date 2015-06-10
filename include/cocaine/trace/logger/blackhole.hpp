@@ -18,8 +18,8 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_TRACER_LOGGER_BLACKHOLE
-#define COCAINE_TRACER_LOGGER_BLACKHOLE
+#ifndef COCAINE_TRACE_LOGGER_BLACKHOLE
+#define COCAINE_TRACE_LOGGER_BLACKHOLE
 
 #include "cocaine/trace/trace.hpp"
 
@@ -31,7 +31,10 @@ namespace cocaine { namespace logging {
 struct trace_attribute_fetcher_t {
     blackhole::attribute::set_t
     operator()() const {
-        return trace_t::current().attributes<blackhole::attribute::set_t>();
+        if(!trace_t::current().empty()) {
+            return trace_t::current().attributes<blackhole::attribute::set_t>();
+        }
+        return blackhole::attribute::set_t();
     }
 };
 
@@ -78,6 +81,6 @@ public:
     }
 };
 
-}}
+}} // namespace logging // namespace cocaine
 
-#endif
+#endif // COCAINE_TRACE_LOGGER_BLACKHOLE

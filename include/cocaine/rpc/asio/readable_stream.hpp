@@ -127,5 +127,4 @@ private:
 
 }} // namespace cocaine::io
 
-#include "cocaine/trace/trace_impl.hpp"
 #endif

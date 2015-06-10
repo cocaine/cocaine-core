@@ -90,6 +90,11 @@ public:
         return span_id;
     }
 
+    bool
+    empty() const {
+        return trace_id != 0;
+    }
+
     trace_t& pop() {
         assert(parent_parent_id != 0);
         span_id = parent_id;

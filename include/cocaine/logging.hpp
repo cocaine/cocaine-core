@@ -29,7 +29,6 @@
 #include <blackhole/keyword.hpp>
 #include <blackhole/logger/wrapper.hpp>
 
-
 #define COCAINE_LOG(_log_, _level_, ...) \
     if(auto _record_ = ::cocaine::logging::detail::logger_ptr(_log_)->open_record(_level_)) \
         ::blackhole::aux::logger::make_pusher(*(::cocaine::logging::detail::logger_ptr(_log_)), _record_, __VA_ARGS__)

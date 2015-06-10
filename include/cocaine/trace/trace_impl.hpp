@@ -19,8 +19,8 @@
 */
 
 
-#ifndef TRACE_IMPL_HPP
-#define TRACE_IMPL_HPP
+#ifndef COCAINE_TRACE_TRACE_IMPL_HPP
+#define COCAINE_TRACE_TRACE_IMPL_HPP
 
 #include "cocaine/trace/trace.hpp"
 
@@ -93,5 +93,5 @@ trace_t::mem_fn(Method m) -> callable_wrapper_t<decltype(std::mem_fn(std::forwar
 }
 
 } // namespace cocaine
-#endif // TRACE_IMPL_HPP
+#endif // COCAINE_TRACE_TRACE_IMPL_HPP
 

@@ -133,15 +133,14 @@ session_t::push_action_t::operator()(const std::shared_ptr<channel<protocol_type
 
 void
 session_t::push_action_t::finalize(const std::error_code& ec) {
-    if(ec.value() == 0) {
-        return;
-    };
+    if(ec.value() == 0) return;
 
     if(ec != asio::error::eof) {
         COCAINE_LOG_ERROR(session->log, "client disconnected: [%d] %s", ec.value(), ec.message());
     } else {
         COCAINE_LOG_DEBUG(session->log, "client disconnected");
     }
+
     return session->detach(ec);
 }
 
@@ -179,7 +178,6 @@ session_t::handle(const decoder_t::message_type& message) {
 
         std::tie(lb, ub) = mapping.equal_range(channel_id);
 
-
         if(lb == ub) {
             if(channel_id <= max_channel_id) {
                 // NOTE: Checking whether channel number is always higher than the previous channel
@@ -192,6 +190,7 @@ session_t::handle(const decoder_t::message_type& message) {
                 prototype,
                 std::make_shared<basic_upstream_t>(shared_from_this(), channel_id)
             )});
+
             max_channel_id = channel_id;
         }
 

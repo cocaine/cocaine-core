@@ -44,7 +44,7 @@ struct type_traits<char[N]> {
 
 struct literal_t {
     const char * blob;
-    size_t size;
+    const size_t size;
 
     // This is needed to mark this struct as implicitly convertible to std::string, although this
     // conversion never takes place, only statically checked in the typelist traits.
