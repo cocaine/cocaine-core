@@ -31,17 +31,20 @@ struct stack_str_t {
     size_t size;
 
     stack_str_t(const char* lit) {
-        memcpy(blob, lit, std::min(N, strlen(lit)));
+        size = std::min(N, strlen(lit));
+        memcpy(blob, lit, size);
         blob[N] = '\0';
     }
 
     stack_str_t(const char* lit, size_t sz) {
-        memcpy(blob, lit, std::min(N, sz));
+        size = std::min(N, sz);
+        memcpy(blob, lit, size);
         blob[N] = '\0';
     }
 
     stack_str_t(const std::string& source) {
-        memcpy(blob, source.c_str(), std::min(N, source.size()));
+        size = std::min(N, source.size());
+        memcpy(blob, source.c_str(), size);
         blob[N] = '\0';
     }
 

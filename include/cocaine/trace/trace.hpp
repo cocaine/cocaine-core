@@ -50,10 +50,10 @@ public:
 
     template<class ServiceStr, class RpcStr>
     trace_t(uint64_t _trace_id,
-          uint64_t _span_id,
-          uint64_t _parent_id,
-          const RpcStr& _rpc_name,
-          const ServiceStr& _service_name) :
+            uint64_t _span_id,
+            uint64_t _parent_id,
+            const RpcStr& _rpc_name,
+            const ServiceStr& _service_name) :
         trace_id(_trace_id),
         span_id(_span_id),
         parent_id(_parent_id),
@@ -63,6 +63,14 @@ public:
         rpc_name(_rpc_name),
         service_name(_service_name)
     {
+    }
+
+    template<class ServiceStr, class RpcStr>
+    static
+    trace_t
+    generate(const RpcStr& _rpc_name, const ServiceStr& _service_name) {
+        auto t_id = generate_id();
+        return trace_t(t_id, t_id, 0, _rpc_name, _service_name);
     }
 
     static
@@ -92,11 +100,12 @@ public:
 
     bool
     empty() const {
-        return trace_id != 0;
+        return trace_id == 0;
     }
 
-    trace_t& pop() {
-        assert(parent_parent_id != 0);
+    void
+    pop() {
+        assert(parent_id != 0);
         span_id = parent_id;
         parent_id = parent_parent_id;
         rpc_name = parent_rpc_name;
@@ -105,7 +114,8 @@ public:
     }
 
     template<class RpcString>
-    trace_t& push(const RpcString& new_rpc_name) {
+    void
+    push(const RpcString& new_rpc_name) {
         parent_rpc_name = rpc_name;
         rpc_name = new_rpc_name;
         parent_parent_id = parent_id;
@@ -136,7 +146,9 @@ public:
     mem_fn(Method m) -> callable_wrapper_t<decltype(std::mem_fn(std::forward<Method>(m)))>;
 
 private:
-    uint64_t generate_id() {
+    static
+    uint64_t
+    generate_id() {
         static std::random_device rd;
         static std::mt19937 gen(rd());
         static std::uniform_int_distribution<uint64_t> dis(1, std::numeric_limits<uint64_t>::max()/2-1);
