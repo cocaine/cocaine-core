@@ -57,7 +57,7 @@ files_t::read(const std::string& collection, const std::string& key) {
 
     COCAINE_LOG_DEBUG(m_log, "reading object '%s'", key)(
         "collection", collection,
-        "path",       file_path
+        "path", file_path
     );
 
     fs::ifstream stream(file_path, fs::ifstream::in | fs::ifstream::binary);
@@ -86,7 +86,7 @@ files_t::write(const std::string& collection, const std::string& key, const std:
     if(!fs::exists(store_status)) {
         COCAINE_LOG_INFO(m_log, "creating collection")(
             "collection", collection,
-            "path",       store_path
+            "path", store_path
         );
 
         fs::create_directories(store_path);
@@ -100,7 +100,7 @@ files_t::write(const std::string& collection, const std::string& key, const std:
 
     COCAINE_LOG_DEBUG(m_log, "writing object '%s'", key)(
         "collection", collection,
-        "path",       file_path
+        "path", file_path
     );
 
     fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc | fs::ofstream::binary);
@@ -146,7 +146,7 @@ files_t::remove(const std::string& collection, const std::string& key) {
 
     COCAINE_LOG_DEBUG(m_log, "removing object '%s'", key)(
         "collection", collection,
-        "path",       file_path
+        "path", file_path
     );
 
     fs::remove(file_path);
@@ -157,13 +157,13 @@ namespace {
 struct intersect {
     template<class T>
     T
-    operator()(const T& accu, T& keys) const {
+    operator()(const T& accumulator, T& keys) const {
         T result;
 
         auto builder = std::back_inserter(result);
 
         std::sort(keys.begin(), keys.end());
-        std::set_intersection(accu.begin(), accu.end(), keys.begin(), keys.end(), builder);
+        std::set_intersection(accumulator.begin(), accumulator.end(), keys.begin(), keys.end(), builder);
 
         return result;
     }

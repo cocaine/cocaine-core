@@ -90,8 +90,7 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
                 e.code().message());
             return session->detach(e.code());
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: %s",
-                e.what());
+            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: %s", e.what());
             return session->detach(error::uncaught_error);
         }
 
@@ -185,19 +184,21 @@ session_t::handle(const decoder_t::message_type& message) {
                 throw std::system_error(error::revoked_channel);
             }
 
-            max_channel_id = channel_id;
-
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
                 prototype,
                 std::make_shared<basic_upstream_t>(shared_from_this(), channel_id)
             )});
-        } else if(!lb->second->dispatch) {
-            throw std::system_error(error::unbound_dispatch);
+
+            max_channel_id = channel_id;
         }
 
         // NOTE: The virtual channel pointer is copied here to avoid data races.
         return lb->second;
     });
+
+    if(!channel->dispatch) {
+        throw std::system_error(error::unbound_dispatch);
+    }
 
     COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
         message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,

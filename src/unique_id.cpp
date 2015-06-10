@@ -28,6 +28,17 @@ unique_id_t::unique_id_t() {
     uuid_generate(reinterpret_cast<unsigned char*>(uuid.data()));
 }
 
+unique_id_t::unique_id_t(const std::string& other) {
+    const int rv = uuid_parse(
+        other.c_str(),
+        reinterpret_cast<unsigned char*>(uuid.data())
+    );
+
+    if(rv != 0) {
+        throw cocaine::error_t("unable to parse '%s' as an unique id", other);
+    }
+}
+
 std::string
 unique_id_t::string() const {
     // A storage for a 36-character long UUID plus the trailing zero.
@@ -45,6 +56,12 @@ bool
 unique_id_t::operator==(const unique_id_t& other) const {
     return uuid[0] == other.uuid[0] &&
            uuid[1] == other.uuid[1];
+}
+
+bool
+unique_id_t::ensure(const std::string& string) {
+    uuid_t uuid;
+    return uuid_parse(string.c_str(), uuid) == 0;
 }
 
 namespace cocaine {

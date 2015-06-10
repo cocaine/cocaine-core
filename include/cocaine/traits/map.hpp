@@ -48,15 +48,15 @@ struct type_traits<std::map<K, V>> {
             throw msgpack::type_error();
         }
 
-        std::pair<K, V> pair;
-
         target.clear();
 
         for(size_t i = 0; i < source.via.map.size; ++i) {
-            type_traits<K>::unpack(source.via.map.ptr[i].key, pair.first);
-            type_traits<V>::unpack(source.via.map.ptr[i].val, pair.second);
+            std::pair<K, V> map_pair;
 
-            target.insert(std::move(pair));
+            type_traits<K>::unpack(source.via.map.ptr[i].key, map_pair.first);
+            type_traits<V>::unpack(source.via.map.ptr[i].val, map_pair.second);
+
+            target.insert(std::move(map_pair));
         }
     }
 };

@@ -255,17 +255,18 @@ context_t::bootstrap() {
                 e.code().message());
             errored.push_back(it->first);
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_logger, "unable to initialize service: %s",
-                e.what());
+            COCAINE_LOG_ERROR(m_logger, "unable to initialize service: %s", e.what());
             errored.push_back(it->first);
         }
     }
 
     if(!errored.empty()) {
-        COCAINE_LOG_ERROR(m_logger, "emergency core shutdown");
-
         std::ostringstream stream;
         std::ostream_iterator<char> builder(stream);
+
+        boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
+
+        COCAINE_LOG_ERROR(m_logger, "emergency core shutdown");
 
         m_signals.invoke<io::context::shutdown>();
 
@@ -274,8 +275,8 @@ context_t::bootstrap() {
             m_services->pop_back();
         }
 
-        boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
-
         throw cocaine::error_t("couldn't start %d service(s): %s", errored.size(), stream.str());
+    } else {
+        m_signals.invoke<io::context::prepared>();
     }
 }

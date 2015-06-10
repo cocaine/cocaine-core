@@ -244,7 +244,7 @@ dispatch<Tag>&
 dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
     typedef io::event_traits<Event> traits;
 
-    if(!m_slots->insert({traits::id, ptr}).second) {
+    if(!m_slots->insert(std::make_pair(traits::id, ptr)).second) {
         throw std::system_error(error::duplicate_slot, Event::alias());
     }
 

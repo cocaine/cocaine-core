@@ -289,12 +289,14 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
     // Service restrictions
 
-    std::ostringstream stream;
-    std::ostream_iterator<char> builder(stream);
+    if(!m_cfg.restricted.empty()) {
+        std::ostringstream stream;
+        std::ostream_iterator<char> builder(stream);
 
-    boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", m_cfg.restricted);
+        boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", m_cfg.restricted);
 
-    COCAINE_LOG_INFO(m_log, "restricting %d service(s): %s", m_cfg.restricted.size(), stream.str());
+        COCAINE_LOG_INFO(m_log, "restricting %d service(s): %s", m_cfg.restricted.size(), stream.str());
+    }
 
     // Context signals slot
 
@@ -304,13 +306,9 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     // Clustering components
 
     if(root.as_object().count("cluster")) {
-        m_signals->on<context::service::exposed>(std::bind(&locator_t::on_service, this, ph::_1,
-            ph::_2, modes::exposed));
-        m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this, ph::_1,
-            ph::_2, modes::removed));
-
         const auto conf = root.as_object().at("cluster").as_object();
         const auto type = conf.at("type", "unspecified").as_string();
+        const auto args = conf.at("args", dynamic_t::object_t());
 
         COCAINE_LOG_INFO(m_log, "using '%s' as a cluster manager, enabling synchronization", type);
 
@@ -319,15 +317,13 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this,
             ph::_1, ph::_2, modes::removed));
 
-        const auto args = conf.at("args", dynamic_t::empty_object);
-
         m_cluster = m_context.get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
     }
 
     if(root.as_object().count("gateway")) {
         const auto conf = root.as_object().at("gateway").as_object();
         const auto type = conf.at("type", "unspecified").as_string();
-        const auto args = conf.at("args", dynamic_t::empty_object);
+        const auto args = conf.at("args", dynamic_t::object_t());
 
         COCAINE_LOG_INFO(m_log, "using '%s' as a gateway manager, enabling service routing", type);
 
@@ -676,7 +672,7 @@ locator_t::on_context_shutdown() {
 
 namespace {
 
-// Locator Service errors
+// Locator errors
 
 struct locator_category_t:
     public std::error_category
@@ -690,10 +686,12 @@ struct locator_category_t:
     virtual
     auto
     message(int code) const -> std::string {
-        if(code == cocaine::error::locator_errors::service_not_available)
+        switch(code) {
+          case cocaine::error::locator_errors::service_not_available:
             return "service is not available";
-        if(code == cocaine::error::locator_errors::routing_storage_error)
+          case cocaine::error::locator_errors::routing_storage_error:
             return "routing storage is unavailable";
+        }
 
         return "cocaine.service.locator error";
     }

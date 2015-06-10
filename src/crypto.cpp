@@ -27,9 +27,7 @@ using namespace cocaine;
 
 template<hashid HashID>
 crypto<HashID>::crypto(context_t& context, const std::string& service):
-    m_log(context.log("crypto", {
-        blackhole::attribute::make("service", service)
-    })),
+    m_log(context.log("crypto")),
     m_service(service)
 {
     m_store = api::storage(context, "secure");
