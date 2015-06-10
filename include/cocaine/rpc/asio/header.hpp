@@ -396,8 +396,7 @@ http2_integer_encode(char* dest, size_t source, size_t bit_offset, char prefix);
 header_t::header_t(const header::data_t& _name, const header::data_t& _value) noexcept :
     name(_name),
     value(_value)
-{
-}
+{}
 
 header_t::header_t(const char* _name, size_t name_sz, const char* _value, size_t value_sz) noexcept :
     name({_name, name_sz}),
