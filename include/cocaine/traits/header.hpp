@@ -50,6 +50,7 @@ struct header_traits {
         }
         header_t header(Header::name(), header_data);
         table.push(header);
+        // true flag means store header in dynamic_table on receiver side
         packer.pack_true();
         packer.pack_fix_uint64(pos);
         packer.pack_raw(header_data.size);
@@ -68,6 +69,7 @@ struct header_traits {
         }
         packer.pack_array(3);
         pos = table.find_by_name(source);
+        // true flag means store header in dynamic_table on receiver side
         packer.pack_true();
         table.push(source);
         if(pos) {

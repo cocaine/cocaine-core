@@ -68,6 +68,7 @@ create_data(char const (&source)[N]) {
 
 template<class From>
 inline
+constexpr
 header::data_t
 create_data(From&& source) {
     static_assert(std::is_lvalue_reference<From>::value &&
@@ -75,17 +76,17 @@ create_data(From&& source) {
                   !std::is_same<const char*, typename std::remove_reference<From>::type>::value,
                   "only lreference to POD is allowed to create header data"
                   );
-    data_t result;
-    result.blob = reinterpret_cast<const char*>(&source);
-    result.size = sizeof(typename std::remove_reference<From>::type);
-    return result;
+    return data_t{
+        reinterpret_cast<const char*>(&source),
+        sizeof(typename std::remove_reference<From>::type)
+    };
 }
 
-template<>
 inline
+constexpr
 data_t
-create_data<const char*&>(const char*& source) {
-    return data_t{source, strlen(source)};
+create_data(const char* source, size_t size) {
+    return data_t{source, size};
 }
 } // namespace header
 
@@ -281,25 +282,25 @@ struct header_static_table_t {
 
 private:
     struct init_header_t {
-        init_header_t() :
-            data(std::make_shared<storage_t>())
+        init_header_t(storage_t& _data) :
+            data(_data)
         {}
         template<class Header>
         void
         operator()(Header) {
-            (*data)[boost::mpl::find<headers, Header>::type::pos::value].name = Header::name();
-            (*data)[boost::mpl::find<headers, Header>::type::pos::value].value = Header::value();
+            data[boost::mpl::find<headers, Header>::type::pos::value].name = Header::name();
+            data[boost::mpl::find<headers, Header>::type::pos::value].value = Header::value();
         }
-        //this is because mpl::for_each copies functor;
-        std::shared_ptr<storage_t> data;
+        storage_t& data;
     };
 
     static
     storage_t
     init_data() {
-        init_header_t init = init_header_t();
+        storage_t data;
+        init_header_t init(data);
         boost::mpl::for_each<headers>(init);
-        return *(init.data);
+        return data;
     }
 };
 
@@ -422,9 +423,9 @@ header_t::http2_size() const {
 
 header_table_t::header_table_t() :
     header_lower_bound(0),
-    data_lower_bound_end(0),
     header_upper_bound(0),
     data_lower_bound(0),
+    data_lower_bound_end(0),
     data_upper_bound(0),
     capacity(max_data_capacity)
 {}
@@ -466,7 +467,7 @@ header_table_t::push(header_t& result) {
         pop();
     }
 
-    // Header do not fit in the table. According to RFC we just clean the table and do not put the header inside.
+    // Header does not fit in the table. According to RFC we just clean the table and do not put the header inside.
     if(empty() && data_size() + header_size > capacity) {
         return;
     }
@@ -474,7 +475,7 @@ header_table_t::push(header_t& result) {
     // Find the appropriate position in header table.
     char* dest = header_data.data();
     if(header_data.size() - data_upper_bound < header_size) {
-        // If header do not fit in the remaining space in the end of buffer - we write at the beginning.
+        // If header does not fit in the remaining space in the end of buffer - we write at the beginning.
         // We also store point of end of the data in the end of buffer.
         // Now data starts in data_lower_bound, some header ends in data_lower_bound_end and next part will start from the beginning.
         // It is guaranteed that there is enough free space in the beginning as we've done pop before.

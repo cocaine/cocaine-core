@@ -92,7 +92,7 @@ TEST(header_data_t, conversion) {
     ASSERT_EQ(header::create_data(test3).convert<char>(), test3);
 
     const char* c_str = "c_string\0This should cut as c_str is converted without size";
-    auto data2 = header::create_data(c_str);
+    auto data2 = header::create_data(c_str, strlen(c_str));
     ASSERT_EQ(data2.size, sizeof("c_string")-1);
     ASSERT_STREQ(data2.blob, c_str);
     auto data3 = header::create_data("binary\0literal");
