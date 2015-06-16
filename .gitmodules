@@ -13,3 +13,6 @@
 [submodule "foreign/asio"]
 	path = foreign/asio
 	url = https://github.com/chriskohlhoff/asio.git
+[submodule "foreign/modules"]
+	path = foreign/modules
+	url = https://github.com/3Hren/modules.git

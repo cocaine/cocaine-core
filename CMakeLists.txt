@@ -20,7 +20,9 @@ ENDIF()
 
 OPTION(COCAINE_ALLOW_BENCHMARKS "Build benchmarking tools" OFF)
 
+# Import our CMake modules
 INCLUDE(cmake/locate_library.cmake)
+INCLUDE(foreign/modules/AddCXXCompilerFlag.cmake)
 
 LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 
@@ -138,8 +140,18 @@ TARGET_LINK_LIBRARIES(cocaine-runtime
     ${Boost_LIBRARIES}
     cocaine-core)
 
-SET_TARGET_PROPERTIES(cocaine-core cocaine-runtime PROPERTIES
-    COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
+# Try and enable C++11.
+add_cxx_compiler_flag(-std=c++11)
+IF(NOT HAVE_CXX_FLAG_STD_CXX11)
+  add_cxx_compiler_flag(-std=c++0x)
+ENDIF()
+
+# Turn compiler warnings.
+add_cxx_compiler_flag(-Wall)
+add_cxx_compiler_flag(-Wextra)
+add_cxx_compiler_flag(-Werror RELEASE)
+add_cxx_compiler_flag(-pedantic)
+add_cxx_compiler_flag(-pedantic-errors)
 
 IF(COCAINE_ALLOW_BENCHMARKS)
     ADD_SUBDIRECTORY(tests)
