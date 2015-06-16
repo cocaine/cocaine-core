@@ -29,6 +29,7 @@
 #include "cocaine/detail/service/node/session.hpp"
 #include "cocaine/detail/service/node/stream.hpp"
 
+#include "cocaine/idl/node.hpp"
 #include "cocaine/idl/rpc.hpp"
 
 #include "cocaine/logging.hpp"
@@ -413,7 +414,7 @@ slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
 
     try {
         it->second->upstream->write(chunk.data(), chunk.size());
-    } catch (const cocaine::error_t& err) {
+    } catch (const std::system_error& err) {
         COCAINE_LOG_WARNING(m_log, "slave is unable to send write event to the upstream: %s", err.what());
     }
 }
@@ -435,7 +436,7 @@ slave_t::on_error(uint64_t session_id, int code, const std::string& reason) {
 
     try {
         it->second->upstream->error(code, reason);
-    } catch (const cocaine::error_t& err) {
+    } catch (const std::system_error& err) {
         COCAINE_LOG_WARNING(m_log, "slave is unable to send error event to the upstream: %s", err.what());
     }
 }
@@ -458,7 +459,7 @@ slave_t::on_choke(uint64_t session_id) {
     try {
         session->upstream->close();
         session->detach();
-    } catch (const cocaine::error_t& err) {
+    } catch (const std::system_error& err) {
         COCAINE_LOG_WARNING(m_log, "slave is unable to send close event to the upstream: %s", err.what());
     }
 
@@ -561,7 +562,7 @@ slave_t::dump() {
         api::storage(m_context, "core")->put("crashlogs", key, dump, std::vector<std::string> {
             m_manifest.name
         });
-    } catch(const storage_error_t& err) {
+    } catch(const std::system_error& err) {
         COCAINE_LOG_ERROR(m_log, "slave is unable to save the crashlog: %s", err.what());
     }
 }

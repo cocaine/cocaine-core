@@ -29,13 +29,52 @@
 #include <archive.h>
 #include <archive_entry.h>
 
+using namespace cocaine;
 using namespace cocaine::isolate;
 
 namespace fs = boost::filesystem;
 
-archive_error_t::archive_error_t(archive* source):
-    std::runtime_error(archive_error_string(source))
-{ }
+namespace {
+
+struct archive_category_t:
+    public std::error_category
+{
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.isolate.process.archive";
+    }
+
+    virtual
+    auto
+    message(int code) const -> std::string {
+        return std::system_category().message(code);
+    }
+};
+
+} // namespace
+
+namespace cocaine { namespace error {
+
+auto
+archive_category() -> const std::error_category& {
+    static archive_category_t instance;
+    return instance;
+}
+
+}} // namespace cocaine::error
+
+namespace {
+
+struct archive_error_t:
+    public std::system_error
+{
+    archive_error_t(archive* ptr):
+        std::system_error(archive_errno(ptr), error::archive_category(), archive_error_string(ptr))
+    { }
+};
+
+} // namespace
 
 archive_t::archive_t(context_t& context, const std::string& archive):
     m_log(context.log("packaging")),

@@ -68,7 +68,7 @@ node_t::node_t(context_t& context, asio::io_service& asio, const std::string& na
 
         try {
             runlist = storage->get<runlist_t>("runlists", runlist_id);
-        } catch(const storage_error_t& e) {
+        } catch(const std::system_error& e) {
             COCAINE_LOG_WARNING(m_log, "unable to read runlist: %s", e.what());
         }
     }
@@ -172,3 +172,47 @@ node_t::on_list() const {
 
     return result;
 }
+
+namespace {
+
+// Node Service errors
+
+struct node_category_t:
+    public std::error_category
+{
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.service.node";
+    }
+
+    virtual
+    auto
+    message(int code) const -> std::string {
+        if(code == cocaine::error::node_errors::deadline_error)
+            return "invocation deadline has passed";
+        if(code == cocaine::error::node_errors::resource_error)
+            return "no resources available to complete invocation";
+        if(code == cocaine::error::node_errors::timeout_error)
+            return "invocation has timed out";
+
+        return "cocaine.service.node error";
+    }
+};
+
+} // namespace
+
+namespace cocaine { namespace error {
+
+auto
+node_category() -> const std::error_category& {
+    static node_category_t instance;
+    return instance;
+}
+
+auto
+make_error_code(node_errors code) -> std::error_code {
+    return std::error_code(static_cast<int>(code), node_category_t());
+}
+
+}} // namespace cocaine::error

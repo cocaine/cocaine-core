@@ -51,9 +51,9 @@ struct blocking_slot:
         try {
             upstream.template send<typename protocol::value>(this->call(std::move(args)));
         } catch(const std::system_error& e) {
-            upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
+            upstream.template send<typename protocol::error>(e.code(), std::string(e.what()));
         } catch(const std::exception& e) {
-            upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
+            upstream.template send<typename protocol::error>(error::uncaught_error, std::string(e.what()));
         }
 
         if(is_recursed<Event>::value) {
@@ -92,9 +92,9 @@ struct blocking_slot<Event, void>:
             // This is needed anyway so that service clients could detect operation completion.
             upstream.template send<typename protocol::value>();
         } catch(const std::system_error& e) {
-            upstream.template send<typename protocol::error>(e.code().value(), e.code().message());
+            upstream.template send<typename protocol::error>(e.code(), std::string(e.what()));
         } catch(const std::exception& e) {
-            upstream.template send<typename protocol::error>(error::service_error, std::string(e.what()));
+            upstream.template send<typename protocol::error>(error::uncaught_error, std::string(e.what()));
         }
 
         if(is_recursed<Event>::value) {
@@ -126,15 +126,9 @@ struct blocking_slot<Event, mute_slot_tag>:
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(tuple_type&& args, upstream_type&& COCAINE_UNUSED_(upstream)) {
-        try {
-            this->call(std::move(args));
-        } catch(...) {
-#if defined(HAVE_GCC48)
-            std::throw_with_nested(cocaine::error_t("error while calling mute slot"));
-#else
-            throw cocaine::error_t("error while calling mute slot");
-#endif
-        }
+        // NOTE: Since the slot is mute, i.e. there's no upstream it can use to send the error info
+        // back to the client, we just pass on exceptions here and let dispatch handle them.
+        this->call(std::move(args));
 
         if(is_recursed<Event>::value) {
             return boost::none;

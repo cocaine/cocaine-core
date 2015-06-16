@@ -80,7 +80,7 @@ public:
     typename traits<Event>::upstream_type
     invoke(const std::shared_ptr<typename traits<Event>::dispatch_type>& dispatch, Args&&... args) {
         if(!m_session) {
-            throw cocaine::error_t("client is not connected");
+            throw std::system_error(std::make_error_code(std::errc::not_connected));
         }
 
         if(std::is_same<typename result_of<Event>::type, io::mute_slot_tag>::value && dispatch) {

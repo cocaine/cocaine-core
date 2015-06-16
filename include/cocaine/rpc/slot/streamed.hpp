@@ -49,10 +49,18 @@ struct streamed {
     }
 
     streamed&
-    abort(int code, const std::string& reason) {
-        outbox->synchronize()->template append<typename protocol::error>(code, reason);
+    abort(const std::error_code& ec, const std::string& reason) {
+        outbox->synchronize()->template append<typename protocol::error>(ec, reason);
         return *this;
     }
+
+#if defined(__clang__)
+    streamed&
+    abort(const std::error_code& ec) {
+        outbox->synchronize()->template append<typename protocol::error>(ec);
+        return *this;
+    }
+#endif
 
     streamed&
     close() {

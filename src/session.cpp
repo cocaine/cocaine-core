@@ -82,12 +82,15 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
     if(const auto ptr = *session->transport.synchronize()) {
 #endif
         try {
+            // NOTE: In case the underlying slot has miserably failed to handle its exceptions, the
+            // client will be disconnected to prevent any further damage to the service and himself.
             session->handle(message);
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: [%d] %s", e.code().value(),
+                e.code().message());
+            return session->detach(e.code());
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception - %s", e.what());
-
-            // NOTE: This happens only when the underlying slot has miserably failed to handle its
-            // exceptions. In such case, the client is disconnected to prevent any further damage.
+            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: %s", e.what());
             return session->detach(error::uncaught_error);
         }
 
@@ -175,7 +178,10 @@ session_t::handle(const decoder_t::message_type& message) {
 
         if(lb == ub) {
             if(channel_id <= max_channel_id) {
-                throw cocaine::error_t("specified channel id was revoked");
+                // NOTE: Checking whether channel number is always higher than the previous channel
+                // number is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be
+                // not the best approach, but since we have 2^64 possible channels it's good enough.
+                throw std::system_error(error::revoked_channel);
             }
 
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
@@ -191,10 +197,10 @@ session_t::handle(const decoder_t::message_type& message) {
     });
 
     if(!channel->dispatch) {
-        throw cocaine::error_t("no dispatch has been assigned");
+        throw std::system_error(error::unbound_dispatch);
     }
 
-    COCAINE_LOG_DEBUG(log, "handling %d: '%s' message in channel %d, dispatch: '%s'",
+    COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
         message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
         channel->dispatch->name());
 
@@ -290,7 +296,7 @@ session_t::pull() {
             ptr
         ));
     } else {
-        throw cocaine::error_t("session is not connected");
+        throw std::system_error(error::not_connected);
     }
 }
 
@@ -307,7 +313,7 @@ session_t::push(encoder_t::message_type&& message) {
             ptr
         ));
     } else {
-        throw cocaine::error_t("session is not connected");
+        throw std::system_error(error::not_connected);
     }
 }
 
