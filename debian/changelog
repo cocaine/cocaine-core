@@ -1,8 +1,14 @@
+cocaine-core (0.12.1.1~nightly) unstable; urgency=low
+
+  * RPC error categories support.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 26 Jun 2015 13:39:03 +0400
+
 cocaine-core (0.12.1.0~nightly) unstable; urgency=low
 
   * Error categories support.
     Specifically, use it for RPC to send not only the error code itself, but
-    also its category, so that other peers could actually understand what exactly 
+    also its category, so that other peers could actually understand what exactly
     went wrong.
 
  -- Evgeny Safronov <division494@gmail.com>  Tue, 16 Jun 2015 14:08:02 +0400
