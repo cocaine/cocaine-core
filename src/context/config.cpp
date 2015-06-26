@@ -260,16 +260,34 @@ struct dynamic_converter<config_t::logging_t> {
         for(auto it = logging.begin(); it != logging.end(); ++it) {
             using namespace blackhole::repository;
 
-            const auto object = it->second.as_object();
-            const auto loggers = object.at("loggers", dynamic_t::array_t());
+            const auto name    = it->first;
+            const auto backend = it->second.as_object();
+            const auto loggers = backend.at("loggers", dynamic_t::empty_array);
 
-            config_t::logging_t::logger_t log {
-                logmask(object.at("verbosity", defaults::log_verbosity).as_string()),
-                object.at("timestamp", defaults::log_timestamp).as_string(),
-                config::parser::adapter_t<dynamic_t, blackhole::log_config_t>::parse(it->first, loggers)
+            const auto verbosity = logmask(
+                backend.at("verbosity", defaults::log_verbosity).as_string()
+            );
+
+            const auto timestamp = backend.at("timestamp", defaults::log_timestamp).as_string();
+
+            const auto config = config::parser::adapter_t<
+                dynamic_t,
+                blackhole::log_config_t
+            >::parse(name, loggers);
+
+            // Parse optional attributes set.
+            std::set<std::string> attributes;
+            const auto attributes_ = backend.at("attributes", dynamic_t::empty_array).as_array();
+            for (auto it = attributes_.begin(); it != attributes_.end(); ++it) {
+                attributes.insert(it->as_string());
+            }
+
+            component.loggers[name] = {
+                verbosity,
+                timestamp,
+                config,
+                attributes
             };
-
-            component.loggers[it->first] = log;
         }
 
         return component;

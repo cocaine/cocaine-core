@@ -69,8 +69,13 @@ public:
     struct logging_t {
         struct logger_t {
             logging::priorities verbosity;
+
             std::string timestamp;
+
             blackhole::log_config_t config;
+
+            /// Set of optional attributes with special meanings.
+            std::set<std::string> attributes;
         };
 
         std::map<std::string, logger_t> loggers;

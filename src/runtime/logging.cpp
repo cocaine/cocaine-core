@@ -83,7 +83,7 @@ using namespace cocaine;
 using namespace cocaine::logging;
 
 init_t::init_t(const std::map<std::string, config_t::logging_t::logger_t>& config):
-    config(config)
+    config_(config)
 {
     auto& repository = blackhole::repository_t::instance();
 
@@ -142,6 +142,11 @@ init_t::logger(const std::string& backend) const {
     auto& repository = blackhole::repository_t::instance();
 
     return std::make_unique<logger_t>(
-        repository.create<logger_t>(backend, config.at(backend).verbosity)
+        repository.create<logger_t>(backend, config(backend).verbosity)
     );
+}
+
+config_t::logging_t::logger_t
+init_t::config(const std::string& backend) const {
+    return config_.at(backend);
 }

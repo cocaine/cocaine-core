@@ -28,7 +28,7 @@
 namespace cocaine { namespace logging {
 
 class init_t {
-    std::map<std::string, config_t::logging_t::logger_t> config;
+    std::map<std::string, config_t::logging_t::logger_t> config_;
 
 public:
     explicit
@@ -36,6 +36,9 @@ public:
 
     std::unique_ptr<logger_t>
     logger(const std::string& backend) const;
+
+    config_t::logging_t::logger_t
+    config(const std::string& backend) const;
 };
 
 }} // namespace cocaine::logging
