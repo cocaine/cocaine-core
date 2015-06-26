@@ -1,3 +1,9 @@
+cocaine-core (0.12.1.3~nightly) unstable; urgency=low
+
+  * Bug fix: fixed deadlock on immediately channel destruction.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 26 Jun 2015 19:09:00 +0400
+
 cocaine-core (0.12.1.2~nightly) unstable; urgency=low
 
   * Node service, version 2.
