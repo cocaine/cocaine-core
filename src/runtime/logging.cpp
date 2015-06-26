@@ -66,8 +66,6 @@ namespace cocaine { namespace logging {
 
 void
 map_severity(blackhole::aux::attachable_ostringstream& stream, const logging::priorities& level) {
-    typedef blackhole::aux::underlying_type<logging::priorities>::type underlying_type;
-
     static const std::array<const char*, 5> describe = {{ "T", "D", "I", "W", "E" }};
 
     const size_t value = static_cast<size_t>(level);
