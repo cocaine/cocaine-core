@@ -25,10 +25,14 @@
 
 #include "cocaine/detail/chamber.hpp"
 
+#include "cocaine/net.hpp"
+
 #include "cocaine/rpc/asio/channel.hpp"
 #include "cocaine/rpc/session.hpp"
 
 #include <blackhole/scoped_attributes.hpp>
+
+#include <asio/local/stream_protocol.hpp>
 
 using namespace asio;
 using namespace asio::ip;
@@ -125,8 +129,16 @@ execution_unit_t::~execution_unit_t() {
     m_chamber = nullptr;
 }
 
+template<class Socket>
 std::shared_ptr<session_t>
-execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
+execution_unit_t::attach(std::unique_ptr<Socket> ptr, const io::dispatch_ptr_t& dispatch) {
+    auto socket = std::shared_ptr<Socket>(std::move(ptr));
+    return attach(socket, dispatch);
+}
+
+template<class Socket>
+std::shared_ptr<session_t>
+execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_ptr_t& dispatch) {
     int socket;
 
     if((socket = ::dup(ptr->native_handle())) == -1) {
@@ -140,18 +152,26 @@ execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::disp
         const auto endpoint = ptr->local_endpoint();
 
         // Copy the socket into the new reactor.
-        auto channel = std::make_unique<io::channel<tcp>>(std::make_unique<tcp::socket>(
-           *m_asio,
-            endpoint.protocol(),
-            socket
-        ));
+        auto channel = std::make_unique<io::channel<generic::stream_protocol>>(
+            std::make_unique<generic::stream_protocol::socket>(
+               *m_asio,
+                endpoint.protocol(),
+                socket
+            )
+        );
 
-        // Disable Nagle's algorithm, since most of the service clients do not send or receive more
-        // than a couple of kilobytes of data.
-        channel->socket->set_option(tcp::no_delay(true));
+        if (std::is_same<typename Socket::protocol_type, ip::tcp>::value) {
+            // Disable Nagle's algorithm, since most of the service clients do not send or receive
+            // more than a couple of kilobytes of data.
+            channel->socket->set_option(tcp::no_delay(true));
+        }
 
         auto session_log = std::make_unique<logging::log_t>(*m_log, attribute::set_t({
-            attribute::make("endpoint", boost::lexical_cast<std::string>(ptr->remote_endpoint())),
+            attribute::make("endpoint", endpoint_traits<typename Socket::endpoint_type>::path(
+                std::is_same<typename Socket::protocol_type, ip::tcp>::value ?
+                    ptr->remote_endpoint() :
+                    endpoint
+            )),
             attribute::make("service",  dispatch ? dispatch->name() : "<none>"),
         }));
 
@@ -174,3 +194,15 @@ double
 execution_unit_t::utilization() const {
     return m_chamber->load_avg1();
 }
+
+template
+std::shared_ptr<session_t>
+execution_unit_t::attach(std::unique_ptr<tcp::socket>, const io::dispatch_ptr_t&);
+
+template
+std::shared_ptr<session_t>
+execution_unit_t::attach(const std::shared_ptr<tcp::socket>&, const io::dispatch_ptr_t&);
+
+template
+std::shared_ptr<session_t>
+execution_unit_t::attach(const std::shared_ptr<local::stream_protocol::socket>&, const io::dispatch_ptr_t&);

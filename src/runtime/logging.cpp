@@ -53,8 +53,6 @@ struct priority_traits<cocaine::logging::priorities> {
         default:
             return priority_t::debug;
         }
-
-        return priority_t::debug;
     }
 };
 
@@ -70,16 +68,11 @@ void
 map_severity(blackhole::aux::attachable_ostringstream& stream, const logging::priorities& level) {
     typedef blackhole::aux::underlying_type<logging::priorities>::type underlying_type;
 
-    static const char* describe[] = {
-        "DEBUG",
-        "INFO",
-        "WARNING",
-        "ERROR"
-    };
+    static const std::array<const char*, 5> describe = {{ "T", "D", "I", "W", "E" }};
 
-    const auto value = static_cast<underlying_type>(level);
+    const size_t value = static_cast<size_t>(level);
 
-    if(value < static_cast<underlying_type>(sizeof(describe) / sizeof(describe[0])) && value >= 0) {
+    if(value < describe.size()) {
         stream << describe[value];
     } else {
         stream << value;

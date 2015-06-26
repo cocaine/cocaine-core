@@ -84,6 +84,7 @@ struct protocol;
 namespace cocaine { namespace logging {
 
 enum priorities: int {
+    trace,
     debug,
     info,
     warning,

@@ -27,19 +27,37 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
+using namespace cocaine;
 using namespace cocaine::isolate;
 
-void
-process_t::spool() {
-    COCAINE_LOG_INFO(m_log, "deploying app to %s", m_working_directory);
+struct null_cancellation_t:
+    public api::cancellation_t
+{
+    void
+    cancel() {}
+};
 
-    const auto storage = api::storage(m_context, "core");
-    const auto archive = storage->get<std::string>("apps", m_name);
+std::unique_ptr<api::cancellation_t>
+process_t::spool(callback_type cb) {
+    std::unique_ptr<api::cancellation_t> cancellation(new null_cancellation_t);
 
-#if BOOST_VERSION >= 104600
-    archive_t(m_context, archive).deploy(m_working_directory.native());
-#else
-    archive_t(m_context, archive).deploy(m_working_directory.string());
-#endif
+    std::string blob;
+
+    try {
+        COCAINE_LOG_INFO(m_log, "deploying app to %s", m_working_directory);
+
+        const auto storage = api::storage(m_context, "core");
+        const auto archive = storage->get<std::string>("apps", m_name);
+
+    #if BOOST_VERSION >= 104600
+        archive_t(m_context, archive).deploy(m_working_directory.native());
+    #else
+        archive_t(m_context, archive).deploy(m_working_directory.string());
+    #endif
+    } catch (const std::system_error& err) {
+        cb(err.code());
+    }
+
+    return cancellation;
 }
 

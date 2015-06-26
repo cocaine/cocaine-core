@@ -1,292 +1,413 @@
-/*
-    Copyright (c) 2011-2014 Andrey Sibiryov <me@kobology.ru>
-    Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
-
-    This file is part of Cocaine.
-
-    Cocaine is free software; you can redistribute it and/or modify
-    it under the terms of the GNU Lesser General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
-
-    Cocaine is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-    GNU Lesser General Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include "cocaine/detail/service/node/app.hpp"
 
 #include "cocaine/api/isolate.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/defaults.hpp"
-
-#include "cocaine/detail/service/node/engine.hpp"
-#include "cocaine/detail/service/node/event.hpp"
-#include "cocaine/detail/service/node/manifest.hpp"
-#include "cocaine/detail/service/node/profile.hpp"
-#include "cocaine/detail/service/node/stream.hpp"
-
-#include "cocaine/idl/rpc.hpp"
-#include "cocaine/idl/streaming.hpp"
-
-#include "cocaine/logging.hpp"
+#include "cocaine/errors.hpp"
+#include "cocaine/locked_ptr.hpp"
 
 #include "cocaine/rpc/actor.hpp"
-#include "cocaine/rpc/asio/channel.hpp"
-#include "cocaine/rpc/dispatch.hpp"
-#include "cocaine/rpc/upstream.hpp"
-
 #include "cocaine/traits/dynamic.hpp"
-#include "cocaine/traits/literal.hpp"
 
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
+#include "cocaine/detail/service/node/manifest.hpp"
+#include "cocaine/detail/service/node/profile.hpp"
 
-#include <asio/local/stream_protocol.hpp>
-
-using namespace asio;
-using namespace asio::local;
+#include "cocaine/detail/service/node/actor.hpp"
+#include "cocaine/detail/service/node/balancing/load.hpp"
+#include "cocaine/detail/service/node/dispatch/client.hpp"
+#include "cocaine/detail/service/node/dispatch/handshaker.hpp"
+#include "cocaine/detail/service/node/dispatch/hostess.hpp"
+#include "cocaine/detail/service/node/overseer.hpp"
 
 using namespace cocaine;
-using namespace cocaine::engine;
-using namespace cocaine::io;
+using namespace cocaine::service;
+using namespace cocaine::service::node;
 
-namespace fs = boost::filesystem;
+namespace ph = std::placeholders;
 
-namespace {
-
-class streaming_service_t:
-    public dispatch<event_traits<app::enqueue>::dispatch_type>
+/// App dispatch, manages incoming enqueue requests. Adds them to the queue.
+class app_dispatch_t:
+    public dispatch<io::app_tag>
 {
-    const api::stream_ptr_t downstream;
+    typedef io::streaming_slot<io::app::enqueue> slot_type;
+
+    const std::unique_ptr<logging::log_t> log;
+
+    // Yes, weak pointer here indicates about application destruction.
+    std::weak_ptr<overseer_t> overseer;
 
 public:
-    streaming_service_t(const std::string& name, const api::stream_ptr_t& downstream_):
-        dispatch<event_traits<app::enqueue>::dispatch_type>(name),
-        downstream(downstream_)
+    app_dispatch_t(context_t& context, const std::string& name, std::shared_ptr<overseer_t> overseer_) :
+        dispatch<io::app_tag>(name),
+        log(context.log(format("%s/dispatch", name))),
+        overseer(std::move(overseer_))
     {
-        typedef io::protocol<event_traits<app::enqueue>::dispatch_type>::scope protocol;
+        on<io::app::enqueue>(std::make_shared<slot_type>(
+            std::bind(&app_dispatch_t::on_enqueue, this, ph::_1, ph::_2, ph::_3)
+        ));
 
-        on<protocol::chunk>(std::bind(&streaming_service_t::write, this, ph::_1));
-        on<protocol::error>(std::bind(&streaming_service_t::error, this, ph::_1, ph::_2));
-        on<protocol::choke>(std::bind(&streaming_service_t::close, this));
-    }
+        on<io::app::info>(std::bind(&app_dispatch_t::on_info, this));
 
-private:
-    void
-    write(const std::string& chunk) {
-        downstream->write(chunk.data(), chunk.size());
-    }
+        // TODO: Temporary here to test graceful app terminating.
+        on<io::app::test>([&](const std::string& v) {
+            COCAINE_LOG_DEBUG(log, "processing test '%s' event", v);
 
-    void
-    error(const std::error_code& ec, const std::string& reason) {
-        downstream->error(ec, reason);
-        downstream->close();
-    }
+            if (v == "0") {
+                overseer.lock()->terminate();
+            } else {
+                std::vector<std::string> slaves;
+                {
+                    auto pool = overseer.lock()->get_pool();
+                    for (const auto& p : *pool) {
+                        slaves.push_back(p.first);
+                    }
+                }
 
-    void
-    close() {
-        downstream->close();
-    }
-};
-
-class app_service_t:
-    public dispatch<app_tag>
-{
-    std::shared_ptr<app_t> parent;
-    logging::log_t& log;
-
-private:
-    struct enqueue_slot_t:
-        public basic_slot<app::enqueue>
-    {
-        enqueue_slot_t(app_service_t *const parent_):
-            parent(parent_)
-        { }
-
-        typedef basic_slot<app::enqueue>::dispatch_type dispatch_type;
-        typedef basic_slot<app::enqueue>::tuple_type tuple_type;
-        typedef basic_slot<app::enqueue>::upstream_type upstream_type;
-
-        virtual
-        boost::optional<std::shared_ptr<const dispatch_type>>
-        operator()(tuple_type&& args, upstream_type&& upstream) {
-            return tuple::invoke(
-                std::move(args),
-                std::bind(&app_service_t::enqueue, parent, std::ref(upstream), ph::_1, ph::_2)
-            );
-        }
-
-    private:
-        app_service_t *const parent;
-    };
-
-    struct engine_stream_adapter_t:
-        public api::stream_t
-    {
-        engine_stream_adapter_t(enqueue_slot_t::upstream_type& upstream_):
-            upstream(upstream_)
-        { }
-
-        typedef io::protocol<event_traits<app::enqueue>::upstream_type>::scope protocol;
-
-        virtual
-        void
-        write(const char* chunk, size_t size) {
-            upstream = upstream.send<protocol::chunk>(literal_t { chunk, size });
-        }
-
-        virtual
-        void
-        error(const std::error_code& ec, const std::string& reason) {
-            upstream.send<protocol::error>(ec, reason);
-        }
-
-        virtual
-        void
-        close() {
-            upstream.send<protocol::choke>();
-        }
-
-    private:
-        enqueue_slot_t::upstream_type upstream;
-    };
-
-    std::shared_ptr<const enqueue_slot_t::dispatch_type>
-    enqueue(enqueue_slot_t::upstream_type& upstream, const std::string& event, const std::string& tag) {
-        api::stream_ptr_t downstream;
-        if(tag.empty()) {
-            downstream = parent->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream));
-        } else {
-            downstream = parent->enqueue(api::event_t(event), std::make_shared<engine_stream_adapter_t>(upstream), tag);
-        }
-
-        if(!downstream) {
-            typedef io::protocol<event_traits<app::enqueue>::upstream_type>::scope protocol;
-            try {
-                upstream.send<protocol::error>(
-                    cocaine::error::dispatch_errors::not_connected,
-                    "application was stopped"
-                );
-            } catch(const cocaine::error_t& err) {
-                COCAINE_LOG_WARNING(&log, "unable to send application stop event to client: %s", err.what());
+                for (auto& s : slaves) {
+                    overseer.lock()->despawn(s, overseer_t::despawn_policy_t::graceful);
+                }
             }
+        });
+    }
+
+    ~app_dispatch_t() {
+        COCAINE_LOG_TRACE(log, "app dispatch has been destroyed");
+    }
+
+private:
+    std::shared_ptr<const slot_type::dispatch_type>
+    on_enqueue(slot_type::upstream_type&& upstream , const std::string& event, const std::string& id) {
+        COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event", event);
+
+        if (auto overseer = this->overseer.lock()) {
+            if (id.empty()) {
+                return overseer->enqueue(std::move(upstream), event, boost::none);
+            } else {
+                return overseer->enqueue(std::move(upstream), event, service::node::slave::id_t(id));
+            }
+        } else {
+            // TODO: Assign an error code instead of magic.
+            const int ec = 0;
+            const std::string reason("the application has been closed");
+
+            upstream.send<
+                io::protocol<io::event_traits<io::app::enqueue>::dispatch_type>::scope::error
+            >(std::error_code(ec, std::generic_category()), reason);
+
             return nullptr;
         }
-
-        return std::make_shared<const streaming_service_t>(name(), downstream);
     }
 
-public:
-    app_service_t(const std::string& name_, std::shared_ptr<app_t> parent_, logging::log_t& log_):
-        dispatch<app_tag>(name_),
-        parent(std::move(parent_)),
-        log(log_)
-    {
-        on<app::enqueue>(std::make_shared<enqueue_slot_t>(this));
-        on<app::info>(std::bind(&app_t::info, parent));
+    dynamic_t
+    on_info() const {
+        if (auto overseer = this->overseer.lock()) {
+            return overseer->info();
+        }
+
+        // TODO: Throw system error instead.
+        throw std::runtime_error("the application has been closed");
     }
 };
 
-} // namespace
+/// \note originally there was `boost::variant`, but in 1.46 it has no idea about move-only types.
+namespace state {
 
-app_t::app_t(context_t& context, const std::string& name, const std::string& profile):
-    m_context(context),
-    m_log(context.log(name)),
-    m_manifest(new manifest_t(context, name)),
-    m_profile(new profile_t(context, profile)),
-    m_asio(std::make_shared<asio::io_service>())
-{
-    auto isolate = m_context.get<api::isolate_t>(
-        m_profile->isolate.type,
-        m_context,
-        m_manifest->name,
-        m_profile->isolate.args
-    );
+class base_t {
+public:
+    virtual
+    ~base_t() {}
 
-    // TODO: Spooling state?
-    if(m_manifest->source() != cached<dynamic_t>::sources::cache) {
-        isolate->spool();
+    virtual
+    bool
+    stopped() noexcept {
+        return false;
     }
+
+    virtual
+    dynamic_t::object_t
+    info() const = 0;
+};
+
+/// The application is stopped either normally or abnormally.
+class stopped_t:
+    public base_t
+{
+    std::string cause;
+
+public:
+    stopped_t() noexcept:
+        cause("uninitialized")
+    {}
+
+    explicit
+    stopped_t(std::string cause) noexcept:
+        cause(std::move(cause))
+    {}
+
+    virtual
+    bool
+    stopped() noexcept {
+        return true;
+    }
+
+    virtual
+    dynamic_t::object_t
+    info() const {
+        dynamic_t::object_t info;
+        info["state"] = "stopped";
+        info["cause"] = cause;
+        return info;
+    }
+};
+
+/// The application is currently spooling.
+class spooling_t:
+    public base_t
+{
+    std::shared_ptr<api::isolate_t> isolate;
+    std::unique_ptr<api::cancellation_t> spooler;
+
+public:
+    template<class F>
+    spooling_t(context_t& context, const manifest_t& manifest, const profile_t& profile, F cb) {
+        isolate = context.get<api::isolate_t>(
+            profile.isolate.type,
+            context,
+            manifest.name,
+            profile.isolate.args
+        );
+
+        spooler = isolate->spool(std::move(cb));
+    }
+
+    ~spooling_t() {
+        spooler->cancel();
+    }
+
+    virtual
+    dynamic_t::object_t
+    info() const {
+        dynamic_t::object_t info;
+        info["state"] = "spooling";
+        return info;
+    }
+};
+
+/// The application has been published and currently running.
+class running_t:
+    public base_t
+{
+    const logging::log_t* log;
+
+    std::unique_ptr<unix_actor_t> engine;
+    std::shared_ptr<overseer_t> overseer;
+
+public:
+    running_t(context_t& context,
+              const manifest_t& manifest,
+              const profile_t& profile,
+              const logging::log_t* log,
+              std::shared_ptr<asio::io_service> loop):
+        log(log)
+    {
+        // Create the Overseer - slave spawner/despawner plus the event queue dispatcher.
+        overseer.reset(new overseer_t(context, manifest, profile, loop));
+
+        // Create the event balancer.
+        // TODO: Rename method.
+        overseer->balance(std::make_unique<load_balancer_t>(overseer));
+
+        // Create a TCP server and publish it.
+        COCAINE_LOG_TRACE(log, "publishing application service with the context");
+        context.insert(manifest.name, std::make_unique<actor_t>(
+            context,
+            std::make_shared<asio::io_service>(),
+            std::make_unique<app_dispatch_t>(context, manifest.name, overseer)
+        ));
+
+        // Create an unix actor and bind to {manifest->name}.{pid} unix-socket.
+        COCAINE_LOG_TRACE(log, "publishing worker service with the context");
+        engine.reset(new unix_actor_t(
+            context,
+            manifest.endpoint,
+            std::bind(&overseer_t::prototype, overseer),
+            [](io::dispatch_ptr_t handshaker, std::shared_ptr<session_t> session) {
+                std::static_pointer_cast<const handshaker_t>(handshaker)->bind(session);
+            },
+            std::make_shared<asio::io_service>(),
+            std::make_unique<hostess_t>(manifest.name)
+        ));
+        engine->run();
+    }
+
+    ~running_t() {
+        COCAINE_LOG_TRACE(log, "removing application service from the context");
+
+        engine->terminate();
+        overseer->terminate();
+    }
+
+    virtual
+    dynamic_t::object_t
+    info() const {
+        dynamic_t::object_t info = overseer->info();
+        info["state"] = "running";
+        return info;
+    }
+};
+
+} // namespace state
+
+class cocaine::service::node::app_state_t:
+    public std::enable_shared_from_this<app_state_t>
+{
+    const std::unique_ptr<logging::log_t> log;
+
+    context_t& context;
+
+    typedef std::unique_ptr<state::base_t> state_type;
+
+    synchronized<state_type> state;
+
+    /// Node start request's deferred.
+    cocaine::deferred<void> deferred;
+
+    // Configuration.
+    const manifest_t manifest_;
+    const profile_t  profile;
+
+    std::shared_ptr<asio::io_service> loop;
+    std::unique_ptr<asio::io_service::work> work;
+    boost::thread thread;
+
+public:
+    app_state_t(context_t& context,
+                manifest_t manifest_,
+                profile_t profile_,
+                cocaine::deferred<void> deferred_):
+        log(context.log(format("%s/app", manifest_.name))),
+        context(context),
+        state(new state::stopped_t),
+        deferred(std::move(deferred_)),
+        manifest_(std::move(manifest_)),
+        profile(std::move(profile_)),
+        loop(std::make_shared<asio::io_service>()),
+        work(std::make_unique<asio::io_service::work>(*loop))
+    {
+        COCAINE_LOG_TRACE(log, "application has initialized its internal state");
+
+        thread = boost::thread([=] {
+            loop->run();
+        });
+    }
+
+    ~app_state_t() {
+        COCAINE_LOG_TRACE(log, "application is destroying its internal state");
+
+        work.reset();
+        thread.join();
+
+        COCAINE_LOG_TRACE(log, "application has destroyed its internal state");
+    }
+
+    const manifest_t&
+    manifest() const noexcept {
+        return manifest_;
+    }
+
+    dynamic_t
+    info() const {
+        return (*state.synchronize())->info();
+    }
+
+    void
+    spool() {
+        state.apply([&](state_type& state) {
+            if (!state->stopped()) {
+                throw std::logic_error("invalid state");
+            }
+
+            COCAINE_LOG_TRACE(log, "app is spooling");
+            state.reset(new state::spooling_t(
+                context,
+                manifest(),
+                profile,
+                std::bind(&app_state_t::on_spool, shared_from_this(), ph::_1)
+            ));
+        });
+    }
+
+    void
+    cancel(std::string cause = "manually stopped") {
+        state.synchronize()->reset(new state::stopped_t(std::move(cause)));
+    }
+
+private:
+    void
+    on_spool(const std::error_code& ec) {
+        if (ec) {
+            loop->dispatch(std::bind(&app_state_t::cancel, shared_from_this(), ec.message()));
+
+            // Attempt to finish node service's request.
+            try {
+                deferred.abort(ec, ec.message());
+            } catch (const std::exception&) {
+                // Ignore if the client has been disconnected.
+            }
+        } else {
+            // Dispatch the completion handler to be sure it will be called in a I/O thread to
+            // avoid possible deadlocks (which ones?).
+            loop->dispatch(std::bind(&app_state_t::publish, shared_from_this()));
+        }
+    }
+
+    void
+    publish() {
+        try {
+            state.synchronize()->reset(
+                new state::running_t(context, manifest(), profile, log.get(), loop)
+            );
+        } catch (const std::exception& err) {
+            cancel(err.what());
+        }
+
+        // Attempt to finish node service's request.
+        try {
+            deferred.close();
+        } catch (const cocaine::error_t&) {
+            // Ignore if the client has been disconnected.
+        }
+    }
+};
+
+app_t::app_t(context_t& context,
+             const std::string& manifest,
+             const std::string& profile,
+             cocaine::deferred<void> deferred):
+    context(context),
+    state(std::make_shared<app_state_t>(context, manifest_t(context, manifest), profile_t(context, profile), deferred))
+{
+    state->spool();
 }
 
 app_t::~app_t() {
-    // Empty.
-}
+    if (state) {
+        state->cancel();
 
-void
-app_t::start() {
-    COCAINE_LOG_DEBUG(m_log, "creating engine '%s'", m_manifest->name);
-
-    // Start the engine thread.
-    try {
-        m_engine = std::make_shared<engine_t>(m_context, *m_manifest, *m_profile);
-    } catch(const std::exception& err) {
-#if defined(HAVE_GCC48)
-        std::throw_with_nested(cocaine::error_t("unable to create engine"));
-#else
-        COCAINE_LOG_ERROR(m_log, "unable to initialize engine: %s", err.what());
-
-        throw cocaine::error_t("unable to create engine");
-#endif
+        try {
+            context.remove(name());
+        } catch (...) {
+            // Ignore.
+        }
     }
-
-    COCAINE_LOG_DEBUG(m_log, "starting invocation service");
-
-    // Publish the app service.
-    m_context.insert(m_manifest->name, std::make_unique<actor_t>(
-        m_context,
-        m_asio,
-        std::make_unique<app_service_t>(m_manifest->name, shared_from_this(), *m_log)
-    ));
 }
 
-void
-app_t::pause() {
-    COCAINE_LOG_DEBUG(m_log, "stopping app '%s'", m_manifest->name);
-
-    m_context.remove(m_manifest->name);
-    m_engine.reset();
-
-    COCAINE_LOG_DEBUG(m_log, "app '%s' has been stopped", m_manifest->name);
+std::string
+app_t::name() const {
+    return state->manifest().name;
 }
 
-cocaine::result_of<io::app::info>::type
+dynamic_t
 app_t::info() const {
-    typedef cocaine::result_of<io::app::info>::type result_type;
-
-    COCAINE_LOG_DEBUG(m_log, "handling info request");
-
-    auto engine = m_engine;
-    if(!engine) {
-        dynamic_t::object_t info;
-        info["profile"] = m_profile->name;
-        info["error"] = "engine is not active";
-        return info;
-    }
-
-    return engine->info();
-}
-
-std::shared_ptr<api::stream_t>
-app_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream) {
-    auto engine = m_engine;
-    if(!engine) {
-        return nullptr;
-    }
-    return engine->enqueue(event, upstream);
-}
-
-std::shared_ptr<api::stream_t>
-app_t::enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag) {
-    auto engine = m_engine;
-    if(!engine) {
-        return nullptr;
-    }
-    return engine->enqueue(event, upstream, tag);
+    return state->info();
 }
