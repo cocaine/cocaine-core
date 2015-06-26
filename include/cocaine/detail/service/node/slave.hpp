@@ -183,7 +183,7 @@ private:
 
     // Error handler.
     void
-    on_error(uint64_t session_id, const std::__1::error_code& ec, const std::string& reason);
+    on_error(uint64_t session_id, const std::error_code& ec, const std::string& reason);
 
     // Choke handler.
     void
