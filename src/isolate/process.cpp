@@ -53,6 +53,10 @@ struct process_handle_t:
         m_stdout(stdout)
     { }
 
+    ~process_handle_t() {
+        terminate();
+    }
+
     virtual
     void
     terminate() {
@@ -308,11 +312,11 @@ process_t::spawn(const std::string& path, const api::string_map_t& args, const a
 
     // Unblock all the signals
 
-    sigset_t signals;
+    sigset_t sigset;
 
-    sigfillset(&signals);
+    sigfillset(&sigset);
 
-    ::sigprocmask(SIG_UNBLOCK, &signals, nullptr);
+    ::sigprocmask(SIG_UNBLOCK, &sigset, nullptr);
 
     // Spawn the slave
 

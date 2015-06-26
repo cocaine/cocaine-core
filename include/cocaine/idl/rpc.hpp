@@ -21,127 +21,123 @@
 #ifndef COCAINE_ENGINE_INTERFACE_HPP
 #define COCAINE_ENGINE_INTERFACE_HPP
 
+#include <string>
+
 #include "cocaine/rpc/protocol.hpp"
 
 namespace cocaine { namespace io {
 
-struct rpc_tag;
+struct worker_tag;
 
-struct rpc {
-
-struct handshake {
-    typedef rpc_tag tag;
-
-    typedef boost::mpl::list<
-        /* peer id */ std::string
-    > argument_type;
-};
-
-struct heartbeat {
-    typedef rpc_tag tag;
-};
-
-struct terminate {
-    typedef rpc_tag tag;
-
-    enum code: int {
-        normal = 1,
-        abnormal
-    };
-
-    typedef boost::mpl::list<
-        /* code */   code,
-        /* reason */ std::string
-    > argument_type;
-};
-
-struct invoke {
-    typedef rpc_tag tag;
-
-    typedef boost::mpl::list<
-        /* event */ std::string
-    > argument_type;
-};
-
-struct chunk {
-    typedef rpc_tag tag;
-
-    typedef boost::mpl::list<
-        /* chunk */ std::string
-    > argument_type;
-};
-
-struct error {
-    typedef rpc_tag tag;
-
-    typedef boost::mpl::list<
-     /* Serialized error category and error code. */
-        std::error_code,
-     /* Specially crafted personal error message. */
-        optional<std::string>
-    >::type argument_type;
-};
-
-struct choke {
-    typedef rpc_tag tag;
-};
-
-}; // struct rpc
-
-template<>
-struct protocol<rpc_tag> {
-    typedef boost::mpl::int_<
-        1
-    >::type version;
-
-    typedef boost::mpl::list<
-        rpc::handshake,
-        rpc::heartbeat,
-        rpc::terminate,
-        rpc::invoke,
-        rpc::chunk,
-        rpc::error,
-        rpc::choke
-    > messages;
-
-    typedef rpc scope;
-};
+struct worker {
 
 struct control_tag;
 
-struct control {
+/// This is the only message, that the worker can sent to be able create control channel.
+struct handshake {
+    static const char* alias() {
+        return "handshake";
+    }
 
-struct report {
-    typedef control_tag tag;
-};
+    typedef worker_tag tag;
 
-struct info {
-    typedef control_tag tag;
+    typedef control_tag dispatch_type;
+    typedef control_tag upstream_type;
 
     typedef boost::mpl::list<
-        /* info */ dynamic_t
-    > argument_type;
+     /* The unique worker identifyer (usually uuid). */
+        std::string
+    >::type argument_type;
+};
+
+struct heartbeat {
+    static const char* alias() {
+        return "heartbeat";
+    }
+
+    typedef control_tag tag;
+    typedef control_tag dispatch_type;
 };
 
 struct terminate {
+    static const char* alias() {
+        return "terminate";
+    }
+
     typedef control_tag tag;
+
+    typedef control_tag dispatch_type;
+
+    typedef void upstream_type;
+
+    typedef boost::mpl::list<
+     /* Code */
+        int,
+     /* Reason */
+        std::string
+    >::type argument_type;
 };
 
-}; // struct control
+struct rpc_tag;
+
+struct rpc {
+    struct invoke {
+        static const char* alias() {
+            return "invoke";
+        }
+
+        typedef rpc_tag tag;
+
+        typedef stream_of<std::string>::tag dispatch_type;
+        typedef stream_of<std::string>::tag upstream_type;
+
+        typedef boost::mpl::list<
+         /* Event name. */
+            std::string
+        >::type argument_type;
+    };
+};
+
+}; // struct worker
 
 template<>
-struct protocol<control_tag> {
+struct protocol<worker_tag> {
     typedef boost::mpl::int_<
         1
     >::type version;
 
     typedef boost::mpl::list<
-        control::report,
-        control::info,
-        control::terminate
-    > messages;
+        worker::handshake
+    >::type messages;
 
-    typedef control scope;
+    typedef worker scope;
+};
+
+template<>
+struct protocol<worker::control_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        worker::heartbeat,
+        worker::terminate
+    >::type messages;
+
+    typedef worker scope;
+};
+
+template<>
+struct protocol<worker::rpc_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        worker::rpc::invoke
+    >::type messages;
+
+    typedef worker::rpc scope;
 };
 
 }} // namespace cocaine::io

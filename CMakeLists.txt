@@ -2,6 +2,10 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
 PROJECT(COCAINE-CORE)
 
+if(APPLE)
+    set(CMAKE_MACOSX_RPATH ON)
+endif()
+
 SET(COCAINE_VERSION_MAJOR   0)
 SET(COCAINE_VERSION_MINOR   12)
 SET(COCAINE_VERSION_RELEASE 1)
@@ -66,7 +70,7 @@ INCLUDE_DIRECTORIES(
     ${LIBLTDL_INCLUDE_DIRS})
 
 INCLUDE_DIRECTORIES(BEFORE
-    ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
+    SYSTEM ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
     ${PROJECT_SOURCE_DIR}/foreign/blackhole/src
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include
     ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
@@ -105,14 +109,30 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/locator.cpp
     src/service/locator/routing.cpp
     src/service/logging.cpp
+
     src/service/node.cpp
+    src/service/node/actor.cpp
     src/service/node/app.cpp
-    src/service/node/engine.cpp
+    src/service/node/balancing/load.cpp
+    src/service/node/dispatch/client.cpp
+    src/service/node/dispatch/worker.cpp
+    src/service/node/overseer.cpp
+    src/service/node/slave.cpp
+    src/service/node/slave/channel.cpp
+    src/service/node/slave/control.cpp
+    src/service/node/slave/error.cpp
+    src/service/node/slave/fetcher.cpp
+    src/service/node/slave/state/active.cpp
+    src/service/node/slave/state/broken.cpp
+    src/service/node/slave/state/handshaking.cpp
+    src/service/node/slave/state/spawning.cpp
+    src/service/node/slave/state/state.cpp
+    src/service/node/slave/state/sealing.cpp
+    src/service/node/slave/state/terminating.cpp
+    src/service/node/app/stats.cpp
+
     src/service/node/manifest.cpp
     src/service/node/profile.cpp
-    src/service/node/queue.cpp
-    src/service/node/session.cpp
-    src/service/node/slave.cpp
     src/service/storage.cpp
     src/session.cpp
     src/storage/files.cpp

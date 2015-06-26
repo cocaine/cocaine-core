@@ -33,6 +33,7 @@
 #include "cocaine/idl/streaming.hpp"
 
 #include "cocaine/logging.hpp"
+#include "cocaine/net.hpp"
 
 #include "cocaine/rpc/actor.hpp"
 
@@ -558,7 +559,10 @@ locator_t::on_cluster() const {
     std::transform(mapping->begin(), mapping->end(), std::inserter(result, result.end()),
         [](const client_map_t::value_type& value) -> results::cluster::value_type
     {
-        return {value.first, value.second.client.remote_endpoint()};
+        return {
+            value.first,
+            endpoint_traits<asio::ip::tcp::endpoint>::cast(value.second.client.remote_endpoint())
+        };
     });
 
     return result;

@@ -22,9 +22,14 @@
 #include "cocaine/api/storage.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/net.hpp"
 
 #include "cocaine/rpc/asio/channel.hpp"
 
+#include <asio/generic/stream_protocol.hpp>
+#include <asio/local/stream_protocol.hpp>
+
+using namespace asio;
 using namespace asio::ip;
 
 using namespace cocaine::api::details;
@@ -59,7 +64,7 @@ basic_client_t::remote_endpoint() const {
     if(!m_session) {
         return tcp::endpoint();
     } else {
-        return m_session->remote_endpoint();
+        return endpoint_traits<asio::ip::tcp::endpoint>::cast(m_session->remote_endpoint());
     }
 }
 

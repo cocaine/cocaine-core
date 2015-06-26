@@ -24,7 +24,7 @@
 
 #include <unistd.h>
 
-using namespace cocaine::engine;
+using namespace cocaine;
 
 manifest_t::manifest_t(context_t& context, const std::string& name_):
     cached<dynamic_t>(context, "manifests", name_),

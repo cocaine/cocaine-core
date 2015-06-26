@@ -1,68 +1,19 @@
-/*
-    Copyright (c) 2011-2014 Andrey Sibiryov <me@kobology.ru>
-    Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
+#pragma once
 
-    This file is part of Cocaine.
+#include <chrono>
+#include <string>
 
-    Cocaine is free software; you can redistribute it and/or modify
-    it under the terms of the GNU Lesser General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
+namespace cocaine { namespace app {
 
-    Cocaine is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-    GNU Lesser General Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#ifndef COCAINE_APP_EVENT_HPP
-#define COCAINE_APP_EVENT_HPP
-
-#include "cocaine/common.hpp"
-
-namespace cocaine { namespace api {
-
-struct policy_t {
-    // TODO: Consider some environment-independent workaround.
-#ifdef COCAINE_HAS_FEATURE_STEADY_CLOCK
-    typedef std::chrono::steady_clock clock_type;
-#else
-    typedef std::chrono::monotonic_clock clock_type;
-#endif
-
-    policy_t():
-        urgent(false),
-        timeout(0.0f)
-    { }
-
-    policy_t(bool urgent_, double timeout_, clock_type::time_point deadline_):
-        urgent(urgent_),
-        timeout(timeout_),
-        deadline(deadline_)
-    { }
-
-    bool urgent;
-    double timeout;
-    clock_type::time_point deadline;
-};
-
-struct event_t {
-    event_t(const std::string& name_):
-        name(name_)
-    { }
-
-    event_t(const std::string& name_, policy_t policy_):
-        name(name_),
-        policy(policy_)
-    { }
-
+class event_t {
+public:
     const std::string name;
-    const policy_t policy;
+    const std::chrono::high_resolution_clock::time_point birthstamp;
+
+    event_t(std::string name):
+        name(std::move(name)),
+        birthstamp(std::chrono::high_resolution_clock::now())
+    {}
 };
 
-}} // namespace cocaine::api
-
-#endif
+}} // namespace cocaine::app

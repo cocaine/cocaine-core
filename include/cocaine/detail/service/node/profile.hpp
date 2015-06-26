@@ -26,7 +26,7 @@
 
 #include "cocaine/dynamic.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine {
 
 struct profile_t:
     cached<dynamic_t>
@@ -42,8 +42,15 @@ struct profile_t:
     // Timeouts.
     float heartbeat_timeout;
     float idle_timeout;
-    float startup_timeout;
-    float termination_timeout;
+
+    struct {
+        unsigned long spawn;
+        unsigned long handshake;
+        unsigned long heartbeat;
+        unsigned long seal;
+        unsigned long terminate;
+        unsigned long idle;
+    } timeout;
 
     // Limits.
     unsigned long concurrency;
@@ -57,6 +64,6 @@ struct profile_t:
     config_t::component_t isolate;
 };
 
-}} // namespace cocaine::engine
+} // namespace cocaine
 
 #endif

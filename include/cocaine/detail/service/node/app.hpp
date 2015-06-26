@@ -1,96 +1,30 @@
-/*
-    Copyright (c) 2011-2014 Andrey Sibiryov <me@kobology.ru>
-    Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
+#pragma once
 
-    This file is part of Cocaine.
-
-    Cocaine is free software; you can redistribute it and/or modify
-    it under the terms of the GNU Lesser General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
-
-    Cocaine is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-    GNU Lesser General Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public License
-    along with this program. If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#ifndef COCAINE_APP_HPP
-#define COCAINE_APP_HPP
-
-#include "cocaine/common.hpp"
-
-#include "cocaine/api/service.hpp"
-
-#include "cocaine/dynamic/dynamic.hpp"
-
+#include "cocaine/context.hpp"
 #include "cocaine/idl/node.hpp"
 
-#include "cocaine/rpc/slot/deferred.hpp"
+namespace cocaine { namespace service { namespace node {
 
-#include "cocaine/utility.hpp"
+class app_state_t;
 
-#include <thread>
-
-namespace cocaine { namespace api {
-
-struct event_t;
-struct stream_t;
-
-}} // namespace cocaine::api
-
-namespace cocaine { namespace engine {
-
-class engine_t;
-
-struct manifest_t;
-struct profile_t;
-
-}} // namespace cocaine::engine
-
-namespace cocaine {
-
-class app_t:
-public std::enable_shared_from_this<app_t>
-{
+/// Represents a single application.
+///
+/// Starts TCP and UNIX servers.
+class app_t {
     COCAINE_DECLARE_NONCOPYABLE(app_t)
 
-    context_t& m_context;
-
-    const std::unique_ptr<logging::log_t> m_log;
-
-    // Configuration.
-    std::unique_ptr<const engine::manifest_t> m_manifest;
-    std::unique_ptr<const engine::profile_t> m_profile;
-
-    // IO.
-    std::shared_ptr<asio::io_service> m_asio;
-    std::shared_ptr<engine::engine_t> m_engine;
+    context_t& context;
+    std::shared_ptr<app_state_t> state;
 
 public:
-    app_t(context_t& context, const std::string& name, const std::string& profile);
+    app_t(context_t& context, const std::string& manifest, const std::string& profile, deferred<void> deferred);
    ~app_t();
 
-    void
-    start();
+    std::string
+    name() const;
 
-    void
-    pause();
-
-    result_of<io::app::info>::type
+    dynamic_t
     info() const;
-
-    // Scheduling.
-    std::shared_ptr<api::stream_t>
-    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream);
-
-    std::shared_ptr<api::stream_t>
-    enqueue(const api::event_t& event, const std::shared_ptr<api::stream_t>& upstream, const std::string& tag);
 };
 
-} // namespace cocaine
-
-#endif
+}}} // namespace cocaine::service::node

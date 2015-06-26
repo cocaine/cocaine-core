@@ -47,8 +47,19 @@ struct handle_t {
 
 typedef std::map<std::string, std::string> string_map_t;
 
+struct cancellation_t {
+    virtual
+   ~cancellation_t() {}
+
+    virtual
+    void
+    cancel() = 0;
+};
+
 struct isolate_t {
     typedef isolate_t category_type;
+
+    typedef std::function<void(const std::error_code&)> callback_type;
 
     virtual
    ~isolate_t() {
@@ -56,8 +67,8 @@ struct isolate_t {
     }
 
     virtual
-    void
-    spool() = 0;
+    std::unique_ptr<cancellation_t>
+    spool(callback_type cb) = 0;
 
     virtual
     std::unique_ptr<handle_t>

@@ -26,7 +26,7 @@
 
 #include "cocaine/dynamic.hpp"
 
-namespace cocaine { namespace engine {
+namespace cocaine {
 
 struct manifest_t:
     cached<dynamic_t>
@@ -46,6 +46,6 @@ struct manifest_t:
     std::string executable;
 };
 
-}} // namespace cocaine::engine
+} // namespace cocaine
 
 #endif

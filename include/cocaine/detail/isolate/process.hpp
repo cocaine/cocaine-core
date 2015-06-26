@@ -52,8 +52,8 @@ public:
    ~process_t();
 
     virtual
-    void
-    spool();
+    std::unique_ptr<api::cancellation_t>
+    spool(callback_type cb);
 
     virtual
     std::unique_ptr<api::handle_t>
