@@ -41,8 +41,6 @@ std::unique_ptr<api::cancellation_t>
 process_t::spool(callback_type cb) {
     std::unique_ptr<api::cancellation_t> cancellation(new null_cancellation_t);
 
-    std::string blob;
-
     try {
         COCAINE_LOG_INFO(m_log, "deploying app to %s", m_working_directory);
 
@@ -54,6 +52,8 @@ process_t::spool(callback_type cb) {
     #else
         archive_t(m_context, archive).deploy(m_working_directory.string());
     #endif
+
+        cb(std::error_code());
     } catch (const std::system_error& err) {
         cb(err.code());
     }

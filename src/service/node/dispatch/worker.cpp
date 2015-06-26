@@ -11,7 +11,7 @@ worker_rpc_dispatch_t::worker_rpc_dispatch_t(upstream<outcoming_tag>& stream_, c
     on<protocol::chunk>([&](const std::string& chunk) {
         try {
             stream = stream.send<protocol::chunk>(chunk);
-        } catch (const cocaine::error_t&) {
+        } catch (const std::system_error&) {
             finalize(asio::error::connection_aborted);
         }
     });
@@ -20,7 +20,7 @@ worker_rpc_dispatch_t::worker_rpc_dispatch_t(upstream<outcoming_tag>& stream_, c
         try {
             stream.send<protocol::error>(ec, reason);
             finalize();
-        } catch (const cocaine::error_t&) {
+        } catch (const std::system_error&) {
             finalize(asio::error::connection_aborted);
         }
     });
@@ -29,7 +29,7 @@ worker_rpc_dispatch_t::worker_rpc_dispatch_t(upstream<outcoming_tag>& stream_, c
         try {
             stream.send<protocol::choke>();
             finalize();
-        } catch (const cocaine::error_t&) {
+        } catch (const std::system_error&) {
             finalize(asio::error::connection_aborted);
         }
     });

@@ -374,7 +374,7 @@ private:
         // Attempt to finish node service's request.
         try {
             deferred.close();
-        } catch (const cocaine::error_t&) {
+        } catch (const std::exception&) {
             // Ignore if the client has been disconnected.
         }
     }

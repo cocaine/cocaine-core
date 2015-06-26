@@ -42,7 +42,7 @@ control_t::terminate(const std::error_code& ec) {
 
     try {
         stream = stream.send<io::worker::terminate>(ec.value(), ec.message());
-    } catch (const cocaine::error_t& err) {
+    } catch (const std::system_error& err) {
         COCAINE_LOG_WARNING(slave->log, "failed to send terminate message: %s", err.what());
         slave->shutdown(error::conrol_ipc_error);
     }
