@@ -271,7 +271,8 @@ overseer_t::assign(slave_t& slave, slave::channel_t& payload) {
             timings(elapsed);
         });
 
-        balancer->on_channel_finished(id, channel);
+        // TODO: Hack, but at least it saves from the deadlock.
+        loop->post(std::bind(&balancer_t::on_channel_finished, balancer, id, channel));
     });
 
     balancer->on_channel_started(id, channel);
