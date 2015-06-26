@@ -1,3 +1,9 @@
+cocaine-core (0.12.1.2~nightly) unstable; urgency=low
+
+  * Node service, version 2.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 26 Jun 2015 16:48:23 +0400
+
 cocaine-core (0.12.1.1~nightly) unstable; urgency=low
 
   * RPC error categories support.
