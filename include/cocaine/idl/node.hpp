@@ -25,6 +25,8 @@
 
 #include "cocaine/rpc/protocol.hpp"
 
+#include <system_error>
+
 namespace cocaine { namespace io {
 
 struct app_tag;
