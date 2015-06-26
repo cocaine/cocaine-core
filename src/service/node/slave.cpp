@@ -310,12 +310,12 @@ slave_t::process(const io::decoder_t::message_type& message) {
         break;
     }
     case event_traits<rpc::error>::id: {
-        int code;
+        std::error_code ec;
         std::string reason;
         io::type_traits<
             typename io::event_traits<rpc::error>::argument_type
-        >::unpack(message.args(), code, reason);
-        on_error(message.span(), code, reason);
+        >::unpack(message.args(), ec, reason);
+        on_error(message.span(), ec, reason);
         break;
     }
     case event_traits<rpc::choke>::id:
@@ -420,11 +420,11 @@ slave_t::on_chunk(uint64_t session_id, const std::string& chunk) {
 }
 
 void
-slave_t::on_error(uint64_t session_id, int code, const std::string& reason) {
+slave_t::on_error(uint64_t session_id, const std::error_code& ec, const std::string& reason) {
     BOOST_ASSERT(m_state == states::active);
 
     COCAINE_LOG_DEBUG(m_log, "slave received error in session %d", session_id)(
-        "errno", code,
+        "errno", ec.value(),
         "reason", reason
     );
 
@@ -435,7 +435,7 @@ slave_t::on_error(uint64_t session_id, int code, const std::string& reason) {
     }
 
     try {
-        it->second->upstream->error(code, reason);
+        it->second->upstream->error(ec, reason);
     } catch (const std::system_error& err) {
         COCAINE_LOG_WARNING(m_log, "slave is unable to send error event to the upstream: %s", err.what());
     }

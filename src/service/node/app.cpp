@@ -85,7 +85,7 @@ private:
 
     void
     error(const std::error_code& ec, const std::string& reason) {
-        downstream->error(ec.value(), reason);
+        downstream->error(ec, reason);
         downstream->close();
     }
 
@@ -143,8 +143,8 @@ private:
 
         virtual
         void
-        error(int code, const std::string& reason) {
-            upstream.send<protocol::error>(std::error_code(code, std::system_category()), reason);
+        error(const std::error_code& ec, const std::string& reason) {
+            upstream.send<protocol::error>(ec, reason);
         }
 
         virtual

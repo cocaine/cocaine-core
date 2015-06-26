@@ -59,7 +59,7 @@ struct session_t:
 
         virtual
         void
-        error(int code, const std::string& reason);
+        error(const std::error_code& ec, const std::string& reason);
 
         virtual
         void

@@ -37,7 +37,7 @@ struct stream_t {
 
     virtual
     void
-    error(int code, const std::string& reason) = 0;
+    error(const std::error_code& ec, const std::string& reason) = 0;
 
     virtual
     void
@@ -55,7 +55,7 @@ struct null_stream_t:
 
     virtual
     void
-    error(int, const std::string&) { }
+    error(const std::error_code&, const std::string&) { }
 
     virtual
     void

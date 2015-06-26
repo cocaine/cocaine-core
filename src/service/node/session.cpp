@@ -23,6 +23,7 @@
 #include "cocaine/rpc/queue.hpp"
 
 #include "cocaine/traits/enum.hpp"
+#include "cocaine/traits/error_code.hpp"
 #include "cocaine/traits/frozen.hpp"
 #include "cocaine/traits/literal.hpp"
 #include "cocaine/traits/tuple.hpp"
@@ -141,8 +142,8 @@ session_t::downstream_t::write(const char* chunk, size_t size) {
 }
 
 void
-session_t::downstream_t::error(int code, const std::string& reason) {
-    parent->send<rpc::error>(code, reason);
+session_t::downstream_t::error(const std::error_code& ec, const std::string& reason) {
+    parent->send<rpc::error>(ec, reason);
 }
 
 void

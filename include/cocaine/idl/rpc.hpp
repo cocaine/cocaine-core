@@ -75,9 +75,11 @@ struct error {
     typedef rpc_tag tag;
 
     typedef boost::mpl::list<
-        /* code */   int,
-        /* reason */ std::string
-    > argument_type;
+     /* Serialized error category and error code. */
+        std::error_code,
+     /* Specially crafted personal error message. */
+        optional<std::string>
+    >::type argument_type;
 };
 
 struct choke {
