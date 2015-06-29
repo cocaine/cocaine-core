@@ -81,8 +81,10 @@ struct isolate_t {
             spool();
         } catch(const std::system_error& err) {
             cb(err.code());
+            return cancellation;
         } catch(...) {
             cb(std::make_error_code(std::errc::io_error));
+            return cancellation;
         }
 
         cb(std::error_code());
