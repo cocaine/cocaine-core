@@ -130,7 +130,7 @@ private:
     revoke(uint64_t channel_id);
 
     void
-    push(const std::shared_ptr<io::channel<asio::ip::tcp>>& transport, io::encoder_t::message_type&& message);
+    push(const std::shared_ptr<io::channel<protocol_type>>& transport, io::encoder_t::message_type&& message);
 };
 
 } // namespace cocaine

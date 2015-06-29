@@ -23,7 +23,6 @@
 
 #include "cocaine/errors.hpp"
 
-#include "cocaine/rpc/asio/errors.hpp"
 #include "cocaine/rpc/asio/header.hpp"
 
 #include "cocaine/traits.hpp"

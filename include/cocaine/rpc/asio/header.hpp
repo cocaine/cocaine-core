@@ -21,7 +21,7 @@
 #ifndef COCAINE_RPC_ASIO_HEADER_HPP
 #define COCAINE_RPC_ASIO_HEADER_HPP
 
-#include "cocaine/exceptions.hpp"
+#include "cocaine/errors.hpp"
 #include "cocaine/traits.hpp"
 
 #include <boost/mpl/contains.hpp>
@@ -31,6 +31,7 @@
 #include <boost/mpl/vector.hpp>
 
 #include <array>
+#include <cassert>
 #include <cstring>
 
 namespace cocaine { namespace io  {
