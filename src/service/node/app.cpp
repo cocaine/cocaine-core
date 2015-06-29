@@ -86,13 +86,9 @@ private:
                 return overseer->enqueue(std::move(upstream), event, service::node::slave::id_t(id));
             }
         } else {
-            // TODO: Assign an error code instead of magic.
-            const int ec = 0;
-            const std::string reason("the application has been closed");
-
             upstream.send<
                 io::protocol<io::event_traits<io::app::enqueue>::dispatch_type>::scope::error
-            >(std::error_code(ec, std::generic_category()), reason);
+            >(std::make_error_code(std::errc::broken_pipe), std::string("the application has been stopped"));
 
             return nullptr;
         }
@@ -104,8 +100,7 @@ private:
             return overseer->info();
         }
 
-        // TODO: Throw system error instead.
-        throw std::runtime_error("the application has been closed");
+        throw std::system_error(std::make_error_code(std::errc::broken_pipe), "the application has been stopped");
     }
 };
 
