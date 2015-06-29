@@ -46,6 +46,54 @@ using namespace cocaine::service;
 
 namespace ph = std::placeholders;
 
+namespace {
+
+// Node Service errors
+
+struct node_category_t:
+    public std::error_category
+{
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.service.node";
+    }
+
+    virtual
+    std::string
+    message(int code) const {
+        switch (code) {
+        case error::node_errors::deadline_error:
+            return "invocation deadline has passed";
+        case error::node_errors::resource_error:
+            return "no resources available to complete invocation";
+        case error::node_errors::timeout_error:
+            return "invocation has timed out";
+        default:
+            break;
+        }
+
+        return cocaine::format("unknown node error %d", code);
+    }
+};
+
+} // namespace
+
+namespace cocaine { namespace error {
+
+auto
+node_category() -> const std::error_category& {
+    static node_category_t instance;
+    return instance;
+}
+
+auto
+make_error_code(node_errors code) -> std::error_code {
+    return std::error_code(static_cast<int>(code), node_category());
+}
+
+}} // namespace cocaine::error
+
 node_t::node_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),
     dispatch<io::node_tag>(name),
@@ -171,50 +219,6 @@ node_t::list() const -> dynamic_t {
 
     return result;
 }
-
-namespace {
-
-// Node Service errors
-
-struct node_category_t:
-    public std::error_category
-{
-    virtual
-    auto
-    name() const throw() -> const char* {
-        return "cocaine.service.node";
-    }
-
-    virtual
-    auto
-    message(int code) const -> std::string {
-        if(code == cocaine::error::node_errors::deadline_error)
-            return "invocation deadline has passed";
-        if(code == cocaine::error::node_errors::resource_error)
-            return "no resources available to complete invocation";
-        if(code == cocaine::error::node_errors::timeout_error)
-            return "invocation has timed out";
-
-        return "cocaine.service.node error";
-    }
-};
-
-} // namespace
-
-namespace cocaine { namespace error {
-
-auto
-node_category() -> const std::error_category& {
-    static node_category_t instance;
-    return instance;
-}
-
-auto
-make_error_code(node_errors code) -> std::error_code {
-    return std::error_code(static_cast<int>(code), node_category_t());
-}
-
-}} // namespace cocaine::error
 
 dynamic_t
 node_t::info(const std::string& name) const {
