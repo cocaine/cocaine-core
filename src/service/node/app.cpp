@@ -177,7 +177,7 @@ public:
             profile.isolate.args
         );
 
-        spooler = isolate->spool(std::move(cb));
+        spooler = isolate->async_spool(std::move(cb));
     }
 
     ~spooling_t() {
