@@ -47,13 +47,14 @@ struct handle_t {
 
 typedef std::map<std::string, std::string> string_map_t;
 
+// Cancellation token.
 struct cancellation_t {
     virtual
    ~cancellation_t() {}
 
     virtual
     void
-    cancel() = 0;
+    cancel() {}
 };
 
 struct isolate_t {
@@ -67,8 +68,27 @@ struct isolate_t {
     }
 
     virtual
+    void
+    spool() = 0;
+
+    // Default implementation delegates the control flow into the blocking spool method.
+    virtual
     std::unique_ptr<cancellation_t>
-    spool(callback_type cb) = 0;
+    async_spool(callback_type cb) {
+        std::unique_ptr<cancellation_t> cancellation(new cancellation_t());
+
+        try {
+            spool();
+        } catch(const std::system_error& err) {
+            cb(err.code());
+        } catch(...) {
+            cb(std::make_error_code(std::errc::io_error));
+        }
+
+        cb(std::error_code());
+
+        return cancellation;
+    }
 
     virtual
     std::unique_ptr<handle_t>
