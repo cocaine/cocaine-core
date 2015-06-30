@@ -561,7 +561,7 @@ locator_t::on_cluster() const {
     {
         return {
             value.first,
-            endpoint_traits<asio::ip::tcp::endpoint>::cast(value.second.client.remote_endpoint())
+            value.second.client.remote_endpoint()
         };
     });
 

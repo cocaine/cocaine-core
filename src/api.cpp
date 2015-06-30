@@ -64,7 +64,7 @@ basic_client_t::remote_endpoint() const {
     if(!m_session) {
         return tcp::endpoint();
     } else {
-        return endpoint_traits<asio::ip::tcp::endpoint>::cast(m_session->remote_endpoint());
+        return endpoint_traits<tcp::endpoint>::cast(m_session->remote_endpoint());
     }
 }
 

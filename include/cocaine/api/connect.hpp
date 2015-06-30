@@ -36,6 +36,7 @@ template<class Tag> class client;
 
 namespace details {
 
+// WARNING: Only for TCP connections.
 class basic_client_t {
     std::shared_ptr<session_t> m_session;
 
