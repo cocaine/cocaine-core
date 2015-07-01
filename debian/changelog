@@ -1,3 +1,9 @@
+cocaine-core (0.12.1.4) unstable; urgency=low
+
+  * API: isolate interface now has an ability to perform asynchronous spool.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 01 Jul 2015 11:47:24 +0300
+
 cocaine-core (0.12.1.3~nightly) unstable; urgency=low
 
   * Bug fix: fixed deadlock on immediately channel destruction.
