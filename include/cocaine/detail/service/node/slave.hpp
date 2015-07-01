@@ -81,7 +81,7 @@ struct channel_t {
     io::streaming_slot<io::app::enqueue>::upstream_type downstream;
 };
 
-struct channel_stats_t {
+struct slave_stats_t {
     std::uint64_t tx;
     std::uint64_t rx;
     std::uint64_t load;
@@ -173,7 +173,7 @@ public:
     std::uint64_t
     load() const;
 
-    slave::channel_stats_t
+    slave::slave_stats_t
     stats() const;
 
     std::shared_ptr<control_t>
@@ -254,7 +254,7 @@ public:
     std::uint64_t
     load() const;
 
-    slave::channel_stats_t
+    slave::slave_stats_t
     stats() const;
 
     bool

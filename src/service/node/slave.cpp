@@ -77,9 +77,9 @@ state_machine_t::load() const {
     return data.channels->size();
 }
 
-slave::channel_stats_t
+slave::slave_stats_t
 state_machine_t::stats() const {
-    slave::channel_stats_t result { 0, 0, 0, 0, boost::none };
+    slave::slave_stats_t result { 0, 0, 0, 0, boost::none };
 
     data.channels.apply([&](const channels_map_t& channels) {
         for (const auto& channel : channels) {
@@ -339,7 +339,7 @@ slave_t::load() const {
     return machine->load();
 }
 
-slave::channel_stats_t
+slave::slave_stats_t
 slave_t::stats() const {
     BOOST_ASSERT(machine);
     return machine->stats();
