@@ -60,7 +60,7 @@ struct cancellation_t {
 struct isolate_t {
     typedef isolate_t category_type;
 
-    typedef std::function<void(const std::error_code&)> callback_type;
+    typedef std::function<void(const std::error_code&, const std::string&)> callback_type;
 
     virtual
    ~isolate_t() {
@@ -80,14 +80,14 @@ struct isolate_t {
         try {
             spool();
         } catch(const std::system_error& err) {
-            cb(err.code());
+            cb(err.code(), err.what());
             return cancellation;
         } catch(...) {
-            cb(std::make_error_code(std::errc::io_error));
+            cb(std::make_error_code(std::errc::io_error), "Unknown");
             return cancellation;
         }
 
-        cb(std::error_code());
+        cb(std::error_code(), "");
 
         return cancellation;
     }

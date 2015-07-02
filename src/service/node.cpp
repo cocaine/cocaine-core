@@ -184,6 +184,17 @@ node_t::start_app(const std::string& name, const std::string& profile) {
         auto it = apps.find(name);
 
         if(it != apps.end()) {
+            // TODO: Handling app state by parsing strings seems to be not the best idea.
+            const auto info = it->second->info();
+            const auto state = info.as_object()["state"].as_string();
+
+            if (state == "stopped") {
+                const auto reason = info.as_object()["cause"].as_string();
+                throw cocaine::error_t("app '%s' is stopped, reason: %s", name, reason);
+            } else if (state == "spooling") {
+                throw cocaine::error_t("app '%s' is spooling");
+            }
+
             throw cocaine::error_t("app '%s' is already running", name);
         }
 

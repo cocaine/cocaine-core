@@ -120,7 +120,7 @@ public:
 
     virtual
     dynamic_t::object_t
-    info() const = 0;
+    info(app_t::info_policy_t policy) const = 0;
 };
 
 /// The application is stopped either normally or abnormally.
@@ -147,7 +147,7 @@ public:
 
     virtual
     dynamic_t::object_t
-    info() const {
+    info(app_t::info_policy_t) const {
         dynamic_t::object_t info;
         info["state"] = "stopped";
         info["cause"] = cause;
@@ -181,7 +181,7 @@ public:
 
     virtual
     dynamic_t::object_t
-    info() const {
+    info(app_t::info_policy_t) const {
         dynamic_t::object_t info;
         info["state"] = "spooling";
         return info;
@@ -244,8 +244,13 @@ public:
 
     virtual
     dynamic_t::object_t
-    info() const {
-        dynamic_t::object_t info = overseer->info();
+    info(app_t::info_policy_t policy) const {
+        dynamic_t::object_t info;
+
+        if (policy == app_t::info_policy_t::verbose) {
+            info = overseer->info();
+        }
+
         info["state"] = "running";
         return info;
     }
@@ -311,8 +316,8 @@ public:
     }
 
     dynamic_t
-    info() const {
-        return (*state.synchronize())->info();
+    info(app_t::info_policy_t policy) const {
+        return (*state.synchronize())->info(policy);
     }
 
     void
@@ -327,7 +332,7 @@ public:
                 context,
                 manifest(),
                 profile,
-                std::bind(&app_state_t::on_spool, shared_from_this(), ph::_1)
+                std::bind(&app_state_t::on_spool, shared_from_this(), ph::_1, ph::_2)
             ));
         });
     }
@@ -339,13 +344,17 @@ public:
 
 private:
     void
-    on_spool(const std::error_code& ec) {
+    on_spool(const std::error_code& ec, const std::string& what) {
         if (ec) {
-            loop->dispatch(std::bind(&app_state_t::cancel, shared_from_this(), ec.message()));
+            const auto reason = what.empty() ? ec.message() : what;
+
+            COCAINE_LOG_ERROR(log, "unable to spool app - [%d] %s", ec.value(), reason);
+
+            loop->dispatch(std::bind(&app_state_t::cancel, shared_from_this(), reason));
 
             // Attempt to finish node service's request.
             try {
-                deferred.abort(ec, ec.message());
+                deferred.abort(ec, reason);
             } catch (const std::exception&) {
                 // Ignore if the client has been disconnected.
             }
@@ -363,6 +372,7 @@ private:
                 new state::running_t(context, manifest(), profile, log.get(), loop)
             );
         } catch (const std::exception& err) {
+            COCAINE_LOG_ERROR(log, "unable to publish app: %s", err.what());
             cancel(err.what());
         }
 
@@ -403,6 +413,6 @@ app_t::name() const {
 }
 
 dynamic_t
-app_t::info() const {
-    return state->info();
+app_t::info(info_policy_t policy) const {
+    return state->info(policy);
 }

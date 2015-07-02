@@ -13,6 +13,13 @@ class app_state_t;
 class app_t {
     COCAINE_DECLARE_NONCOPYABLE(app_t)
 
+public:
+    enum class info_policy_t {
+        brief,
+        verbose
+    };
+
+private:
     context_t& context;
     std::shared_ptr<app_state_t> state;
 
@@ -23,8 +30,9 @@ public:
     std::string
     name() const;
 
+    // WARNING: Unstable - just added.
     dynamic_t
-    info() const;
+    info(info_policy_t policy = info_policy_t::brief) const;
 };
 
 }}} // namespace cocaine::service::node
