@@ -125,7 +125,7 @@ private:
 
 void
 session_t::push_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
-    ptr->writer->write(message, trace_t::bind("finalize", &push_action_t::finalize,
+    ptr->writer->write(message, trace_t::bind(&push_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -203,6 +203,8 @@ session_t::handle(const decoder_t::message_type& message) {
     }
 
     COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
+        message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
+        channel->dispatch->name());
     
 	auto t = boost::make_optional<trace_t>(
                 message.trace_id() != 0,
@@ -215,10 +217,6 @@ session_t::handle(const decoder_t::message_type& message) {
                 )
     );
     trace_t::restore_scope_t trace_scope(t);
-    COCAINE_LOG_INFO(log, "sr");
-    COCAINE_LOG_DEBUG(log, "handling %d: '%s' message in channel %d, dispatch: '%s'",
-        message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
-        channel->dispatch->name());
 
     if((channel->dispatch = channel->dispatch->process(message, channel->upstream)
         .get_value_or(channel->dispatch)) == nullptr)
