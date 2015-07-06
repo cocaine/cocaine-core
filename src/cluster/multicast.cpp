@@ -40,9 +40,9 @@ using namespace asio::ip;
 using namespace cocaine::io;
 using namespace cocaine::cluster;
 
-namespace ph = std::placeholders;
-
 namespace cocaine {
+
+namespace ph = std::placeholders;
 
 template<>
 struct dynamic_converter<address> {

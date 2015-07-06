@@ -32,8 +32,6 @@
 
 namespace cocaine { namespace io {
 
-namespace ph = std::placeholders;
-
 template<class Protocol, class Decoder>
 class readable_stream:
     public std::enable_shared_from_this<readable_stream<Protocol, Decoder>>
@@ -95,6 +93,7 @@ public:
             m_ring.resize(m_ring.size() * 2);
         }
 
+        namespace ph = std::placeholders;
         m_channel->async_read_some(
             asio::buffer(m_ring.data() + m_rd_offset, m_ring.size() - m_rd_offset),
             std::bind(&readable_stream::fill, this->shared_from_this(), std::ref(message), handle, ph::_1, ph::_2)

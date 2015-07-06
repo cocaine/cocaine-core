@@ -22,6 +22,7 @@ ELSE()
     OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" OFF)
 ENDIF()
 
+OPTION(COCAINE_ALLOW_TESTS "Build Tests" OFF)
 OPTION(COCAINE_ALLOW_BENCHMARKS "Build benchmarking tools" OFF)
 
 # Import our CMake modules
@@ -174,7 +175,7 @@ add_cxx_compiler_flag(-Werror RELEASE)
 add_cxx_compiler_flag(-pedantic)
 add_cxx_compiler_flag(-pedantic-errors)
 
-IF(COCAINE_ALLOW_BENCHMARKS)
+IF(COCAINE_ALLOW_TESTS OR COCAINE_ALLOW_BENCHMARKS)
     ADD_SUBDIRECTORY(tests)
 ENDIF()
 
