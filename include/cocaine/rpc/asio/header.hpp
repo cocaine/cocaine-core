@@ -140,10 +140,10 @@ private:
     friend class header_table_t;
 
     inline
-    header_t(const header::data_t& _name, const header::data_t& _value) noexcept;
+    header_t(const header::data_t& name, const header::data_t& value) noexcept;
 
     inline
-    header_t(const char* _name, size_t name_sz, const char* _value, size_t value_sz) noexcept;
+    header_t(const char* name, size_t name_sz, const char* value, size_t value_sz) noexcept;
 
     header::data_t name;
     header::data_t value;
