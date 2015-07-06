@@ -249,12 +249,12 @@ struct headers {
 struct header_static_table_t {
     typedef boost::mpl::vector<
         headers::empty<>,
-        headers::span_id<>,
         headers::trace_id<>,
+        headers::span_id<>,
         headers::parent_id<>
-    > headers;
+    > headers_storage;
 
-    static constexpr size_t size = boost::mpl::size<headers>::type::value;
+    static constexpr size_t size = boost::mpl::size<headers_storage>::type::value;
     typedef std::array<header_t, size> storage_t;
 
     static
@@ -277,8 +277,8 @@ struct header_static_table_t {
     static
     size_t
     idx() {
-        static_assert(boost::mpl::contains<headers, Header>::type::value, "Could not find header in statis table");
-        return boost::mpl::find<headers, Header>::type::pos::value;
+        static_assert(boost::mpl::contains<headers_storage, Header>::type::value, "Could not find header in statis table");
+        return boost::mpl::find<headers_storage, Header>::type::pos::value;
     }
 
 private:
@@ -289,8 +289,8 @@ private:
         template<class Header>
         void
         operator()(Header) {
-            data[boost::mpl::find<headers, Header>::type::pos::value].name = Header::name();
-            data[boost::mpl::find<headers, Header>::type::pos::value].value = Header::value();
+            data[boost::mpl::find<headers_storage, Header>::type::pos::value].name = Header::name();
+            data[boost::mpl::find<headers_storage, Header>::type::pos::value].value = Header::value();
         }
         storage_t& data;
     };
@@ -300,7 +300,7 @@ private:
     init_data() {
         storage_t data;
         init_header_t init(data);
-        boost::mpl::for_each<headers>(init);
+        boost::mpl::for_each<headers_storage>(init);
         return data;
     }
 };

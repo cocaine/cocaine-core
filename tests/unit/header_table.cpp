@@ -119,7 +119,7 @@ TEST(header_t, general) {
 
 TEST(header_static_table_t, general) {
     const auto& headers = header_static_table_t::get_headers();
-    ASSERT_EQ(headers.size(), boost::mpl::size<header_static_table_t::headers>::value);
+    ASSERT_EQ(headers.size(), boost::mpl::size<header_static_table_t::headers_storage>::value);
 
     ASSERT_EQ(header_static_table_t::idx<headers::span_id<>>(), 1);
     ASSERT_EQ(header_static_table_t::idx<headers::trace_id<>>(), 2);

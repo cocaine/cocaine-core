@@ -34,7 +34,7 @@ struct header_traits {
     static
     void
     pack(msgpack::packer<Stream>& packer) {
-        static_assert(boost::mpl::contains<header_static_table_t::headers, Header>::type::value, "Header is not present in static table");
+        static_assert(boost::mpl::contains<header_static_table_t::headers_storage, Header>::type::value, "Header is not present in static table");
         packer.pack_fix_uint64(header_static_table_t::idx<Header>());
     }
 
