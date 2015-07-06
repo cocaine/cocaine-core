@@ -99,7 +99,9 @@ spawning_t::spawn(unsigned long timeout) {
     } catch(const std::system_error& err) {
         COCAINE_LOG_ERROR(slave->log, "unable to spawn slave: %s", err.code().message());
 
-        slave->shutdown(err.code());
+        slave->loop.post([=]() {
+            slave->shutdown(err.code());
+        });
     }
 }
 
