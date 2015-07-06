@@ -1,3 +1,16 @@
+cocaine-core (0.12.1.7) unstable; urgency=low
+
+  * Bug fix: fixed deadlock when unable to spawn a worker in a blocking way.
+    When unable to spawn more slaves, a spawning state invokes the slave termination, which in its
+    turn invokes self erasing from the pool. This requires acquiring a lock, so these operations
+    mustn't be processed in a sequence. One of the solutions is just to delay slave shutdown
+    operation. The second one is to use slave GC instead of cleanup callbacks. The third one is to
+    delay cleanup operation in the overseer.
+    This time we chose the first solution, cause it's the fastest way to fix this behavior, but it
+    leads to an infinite spinning until slave spawn.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 06 Jul 2015 13:51:24 +0300
+
 cocaine-core (0.12.1.6) unstable; urgency=low
 
   * Bug fix: fixed packing typelists with implicit convertions.
