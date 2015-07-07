@@ -121,12 +121,12 @@ TEST(header_static_table_t, general) {
     const auto& headers = header_static_table_t::get_headers();
     ASSERT_EQ(headers.size(), boost::mpl::size<header_static_table_t::headers_storage>::value);
 
-    ASSERT_EQ(header_static_table_t::idx<headers::span_id<>>(), 1);
-    ASSERT_EQ(header_static_table_t::idx<headers::trace_id<>>(), 2);
+    ASSERT_EQ(header_static_table_t::idx<headers::trace_id<>>(), 1);
+    ASSERT_EQ(header_static_table_t::idx<headers::span_id<>>(), 2);
     ASSERT_EQ(header_static_table_t::idx<headers::parent_id<>>(), 3);
 
-    ASSERT_EQ(headers.at(1), io::headers::make_header<headers::span_id<>>());
-    ASSERT_EQ(headers.at(2), io::headers::make_header<headers::trace_id<>>());
+    ASSERT_EQ(headers.at(1), io::headers::make_header<headers::trace_id<>>());
+    ASSERT_EQ(headers.at(2), io::headers::make_header<headers::span_id<>>());
     ASSERT_EQ(headers.at(3), io::headers::make_header<headers::parent_id<>>());
 }
 
@@ -136,7 +136,7 @@ TEST(header_table_t, operator_sq_br) {
     ASSERT_DEATH(table[0], "");
     auto h = io::headers::make_header<headers::span_id<>>();
     table.push(h);
-    ASSERT_EQ(io::headers::make_header<headers::span_id<>>(), table[1]);
+    ASSERT_EQ(io::headers::make_header<headers::span_id<>>(), table[2]);
 }
 
 TEST(header_table_t, push) {
