@@ -1,3 +1,9 @@
+cocaine-core (0.12.2.0) unstable; urgency=low
+
+  * Optional HPACK like headers extension. Mainly aims to ease internal protocol evolution.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 07 Jul 2015 16:15:46 +0300
+
 cocaine-core (0.12.1.7) unstable; urgency=low
 
   * Bug fix: fixed deadlock when unable to spawn a worker in a blocking way.
