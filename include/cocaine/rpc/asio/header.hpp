@@ -318,7 +318,7 @@ public:
 
     inline
     void
-    push(header_t& header);
+    push(const header_t& header);
 
     inline
     size_t
@@ -459,7 +459,7 @@ header_table_t::empty() const {
 }
 
 void
-header_table_t::push(header_t& result) {
+header_table_t::push(const header_t& result) {
     size_t header_size = result.http2_size();
 
     // Pop headers from table until there is enough room for new one or table is empty
@@ -495,9 +495,6 @@ header_table_t::push(header_t& result) {
     // Encode value of the name of the header (plain copy)
     std::memcpy(dest, result.name.blob, result.name.size);
 
-    // Make header name point to data in the tabel. Size already was there. It did not change.
-    result.name.blob = dest;
-
     // Adjust buffer pointer
     dest += result.name.size;
 
@@ -506,9 +503,6 @@ header_table_t::push(header_t& result) {
 
     // Encode value of the value of the header (plain copy)
     std::memcpy(dest, result.value.blob, result.value.size);
-
-    // Make header value point to data in the table
-    result.value.blob = dest;
 
     // Adjust buffer pointer
     dest += result.value.size + http2_header_overhead;
