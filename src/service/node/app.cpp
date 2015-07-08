@@ -164,10 +164,11 @@ class spooling_t:
 
 public:
     template<class F>
-    spooling_t(context_t& context, const manifest_t& manifest, const profile_t& profile, F cb) {
+    spooling_t(context_t& context, asio::io_service& loop, const manifest_t& manifest, const profile_t& profile, F cb) {
         isolate = context.get<api::isolate_t>(
             profile.isolate.type,
             context,
+            loop,
             manifest.name,
             profile.isolate.args
         );
@@ -330,6 +331,7 @@ public:
             COCAINE_LOG_TRACE(log, "app is spooling");
             state.reset(new state::spooling_t(
                 context,
+                *loop,
                 manifest(),
                 profile,
                 std::bind(&app_state_t::on_spool, shared_from_this(), ph::_1, ph::_2)

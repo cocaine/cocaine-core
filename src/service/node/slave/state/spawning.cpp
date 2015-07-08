@@ -74,6 +74,7 @@ spawning_t::spawn(unsigned long timeout) {
         auto isolate = slave->context.context.get<api::isolate_t>(
             slave->context.profile.isolate.type,
             slave->context.context,
+            slave->loop,
             slave->context.manifest.name,
             slave->context.profile.isolate.args
         );
