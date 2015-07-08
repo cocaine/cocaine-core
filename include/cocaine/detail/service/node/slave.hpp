@@ -32,7 +32,7 @@ namespace cocaine {
 class client_rpc_dispatch_t;
 
 class active_t;
-class broken_t;
+class stopped_t;
 class channel_t;
 class handshaking_t;
 class spawning_t;
@@ -110,7 +110,7 @@ class state_machine_t:
     public std::enable_shared_from_this<state_machine_t>
 {
     friend class active_t;
-    friend class broken_t;
+    friend class stopped_t;
     friend class handshaking_t;
     friend class spawning_t;
     friend class terminating_t;

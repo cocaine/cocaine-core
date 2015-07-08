@@ -11,7 +11,7 @@
 #include "cocaine/detail/service/node/slave/control.hpp"
 #include "cocaine/detail/service/node/slave/fetcher.hpp"
 #include "cocaine/detail/service/node/slave/state/active.hpp"
-#include "cocaine/detail/service/node/slave/state/broken.hpp"
+#include "cocaine/detail/service/node/slave/state/stopped.hpp"
 #include "cocaine/detail/service/node/slave/state/handshaking.hpp"
 #include "cocaine/detail/service/node/slave/state/spawning.hpp"
 #include "cocaine/detail/service/node/slave/state/state.hpp"
@@ -223,7 +223,7 @@ state_machine_t::shutdown(std::error_code ec) {
 
     auto state = *this->state.synchronize();
     state->cancel();
-    migrate(std::make_shared<broken_t>(ec));
+    migrate(std::make_shared<stopped_t>(ec));
 
     fetcher->close();
     fetcher.reset();

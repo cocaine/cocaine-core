@@ -4,14 +4,14 @@
 
 namespace cocaine {
 
-class broken_t:
+class stopped_t:
     public state_t
 {
     std::error_code ec;
 
 public:
     explicit
-    broken_t(std::error_code ec);
+    stopped_t(std::error_code ec);
 
     virtual
     void
