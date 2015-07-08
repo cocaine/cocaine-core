@@ -83,27 +83,8 @@ stacktrace(int signum, siginfo_t* COCAINE_UNUSED_(info), void* context) {
     std::_Exit(EXIT_FAILURE);
 }
 
-asio::io_service* loop;
-
-void
-terminate(int signum) {
-    static const std::map<int, std::string> description = {
-        { SIGINT,  "SIGINT"  },
-        { SIGQUIT, "SIGQUIT" },
-        { SIGTERM, "SIGTERM" }
-    };
-
-    std::cout << "[Runtime] Caught " << description.at(signum) << ", exiting." << std::endl;
-
-    loop->stop();
-}
-
 struct runtime_t {
-    runtime_t():
-        m_signals(m_asio, SIGINT, SIGTERM, SIGQUIT)
-    {
-        m_signals.async_wait(std::bind(&runtime_t::on_signal, this, ph::_1, ph::_2));
-
+    runtime_t() {
         // Establish an alternative signal stack
 
         const size_t alt_stack_size = 8 * 1024 * 1024;
@@ -118,10 +99,9 @@ struct runtime_t {
 
         // Reroute the core-generating signals.
 
-        struct sigaction action, termaction;
+        struct sigaction action;
 
         std::memset(&action, 0, sizeof(action));
-        std::memset(&termaction, 0, sizeof(termaction));
 
         action.sa_sigaction = &stacktrace;
         action.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND | SA_SIGINFO;
@@ -129,13 +109,6 @@ struct runtime_t {
         ::sigaction(SIGABRT, &action, nullptr);
         ::sigaction(SIGBUS,  &action, nullptr);
         ::sigaction(SIGSEGV, &action, nullptr);
-
-        termaction.sa_handler = terminate;
-        termaction.sa_flags = 0;
-
-        ::sigaction(SIGINT,  &termaction, nullptr);
-        ::sigaction(SIGTERM, &termaction, nullptr);
-        ::sigaction(SIGQUIT, &termaction, nullptr);
 
         // Block the deprecated signals.
 
@@ -145,8 +118,6 @@ struct runtime_t {
         sigaddset(&sigset, SIGPIPE);
 
         ::sigprocmask(SIG_BLOCK, &sigset, nullptr);
-
-        loop = &m_asio;
     }
 
    ~runtime_t() {
@@ -161,34 +132,27 @@ struct runtime_t {
 
     int
     run() {
-        m_asio.run();
+        sigset_t sigset;
+        sigaddset(&sigset, SIGINT);
+        sigaddset(&sigset, SIGTERM);
+        sigaddset(&sigset, SIGQUIT);
+
+        int signum = -1;
+        ::sigwait(&sigset, &signum);
+
+        static const std::map<int, std::string> descriptions = {
+            { SIGINT,  "SIGINT"  },
+            { SIGQUIT, "SIGQUIT" },
+            { SIGTERM, "SIGTERM" }
+        };
+
+        std::cout << "[Runtime] Caught " << descriptions.at(signum) << ", exiting." << std::endl;
 
         // There's no way it can actually go wrong.
         return EXIT_SUCCESS;
     }
 
 private:
-    void
-    on_signal(const std::error_code& ec, int signum) {
-        if(ec == asio::error::operation_aborted) {
-            return;
-        }
-
-        static const std::map<int, std::string> signals = {
-            { SIGINT,  "SIGINT"  },
-            { SIGQUIT, "SIGQUIT" },
-            { SIGTERM, "SIGTERM" }
-        };
-
-        std::cout << "[Runtime] Caught " << signals.at(signum) << ", exiting." << std::endl;
-
-        m_asio.stop();
-    }
-
-private:
-    asio::io_service m_asio;
-    asio::signal_set m_signals;
-
     // An alternative signal stack for SIGSEGV handling.
     stack_t m_alt_stack;
 };
