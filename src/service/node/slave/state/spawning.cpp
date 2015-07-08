@@ -80,7 +80,7 @@ spawning_t::spawn(unsigned long timeout) {
 
         COCAINE_LOG_TRACE(slave->log, "spawning");
 
-        auto handle = isolate->spawn(
+        handle = isolate->spawn(
             slave->context.manifest.executable,
             args,
             slave->context.manifest.environment
@@ -91,7 +91,7 @@ spawning_t::spawn(unsigned long timeout) {
         // NOTE: The callback must be called from the event loop thread, otherwise the behavior
         // is undefined.
         slave->loop.post(detail::move_handler(std::bind(
-            &spawning_t::on_spawn, shared_from_this(), std::move(handle), std::chrono::high_resolution_clock::now()
+            &spawning_t::on_spawn, shared_from_this(), std::chrono::high_resolution_clock::now()
         )));
 
         timer.expires_from_now(boost::posix_time::milliseconds(timeout));
@@ -106,7 +106,7 @@ spawning_t::spawn(unsigned long timeout) {
 }
 
 void
-spawning_t::on_spawn(std::unique_ptr<api::handle_t>& handle, std::chrono::high_resolution_clock::time_point start) {
+spawning_t::on_spawn(std::chrono::high_resolution_clock::time_point start) {
     std::error_code ec;
     const size_t cancelled = timer.cancel(ec);
     if (ec || cancelled == 0) {

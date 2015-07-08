@@ -17,6 +17,7 @@ class spawning_t:
     std::shared_ptr<state_machine_t> slave;
 
     asio::deadline_timer timer;
+    std::unique_ptr<api::handle_t> handle;
 
 public:
     explicit
@@ -39,7 +40,7 @@ public:
 
 private:
     void
-    on_spawn(std::unique_ptr<api::handle_t>& handle, std::chrono::high_resolution_clock::time_point start);
+    on_spawn(std::chrono::high_resolution_clock::time_point start);
 
     void
     on_timeout(const std::error_code& ec);
