@@ -28,6 +28,8 @@
 
 #include <mutex>
 
+#include <asio/io_service.hpp>
+
 namespace cocaine { namespace api {
 
 struct handle_t {
@@ -97,7 +99,7 @@ struct isolate_t {
     spawn(const std::string& path, const string_map_t& args, const string_map_t& environment) = 0;
 
 protected:
-    isolate_t(context_t&, const std::string& /* name */, const dynamic_t& /* args */) {
+    isolate_t(context_t&, asio::io_service&, const std::string& /* name */, const dynamic_t& /* args */) {
         // Empty.
     }
 };
@@ -109,21 +111,21 @@ struct category_traits<isolate_t> {
     struct factory_type: public basic_factory<isolate_t> {
         virtual
         ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) = 0;
+        get(context_t& context, asio::io_service& io_context, const std::string& name, const dynamic_t& args) = 0;
     };
 
     template<class T>
     struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) {
+        get(context_t& context, asio::io_service& io_context, const std::string& name, const dynamic_t& args) {
             ptr_type instance;
 
             instances.apply([&](std::map<std::string, std::weak_ptr<isolate_t>>& instances) {
                 auto weak_ptr = instances[name];
 
                 if((instance = weak_ptr.lock()) == nullptr) {
-                    instance = std::make_shared<T>(context, name, args);
+                    instance = std::make_shared<T>(context, io_context, name, args);
                     instances[name] = instance;
                 }
             });

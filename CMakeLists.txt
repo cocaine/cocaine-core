@@ -114,6 +114,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/node.cpp
     src/service/node/actor.cpp
     src/service/node/app.cpp
+    src/service/node/app/stats.cpp
     src/service/node/balancing/load.cpp
     src/service/node/dispatch/client.cpp
     src/service/node/dispatch/worker.cpp
@@ -124,13 +125,12 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/node/slave/error.cpp
     src/service/node/slave/fetcher.cpp
     src/service/node/slave/state/active.cpp
-    src/service/node/slave/state/broken.cpp
     src/service/node/slave/state/handshaking.cpp
+    src/service/node/slave/state/sealing.cpp
     src/service/node/slave/state/spawning.cpp
     src/service/node/slave/state/state.cpp
-    src/service/node/slave/state/sealing.cpp
+    src/service/node/slave/state/stopped.cpp
     src/service/node/slave/state/terminating.cpp
-    src/service/node/app/stats.cpp
 
     src/service/node/manifest.cpp
     src/service/node/profile.cpp

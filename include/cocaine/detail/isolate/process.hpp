@@ -35,18 +35,20 @@ class process_t:
     public api::isolate_t
 {
     context_t& m_context;
+    asio::io_service& io_context;
 
     const std::unique_ptr<logging::log_t> m_log;
 
     const std::string m_name;
     const boost::filesystem::path m_working_directory;
+    const uint m_kill_timeout;
 
 #ifdef COCAINE_ALLOW_CGROUPS
     cgroup* m_cgroup;
 #endif
 
 public:
-    process_t(context_t& context, const std::string& name, const dynamic_t& args);
+    process_t(context_t& context, asio::io_service& io_context, const std::string& name, const dynamic_t& args);
 
     virtual
    ~process_t();

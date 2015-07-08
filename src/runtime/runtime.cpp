@@ -83,23 +83,9 @@ stacktrace(int signum, siginfo_t* COCAINE_UNUSED_(info), void* context) {
     std::_Exit(EXIT_FAILURE);
 }
 
-asio::io_service* loop;
-
-void
-terminate(int signum) {
-    static const std::map<int, std::string> description = {
-        { SIGINT,  "SIGINT"  },
-        { SIGQUIT, "SIGQUIT" },
-        { SIGTERM, "SIGTERM" }
-    };
-
-    std::cout << "[Runtime] Caught " << description.at(signum) << ", exiting." << std::endl;
-
-    loop->stop();
-}
-
 struct runtime_t {
-    runtime_t():
+    runtime_t(const logging::logger_t& log_):
+        log(log_),
         m_signals(m_asio, SIGINT, SIGTERM, SIGQUIT)
     {
         m_signals.async_wait(std::bind(&runtime_t::on_signal, this, ph::_1, ph::_2));
@@ -113,15 +99,14 @@ struct runtime_t {
         m_alt_stack.ss_flags = 0;
 
         if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
-            std::cerr << "ERROR: Unable to activate an alternative signal stack" << std::endl;
+            COCAINE_LOG_ERROR(log, "unable to activate an alternative signal stack");
         }
 
         // Reroute the core-generating signals.
 
-        struct sigaction action, termaction;
+        struct sigaction action;
 
         std::memset(&action, 0, sizeof(action));
-        std::memset(&termaction, 0, sizeof(termaction));
 
         action.sa_sigaction = &stacktrace;
         action.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND | SA_SIGINFO;
@@ -129,13 +114,6 @@ struct runtime_t {
         ::sigaction(SIGABRT, &action, nullptr);
         ::sigaction(SIGBUS,  &action, nullptr);
         ::sigaction(SIGSEGV, &action, nullptr);
-
-        termaction.sa_handler = terminate;
-        termaction.sa_flags = 0;
-
-        ::sigaction(SIGINT,  &termaction, nullptr);
-        ::sigaction(SIGTERM, &termaction, nullptr);
-        ::sigaction(SIGQUIT, &termaction, nullptr);
 
         // Block the deprecated signals.
 
@@ -145,15 +123,13 @@ struct runtime_t {
         sigaddset(&sigset, SIGPIPE);
 
         ::sigprocmask(SIG_BLOCK, &sigset, nullptr);
-
-        loop = &m_asio;
     }
 
    ~runtime_t() {
         m_alt_stack.ss_flags = SS_DISABLE;
 
         if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
-            std::cerr << "ERROR: Unable to deactivate an alternative signal stack" << std::endl;
+            COCAINE_LOG_ERROR(log, "unable to deactivate an alternative signal stack");
         }
 
         delete[] static_cast<char*>(m_alt_stack.ss_sp);
@@ -174,18 +150,20 @@ private:
             return;
         }
 
-        static const std::map<int, std::string> signals = {
+        static const std::map<int, std::string> description = {
             { SIGINT,  "SIGINT"  },
             { SIGQUIT, "SIGQUIT" },
             { SIGTERM, "SIGTERM" }
         };
 
-        std::cout << "[Runtime] Caught " << signals.at(signum) << ", exiting." << std::endl;
+        COCAINE_LOG_INFO(log, "caught %s, exitting", description.at(signum));
 
         m_asio.stop();
     }
 
 private:
+    const logging::logger_t& log;
+
     asio::io_service m_asio;
     asio::signal_set m_signals;
 
@@ -311,5 +289,5 @@ main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    return runtime_t().run();
+    return runtime_t(*logger).run();
 }

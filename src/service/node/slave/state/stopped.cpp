@@ -1,18 +1,18 @@
-#include "cocaine/detail/service/node/slave/state/broken.hpp"
+#include "cocaine/detail/service/node/slave/state/stopped.hpp"
 
 #include "cocaine/detail/service/node/slave/error.hpp"
 
 using namespace cocaine;
 
-broken_t::broken_t(std::error_code ec):
+stopped_t::stopped_t(std::error_code ec):
     ec(std::move(ec))
 {}
 
 void
-broken_t::cancel() {}
+stopped_t::cancel() {}
 
 const char*
-broken_t::name() const noexcept {
+stopped_t::name() const noexcept {
     switch (ec.value()) {
     case 0:
     case error::committed_suicide:
