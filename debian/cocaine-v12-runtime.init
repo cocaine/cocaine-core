@@ -14,7 +14,7 @@
 # Author: Andrey Sibiryov <kobolog@yandex-team.ru>
 
 PATH=/sbin:/bin:/usr/sbin:/usr/bin
-NAME=cocaine-runtime
+NAME=cocaine-v12-runtime
 DAEMON=/usr/bin/cocaine-runtime
 DAEMON_ARGS="--daemonize"
 SCRIPTNAME=/etc/init.d/$NAME
