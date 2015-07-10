@@ -31,6 +31,9 @@ namespace cocaine {
 
 class session_t;
 
+template<class Protocol>
+class session;
+
 class execution_unit_t {
     COCAINE_DECLARE_NONCOPYABLE(execution_unit_t)
 
@@ -60,11 +63,11 @@ public:
    ~execution_unit_t();
 
     template<class Socket>
-    std::shared_ptr<session_t>
+    std::shared_ptr<session<typename Socket::protocol_type>>
     attach(std::unique_ptr<Socket> ptr, const io::dispatch_ptr_t& dispatch);
 
     template<class Socket>
-    std::shared_ptr<session_t>
+    std::shared_ptr<session<typename Socket::protocol_type>>
     attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
     double

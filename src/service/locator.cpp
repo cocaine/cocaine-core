@@ -33,7 +33,6 @@
 #include "cocaine/idl/streaming.hpp"
 
 #include "cocaine/logging.hpp"
-#include "cocaine/net.hpp"
 
 #include "cocaine/rpc/actor.hpp"
 

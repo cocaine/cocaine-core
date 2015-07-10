@@ -36,9 +36,10 @@ template<class Tag> class client;
 
 namespace details {
 
-// WARNING: Only for TCP connections.
 class basic_client_t {
-    std::shared_ptr<session_t> m_session;
+    typedef asio::ip::tcp protocol_type;
+
+    std::shared_ptr<session<protocol_type>> m_session;
 
 public:
     template<typename> friend class api::client;
@@ -60,7 +61,7 @@ public:
     // Modifiers
 
     void
-    attach(const std::shared_ptr<session_t>& session);
+    attach(const std::shared_ptr<session<protocol_type>>& session);
 };
 
 } // namespace details

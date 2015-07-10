@@ -22,7 +22,6 @@
 #include "cocaine/api/storage.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/net.hpp"
 
 #include "cocaine/rpc/asio/channel.hpp"
 
@@ -64,12 +63,12 @@ basic_client_t::remote_endpoint() const {
     if(!m_session) {
         return tcp::endpoint();
     } else {
-        return endpoint_traits<tcp::endpoint>::cast(m_session->remote_endpoint());
+        return m_session->remote_endpoint();
     }
 }
 
 void
-basic_client_t::attach(const std::shared_ptr<session_t>& session) {
+basic_client_t::attach(const std::shared_ptr<session<protocol_type>>& session) {
     if(m_session) {
         throw std::system_error(std::make_error_code(std::errc::already_connected));
     }
