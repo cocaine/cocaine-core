@@ -25,6 +25,10 @@
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
+#include <asio/ip/tcp.hpp>
+#include <asio/generic/stream_protocol.hpp>
+#include <asio/local/stream_protocol.hpp>
+
 using namespace asio;
 
 using namespace cocaine;
@@ -322,7 +326,7 @@ session_t::active_channels() const {
     });
 }
 
-size_t
+std::size_t
 session_t::memory_pressure() const {
 #if defined(__clang__)
     if(const auto ptr = std::atomic_load(&transport)) {
@@ -358,3 +362,61 @@ session_t::remote_endpoint() const {
 
     return endpoint;
 }
+
+// TODO: Move to a separate TU.
+namespace {
+
+ip::tcp::endpoint
+to_tcp_endpoint(const generic::stream_protocol::endpoint& endpoint) {
+    switch (endpoint.protocol().family()) {
+    case AF_INET: {
+        const sockaddr_in* addr = reinterpret_cast<const sockaddr_in*>(endpoint.data());
+        ip::address_v4::bytes_type array;
+        std::copy((char*)&addr->sin_addr, (char*)&addr->sin_addr + array.size(), array.begin());
+
+        ip::address_v4 address(array);
+        return ip::tcp::endpoint(
+            address,
+            detail::socket_ops::network_to_host_short(addr->sin_port)
+        );
+    }
+    case AF_INET6: {
+        const sockaddr_in6* addrv6 = reinterpret_cast<const sockaddr_in6*>(endpoint.data());
+        ip::address_v6::bytes_type array;
+        std::copy((char*)&addrv6->sin6_addr, (char*)&addrv6->sin6_addr + array.size(), array.begin());
+
+        ip::address_v6 address(array, addrv6->sin6_scope_id);
+        return ip::tcp::endpoint(
+            address,
+            detail::socket_ops::network_to_host_short(addrv6->sin6_port)
+        );
+    }
+    default:
+        throw std::system_error(std::error_code(EINVAL, std::system_category()), "invalid protocol");
+    };
+
+    return ip::tcp::endpoint();
+}
+
+} // namespace
+
+namespace cocaine {
+
+template<class Protocol>
+session<Protocol>::session(std::unique_ptr<logging::log_t> log, std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype):
+    session_t(std::move(log), std::make_unique<io::channel<asio::generic::stream_protocol>>(std::move(*transport)), std::move(prototype))
+{}
+
+template<>
+typename session<ip::tcp>::endpoint_type
+session<ip::tcp>::remote_endpoint() const {
+    return ::to_tcp_endpoint(session_t::remote_endpoint());
+}
+
+template
+class session<ip::tcp>;
+
+template
+class session<local::stream_protocol>;
+
+} // namespace cocaine
