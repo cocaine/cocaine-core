@@ -23,6 +23,10 @@
 
 #include <blackhole/forwards.hpp>
 
+namespace asio {
+    class io_service;
+}
+
 namespace cocaine {
 
 class context_t;
