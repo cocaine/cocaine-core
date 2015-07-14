@@ -47,27 +47,6 @@ public:
         ));
 
         on<io::app::info>(std::bind(&app_dispatch_t::on_info, this));
-
-        // TODO: Temporary here to test graceful app terminating.
-        on<io::app::test>([&](const std::string& v) {
-            COCAINE_LOG_DEBUG(log, "processing test '%s' event", v);
-
-            if (v == "0") {
-                overseer.lock()->terminate();
-            } else {
-                std::vector<std::string> slaves;
-                {
-                    auto pool = overseer.lock()->get_pool();
-                    for (const auto& p : *pool) {
-                        slaves.push_back(p.first);
-                    }
-                }
-
-                for (auto& s : slaves) {
-                    overseer.lock()->despawn(s, overseer_t::despawn_policy_t::graceful);
-                }
-            }
-        });
     }
 
     ~app_dispatch_t() {
