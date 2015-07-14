@@ -81,6 +81,9 @@ public:
                std::shared_ptr<asio::io_service> loop);
     ~overseer_t();
 
+    std::shared_ptr<asio::io_service>
+    io_context() const;
+
     /// \todo not sure about this method necessity, consider passing a shared logger pointer to the
     /// balancer.
     const logging::log_t&

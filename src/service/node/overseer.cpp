@@ -59,6 +59,11 @@ overseer_t::~overseer_t() {
     COCAINE_LOG_TRACE(log, "overseer has been destroyed");
 }
 
+std::shared_ptr<asio::io_service>
+overseer_t::io_context() const {
+    return loop;
+}
+
 profile_t
 overseer_t::profile() const {
     return *profile_.synchronize();
