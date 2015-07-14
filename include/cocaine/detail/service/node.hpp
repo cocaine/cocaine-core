@@ -30,11 +30,15 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
-namespace cocaine { namespace service {
-
-namespace node {
-class app_t;
+namespace cocaine {
+    namespace service {
+        namespace node {
+            class app_t;
+        }
+    }
 }
+
+namespace cocaine { namespace service {
 
 class node_t:
     public api::service_t,

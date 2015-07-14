@@ -1,29 +1,27 @@
 #include "cocaine/detail/service/node/app.hpp"
 
 #include "cocaine/api/isolate.hpp"
-
 #include "cocaine/context.hpp"
 #include "cocaine/errors.hpp"
+#include "cocaine/idl/node.hpp"
 #include "cocaine/locked_ptr.hpp"
-
 #include "cocaine/rpc/actor.hpp"
 #include "cocaine/traits/dynamic.hpp"
-
-#include "cocaine/detail/service/node/manifest.hpp"
-#include "cocaine/detail/service/node/profile.hpp"
 
 #include "cocaine/detail/service/node/actor.hpp"
 #include "cocaine/detail/service/node/balancing/load.hpp"
 #include "cocaine/detail/service/node/dispatch/client.hpp"
 #include "cocaine/detail/service/node/dispatch/handshaker.hpp"
 #include "cocaine/detail/service/node/dispatch/hostess.hpp"
+#include "cocaine/detail/service/node/manifest.hpp"
 #include "cocaine/detail/service/node/overseer.hpp"
+#include "cocaine/detail/service/node/profile.hpp"
+
+namespace ph = std::placeholders;
 
 using namespace cocaine;
 using namespace cocaine::service;
 using namespace cocaine::service::node;
-
-namespace ph = std::placeholders;
 
 /// App dispatch, manages incoming enqueue requests. Adds them to the queue.
 class app_dispatch_t:
@@ -174,16 +172,22 @@ class running_t:
 {
     const logging::log_t* log;
 
+    context_t& context;
+
+    std::string name;
+
     std::unique_ptr<unix_actor_t> engine;
     std::shared_ptr<overseer_t> overseer;
 
 public:
-    running_t(context_t& context,
+    running_t(context_t& context_,
               const manifest_t& manifest,
               const profile_t& profile,
               const logging::log_t* log,
               std::shared_ptr<asio::io_service> loop):
-        log(log)
+        log(log),
+        context(context_),
+        name(manifest.name)
     {
         // Create the Overseer - slave spawner/despawner plus the event queue dispatcher.
         overseer.reset(new overseer_t(context, manifest, profile, loop));
@@ -217,6 +221,8 @@ public:
 
     ~running_t() {
         COCAINE_LOG_TRACE(log, "removing application service from the context");
+
+        context.remove(name);
 
         engine->terminate();
         overseer->terminate();
@@ -370,7 +376,6 @@ app_t::app_t(context_t& context,
              const std::string& manifest,
              const std::string& profile,
              cocaine::deferred<void> deferred):
-    context(context),
     state(std::make_shared<app_state_t>(context, manifest_t(context, manifest), profile_t(context, profile), deferred))
 {
     state->spool();
@@ -379,12 +384,6 @@ app_t::app_t(context_t& context,
 app_t::~app_t() {
     if (state) {
         state->cancel();
-
-        try {
-            context.remove(name());
-        } catch (...) {
-            // Ignore.
-        }
     }
 }
 

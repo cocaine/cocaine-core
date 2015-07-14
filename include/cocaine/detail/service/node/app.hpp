@@ -1,11 +1,19 @@
 #pragma once
 
-#include "cocaine/context.hpp"
-#include "cocaine/idl/node.hpp"
+#include <string>
+
+#include "cocaine/common.hpp"
+#include "cocaine/rpc/slot/deferred.hpp"
+
+namespace cocaine {
+    namespace service {
+        namespace node {
+            class app_state_t;
+        } // namespace node
+    } // namespace service
+} // namespace cocaine
 
 namespace cocaine { namespace service { namespace node {
-
-class app_state_t;
 
 /// Represents a single application.
 ///
@@ -14,13 +22,13 @@ class app_t {
     COCAINE_DECLARE_NONCOPYABLE(app_t)
 
 public:
+    // WARNING: Unstable - just added.
     enum class info_policy_t {
         brief,
         verbose
     };
 
 private:
-    context_t& context;
     std::shared_ptr<app_state_t> state;
 
 public:
