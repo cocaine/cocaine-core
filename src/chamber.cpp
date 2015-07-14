@@ -28,6 +28,9 @@
 
 #include <sys/resource.h>
 
+#include <iomanip>
+#include <sstream>
+
 using namespace cocaine::io;
 
 // Chamber internals
@@ -160,4 +163,12 @@ chamber_t::~chamber_t() {
     // NOTE: This might hang forever if io_service users have failed to abort their async operations
     // upon context.signals.shutdown signal (or haven't connected to it at all).
     thread->join();
+}
+
+std::string
+chamber_t::thread_id() const {
+    std::ostringstream stream;
+    stream << std::hex << std::internal << std::showbase << std::setw(2) << std::setfill('0');
+    stream << thread->native_handle();
+    return stream.str();
 }

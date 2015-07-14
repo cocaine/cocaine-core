@@ -100,9 +100,7 @@ execution_unit_t::execution_unit_t(context_t& context):
     m_chamber(new io::chamber_t("core:asio", m_asio)),
     m_cron(*m_asio)
 {
-    m_log = context.log("core:asio", {
-        attribute::make("engine", boost::lexical_cast<std::string>(m_chamber->thread_id()))
-    });
+    m_log = context.log("core:asio", {{ "engine", m_chamber->thread_id() }});
 
     m_asio->post(std::bind(&gc_action_t::operator(),
         std::make_shared<gc_action_t>(this, boost::posix_time::seconds(kCollectionInterval))
