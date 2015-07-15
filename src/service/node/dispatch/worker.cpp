@@ -4,7 +4,7 @@ using namespace cocaine;
 
 worker_rpc_dispatch_t::worker_rpc_dispatch_t(upstream<outcoming_tag>& stream_, callback_type callback):
     dispatch<incoming_tag>("W2C"),
-    stream(std::move(stream_)),
+    stream(stream_), // NOTE: Intentionally copy here to provide exception-safety guarantee.
     state(state_t::open),
     callback(callback)
 {
