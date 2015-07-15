@@ -134,7 +134,9 @@ spawning_t::on_spawn(std::chrono::high_resolution_clock::time_point start) {
 
 void
 spawning_t::on_timeout(const std::error_code& ec) {
-    if (!ec) {
+    if (ec) {
+        COCAINE_LOG_TRACE(slave->log, "spawn timer has called its completion handler: cancelled");
+    } else {
         COCAINE_LOG_ERROR(slave->log, "unable to spawn slave: timeout");
 
         slave->shutdown(error::spawn_timeout);
