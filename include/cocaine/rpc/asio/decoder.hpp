@@ -23,10 +23,10 @@
 
 #include "cocaine/errors.hpp"
 
-#include "cocaine/rpc/asio/header.hpp"
-
 #include "cocaine/traits.hpp"
-#include "cocaine/traits/header.hpp"
+
+#include <hpack-headers/msgpack_traits.hpp>
+#include <hpack-headers/header.hpp>
 
 namespace cocaine { namespace io {
 
@@ -53,7 +53,7 @@ struct decoded_message_t {
     }
 
     template<class Header>
-    boost::optional<header_t>
+    boost::optional<hpack::header_t>
     get_header() const {
         for(const auto& header : headers) {
             if(header.get_name() == Header::name) {
@@ -66,7 +66,7 @@ struct decoded_message_t {
 private:
     //message do not own both,
     msgpack::object object;
-    std::vector<header_t> headers;
+    std::vector<hpack::header_t> headers;
 };
 
 } // namespace aux
@@ -94,7 +94,7 @@ struct decoder_t {
                 error = error || message.object.via.array.ptr[2].type != msgpack::type::ARRAY;
                 if(message.object.via.array.size > 3) {
                     error = error || message.object.via.array.ptr[3].type != msgpack::type::ARRAY;
-                    error = error || header_traits::unpack_vector(message.object.via.array.ptr[3], header_table, message.headers);
+                    error = error || hpack::msgpack_traits::unpack_vector(message.object.via.array.ptr[3], header_table, message.headers);
                 }
                 if(error) {
                     ec = error::frame_format_error;
@@ -111,7 +111,7 @@ struct decoder_t {
 
 private:
     msgpack::zone zone;
-    header_table_t header_table;
+    hpack::header_table_t header_table;
 };
 
 }} // namespace cocaine::io

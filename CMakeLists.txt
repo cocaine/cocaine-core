@@ -75,6 +75,7 @@ INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/blackhole/src
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include
     ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
+    ${PROJECT_SOURCE_DIR}/foreign/hpack-headers/include
     ${PROJECT_SOURCE_DIR}/include)
 
 LINK_DIRECTORIES(
@@ -137,9 +138,14 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/storage.cpp
     src/session.cpp
     src/storage/files.cpp
-    src/unique_id.cpp)
+    src/unique_id.cpp
+    foreign/hpack-headers/src/header.cpp
+)
+
+ADD_SUBDIRECTORY(foreign/hpack-headers)
 
 TARGET_LINK_LIBRARIES(cocaine-core
+    hpack-headers-static
     archive
     ${Boost_LIBRARIES}
     ${LIBCGROUP_LIBRARY}

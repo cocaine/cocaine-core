@@ -42,8 +42,7 @@ IF(COCAINE_ALLOW_TESTS)
         ${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
     ADD_EXECUTABLE(cocaine-core-unit
-        ${CMAKE_CURRENT_SOURCE_DIR}/unit/main.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/unit/header_table.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/unit/main.cpp)
 
     ADD_DEPENDENCIES(cocaine-core-unit googlemock)
 
