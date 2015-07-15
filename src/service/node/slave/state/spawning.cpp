@@ -111,6 +111,8 @@ spawning_t::on_spawn(std::chrono::high_resolution_clock::time_point start) {
     std::error_code ec;
     const size_t cancelled = timer.cancel(ec);
     if (ec || cancelled == 0) {
+        // If we are here, then the spawn timer has been triggered and the slave has been
+        // shutdowned with a spawn timeout error.
         COCAINE_LOG_WARNING(slave->log, "slave has been spawned, but the timeout has already expired");
         return;
     }
