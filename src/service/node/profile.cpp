@@ -30,9 +30,17 @@ profile_t::profile_t(context_t& context, const std::string& name_):
     cached<dynamic_t>(context, "profiles", name_),
     name(name_)
 {
-    log_output          = as_object().at("log-output", defaults::log_output).as_bool();
-    heartbeat_timeout   = as_object().at("heartbeat-timeout", defaults::heartbeat_timeout).to<double>();
-    idle_timeout        = as_object().at("idle-timeout", defaults::idle_timeout).to<double>();
+    const auto& config = as_object();
+
+    log_output = as_object().at("log-output", defaults::log_output).as_bool();
+
+    timeout.spawn     = 1000;
+    timeout.handshake = 5000;
+    timeout.heartbeat = 1000 * config.at("heartbeat-timeout", defaults::heartbeat_timeout).to<double>();
+    timeout.seal      = 60000;
+    timeout.terminate = 10000;
+    timeout.idle      = 1000 * config.at("idle-timeout", defaults::idle_timeout).to<double>();
+
     concurrency         = as_object().at("concurrency", defaults::concurrency).to<uint64_t>();
     crashlog_limit      = as_object().at("crashlog-limit", defaults::crashlog_limit).to<uint64_t>();
     pool_limit          = as_object().at("pool-limit", defaults::pool_limit).to<uint64_t>();
@@ -44,28 +52,17 @@ profile_t::profile_t(context_t& context, const std::string& name_):
 
     // Isolation
 
-    const auto isolate_config = as_object().at("isolate", dynamic_t::object_t()).as_object();
+    const auto isolate_config = as_object().at("isolate", dynamic_t::empty_object).as_object();
 
     isolate = {
         isolate_config.at("type", "process").as_string(),
-        isolate_config.at("args", dynamic_t::object_t())
+        isolate_config.at("args", dynamic_t::empty_object)
     };
-
-    timeout.spawn     = 1000;
-    timeout.handshake = 5000;
-    timeout.heartbeat = 30000;
-    timeout.seal      = 60000;
-    timeout.terminate = 10000;
-    timeout.idle      = 60000;
 
     // Validation
 
-    if(heartbeat_timeout <= 0.0f) {
+    if(timeout.heartbeat == 0) {
         throw cocaine::error_t("slave heartbeat timeout must be positive");
-    }
-
-    if(idle_timeout < 0.0f) {
-        throw cocaine::error_t("slave idle timeout must non-negative");
     }
 
     if(pool_limit == 0) {
@@ -76,4 +73,3 @@ profile_t::profile_t(context_t& context, const std::string& name_):
         throw cocaine::error_t("engine concurrency must be positive");
     }
 }
-

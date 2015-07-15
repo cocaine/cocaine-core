@@ -22,9 +22,9 @@
 #define COCAINE_ENGINE_PROFILE_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/detail/service/node/cached.hpp"
-
 #include "cocaine/dynamic.hpp"
+
+#include "cocaine/detail/service/node/cached.hpp"
 
 namespace cocaine {
 
@@ -40,9 +40,6 @@ struct profile_t:
     bool log_output;
 
     // Timeouts.
-    float heartbeat_timeout;
-    float idle_timeout;
-
     struct {
         unsigned long spawn;
         unsigned long handshake;

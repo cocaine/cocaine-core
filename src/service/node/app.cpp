@@ -154,6 +154,7 @@ public:
     }
 
     ~spooling_t() {
+        // TODO: Check lifetimes.
         spooler->cancel();
     }
 
