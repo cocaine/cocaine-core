@@ -1,3 +1,9 @@
+cocaine-core (0.12.2.6) unstable; urgency=low
+
+  * Bug fix: start slave spawning from the correct place.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 15 Jul 2015 17:23:09 +0300
+
 cocaine-core (0.12.2.5) unstable; urgency=low
 
   * Bug fix: fix deadlock on control discard. There was a cross-deadlock
