@@ -85,6 +85,9 @@ spawning_t::spawn(unsigned long timeout) {
 
         COCAINE_LOG_TRACE(slave->log, "spawning");
 
+        timer.expires_from_now(boost::posix_time::milliseconds(timeout));
+        timer.async_wait(std::bind(&spawning_t::on_timeout, shared_from_this(), ph::_1));
+
         handle = isolate->spawn(
             slave->context.manifest.executable,
             args,
@@ -98,9 +101,6 @@ spawning_t::spawn(unsigned long timeout) {
         slave->loop.post(detail::move_handler(std::bind(
             &spawning_t::on_spawn, shared_from_this(), std::chrono::high_resolution_clock::now()
         )));
-
-        timer.expires_from_now(boost::posix_time::milliseconds(timeout));
-        timer.async_wait(std::bind(&spawning_t::on_timeout, shared_from_this(), ph::_1));
     } catch(const std::system_error& err) {
         COCAINE_LOG_ERROR(slave->log, "unable to spawn slave: %s", err.code().message());
 
