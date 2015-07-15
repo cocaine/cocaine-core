@@ -22,10 +22,14 @@ spawning_t::name() const noexcept {
 
 void
 spawning_t::cancel() {
+    COCAINE_LOG_TRACE(slave->log, "processing spawn timer cancellation");
+
     try {
-        timer.cancel();
-    } catch (...) {
-        // We don't care.
+        const auto cancelled = timer.cancel();
+        COCAINE_LOG_TRACE(slave->log, "processing spawn timer cancellation: done (%d cancelled)", cancelled);
+    } catch (const std::system_error& err) {
+        // If we are here, then something weird occurs with the timer.
+        COCAINE_LOG_WARNING(slave->log, "unable to cancel spawn timer: %s", err.what());
     }
 }
 
