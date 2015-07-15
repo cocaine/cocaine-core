@@ -27,12 +27,7 @@ using namespace cocaine;
 std::shared_ptr<state_machine_t>
 state_machine_t::create(slave_context context, asio::io_service& loop, cleanup_handler cleanup) {
     auto machine = std::make_shared<state_machine_t>(lock_t(), context, loop, cleanup);
-
-    // NOTE: Slave spawning involves starting timers and posting completion handlers callbacks with
-    // the event loop.
-    loop.post([=]() {
-        machine->start();
-    });
+    machine->start();
 
     return machine;
 }
@@ -65,8 +60,12 @@ state_machine_t::start() {
     auto spawning = std::make_shared<spawning_t>(shared_from_this());
     migrate(spawning);
 
-    // This call can perform state machine shutdowning on any error occurred.
-    spawning->spawn(context.profile.timeout.spawn);
+    // NOTE: Slave spawning involves starting timers and posting completion handlers callbacks with
+    // the event loop.
+    loop.post([=]() {
+        // This call can perform state machine shutdowning on any error occurred.
+        spawning->spawn(context.profile.timeout.spawn);
+    });
 }
 
 bool
