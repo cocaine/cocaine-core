@@ -5,7 +5,8 @@
 namespace cocaine {
 
 class load_balancer_t:
-    public balancer_t
+    public balancer_t,
+    public std::enable_shared_from_this<load_balancer_t>
 {
 public:
     explicit

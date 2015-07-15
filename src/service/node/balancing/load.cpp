@@ -89,17 +89,15 @@ load_balancer_t::on_request(const std::string&, const std::string& /*id*/) {
 void
 load_balancer_t::on_slave_spawn(const std::string& /*uuid*/) {
     COCAINE_LOG_TRACE(overseer->logger(), "slave has been added to balancer");
-    overseer->io_context()->post([&](){
-        purge();
-    });
+
+    overseer->io_context()->post(std::bind(&load_balancer_t::purge, shared_from_this()));
 }
 
 void
 load_balancer_t::on_slave_death(const std::string& /*uuid*/) {
     COCAINE_LOG_TRACE(overseer->logger(), "slave has been removed from balancer");
-    overseer->io_context()->post([&](){
-        balance();
-    });
+
+    overseer->io_context()->post(std::bind(&load_balancer_t::balance, shared_from_this()));
 }
 
 void

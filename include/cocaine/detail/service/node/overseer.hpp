@@ -109,7 +109,7 @@ public:
     info() const;
 
     void
-    balance(std::unique_ptr<balancer_t> balancer = nullptr);
+    set_balancer(std::shared_ptr<balancer_t> balancer);
 
     /// Enqueues the new event into the most appropriate slave.
     ///

@@ -187,12 +187,10 @@ overseer_t::info() const {
 }
 
 void
-overseer_t::balance(std::unique_ptr<balancer_t> balancer) {
-    if (balancer) {
-        this->balancer = std::move(balancer);
-    } else {
-        this->balancer.reset(new null_balancer_t);
-    }
+overseer_t::set_balancer(std::shared_ptr<balancer_t> balancer) {
+    BOOST_ASSERT(balancer);
+
+    this->balancer = std::move(balancer);
 }
 
 std::shared_ptr<client_rpc_dispatch_t>
@@ -307,7 +305,7 @@ void
 overseer_t::terminate() {
     COCAINE_LOG_DEBUG(log, "overseer is processing terminate request");
 
-    balance();
+    set_balancer(std::make_shared<null_balancer_t>());
     pool->clear();
 }
 
