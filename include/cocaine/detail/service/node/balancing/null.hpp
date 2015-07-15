@@ -19,7 +19,9 @@ public:
     on_slave_death(const std::string&) {}
 
     slave_info
-    on_request(const std::string&, const std::string&) {}
+    on_request(const std::string&, const std::string&) {
+        return {};
+    }
 
     void
     on_queue() {}
