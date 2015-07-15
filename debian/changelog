@@ -4,6 +4,8 @@ cocaine-core (0.12.2.4) unstable; urgency=low
     thread id and engine attribute.
   * Bug fix: fixed application timeouts initialization by returning back
     initialization from the profile.
+  * Bug fix: fixed assertion in context. Node service now should properly
+    clean up application services after itself.
 
  -- Evgeny Safronov <division494@gmail.com>  Wed, 15 Jul 2015 12:10:08 +0300
 
