@@ -382,9 +382,7 @@ app_t::app_t(context_t& context,
 }
 
 app_t::~app_t() {
-    if (state) {
-        state->cancel();
-    }
+    state->cancel();
 }
 
 std::string
