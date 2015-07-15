@@ -1,3 +1,14 @@
+cocaine-core (0.12.2.5) unstable; urgency=low
+
+  * Bug fix: fix deadlock on control discard. There was a cross-deadlock
+    between control session channels mutex and the overseer's pool mutex.
+  * Bug fix: properly start spawn timer before actually spawning.
+  * Profile: all timeouts can now be configured via profile.
+  * Logging: trace logging added to be able to watch spawn timer completion
+    and cancellation.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 15 Jul 2015 15:38:33 +0300
+
 cocaine-core (0.12.2.4) unstable; urgency=low
 
   * Bug fix: fixed thread id inconsistency in logging between Blackhole's
