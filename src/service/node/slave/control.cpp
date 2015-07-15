@@ -64,7 +64,11 @@ control_t::discard(const std::error_code& ec) const {
     if (ec && !closed) {
         COCAINE_LOG_DEBUG(slave->log, "control channel has been discarded: %s", ec.message());
 
-        slave->shutdown(error::conrol_ipc_error);
+        // NOTE: To prevent deadlock between session.channels and overseer.pool. Consider some
+        // other solution.
+        slave->loop.post([=]() {
+            slave->shutdown(error::conrol_ipc_error);
+        });
     }
 }
 
