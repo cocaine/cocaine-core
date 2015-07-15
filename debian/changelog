@@ -1,3 +1,16 @@
+cocaine-core (0.12.2.7) unstable; urgency=low
+
+  * Bug fix: preserve exception safety guarantee while injecting channels.
+    While injecting a queue event we accidentally moved the downstream
+    dispatch (C++ is not Rust, yeah), which led to the corrupted internal
+    upstream pointer if the whole inject operation failed.
+  * Bug fix: fixed possible race in balancer. On slave spawn and death events
+    involves deferred operations which may trigger when the balancer already
+    dead.
+  * Bug fix: null balancer should now return proper value from request method.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 15 Jul 2015 19:35:43 +0300
+
 cocaine-core (0.12.2.6) unstable; urgency=low
 
   * Bug fix: start slave spawning from the correct place.
