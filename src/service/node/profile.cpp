@@ -34,11 +34,11 @@ profile_t::profile_t(context_t& context, const std::string& name_):
 
     log_output = as_object().at("log-output", defaults::log_output).as_bool();
 
-    timeout.spawn     = 1000;
-    timeout.handshake = 5000;
+    timeout.spawn     = 1000 * config.at("spawn-timeout", 1.0).to<double>();
+    timeout.handshake = 1000 * config.at("handshake-timeout", 5.0).to<double>();
     timeout.heartbeat = 1000 * config.at("heartbeat-timeout", defaults::heartbeat_timeout).to<double>();
-    timeout.seal      = 60000;
-    timeout.terminate = 10000;
+    timeout.seal      = 1000 * config.at("seal-timeout", 60.0).to<double>();
+    timeout.terminate = 1000 * config.at("terminate-timeout", 10.0).to<double>();
     timeout.idle      = 1000 * config.at("idle-timeout", defaults::idle_timeout).to<double>();
 
     concurrency         = as_object().at("concurrency", defaults::concurrency).to<uint64_t>();
