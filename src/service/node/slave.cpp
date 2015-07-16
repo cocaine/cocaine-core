@@ -223,10 +223,14 @@ state_machine_t::shutdown(std::error_code ec) {
         return;
     }
 
-    COCAINE_LOG_TRACE(log, "slave is shutdowning: %s", ec.message());
-
     auto state = *this->state.synchronize();
+    COCAINE_LOG_TRACE(log, "slave is shutting down from state %s: %s", state->name(), ec.message());
+
     state->cancel();
+    if(state->terminating()) {
+        // We don't consider any reason for termination in "terminating" state as an error
+        ec.clear();
+    }
     migrate(std::make_shared<stopped_t>(ec));
 
     fetcher->close();

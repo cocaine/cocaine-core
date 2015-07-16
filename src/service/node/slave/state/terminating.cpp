@@ -25,6 +25,11 @@ terminating_t::~terminating_t() {
     COCAINE_LOG_TRACE(slave->log, "state '%s' has been destroyed", name());
 }
 
+bool
+terminating_t::terminating() const noexcept {
+    return true;
+}
+
 const char*
 terminating_t::name() const noexcept {
     return "terminating";
@@ -57,7 +62,7 @@ terminating_t::start(unsigned long timeout, const std::error_code& ec) {
 void
 terminating_t::on_timeout(const std::error_code& ec) {
     if (ec) {
-        COCAINE_LOG_TRACE(slave->log, "unable to terminate slave: cancelled");
+        COCAINE_LOG_TRACE(slave->log, "termination timeout timer has been cancelled");
     } else {
         COCAINE_LOG_ERROR(slave->log, "unable to terminate slave: timeout");
 
