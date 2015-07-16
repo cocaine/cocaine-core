@@ -241,11 +241,16 @@ state_machine_t::shutdown(std::error_code ec) {
         return;
     }
 
-    try {
-        cleanup(ec);
-    } catch (...) {
-        // Just eat an exception, we don't care why the cleanup handler failed to do its job.
-    }
+    // NOTE: To prevent deadlock between session.channels and overseer.pool. Consider some
+    // other solution.
+    const auto cleanup_handler = cleanup;
+    loop.post([=]() {
+        try {
+            cleanup_handler(ec);
+        } catch (...) {
+            // Just eat an exception, we don't care why the cleanup handler failed to do its job.
+        }
+    });
 }
 
 void
