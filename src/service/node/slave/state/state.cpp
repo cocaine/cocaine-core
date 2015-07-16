@@ -17,6 +17,11 @@ state_t::sealing() const noexcept {
     return false;
 }
 
+bool
+state_t::terminating() const noexcept {
+    return false;
+}
+
 std::shared_ptr<control_t>
 state_t::activate(std::shared_ptr<session_t> /*session*/, upstream<io::worker::control_tag> /*stream*/) {
     throw_invalid_state();

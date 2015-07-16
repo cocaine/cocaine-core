@@ -41,6 +41,10 @@ public:
     sealing() const noexcept;
 
     virtual
+    bool
+    terminating() const noexcept;
+
+    virtual
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
 

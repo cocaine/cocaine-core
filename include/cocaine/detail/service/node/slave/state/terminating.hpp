@@ -28,6 +28,10 @@ public:
                   std::shared_ptr<session_t> session);
     ~terminating_t();
 
+    virtual
+    bool
+    terminating() const noexcept;
+
     const char*
     name() const noexcept;
 
