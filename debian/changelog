@@ -1,3 +1,15 @@
+cocaine-core (0.12.2.8) unstable; urgency=low
+
+  * Bug fix: fixed infinite trying to purse the queue. Previously all slave's
+    shutdown operations have been posted into the event loop to be sure, that
+    no cross-deadlocks occurs between session's internal state and overseer's
+    one. This action resulted in infinite `while (true)` loop in queue
+    balancing mechanism, because the slave hasn't been marked as broken (event
+    loop, remember?). This patch delays just calling cleanup handler, which
+    deletes the given slave from the pool.
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 16 Jul 2015 14:40:06 +0300
+
 cocaine-core (0.12.2.7) unstable; urgency=low
 
   * Bug fix: preserve exception safety guarantee while injecting channels.
