@@ -172,6 +172,7 @@ ENDIF()
 add_cxx_compiler_flag(-Wall)
 add_cxx_compiler_flag(-Wextra)
 add_cxx_compiler_flag(-Werror RELEASE)
+add_cxx_compiler_flag(-Woverloaded-virtual)
 add_cxx_compiler_flag(-pedantic)
 add_cxx_compiler_flag(-pedantic-errors)
 
