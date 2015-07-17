@@ -81,15 +81,17 @@ struct channel_t {
     io::streaming_slot<io::app::enqueue>::upstream_type downstream;
 };
 
-struct slave_stats_t {
+struct stats_t {
     std::uint64_t tx;
     std::uint64_t rx;
     std::uint64_t load;
     std::uint64_t total;
     boost::optional<std::chrono::high_resolution_clock::time_point> age;
+
+    stats_t();
 };
 
-}
+} // namespace slave
 
 struct slave_context {
     context_t&  context;
@@ -173,7 +175,7 @@ public:
     std::uint64_t
     load() const;
 
-    slave::slave_stats_t
+    slave::stats_t
     stats() const;
 
     std::shared_ptr<control_t>
@@ -254,7 +256,7 @@ public:
     std::uint64_t
     load() const;
 
-    slave::slave_stats_t
+    slave::stats_t
     stats() const;
 
     bool

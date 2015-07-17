@@ -24,6 +24,14 @@ namespace ph = std::placeholders;
 
 using namespace cocaine;
 
+slave::stats_t::stats_t():
+     tx{},
+     rx{},
+     load{},
+     total{},
+     age{boost::none}
+{}
+
 std::shared_ptr<state_machine_t>
 state_machine_t::create(slave_context context, asio::io_service& loop, cleanup_handler cleanup) {
     auto machine = std::make_shared<state_machine_t>(lock_t(), context, loop, cleanup);
@@ -81,9 +89,9 @@ state_machine_t::load() const {
     return data.channels->size();
 }
 
-slave::slave_stats_t
+slave::stats_t
 state_machine_t::stats() const {
-    slave::slave_stats_t result { 0, 0, 0, 0, boost::none };
+    slave::stats_t result;
 
     data.channels.apply([&](const channels_map_t& channels) {
         for (const auto& channel : channels) {
@@ -352,9 +360,8 @@ slave_t::load() const {
     return machine->load();
 }
 
-slave::slave_stats_t
+slave::stats_t
 slave_t::stats() const {
-    BOOST_ASSERT(machine);
     return machine->stats();
 }
 
