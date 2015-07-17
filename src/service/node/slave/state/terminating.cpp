@@ -53,10 +53,12 @@ void
 terminating_t::start(unsigned long timeout, const std::error_code& ec) {
     COCAINE_LOG_DEBUG(slave->log, "slave is terminating, timeout: %.2f ms", timeout);
 
-    control->terminate(ec);
-
     timer.expires_from_now(boost::posix_time::milliseconds(timeout));
     timer.async_wait(std::bind(&terminating_t::on_timeout, shared_from_this(), ph::_1));
+
+    // The following operation may fail if the session is already disconnected. In this case a slave
+    // shutdown operation will be triggered, which immediately stops the timer.
+    control->terminate(ec);
 }
 
 void
