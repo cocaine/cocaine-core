@@ -1,3 +1,11 @@
+cocaine-core (0.12.2.10) unstable; urgency=low
+
+  * Bug fix: start terminate timer properly, before RPC call.
+    If a slave's session is already disconnected it should trigger immediate
+    shutting down, which cancels all the timers we've already started.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 17 Jul 2015 13:29:11 +0300
+
 cocaine-core (0.12.2.9) unstable; urgency=low
 
   * Bug fix: do not write crashlogs while terminating slaves.
