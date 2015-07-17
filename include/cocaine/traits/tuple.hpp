@@ -253,14 +253,15 @@ private:
     pack_sequence(msgpack::packer<Stream>& target, const Head& head, const Tail&... tail) {
         typedef typename pristine<Head>::type type;
         typedef typename boost::mpl::deref<It>::type element_type;
+        typedef typename details::unwrap_type<element_type>::type unwrapped_element_type;
 
         static_assert(
-            std::is_convertible<type, typename details::unwrap_type<element_type>::type>::value,
+            std::is_convertible<type, unwrapped_element_type>::value,
             "sequence element type mismatch"
         );
 
         // Pack the current element using the correct packer.
-        type_traits<type>::pack(target, head);
+        type_traits<unwrapped_element_type>::pack(target, head);
 
         // Recurse to the next element.
         pack_sequence<typename boost::mpl::next<It>::type>(target, tail...);
