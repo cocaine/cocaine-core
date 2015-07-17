@@ -261,8 +261,9 @@ state_machine_t::shutdown(std::error_code ec) {
     loop.post([=]() {
         try {
             cleanup_handler(ec);
-        } catch (...) {
+        } catch (const std::exception& err) {
             // Just eat an exception, we don't care why the cleanup handler failed to do its job.
+            COCAINE_LOG_WARNING(log, "unable to cleanup after slave's death: %s", err.what());
         }
     });
 }
