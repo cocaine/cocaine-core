@@ -37,9 +37,13 @@ terminating_t::name() const noexcept {
 
 void
 terminating_t::cancel() {
+    COCAINE_LOG_TRACE(slave->log, "processing termination timer cancellation");
+
     try {
-        timer.cancel();
-    } catch (...) {
+        const auto cancelled = timer.cancel();
+        COCAINE_LOG_TRACE(slave->log, "processing termination timer cancellation: done (%d cancelled)", cancelled);
+    } catch (const std::system_error& err) {
+        COCAINE_LOG_WARNING(slave->log, "unable to cancel termination timer: %s", err.what());
     }
 }
 
@@ -64,7 +68,7 @@ terminating_t::start(unsigned long timeout, const std::error_code& ec) {
 void
 terminating_t::on_timeout(const std::error_code& ec) {
     if (ec) {
-        COCAINE_LOG_TRACE(slave->log, "termination timeout timer has been cancelled");
+        COCAINE_LOG_TRACE(slave->log, "termination timer has called its completion handler: cancelled");
     } else {
         COCAINE_LOG_ERROR(slave->log, "unable to terminate slave: timeout");
 
