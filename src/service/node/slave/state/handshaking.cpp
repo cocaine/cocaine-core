@@ -24,10 +24,13 @@ handshaking_t::name() const noexcept {
 }
 
 void handshaking_t::cancel() {
+    COCAINE_LOG_TRACE(slave->log, "processing activation timer cancellation");
+
     try {
-        timer->cancel();
-    } catch (...) {
-        // We don't care.
+        const auto cancelled = timer->cancel();
+        COCAINE_LOG_TRACE(slave->log, "processing activation timer cancellation: done (%d cancelled)", cancelled);
+    } catch (const std::system_error& err) {
+        COCAINE_LOG_WARNING(slave->log, "unable to cancel activation timer: %s", err.what());
     }
 }
 
@@ -70,7 +73,7 @@ void
 handshaking_t::start(unsigned long timeout) {
     COCAINE_LOG_DEBUG(slave->log, "slave is waiting for handshake, timeout: %.2f ms", timeout);
 
-    timer.apply([&](asio::deadline_timer& timer){
+    timer.apply([&](asio::deadline_timer& timer) {
         timer.expires_from_now(boost::posix_time::milliseconds(timeout));
         timer.async_wait(std::bind(&handshaking_t::on_timeout, shared_from_this(), ph::_1));
     });
@@ -78,7 +81,9 @@ handshaking_t::start(unsigned long timeout) {
 
 void
 handshaking_t::on_timeout(const std::error_code& ec) {
-    if (!ec) {
+    if (ec) {
+        COCAINE_LOG_TRACE(slave->log, "activation timer has called its completion handler: cancelled");
+    } else {
         COCAINE_LOG_ERROR(slave->log, "unable to activate slave: timeout");
 
         slave->shutdown(error::activate_timeout);

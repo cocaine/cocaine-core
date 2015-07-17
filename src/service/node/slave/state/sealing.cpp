@@ -20,9 +20,13 @@ sealing_t::sealing_t(std::shared_ptr<cocaine::state_machine_t> slave_,
 
 void
 sealing_t::cancel() {
+    COCAINE_LOG_TRACE(slave->log, "processing seal timer cancellation");
+
     try {
-        timer.cancel();
-    } catch (...) {
+        const auto cancelled = timer.cancel();
+        COCAINE_LOG_TRACE(slave->log, "processing seal timer cancellation: done (%d cancelled)", cancelled);
+    } catch (const std::system_error& err) {
+        COCAINE_LOG_WARNING(slave->log, "unable to cancel seal timer: %s", err.what());
     }
 }
 
@@ -57,7 +61,7 @@ sealing_t::terminate(const std::error_code& ec) {
 void
 sealing_t::on_timeout(const std::error_code& ec) {
     if (ec) {
-        COCAINE_LOG_TRACE(slave->log, "unable to seal slave: cancelled");
+        COCAINE_LOG_TRACE(slave->log, "seal timer has called its completion handler: cancelled");
     } else {
         COCAINE_LOG_ERROR(slave->log, "unable to seal slave: timeout");
 
