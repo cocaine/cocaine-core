@@ -93,6 +93,8 @@ slave::stats_t
 state_machine_t::stats() const {
     slave::stats_t result;
 
+    result.state = (*state.synchronize())->name();
+
     data.channels.apply([&](const channels_map_t& channels) {
         for (const auto& channel : channels) {
             if (channel.second->send_closed()) {

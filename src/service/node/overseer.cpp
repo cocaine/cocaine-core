@@ -151,6 +151,7 @@ overseer_t::info() const {
             const auto slave_stats = it->second.stats();
 
             dynamic_t::object_t stat = {
+                { "state", slave_stats.state },
                 { "uptime", it->second.uptime() },
                 { "load", slave_stats.load },
                 { "tx",   slave_stats.tx },

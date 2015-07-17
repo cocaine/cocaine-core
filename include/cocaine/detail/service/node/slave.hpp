@@ -82,10 +82,14 @@ struct channel_t {
 };
 
 struct stats_t {
+    /// Current state name.
+    std::string state;
+
     std::uint64_t tx;
     std::uint64_t rx;
     std::uint64_t load;
     std::uint64_t total;
+
     boost::optional<std::chrono::high_resolution_clock::time_point> age;
 
     stats_t();
