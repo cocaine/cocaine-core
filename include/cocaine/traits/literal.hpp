@@ -52,17 +52,6 @@ struct literal_t {
 };
 
 template<>
-struct type_traits<literal_t> {
-    template<class Stream>
-    static inline
-    void
-    pack(msgpack::packer<Stream>& target, const literal_t& source) {
-        target.pack_raw(source.size);
-        target.pack_raw_body(source.blob, source.size);
-    }
-};
-
-template<>
 struct type_traits<std::string> {
     template<class Stream>
     static inline
@@ -81,8 +70,8 @@ struct type_traits<std::string> {
 
     static inline
     void
-    unpack(const msgpack::object& unpacked, std::string& target) {
-        unpacked >> target;
+    unpack(const msgpack::object& source, std::string& target) {
+        source >> target;
     }
 };
 
