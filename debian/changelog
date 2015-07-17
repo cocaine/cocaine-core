@@ -1,3 +1,9 @@
+cocaine-core (0.12.2.11) unstable; urgency=low
+
+  * Node: info response now contains slave's state name textual representation.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 17 Jul 2015 15:25:03 +0300
+
 cocaine-core (0.12.2.10) unstable; urgency=low
 
   * Bug fix: start terminate timer properly, before RPC call.
