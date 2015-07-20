@@ -1,5 +1,8 @@
 #include "cocaine/detail/service/node/overseer.hpp"
 
+#include <boost/range/adaptors.hpp>
+#include <boost/range/algorithm.hpp>
+
 #include <blackhole/scoped_attributes.hpp>
 
 #include "cocaine/context.hpp"
@@ -81,6 +84,20 @@ overseer_t::get_queue() {
 
 namespace {
 
+// Helper tagged struct.
+struct queue_t {
+    unsigned long capacity;
+
+    const synchronized<overseer_t::queue_type>* queue;
+};
+
+// Helper tagged struct.
+struct pool_t {
+    unsigned long capacity;
+
+    const synchronized<overseer_t::pool_type>* pool;
+};
+
 class info_visitor_t {
     const io::node::info::flags_t flags;
 
@@ -110,7 +127,125 @@ public:
             info["data"] = value.object();
         }
 
-        result["current_profile"] = info;
+        result["profile"] = info;
+    }
+
+    // Incoming requests.
+    void
+    visit(std::uint64_t accepted, std::uint64_t rejected) {
+        dynamic_t::object_t info;
+
+        info["accepted"] = accepted;
+        info["rejected"] = rejected;
+
+        result["requests"] = info;
+    }
+
+    // Pending events queue.
+    void
+    visit(const queue_t& value) {
+        dynamic_t::object_t info;
+
+        info["capacity"] = value.capacity;
+
+        const auto now = std::chrono::high_resolution_clock::now();
+
+        value.queue->apply([&](const overseer_t::queue_type& queue) {
+            info["depth"] = queue.size();
+
+            typedef overseer_t::queue_type::value_type value_type;
+
+            if (queue.empty()) {
+                info["oldest_event_age"] = 0;
+            } else {
+                const auto min = *boost::min_element(queue |
+                    boost::adaptors::transformed(+[](const value_type& cur) {
+                        return cur.event.birthstamp;
+                    })
+                );
+
+                const auto duration = std::chrono::duration_cast<
+                    std::chrono::milliseconds
+                >(now - min).count();
+
+                info["oldest_event_age"] = duration;
+            }
+        });
+
+        result["queue"] = info;
+    }
+
+    // Response time quantiles over all events.
+    void
+    visit(const std::vector<stats_t::quantile_t>& value) {
+        dynamic_t::object_t info;
+
+        std::array<char, 16> buf;
+        for (const auto& quantile : value) {
+            if (std::snprintf(buf.data(), buf.size(), "%.2f%%", quantile.probability)) {
+                info[buf.data()] = quantile.value;
+            }
+        }
+
+        result["timings"] = info;
+    }
+
+    void
+    visit(const pool_t& value) {
+        const auto now = std::chrono::high_resolution_clock::now();
+
+        value.pool->apply([&](const overseer_t::pool_type& pool) {
+            collector_t collector(pool);
+
+            // Cumulative load on the app over all the slaves.
+            result["load"] = collector.cumload;
+
+            dynamic_t::object_t slaves;
+            for (const auto& kv : pool) {
+                const auto& name = kv.first;
+                const auto& slave = kv.second;
+
+                const auto stats = slave.stats();
+
+                dynamic_t::object_t stat;
+                stat["accepted"]   = stats.total;
+                stat["load:tx"]    = stats.tx;
+                stat["load:rx"]    = stats.rx;
+                stat["load:total"] = stats.load;
+                stat["state"]      = stats.state;
+                stat["uptime"]     = slave.uptime();
+
+                // NOTE: Collects profile info.
+                const auto profile = slave.profile();
+
+                dynamic_t::object_t profile_info;
+                profile_info["name"] = profile.name;
+                if (flags & io::node::info::expand_profile) {
+                    profile_info["data"] = profile.object();
+                }
+
+                stat["profile"] = profile_info;
+
+                if (stats.age) {
+                    const auto duration = std::chrono::duration_cast<
+                        std::chrono::milliseconds
+                    >(now - *stats.age).count();
+                    stat["oldest_channel_age"] = duration;
+                } else {
+                    stat["oldest_channel_age"] = 0;
+                }
+
+                slaves[name] = stat;
+            }
+
+            dynamic_t::object_t pinfo;
+            pinfo["active"]   = collector.active;
+            pinfo["idle"]     = pool.size() - collector.active;
+            pinfo["capacity"] = value.capacity;
+            pinfo["slaves"]   = slaves;
+
+            result["pool"] = pinfo;
+        });
     }
 };
 
@@ -125,112 +260,10 @@ overseer_t::info(io::node::info::flags_t flags) const {
     info_visitor_t visitor(flags, &result);
     visitor.visit(manifest());
     visitor.visit(profile());
-
-    {
-        // Incoming requests.
-        dynamic_t::object_t ichannels;
-        ichannels["accepted"] = stats.accepted.load();
-        ichannels["rejected"] = stats.rejected.load();
-
-        result["channels"] = ichannels;
-    }
-
-    const auto now = std::chrono::high_resolution_clock::now();
-
-    {
-        // Pending events queue.
-        dynamic_t::object_t iqueue;
-        iqueue["capacity"] = profile().queue_limit;
-        queue.apply([&](const queue_type& queue) {
-            typedef queue_type::value_type value_type;
-
-            const auto it = std::min_element(queue.begin(), queue.end(),
-                [&](const value_type& current, const value_type& first) -> bool {
-                    return current.event.birthstamp < first.event.birthstamp;
-                }
-            );
-
-            if (it != queue.end()) {
-                const auto age = std::chrono::duration<
-                    double,
-                    std::chrono::milliseconds::period
-                >(now - it->event.birthstamp).count();
-
-                iqueue["age"] = age;
-            } else {
-                iqueue["age"] = 0;
-            }
-
-            iqueue["depth"] = queue.size();
-        });
-
-        result["queue"] = iqueue;
-    }
-
-    {
-        // Response time quantiles over all events.
-        dynamic_t::object_t iquantiles;
-
-        char buf[16];
-        for (const auto& quantile : stats.quantiles()) {
-            if (std::snprintf(buf, sizeof(buf) / sizeof(char), "%.2f%%", quantile.probability)) {
-                iquantiles[buf] = quantile.value;
-            }
-        }
-
-        result["timings"] = iquantiles;
-    }
-
-    pool.apply([&](const pool_type& pool) {
-        collector_t collector(pool);
-
-        dynamic_t::object_t slaves;
-        for (auto it = pool.begin(); it != pool.end(); ++it) {
-            const auto slave_stats = it->second.stats();
-
-            dynamic_t::object_t stat = {
-                { "state", slave_stats.state },
-                { "uptime", it->second.uptime() },
-                { "load", slave_stats.load },
-                { "tx",   slave_stats.tx },
-                { "rx",   slave_stats.rx },
-                { "total", slave_stats.total },
-            };
-
-            // NOTE: Collects profile info.
-            {
-                dynamic_t::object_t profile_info;
-
-                profile_info["name"] = profile().name;
-                profile_info["data"] = profile().object();
-
-                stat["profile"] = profile_info;
-            }
-
-            if (slave_stats.age) {
-                const auto age = std::chrono::duration<
-                    double,
-                    std::chrono::milliseconds::period
-                >(now - *slave_stats.age).count();
-                stat["age"] = age;
-            } else {
-                stat["age"] = dynamic_t::null;
-            }
-
-            slaves[it->first] = stat;
-        }
-
-        result["pool"] = dynamic_t::object_t({
-            { "active",   collector.active },
-            { "idle",     pool.size() - collector.active },
-            { "capacity", profile().pool_limit },
-            { "slaves", slaves }
-        });
-
-        // Cumulative load on the app over all the slaves.
-        result["load"] = collector.cumload;
-    });
-
+    visitor.visit(stats.accepted.load(), stats.rejected.load());
+    visitor.visit({ profile().queue_limit, &queue });
+    visitor.visit(stats.quantiles());
+    visitor.visit({ profile().pool_limit, &pool });
 
     return result;
 }
