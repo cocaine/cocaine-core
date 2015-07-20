@@ -79,12 +79,47 @@ overseer_t::get_queue() {
     return queue.synchronize();
 }
 
+namespace {
+
+class info_visitor_t {
+    dynamic_t::object_t& result;
+
+public:
+    info_visitor_t(dynamic_t::object_t* result):
+        result(*result)
+    {}
+
+    void
+    visit(const manifest_t& value) {
+        // TODO: Check flags.
+        result["manifest"] = value.object();
+    }
+
+    void
+    visit(const profile_t& value) {
+        dynamic_t::object_t info;
+
+        // Useful when you want to edit the profile.
+        info["name"] = value.name;
+
+        // TODO: Check flags.
+        info["data"] = value.object();
+
+        result["current_profile"] = info;
+    }
+};
+
+} // namespace
+
 dynamic_t::object_t
 overseer_t::info() const {
     dynamic_t::object_t result;
 
     result["uptime"] = uptime().count();
 
+    info_visitor_t visitor(&result);
+    visitor.visit(manifest());
+    visitor.visit(profile());
 
     {
         // Incoming requests.
@@ -156,6 +191,16 @@ overseer_t::info() const {
                 { "rx",   slave_stats.rx },
                 { "total", slave_stats.total },
             };
+
+            // NOTE: Collects profile info.
+            {
+                dynamic_t::object_t profile_info;
+
+                profile_info["name"] = profile().name;
+                profile_info["data"] = profile().object();
+
+                stat["profile"] = profile_info;
+            }
 
             if (slave_stats.age) {
                 const auto age = std::chrono::duration<
