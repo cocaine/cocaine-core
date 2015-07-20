@@ -190,7 +190,7 @@ node_t::start_app(const std::string& name, const std::string& profile) {
 
         if(it != apps.end()) {
             // TODO: Handling app state by parsing strings seems to be not the best idea.
-            const auto info = it->second->info();
+            const auto info = it->second->info(io::node::info::brief);
             const auto state = info.as_object()["state"].as_string();
 
             if (state == "stopped") {
@@ -252,5 +252,5 @@ node_t::info(const std::string& name) const {
         throw cocaine::error_t("app '%s' is not running", name);
     }
 
-    return app->info();
+    return app->info(io::node::info::brief);
 }

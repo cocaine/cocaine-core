@@ -74,7 +74,12 @@ private:
     dynamic_t
     on_info() const {
         if (auto overseer = this->overseer.lock()) {
-            return overseer->info();
+            // TODO: Forward flags.
+            io::node::info::flags_t flags;
+            flags = static_cast<io::node::info::flags_t>(
+                  io::node::info::overseer_report);
+
+            return overseer->info(flags);
         }
 
         throw std::system_error(std::make_error_code(std::errc::broken_pipe), "the application has been stopped");
@@ -97,7 +102,7 @@ public:
 
     virtual
     dynamic_t::object_t
-    info(app_t::info_policy_t policy) const = 0;
+    info(io::node::info::flags_t flags) const = 0;
 };
 
 /// The application is stopped either normally or abnormally.
@@ -124,7 +129,7 @@ public:
 
     virtual
     dynamic_t::object_t
-    info(app_t::info_policy_t) const {
+    info(io::node::info::flags_t) const {
         dynamic_t::object_t info;
         info["state"] = "stopped";
         info["cause"] = cause;
@@ -160,7 +165,7 @@ public:
 
     virtual
     dynamic_t::object_t
-    info(app_t::info_policy_t) const {
+    info(io::node::info::flags_t) const {
         dynamic_t::object_t info;
         info["state"] = "spooling";
         return info;
@@ -230,17 +235,24 @@ public:
 
     virtual
     dynamic_t::object_t
-    info(app_t::info_policy_t policy) const {
+    info(io::node::info::flags_t flags) const {
         dynamic_t::object_t info;
 
-        if (policy == app_t::info_policy_t::verbose) {
-            info = overseer->info();
+        if (is_overseer_report_required(flags)) {
+            info = overseer->info(flags);
         } else {
             info["uptime"] = overseer->uptime().count();
         }
 
         info["state"] = "running";
         return info;
+    }
+
+private:
+    static
+    bool
+    is_overseer_report_required(io::node::info::flags_t flags) {
+        return flags & io::node::info::overseer_report;
     }
 };
 
@@ -304,8 +316,8 @@ public:
     }
 
     dynamic_t
-    info(app_t::info_policy_t policy) const {
-        return (*state.synchronize())->info(policy);
+    info(io::node::info::flags_t flags) const {
+        return (*state.synchronize())->info(flags);
     }
 
     void
@@ -393,6 +405,6 @@ app_t::name() const {
 }
 
 dynamic_t
-app_t::info(info_policy_t policy) const {
-    return state->info(policy);
+app_t::info(io::node::info::flags_t flags) const {
+    return state->info(flags);
 }

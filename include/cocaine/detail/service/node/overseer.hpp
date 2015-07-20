@@ -115,7 +115,7 @@ public:
 
     /// Returns the complete info about how the application works.
     dynamic_t::object_t
-    info() const;
+    info(io::node::info::flags_t flags) const;
 
     /// Returns application total uptime in seconds.
     std::chrono::seconds

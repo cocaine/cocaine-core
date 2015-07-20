@@ -125,6 +125,19 @@ struct pause_app {
 struct info {
     typedef node_tag tag;
 
+    enum flags_t: std::uint32_t {
+        // On none flags set only application state will be reported.
+        brief           = 0x00,
+        // Collect overseer info.
+        overseer_report = 0x01,
+        // Expand manifest struct. Useful when the manifest was changed while there are active
+        // applications.
+        expand_manifest = 0x02,
+        // Expand current app's profile struct, otherwise only the current profile name will be
+        // reported.
+        expand_profile  = 0x04,
+    };
+
     static const char* alias() {
         return "info";
     }

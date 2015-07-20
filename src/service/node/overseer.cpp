@@ -82,17 +82,21 @@ overseer_t::get_queue() {
 namespace {
 
 class info_visitor_t {
+    const io::node::info::flags_t flags;
+
     dynamic_t::object_t& result;
 
 public:
-    info_visitor_t(dynamic_t::object_t* result):
+    info_visitor_t(io::node::info::flags_t flags, dynamic_t::object_t* result):
+        flags(flags),
         result(*result)
     {}
 
     void
     visit(const manifest_t& value) {
-        // TODO: Check flags.
-        result["manifest"] = value.object();
+        if (flags & io::node::info::expand_manifest) {
+            result["manifest"] = value.object();
+        }
     }
 
     void
@@ -102,8 +106,9 @@ public:
         // Useful when you want to edit the profile.
         info["name"] = value.name;
 
-        // TODO: Check flags.
-        info["data"] = value.object();
+        if (flags & io::node::info::expand_profile) {
+            info["data"] = value.object();
+        }
 
         result["current_profile"] = info;
     }
@@ -112,12 +117,12 @@ public:
 } // namespace
 
 dynamic_t::object_t
-overseer_t::info() const {
+overseer_t::info(io::node::info::flags_t flags) const {
     dynamic_t::object_t result;
 
     result["uptime"] = uptime().count();
 
-    info_visitor_t visitor(&result);
+    info_visitor_t visitor(flags, &result);
     visitor.visit(manifest());
     visitor.visit(profile());
 
