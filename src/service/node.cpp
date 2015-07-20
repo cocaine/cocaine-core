@@ -103,7 +103,7 @@ node_t::node_t(context_t& context, asio::io_service& asio, const std::string& na
     on<io::node::start_app>(std::bind(&node_t::start_app, this, ph::_1, ph::_2));
     on<io::node::pause_app>(std::bind(&node_t::pause_app, this, ph::_1));
     on<io::node::list>     (std::bind(&node_t::list, this));
-    on<io::node::info>     (std::bind(&node_t::info, this, ph::_1));
+    on<io::node::info>     (std::bind(&node_t::info, this, ph::_1, ph::_2));
 
     // Context signal/slot.
     signal = std::make_shared<dispatch<io::context_tag>>(name);
@@ -237,7 +237,7 @@ node_t::list() const -> dynamic_t {
 }
 
 dynamic_t
-node_t::info(const std::string& name) const {
+node_t::info(const std::string& name, io::node::info::flags_t flags) const {
     auto app = apps.apply([&](const std::map<std::string, std::shared_ptr<node::app_t>>& apps) -> std::shared_ptr<node::app_t> {
         auto it = apps.find(name);
 
@@ -252,5 +252,5 @@ node_t::info(const std::string& name) const {
         throw cocaine::error_t("app '%s' is not running", name);
     }
 
-    return app->info(io::node::info::brief);
+    return app->info(flags);
 }

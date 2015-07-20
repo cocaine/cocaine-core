@@ -144,7 +144,9 @@ struct info {
 
     typedef boost::mpl::list<
      /* Application name. */
-        std::string
+        std::string,
+     /* Optional flags. */
+        optional<flags_t>
     >::type argument_type;
 
     typedef option_of<

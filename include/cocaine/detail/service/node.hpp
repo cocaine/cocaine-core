@@ -77,7 +77,7 @@ private:
     list() const -> dynamic_t;
 
     dynamic_t
-    info(const std::string& name) const;
+    info(const std::string& name, io::node::info::flags_t flags) const;
 };
 
 }} // namespace cocaine::service
