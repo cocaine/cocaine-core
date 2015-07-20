@@ -1,3 +1,18 @@
+cocaine-core (0.12.2.13) unstable; urgency=low
+
+  * Node: now apps can expand their actual manifests. Useful when someone has
+    externally changed the manifest and you want to see the real manifest
+    application started with. Activated through setting the proper flags (see
+    below).
+  * Node: applications can now report their actual profiles on info request.
+  * Node: now slaves can show their profiles expanded.
+  * Node: calculate app uptime using system clock instead of steady one.
+  * Node: slightly changed info report tags.
+  * Node: now node's info request accepts optional flags allowing to configure
+    what you want to see saving some internal locks on proper usage.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 20 Jul 2015 19:44:18 +0300
+
 cocaine-core (0.12.2.12) unstable; urgency=low
 
   * Bug fix: fixed deadlock while terminating actors.
