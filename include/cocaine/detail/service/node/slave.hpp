@@ -172,6 +172,8 @@ public:
 
     ~state_machine_t();
 
+    // Observers.
+
     /// Returns true is the slave is in active state.
     bool
     active() const noexcept;
@@ -181,6 +183,8 @@ public:
 
     slave::stats_t
     stats() const;
+
+    // Modifiers.
 
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
@@ -251,6 +255,8 @@ public:
     slave_t& operator=(const slave_t& other) = delete;
     slave_t& operator=(slave_t&&) = default;
 
+    // Observers.
+
     const std::string&
     id() const noexcept;
 
@@ -265,6 +271,8 @@ public:
 
     bool
     active() const noexcept;
+
+    // Modifiers.
 
     std::shared_ptr<control_t>
     activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream);
@@ -282,4 +290,4 @@ public:
     terminate(std::error_code ec);
 };
 
-}
+} // namespace cocaine
