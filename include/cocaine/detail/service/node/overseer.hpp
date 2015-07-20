@@ -54,7 +54,7 @@ private:
     const std::chrono::high_resolution_clock::time_point birthstamp;
 
     /// The application manifest.
-    const manifest_t manifest;
+    const manifest_t manifest_;
 
     /// The application profile.
     synchronized<profile_t> profile_;
@@ -89,6 +89,15 @@ public:
     const logging::log_t&
     logger() const {
         return *log;
+    }
+
+    /// Returns a const reference to the application's manifest.
+    ///
+    /// Application's manifest is considered constant during all app's lifetime and can be
+    /// changed only through restarting.
+    const manifest_t&
+    manifest() const {
+        return manifest_;
     }
 
     /// Returns copy of the current profile, which is used to spawn new slaves.

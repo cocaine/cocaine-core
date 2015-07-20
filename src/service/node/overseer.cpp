@@ -47,7 +47,7 @@ overseer_t::overseer_t(context_t& context,
     log(context.log(format("%s/overseer", manifest.name))),
     context(context),
     birthstamp(std::chrono::high_resolution_clock::now()),
-    manifest(std::move(manifest)),
+    manifest_(std::move(manifest)),
     profile_(profile),
     loop(loop),
     stats{}
@@ -210,7 +210,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downst
         }
     });
 
-    auto dispatch = std::make_shared<client_rpc_dispatch_t>(manifest.name);
+    auto dispatch = std::make_shared<client_rpc_dispatch_t>(manifest().name);
 
     queue->push_back({
         std::move(event),
@@ -227,7 +227,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downst
 io::dispatch_ptr_t
 overseer_t::prototype() {
     return std::make_shared<const handshaker_t>(
-        manifest.name,
+        manifest().name,
         std::bind(&overseer_t::on_handshake, shared_from_this(), ph::_1, ph::_2, ph::_3)
     );
 }
@@ -241,7 +241,7 @@ void
 overseer_t::spawn(locked_ptr<pool_type>& pool) {
     COCAINE_LOG_INFO(log, "enlarging the slaves pool to %d", pool->size() + 1);
 
-    slave_context ctx(context, manifest, profile());
+    slave_context ctx(context, manifest(), profile());
 
     // It is guaranteed that the cleanup handler will not be invoked from within the slave's
     // constructor.
