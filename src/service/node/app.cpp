@@ -235,6 +235,8 @@ public:
 
         if (policy == app_t::info_policy_t::verbose) {
             info = overseer->info();
+        } else {
+            info["uptime"] = overseer->uptime().count();
         }
 
         info["state"] = "running";

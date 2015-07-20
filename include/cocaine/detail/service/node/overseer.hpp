@@ -50,8 +50,8 @@ private:
 
     context_t& context;
 
-    /// Time point, when the application was created.
-    const std::chrono::high_resolution_clock::time_point birthstamp;
+    /// Time point, when the overseer was created.
+    const std::chrono::system_clock::time_point birthstamp;
 
     /// The application manifest.
     const manifest_t manifest_;
@@ -116,6 +116,12 @@ public:
     /// Returns the complete info about how the application works.
     dynamic_t::object_t
     info() const;
+
+    /// Returns application total uptime in seconds.
+    std::chrono::seconds
+    uptime() const;
+
+    // Modifiers.
 
     void
     set_balancer(std::shared_ptr<balancer_t> balancer);

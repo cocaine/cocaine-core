@@ -46,7 +46,7 @@ overseer_t::overseer_t(context_t& context,
                        std::shared_ptr<asio::io_service> loop):
     log(context.log(format("%s/overseer", manifest.name))),
     context(context),
-    birthstamp(std::chrono::high_resolution_clock::now()),
+    birthstamp(std::chrono::system_clock::now()),
     manifest_(std::move(manifest)),
     profile_(profile),
     loop(loop),
@@ -83,12 +83,8 @@ dynamic_t::object_t
 overseer_t::info() const {
     dynamic_t::object_t result;
 
-    const auto now = std::chrono::high_resolution_clock::now();
+    result["uptime"] = uptime().count();
 
-    // Application total uptime in seconds.
-    result["uptime"] = std::chrono::duration_cast<
-        std::chrono::seconds
-    >(now - birthstamp).count();
 
     {
         // Incoming requests.
@@ -98,6 +94,8 @@ overseer_t::info() const {
 
         result["channels"] = ichannels;
     }
+
+    const auto now = std::chrono::high_resolution_clock::now();
 
     {
         // Pending events queue.
@@ -185,6 +183,13 @@ overseer_t::info() const {
 
 
     return result;
+}
+
+std::chrono::seconds
+overseer_t::uptime() const {
+    const auto now = std::chrono::system_clock::now();
+
+    return std::chrono::duration_cast<std::chrono::seconds>(now - birthstamp);
 }
 
 void
