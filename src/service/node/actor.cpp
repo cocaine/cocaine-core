@@ -127,14 +127,15 @@ unix_actor_t::terminate() {
     // happens only in engine chambers, because that's where client connections are being handled.
     m_asio->stop();
 
+    // Does not block, unlike the one in execution_unit_t's destructors.
+    m_chamber = nullptr;
+
     m_acceptor.apply([this](std::unique_ptr<protocol_type::acceptor>& ptr) {
         std::error_code ec;
         const auto endpoint = ptr->local_endpoint(ec);
 
         COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
 
-        // Does not block, unlike the one in execution_unit_t's destructors.
-        m_chamber = nullptr;
         ptr       = nullptr;
     });
 
