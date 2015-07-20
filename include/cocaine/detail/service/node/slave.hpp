@@ -184,6 +184,9 @@ public:
     slave::stats_t
     stats() const;
 
+    const profile_t&
+    profile() const;
+
     // Modifiers.
 
     std::shared_ptr<control_t>
@@ -271,6 +274,10 @@ public:
 
     bool
     active() const noexcept;
+
+    /// Returns the profile attached.
+    profile_t
+    profile() const;
 
     // Modifiers.
 

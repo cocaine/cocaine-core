@@ -126,6 +126,11 @@ state_machine_t::stats() const {
     return result;
 }
 
+const profile_t&
+state_machine_t::profile() const {
+    return context.profile;
+}
+
 std::shared_ptr<control_t>
 state_machine_t::activate(std::shared_ptr<session_t> session, upstream<io::worker::control_tag> stream) {
     auto state = *this->state.synchronize();
@@ -373,6 +378,11 @@ slave_t::active() const noexcept {
     BOOST_ASSERT(machine);
 
     return machine->active();
+}
+
+profile_t
+slave_t::profile() const {
+    return machine->profile();
 }
 
 std::shared_ptr<control_t>
