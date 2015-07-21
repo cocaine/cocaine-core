@@ -1,3 +1,9 @@
+cocaine-core (0.12.2.14) unstable; urgency=low
+
+  * Bug fix: do not close application connection on recoverable errors.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 21 Jul 2015 14:38:24 +0300
+
 cocaine-core (0.12.2.13) unstable; urgency=low
 
   * Node: now apps can expand their actual manifests. Useful when someone has
