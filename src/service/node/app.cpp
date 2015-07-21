@@ -56,19 +56,27 @@ private:
     on_enqueue(slot_type::upstream_type&& upstream , const std::string& event, const std::string& id) {
         COCAINE_LOG_DEBUG(log, "processing enqueue '%s' event", event);
 
-        if (auto overseer = this->overseer.lock()) {
-            if (id.empty()) {
-                return overseer->enqueue(std::move(upstream), event, boost::none);
-            } else {
-                return overseer->enqueue(std::move(upstream), event, service::node::slave::id_t(id));
-            }
-        } else {
-            upstream.send<
-                io::protocol<io::event_traits<io::app::enqueue>::dispatch_type>::scope::error
-            >(std::make_error_code(std::errc::broken_pipe), std::string("the application has been stopped"));
+        typedef io::protocol<io::event_traits<io::app::enqueue>::dispatch_type>::scope protocol;
 
-            return nullptr;
+        try {
+            if (auto overseer = this->overseer.lock()) {
+                if (id.empty()) {
+                    return overseer->enqueue(upstream, event, boost::none);
+                } else {
+                    return overseer->enqueue(upstream, event, service::node::slave::id_t(id));
+                }
+            } else {
+                // We shouldn't close the connection here, because there possibly can be events
+                // processing.
+                throw std::system_error(std::make_error_code(std::errc::broken_pipe), "the application has been stopped");
+            }
+        } catch (const std::system_error& err) {
+            COCAINE_LOG_ERROR(log, "unable to enqueue '%s' event: %s", event, err.what());
+
+            upstream.send<protocol::error>(err.code(), err.what());
         }
+
+        return std::make_shared<client_rpc_dispatch_t>(name());
     }
 
     dynamic_t

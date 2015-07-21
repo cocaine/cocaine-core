@@ -140,7 +140,7 @@ public:
     ///
     /// \todo consult with E. guys about deadline policy.
     std::shared_ptr<client_rpc_dispatch_t>
-    enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downstream,
+    enqueue(io::streaming_slot<io::app::enqueue>::upstream_type downstream,
             app::event_t event,
             boost::optional<service::node::slave::id_t> id);
 

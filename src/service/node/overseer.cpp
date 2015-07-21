@@ -283,7 +283,7 @@ overseer_t::set_balancer(std::shared_ptr<balancer_t> balancer) {
 }
 
 std::shared_ptr<client_rpc_dispatch_t>
-overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type&& downstream,
+overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type downstream,
                     app::event_t event,
                     boost::optional<service::node::slave::id_t> /*id*/)
 {
