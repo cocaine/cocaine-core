@@ -13,7 +13,9 @@ fetcher_t::fetcher_t(std::shared_ptr<state_machine_t> slave_):
 
 void
 fetcher_t::assign(int fd) {
-    watcher.assign(fd);
+    watcher.apply([&](watcher_type& watcher) {
+        watcher.assign(fd);
+    });
 
     COCAINE_LOG_DEBUG(slave->log, "slave has started fetching standard output");
     watch();
@@ -21,25 +23,29 @@ fetcher_t::assign(int fd) {
 
 void
 fetcher_t::close() {
-    if (watcher.is_open()) {
-        COCAINE_LOG_TRACE(slave->log, "slave has cancelled fetching standard output");
+    watcher.apply([&](watcher_type& watcher) {
+        if (watcher.is_open()) {
+            COCAINE_LOG_TRACE(slave->log, "slave has cancelled fetching standard output");
 
-        try {
-            watcher.close();
-        } catch (const std::system_error&) {
-            // Eat.
+            try {
+                watcher.close();
+            } catch (const std::system_error&) {
+                // Eat.
+            }
         }
-    }
+    });
 }
 
 void
 fetcher_t::watch() {
     COCAINE_LOG_TRACE(slave->log, "slave is fetching more standard output");
 
-    watcher.async_read_some(
-        asio::buffer(buffer.data(), buffer.size()),
-        std::bind(&fetcher_t::on_read, shared_from_this(), ph::_1, ph::_2)
-    );
+    watcher.apply([&](watcher_type& watcher) {
+        watcher.async_read_some(
+            asio::buffer(buffer.data(), buffer.size()),
+            std::bind(&fetcher_t::on_read, shared_from_this(), ph::_1, ph::_2)
+        );
+    });
 }
 
 void

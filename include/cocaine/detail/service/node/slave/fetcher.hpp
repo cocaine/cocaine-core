@@ -3,6 +3,8 @@
 #include <array>
 #include <memory>
 
+#include "cocaine/locked_ptr.hpp"
+
 #include <asio/posix/stream_descriptor.hpp>
 
 namespace cocaine {
@@ -19,7 +21,9 @@ class fetcher_t:
     std::shared_ptr<state_machine_t> slave;
 
     std::array<char, 4096> buffer;
-    asio::posix::stream_descriptor watcher;
+
+    typedef asio::posix::stream_descriptor watcher_type;
+    synchronized<watcher_type> watcher;
 
 public:
     explicit
