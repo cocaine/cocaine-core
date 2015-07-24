@@ -138,9 +138,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/storage.cpp
     src/session.cpp
     src/storage/files.cpp
-    src/unique_id.cpp
-    foreign/hpack-headers/src/header.cpp
-)
+    src/unique_id.cpp)
 
 ADD_SUBDIRECTORY(foreign/hpack-headers)
 
