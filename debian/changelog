@@ -1,3 +1,15 @@
+cocaine-core (0.12.2.19) unstable; urgency=low
+
+  * Node: proper service destruction while bootstrap.
+    Now there shouldn't be deadlock if the bootstraping process has
+    miserably failed.
+    If the context was unable to bootstrap itself it removes all
+    services from the service list (including child services).
+    There is a chance that the app has been removed earlier during
+    the bootstrap failure, which invokes UB. This patch fixes that behavior.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 24 Jul 2015 17:58:40 +0300
+
 cocaine-core (0.12.2.18) unstable; urgency=low
 
   * Node: calculating total amount of spawned/crashed slaves.
