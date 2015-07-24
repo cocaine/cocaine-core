@@ -1,3 +1,10 @@
+cocaine-core (0.12.2.16) unstable; urgency=low
+
+  * Bug fix: stdout watcher pointer can now be accessed through multiple
+    threads.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 24 Jul 2015 13:21:24 +0300
+
 cocaine-core (0.12.2.15) unstable; urgency=low
 
   * Bug fix: stdout watcher is now thread-safe.
