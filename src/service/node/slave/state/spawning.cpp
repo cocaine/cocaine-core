@@ -95,7 +95,7 @@ spawning_t::spawn(unsigned long timeout) {
         );
 
         // Currently we spawn all slaves synchronously, but here is the right place to provide
-        // a callback funtion to the Isolate.
+        // a callback function to the Isolate.
         // NOTE: The callback must be called from the event loop thread, otherwise the behavior
         // is undefined.
         slave->loop.post(detail::move_handler(std::bind(
