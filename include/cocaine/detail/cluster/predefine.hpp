@@ -54,7 +54,7 @@ class predefine_t:
     // Simply try linking the whole predefined list every timer tick.
     asio::deadline_timer m_timer;
 
-    // Signal to handle context ready event
+    // Slot for context singals.
     std::shared_ptr<dispatch<io::context_tag>> m_signals;
 
 public:
