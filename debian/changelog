@@ -1,3 +1,9 @@
+cocaine-core (0.12.2.18) unstable; urgency=low
+
+  * Node: calculating total amount of spawned/crashed slaves.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 24 Jul 2015 15:58:15 +0300
+
 cocaine-core (0.12.2.17) unstable; urgency=low
 
   * Bug fix: notify all opened channels about slave's fatal errors.
