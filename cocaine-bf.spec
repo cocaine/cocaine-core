@@ -1,7 +1,7 @@
 %define cocaine_runtime_name cocaine-runtime
 
 Summary:	Cocaine - Core Libraries
-Name:		libcocaine-core2
+Name:		libcocaine-core3
 Version:	0.12.0.1
 Release:	1%{?dist}
 
@@ -125,18 +125,6 @@ rm -rf %{buildroot}
 %{_sysconfdir}/cocaine/cocaine-default.conf
 
 %changelog
-* Tue Oct 07 2014 Andrey Sibirev <me@kobology.ru> 0.12.0.1-1
+* Tue Mar 17 2015 Andrey Sibiryov <me@kobology.ru> 0.12.0.1-1
 - Release 0.12.
-
-* Mon Sep 22 2014 Evgeny Safronov <division494@gmail.com> 0.11.3.1-1
-- Feature: reopenable file logging service.
-
-* Fri Sep 05 2014 Evgeny Safronov <division494@gmail.com> 0.11.2.8-1
-- Bugfix: properly check platform macro definition.
-
-* Wed Jun 11 2014 Evgeniy Polyakov <zbr@ioremap.net> 0.11.2.3-1
-- Updated spec to the latest version to date.
-
-* Fri Jan 17 2014 Oleg Cherniy <oleg.cherniy@gmail.com> 0.11.2.0-2
-- Added support for Fedora 19, 20.
 

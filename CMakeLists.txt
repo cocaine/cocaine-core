@@ -14,7 +14,6 @@ ELSE()
     OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" OFF)
 ENDIF()
 
-OPTION(COCAINE_ALLOW_RAFT "Build Raft support" OFF)
 OPTION(COCAINE_ALLOW_BENCHMARKS "Build benchmarking tools" OFF)
 
 INCLUDE(cmake/locate_library.cmake)
@@ -75,17 +74,6 @@ LINK_DIRECTORIES(
     ${LIBARCHIVE_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
 
-IF(COCAINE_ALLOW_RAFT)
-    ADD_LIBRARY(cocaine-raft STATIC
-        src/raft.cpp
-        src/service/counter.cpp)
-
-    SET_TARGET_PROPERTIES(cocaine-raft PROPERTIES
-        COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic -fPIC")
-
-    SET(LIBCOCAINE_RAFT cocaine-raft)
-ENDIF()
-
 ADD_LIBRARY(cocaine-core SHARED
     src/actor.cpp
     src/api.cpp
@@ -127,7 +115,6 @@ TARGET_LINK_LIBRARIES(cocaine-core
     archive
     ${Boost_LIBRARIES}
     ${LIBCGROUP_LIBRARY}
-    ${LIBCOCAINE_RAFT}
     ltdl
     mhash
     msgpack

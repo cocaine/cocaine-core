@@ -77,8 +77,7 @@ private:
     on_publish(const std::error_code& ec);
 
     void
-    on_receive(const std::error_code& ec, size_t bytes_received,
-               const std::shared_ptr<announce_t>& ptr);
+    on_receive(const std::error_code& ec, size_t bytes_received, const std::shared_ptr<announce_t>& ptr);
 
     void
     on_expired(const std::error_code& ec, const std::string& uuid);

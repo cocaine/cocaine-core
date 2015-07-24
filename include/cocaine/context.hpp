@@ -66,10 +66,6 @@ class context_t {
     // Context signalling hub.
     retroactive_signal<io::context_tag> m_signals;
 
-#ifdef COCAINE_ALLOW_RAFT
-    std::unique_ptr<raft::repository_t> m_raft;
-#endif
-
 public:
     const config_t config;
 
@@ -109,15 +105,6 @@ public:
 
     auto
     engine() -> execution_unit_t&;
-
-    // Raft
-
-#ifdef COCAINE_ALLOW_RAFT
-    auto
-    raft() -> raft::repository_t& {
-        return *m_raft;
-    }
-#endif
 
 private:
     void
