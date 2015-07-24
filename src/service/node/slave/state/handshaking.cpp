@@ -15,7 +15,17 @@ handshaking_t::handshaking_t(std::shared_ptr<state_machine_t> slave_, std::uniqu
     handle(std::move(handle_)),
     birthtime(std::chrono::high_resolution_clock::now())
 {
-    slave->fetcher->assign(handle->stdout());
+    COCAINE_LOG_TRACE(slave->log, "slave is attaching the standard output handler");
+
+    slave->fetcher.apply([&](std::shared_ptr<fetcher_t>& fetcher) {
+        // If there is no fetcher already - it only means, that the slave has been shutted down
+        // externally.
+        if (fetcher) {
+            fetcher->assign(handle->stdout());
+        } else {
+            throw std::system_error(error::overseer_shutdowning, "slave is shutdowning");
+        }
+    });
 }
 
 const char*

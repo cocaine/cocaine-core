@@ -147,7 +147,7 @@ private:
     cleanup_handler cleanup;
 
     splitter_t splitter;
-    std::shared_ptr<fetcher_t> fetcher;
+    synchronized<std::shared_ptr<fetcher_t>> fetcher;
     boost::circular_buffer<std::string> lines;
 
     std::atomic<bool> shutdowned;

@@ -63,7 +63,9 @@ state_machine_t::start() {
 
     COCAINE_LOG_TRACE(log, "slave state machine is starting");
 
-    fetcher = std::make_shared<fetcher_t>(shared_from_this());
+    fetcher.apply([&](std::shared_ptr<fetcher_t>& fetcher) {
+        fetcher = std::make_shared<fetcher_t>(shared_from_this());
+    });
 
     auto spawning = std::make_shared<spawning_t>(shared_from_this());
     migrate(spawning);
@@ -248,8 +250,10 @@ state_machine_t::shutdown(std::error_code ec) {
     }
     migrate(std::make_shared<stopped_t>(ec));
 
-    fetcher->close();
-    fetcher.reset();
+    fetcher.apply([&](std::shared_ptr<fetcher_t>& fetcher) {
+        fetcher->close();
+        fetcher.reset();
+    });
 
     if (ec && ec != error::overseer_shutdowning) {
         dump();
