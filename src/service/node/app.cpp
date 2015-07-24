@@ -235,7 +235,16 @@ public:
     ~running_t() {
         COCAINE_LOG_TRACE(log, "removing application service from the context");
 
-        context.remove(name);
+        try {
+            // NOTE: It can throw if someone has removed the service from the context, it's valid.
+            //
+            // Moreover if the context was unable to bootstrap itself it removes all services from
+            // the service list (including child services). It can be that this app has been removed
+            // earlier during bootstrap failure.
+            context.remove(name);
+        } catch (const std::exception& err) {
+            COCAINE_LOG_WARNING(log, "unable to remove application service from the context: %s", err.what());
+        }
 
         engine->terminate();
         overseer->terminate();

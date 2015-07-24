@@ -270,8 +270,14 @@ context_t::bootstrap() {
         m_signals.invoke<io::context::shutdown>();
 
         while(!m_services->empty()) {
-            m_services->back().second->terminate();
-            m_services->pop_back();
+            std::unique_ptr<actor_t> service;
+
+            m_services.apply([&](service_list_t& list) {
+                service = std::move(list.back().second);
+                list.pop_back();
+            });
+
+            service->terminate();
         }
 
         throw cocaine::error_t("couldn't start %d service(s): %s", errored.size(), stream.str());
