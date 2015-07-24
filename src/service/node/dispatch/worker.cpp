@@ -36,6 +36,25 @@ worker_rpc_dispatch_t::worker_rpc_dispatch_t(upstream<outcoming_tag>& stream_, c
 }
 
 void
+worker_rpc_dispatch_t::discard(const std::error_code& ec) const {
+    // TODO: Consider something less weird.
+    const_cast<worker_rpc_dispatch_t*>(this)->discard(ec);
+}
+
+void
+worker_rpc_dispatch_t::discard(const std::error_code& ec) {
+    if (ec) {
+        try {
+            stream.send<protocol::error>(ec, "slave has been discarded");
+        } catch (const std::exception&) {
+            // Eat.
+        }
+
+        finalize();
+    }
+}
+
+void
 worker_rpc_dispatch_t::finalize(const std::error_code& ec) {
     std::lock_guard<std::mutex> lock(mutex);
 

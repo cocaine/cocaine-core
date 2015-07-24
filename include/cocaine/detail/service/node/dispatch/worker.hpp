@@ -38,6 +38,16 @@ private:
 public:
     worker_rpc_dispatch_t(upstream<outcoming_tag>& stream, callback_type callback);
 
+    /// The worker has been disconnected without closing its opened channels.
+    ///
+    /// In this case we should notify all users about the failure.
+    virtual
+    void
+    discard(const std::error_code& ec) const;
+
+    void
+    discard(const std::error_code& ec);
+
 private:
     void
     finalize(const std::error_code& ec = std::error_code());
