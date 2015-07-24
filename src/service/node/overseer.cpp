@@ -95,6 +95,9 @@ struct queue_t {
 struct pool_t {
     unsigned long capacity;
 
+    std::uint64_t spawned;
+    std::uint64_t crashed;
+
     const synchronized<overseer_t::pool_type>* pool;
 };
 
@@ -243,6 +246,8 @@ public:
             pinfo["idle"]     = pool.size() - collector.active;
             pinfo["capacity"] = value.capacity;
             pinfo["slaves"]   = slaves;
+            pinfo["total:spawned"] = value.spawned;
+            pinfo["total:crashed"] = value.crashed;
 
             result["pool"] = pinfo;
         });
@@ -260,10 +265,10 @@ overseer_t::info(io::node::info::flags_t flags) const {
     info_visitor_t visitor(flags, &result);
     visitor.visit(manifest());
     visitor.visit(profile());
-    visitor.visit(stats.accepted.load(), stats.rejected.load());
+    visitor.visit(stats.requests.accepted.load(), stats.requests.rejected.load());
     visitor.visit({ profile().queue_limit, &queue });
     visitor.visit(stats.quantiles());
-    visitor.visit({ profile().pool_limit, &pool });
+    visitor.visit({ profile().pool_limit, stats.slaves.spawned, stats.slaves.crashed, &pool });
 
     return result;
 }
@@ -293,7 +298,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type downstre
         const auto limit = profile().queue_limit;
 
         if (queue.size() >= limit && limit > 0) {
-            ++stats.rejected;
+            ++stats.requests.rejected;
             throw std::system_error(error::queue_is_full);
         }
     });
@@ -306,7 +311,7 @@ overseer_t::enqueue(io::streaming_slot<io::app::enqueue>::upstream_type downstre
         std::move(downstream),
     });
 
-    ++stats.accepted;
+    ++stats.requests.accepted;
     balancer->on_queue();
 
     return dispatch;
@@ -338,6 +343,8 @@ overseer_t::spawn(locked_ptr<pool_type>& pool) {
         uuid,
         slave_t(std::move(ctx), *loop, std::bind(&overseer_t::on_slave_death, shared_from_this(), ph::_1, uuid))
     ));
+
+    ++stats.slaves.spawned;
 }
 
 void
@@ -440,6 +447,7 @@ void
 overseer_t::on_slave_death(const std::error_code& ec, std::string uuid) {
     if (ec) {
         COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool: %s", ec.message());
+        ++stats.slaves.crashed;
     } else {
         COCAINE_LOG_DEBUG(log, "slave has removed itself from the pool");
     }
