@@ -11,10 +11,6 @@ cocaine-core (0.12.0.0) unstable; urgency=low
   * App streaming interface. Clients can stream data chunks into the app now,
     as opposed to sending a single request chunk along with the enqueue()
     method invocation.
-  * External service support. Non-native services can now be exposed via the
-    Cocaine service discovery mechanics, including gateway setup and stuff.
-  * External routers can now hook up into RG path in Locator and sync all the
-    routing group changes in realtime.
   * Dropped libev in favor of Boost.ASIO.
   * Logging in now handled via the Blackhole logging library.
   * Locator is now a proper service, without any special treatment. Local
