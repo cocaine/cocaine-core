@@ -314,7 +314,7 @@ session_t::push(encoder_t::message_type&& message) {
             ptr
         ));
     } else {
-        throw cocaine::error_t("session is not connected");
+        throw std::system_error(error::not_connected);
     }
 }
 
@@ -399,7 +399,7 @@ to_tcp_endpoint(const generic::stream_protocol::endpoint& endpoint) {
         );
     }
     default:
-        throw std::system_error(std::error_code(EINVAL, std::system_category()), "invalid protocol");
+        throw cocaine::error_t("invalid protocol");
     };
 
     return ip::tcp::endpoint();
