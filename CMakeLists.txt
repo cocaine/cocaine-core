@@ -49,8 +49,11 @@ INCLUDE_DIRECTORIES(
     ${LIBMSGPACK_INCLUDE_DIRS}
     ${LIBLTDL_INCLUDE_DIRS})
 
+# If not included as SYSTEM, these libs would emit 100500 warnings.
 INCLUDE_DIRECTORIES(BEFORE
-    SYSTEM ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
+    SYSTEM ${PROJECT_SOURCE_DIR}/foreign/backward-cpp)
+
+INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/blackhole/src
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include
     ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
