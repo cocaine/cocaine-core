@@ -86,7 +86,6 @@ stacktrace(int signum, siginfo_t* COCAINE_UNUSED_(info), void* context) {
 struct runtime_t {
     runtime_t() {
         // Establish an alternative signal stack
-
         const size_t alt_stack_size = 8 * 1024 * 1024;
 
         m_alt_stack.ss_sp = new char[alt_stack_size];
@@ -133,11 +132,14 @@ struct runtime_t {
     int
     run() {
         sigset_t sigset;
+
+        sigemptyset(&sigset);
         sigaddset(&sigset, SIGINT);
         sigaddset(&sigset, SIGTERM);
         sigaddset(&sigset, SIGQUIT);
 
         int signum = -1;
+
         ::sigwait(&sigset, &signum);
 
         static const std::map<int, std::string> descriptions = {

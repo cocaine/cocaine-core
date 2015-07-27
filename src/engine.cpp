@@ -162,8 +162,8 @@ execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_
         }
 
         std::unique_ptr<logging::log_t> log(new logging::log_t(*m_log, {
-            {"endpoint", remote_endpoint},
-            {"service",  dispatch ? dispatch->name() : "<none>"}
+            { "endpoint", remote_endpoint },
+            { "service",  dispatch ? dispatch->name() : "<none>" }
         }));
 
         COCAINE_LOG_DEBUG(log, "attached connection to engine, load: %.2f%%", utilization() * 100);
@@ -185,9 +185,9 @@ execution_unit_t::utilization() const {
 }
 
 template
-std::shared_ptr<session<local::stream_protocol>>
-execution_unit_t::attach(const std::shared_ptr<local::stream_protocol::socket>&, const io::dispatch_ptr_t&);
-
-template
 std::shared_ptr<session<ip::tcp>>
 execution_unit_t::attach(const std::shared_ptr<ip::tcp::socket>&, const io::dispatch_ptr_t&);
+
+template
+std::shared_ptr<session<local::stream_protocol>>
+execution_unit_t::attach(const std::shared_ptr<local::stream_protocol::socket>&, const io::dispatch_ptr_t&);
