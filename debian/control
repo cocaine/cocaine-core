@@ -29,19 +29,14 @@ Description: Cocaine - Development Headers
 Package: cocaine-dbg
 Architecture: any
 Section: debug
-Conflicts: cocaine-dbg
-Replaces: cocaine-dbg
-Provides: cocaine-dbg
 Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core3 (= ${binary:Version})
 Description: Cocaine - Debug Files
- Cocaine debug files and symbols for cocaine v12.
+ Cocaine debug files and symbols.
 
 Package: cocaine-runtime
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core3 (= ${binary:Version}),
  adduser
-Conflicts: cocaine-server, cocaine-runtime
-Replaces: cocaine-runtime
-Provides: cocaine-runtime
+Conflicts: cocaine-server
 Description: Cocaine - Runtime
  Cocaine runtime components package.

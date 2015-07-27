@@ -47,7 +47,7 @@ public:
 template<class Event, class... Args>
 void
 basic_upstream_t::send(Args&&... args) {
-    session->push<Event>(channel_id, std::forward<Args>(args)...);
+    session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
 }
 
 // Forwards for the upstream<T> class

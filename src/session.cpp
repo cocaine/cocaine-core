@@ -59,7 +59,7 @@ private:
 
 void
 session_t::pull_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
-    ptr->reader->read(message, trace_t::bind(&pull_action_t::finalize,
+    ptr->reader->read(message, std::bind(&pull_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -125,7 +125,7 @@ private:
 
 void
 session_t::push_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
-    ptr->writer->write(message, trace_t::bind(&push_action_t::finalize,
+    ptr->writer->write(message, std::bind(&push_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -205,20 +205,6 @@ session_t::handle(const decoder_t::message_type& message) {
     COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
         message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
         channel->dispatch->name());
-    auto trace_header = message.get_header<hpack::headers::trace_id<>>();
-    auto span_header = message.get_header<hpack::headers::span_id<>>();
-    auto parent_header = message.get_header<hpack::headers::parent_id<>>();
-    boost::optional<trace_t> incoming_trace;
-    if(trace_header && span_header && parent_header) {
-        incoming_trace = trace_t(
-            message.get_header<hpack::headers::trace_id<>>()->get_value().convert<uint64_t>(),
-            message.get_header<hpack::headers::span_id<>>()->get_value().convert<uint64_t>(),
-            message.get_header<hpack::headers::parent_id<>>()->get_value().convert<uint64_t>(),
-            std::get<0>(channel->dispatch->root().at(message.type())),
-            prototype->name()
-        );
-    }
-    trace_t::restore_scope_t trace_scope(incoming_trace);
 
     if((channel->dispatch = channel->dispatch->process(message, channel->upstream)
         .get_value_or(channel->dispatch)) == nullptr)
@@ -307,7 +293,7 @@ session_t::pull() {
     if(const auto ptr = *transport.synchronize()) {
 #endif
         // Use dispatch() instead of a direct call for thread safety.
-        ptr->socket->get_io_service().dispatch(trace_t::bind(&pull_action_t::operator(),
+        ptr->socket->get_io_service().dispatch(std::bind(&pull_action_t::operator(),
             std::make_shared<pull_action_t>(shared_from_this()),
             ptr
         ));
@@ -316,13 +302,21 @@ session_t::pull() {
     }
 }
 void
-session_t::push(const std::shared_ptr<io::channel<protocol_type>>& transport_, encoder_t::message_type&& message) {
-    // Use dispatch() instead of a direct call for thread safety.
-    transport_->socket->get_io_service().dispatch(trace_t::bind(
-        &push_action_t::operator(),
-        std::make_shared<push_action_t>(std::move(message), shared_from_this()),
-        transport_
-    ));
+session_t::push(encoder_t::message_type&& message) {
+    #if defined(__clang__)
+        if(const auto ptr = std::atomic_load(&transport)) {
+    #else
+        if(const auto ptr = *transport.synchronize()) {
+    #endif
+            // Use dispatch() instead of a direct call for thread safety.
+            ptr->socket->get_io_service().dispatch(std::bind(
+                &push_action_t::operator(),
+                std::make_shared<push_action_t>(std::move(message), shared_from_this()),
+                transport
+            ));
+        } else {
+            throw cocaine::error_t("session is not connected");
+        }
 }
 
 // Information

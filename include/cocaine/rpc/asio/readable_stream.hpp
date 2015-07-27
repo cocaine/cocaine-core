@@ -23,16 +23,12 @@
 
 #include "cocaine/errors.hpp"
 
-#include "cocaine/common.hpp"
-#include "cocaine/trace/trace.hpp"
-
 #include <functional>
 
 #include <asio/io_service.hpp>
 #include <asio/basic_stream_socket.hpp>
 
 #include <cstring>
-#include <functional>
 
 namespace cocaine { namespace io {
 
@@ -79,7 +75,8 @@ public:
             if(!ec) {
                 m_rx_offset += bytes_decoded;
             }
-            return m_channel->get_io_service().post(cocaine::trace_t::bind(handle, ec));
+
+            return m_channel->get_io_service().post(std::bind(handle, ec));
         }
 
         if(m_rx_offset) {
@@ -97,6 +94,7 @@ public:
         }
 
         namespace ph = std::placeholders;
+
         m_channel->async_read_some(
             asio::buffer(m_ring.data() + m_rd_offset, m_ring.size() - m_rd_offset),
             std::bind(&readable_stream::fill, this->shared_from_this(), std::ref(message), handle, ph::_1, ph::_2)
