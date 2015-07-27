@@ -68,8 +68,8 @@ logging_t::prototype() const -> const io::basic_dispatch_t& {
 
 void
 logging_t::on_emit(logging::priorities level,
-                   const std::string& source,
-                   const std::string& message,
+                   std::string source,
+                   std::string message,
                    blackhole::attribute::set_t attributes)
 {
     if(auto record = wrapper->open_record(level, std::move(attributes))) {

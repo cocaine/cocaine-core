@@ -45,8 +45,8 @@ public:
 private:
     void
     on_emit(logging::priorities level,
-            const std::string& source,
-            const std::string& message,
+            std::string source,
+            std::string message,
             blackhole::attribute::set_t attributes);
 };
 
