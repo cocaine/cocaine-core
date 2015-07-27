@@ -159,8 +159,7 @@ public:
 // Session
 
 session_t::session_t(std::unique_ptr<logging::log_t> log_,
-                     std::unique_ptr<io::channel<protocol_type>> transport_,
-                     const dispatch_ptr_t& prototype_):
+                     std::unique_ptr<io::channel<protocol_type>> transport_, const dispatch_ptr_t& prototype_):
     log(std::move(log_)),
     transport(std::shared_ptr<channel<protocol_type>>(std::move(transport_))),
     prototype(prototype_),
@@ -411,7 +410,8 @@ to_tcp_endpoint(const generic::stream_protocol::endpoint& endpoint) {
 namespace cocaine {
 
 template<class Protocol>
-session<Protocol>::session(std::unique_ptr<logging::log_t> log, std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype):
+session<Protocol>::session(std::unique_ptr<logging::log_t> log,
+                           std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype):
     session_t(std::move(log), std::make_unique<io::channel<asio::generic::stream_protocol>>(std::move(*transport)), std::move(prototype))
 {}
 
@@ -422,9 +422,9 @@ session<ip::tcp>::remote_endpoint() const {
 }
 
 template
-class session<ip::tcp>;
+class session<local::stream_protocol>;
 
 template
-class session<local::stream_protocol>;
+class session<ip::tcp>;
 
 } // namespace cocaine
