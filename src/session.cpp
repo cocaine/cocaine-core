@@ -205,15 +205,15 @@ session_t::handle(const decoder_t::message_type& message) {
     COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
         message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
         channel->dispatch->name());
-    auto trace_header = message.get_header<io::headers::trace_id<>>();
-    auto span_header = message.get_header<io::headers::span_id<>>();
-    auto parent_header = message.get_header<io::headers::parent_id<>>();
+    auto trace_header = message.get_header<hpack::headers::trace_id<>>();
+    auto span_header = message.get_header<hpack::headers::span_id<>>();
+    auto parent_header = message.get_header<hpack::headers::parent_id<>>();
     boost::optional<trace_t> incoming_trace;
     if(trace_header && span_header && parent_header) {
         incoming_trace = trace_t(
-            message.get_header<io::headers::trace_id<>>()->get_value().convert<uint64_t>(),
-            message.get_header<io::headers::span_id<>>()->get_value().convert<uint64_t>(),
-            message.get_header<io::headers::parent_id<>>()->get_value().convert<uint64_t>(),
+            message.get_header<hpack::headers::trace_id<>>()->get_value().convert<uint64_t>(),
+            message.get_header<hpack::headers::span_id<>>()->get_value().convert<uint64_t>(),
+            message.get_header<hpack::headers::parent_id<>>()->get_value().convert<uint64_t>(),
             std::get<0>(channel->dispatch->root().at(message.type())),
             prototype->name()
         );
