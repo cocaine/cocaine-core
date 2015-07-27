@@ -412,7 +412,9 @@ namespace cocaine {
 template<class Protocol>
 session<Protocol>::session(std::unique_ptr<logging::log_t> log,
                            std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype):
-    session_t(std::move(log), std::make_unique<io::channel<asio::generic::stream_protocol>>(std::move(*transport)), std::move(prototype))
+    session_t(std::move(log),
+              std::make_unique<io::channel<asio::generic::stream_protocol>>(std::move(*transport)),
+              std::move(prototype))
 {}
 
 template<>
@@ -422,9 +424,9 @@ session<ip::tcp>::remote_endpoint() const {
 }
 
 template
-class session<local::stream_protocol>;
+class session<ip::tcp>;
 
 template
-class session<ip::tcp>;
+class session<local::stream_protocol>;
 
 } // namespace cocaine

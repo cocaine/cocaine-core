@@ -20,6 +20,9 @@
 
 #include "cocaine/detail/chamber.hpp"
 
+#include <iomanip>
+#include <sstream>
+
 #if defined(__linux__)
     #include <sys/prctl.h>
 #elif defined(__APPLE__)
@@ -27,9 +30,6 @@
 #endif
 
 #include <sys/resource.h>
-
-#include <iomanip>
-#include <sstream>
 
 using namespace cocaine::io;
 
