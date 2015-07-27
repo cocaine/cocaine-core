@@ -88,7 +88,7 @@ public:
         }
 
         if(std::is_same<typename result_of<Event>::type, io::mute_slot_tag>::value && dispatch) {
-            throw cocaine::error_t("callee has no upstreams specified");
+            throw std::system_error(std::make_error_code(std::errc::wrong_protocol_type));
         }
 
         const auto ptr = m_session->fork(dispatch);
