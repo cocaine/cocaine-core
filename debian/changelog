@@ -1,3 +1,9 @@
+cocaine-core (0.12.3.0~rc1) unstable; urgency=low
+
+  * Zipkin: first blood.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 27 Jul 2015 20:13:56 +0300
+
 cocaine-core (0.12.2.21) unstable; urgency=low
 
   * Node: moved to plugins.
