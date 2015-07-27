@@ -1,19 +1,28 @@
-INCLUDE_DIRECTORIES(
-    foreign/celero/include)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../foreign/modules")
 
-ADD_SUBDIRECTORY(
-    foreign/celero)
+SET(PROJECT cocaine-core-tests)
 
-UNSET(CELERO_RUN_EXAMPLE_ON_BUILD)
-UNSET(CELERO_CELERO_ENABLE_TESTS)
-UNSET(CELERO_COMPILE_DYNAMIC_LIBRARIES)
+PROJECT(${PROJECT})
 
-ADD_EXECUTABLE(cocaine-benchmark
-    benchmark.cpp)
+# Benchmarks
+IF(COCAINE_ALLOW_BENCHMARKS)
+    INCLUDE_DIRECTORIES(
+        foreign/celero/include)
 
-TARGET_LINK_LIBRARIES(cocaine-benchmark
-    celero
-    cocaine-core)
+    ADD_SUBDIRECTORY(
+        foreign/celero)
 
-SET_TARGET_PROPERTIES(cocaine-benchmark PROPERTIES
+    UNSET(CELERO_RUN_EXAMPLE_ON_BUILD)
+    UNSET(CELERO_CELERO_ENABLE_TESTS)
+    UNSET(CELERO_COMPILE_DYNAMIC_LIBRARIES)
+
+    ADD_EXECUTABLE(cocaine-benchmark
+        benchmark.cpp)
+
+    TARGET_LINK_LIBRARIES(cocaine-benchmark
+        celero
+        cocaine-core)
+
+    SET_TARGET_PROPERTIES(cocaine-benchmark PROPERTIES
     COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
+ENDIF()

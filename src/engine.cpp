@@ -30,11 +30,12 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
+#include <asio/io_service.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/local/stream_protocol.hpp>
+
 using namespace asio;
-using namespace asio::ip;
-
 using namespace blackhole;
-
 using namespace cocaine;
 
 class execution_unit_t::gc_action_t:
@@ -98,9 +99,7 @@ execution_unit_t::execution_unit_t(context_t& context):
     m_chamber(new io::chamber_t("core:asio", m_asio)),
     m_cron(*m_asio)
 {
-    m_log = context.log("core:asio", {
-        attribute::make("engine", boost::lexical_cast<std::string>(m_chamber->thread_id()))
-    });
+    m_log = context.log("core:asio", {{ "engine", m_chamber->thread_id() }});
 
     m_asio->post(std::bind(&gc_action_t::operator(),
         std::make_shared<gc_action_t>(this, boost::posix_time::seconds(kCollectionInterval))
@@ -125,52 +124,70 @@ execution_unit_t::~execution_unit_t() {
     m_chamber = nullptr;
 }
 
-std::shared_ptr<session_t>
-execution_unit_t::attach(const std::shared_ptr<tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch) {
-    int socket;
+template<class Socket>
+std::shared_ptr<session<typename Socket::protocol_type>>
+execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_ptr_t& dispatch) {
+    typedef Socket socket_type;
+    typedef typename socket_type::protocol_type protocol_type;
 
-    if((socket = ::dup(ptr->native_handle())) == -1) {
+    int fd;
+
+    if((fd = ::dup(ptr->native_handle())) == -1) {
         throw std::system_error(errno, std::system_category(), "unable to clone client's socket");
     }
 
-    std::shared_ptr<session_t> session;
+    std::shared_ptr<session<protocol_type>> session_;
 
     try {
         // Local endpoint address of the socket to be cloned.
         const auto endpoint = ptr->local_endpoint();
 
         // Copy the socket into the new reactor.
-        auto channel = std::make_unique<io::channel<tcp>>(std::make_unique<tcp::socket>(
-           *m_asio,
-            endpoint.protocol(),
-            socket
-        ));
+        auto channel = std::make_unique<io::channel<protocol_type>>(
+            std::make_unique<socket_type>(*m_asio, endpoint.protocol(), fd)
+        );
 
-        // Disable Nagle's algorithm, since most of the service clients do not send or receive more
-        // than a couple of kilobytes of data.
-        channel->socket->set_option(tcp::no_delay(true));
+        // Configuration part.
+        std::string remote_endpoint;
 
-        auto session_log = std::make_unique<logging::log_t>(*m_log, attribute::set_t({
-            attribute::make("endpoint", boost::lexical_cast<std::string>(ptr->remote_endpoint())),
-            attribute::make("service",  dispatch ? dispatch->name() : "<none>"),
+        if (std::is_same<protocol_type, ip::tcp>::value) {
+            // Disable Nagle's algorithm, since most of the service clients do not send or receive
+            // more than a couple of kilobytes of data.
+            channel->socket->set_option(ip::tcp::no_delay(true));
+            remote_endpoint = boost::lexical_cast<std::string>(ptr->remote_endpoint());
+        } else if (std::is_same<protocol_type, local::stream_protocol>::value) {
+            remote_endpoint = boost::lexical_cast<std::string>(endpoint);
+        } else {
+            remote_endpoint = "<unknown>";
+        }
+
+        std::unique_ptr<logging::log_t> log(new logging::log_t(*m_log, {
+            {"endpoint", remote_endpoint},
+            {"service",  dispatch ? dispatch->name() : "<none>"}
         }));
 
-        COCAINE_LOG_DEBUG(session_log, "attached connection to engine, load: %.2f%%", utilization() * 100);
+        COCAINE_LOG_DEBUG(log, "attached connection to engine, load: %.2f%%", utilization() * 100);
 
         // Create a new inactive session.
-        session = std::make_shared<session_t>(std::move(session_log), std::move(channel), dispatch);
+        session_ = std::make_shared<session<protocol_type>>(std::move(log), std::move(channel), dispatch);
     } catch(const std::system_error& e) {
         throw std::system_error(e.code(), "client has disappeared while creating session");
     }
 
-    m_asio->dispatch([=]() mutable {
-        (m_sessions[socket] = std::move(session))->pull();
-    });
+    m_asio->dispatch([=]() mutable { (m_sessions[fd] = std::move(session_))->pull(); });
 
-    return session;
+    return session_;
 }
 
 double
 execution_unit_t::utilization() const {
     return m_chamber->load_avg1();
 }
+
+template
+std::shared_ptr<session<local::stream_protocol>>
+execution_unit_t::attach(const std::shared_ptr<local::stream_protocol::socket>&, const io::dispatch_ptr_t&);
+
+template
+std::shared_ptr<session<ip::tcp>>
+execution_unit_t::attach(const std::shared_ptr<ip::tcp::socket>&, const io::dispatch_ptr_t&);

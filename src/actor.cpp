@@ -152,7 +152,7 @@ actor_t::endpoints() const {
             if(ptr) {
                 return ptr->local_endpoint();
             } else {
-                throw std::system_error(asio::error::not_connected);
+                throw std::system_error(std::make_error_code(std::errc::not_connected));
             }
         });
 
@@ -205,8 +205,7 @@ actor_t::run() {
             });
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
-                e.code().value(),
-                e.code().message());
+                e.code().value(), e.code().message());
             throw;
         }
 
@@ -230,14 +229,15 @@ actor_t::terminate() {
     // happens only in engine chambers, because that's where client connections are being handled.
     m_asio->stop();
 
+    // Does not block, unlike the one in execution_unit_t's destructors.
+    m_chamber = nullptr;
+
     m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
         std::error_code ec;
         const auto endpoint = ptr->local_endpoint(ec);
 
         COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
 
-        // Does not block, unlike the one in execution_unit_t's destructors.
-        m_chamber = nullptr;
         ptr       = nullptr;
     });
 

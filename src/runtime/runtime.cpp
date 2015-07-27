@@ -33,13 +33,10 @@
 #include <asio/io_service.hpp>
 #include <asio/signal_set.hpp>
 
-#include <blackhole/formatter/json.hpp>
-#include <blackhole/frontend/files.hpp>
-#include <blackhole/frontend/syslog.hpp>
-#include <blackhole/sink/socket.hpp>
-
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+
+#include <blackhole/blackhole.hpp>
 
 #if defined(__linux__)
     #define BACKWARD_HAS_BFD 1
@@ -87,11 +84,7 @@ stacktrace(int signum, siginfo_t* COCAINE_UNUSED_(info), void* context) {
 }
 
 struct runtime_t {
-    runtime_t():
-        m_signals(m_asio, SIGINT, SIGTERM, SIGQUIT)
-    {
-        m_signals.async_wait(std::bind(&runtime_t::on_signal, this, ph::_1, ph::_2));
-
+    runtime_t() {
         // Establish an alternative signal stack
 
         const size_t alt_stack_size = 8 * 1024 * 1024;
@@ -119,12 +112,12 @@ struct runtime_t {
 
         // Block the deprecated signals.
 
-        sigset_t signals;
+        sigset_t sigset;
 
-        sigemptyset(&signals);
-        sigaddset(&signals, SIGPIPE);
+        sigemptyset(&sigset);
+        sigaddset(&sigset, SIGPIPE);
 
-        ::sigprocmask(SIG_BLOCK, &signals, nullptr);
+        ::sigprocmask(SIG_BLOCK, &sigset, nullptr);
     }
 
    ~runtime_t() {
@@ -139,34 +132,27 @@ struct runtime_t {
 
     int
     run() {
-        m_asio.run();
+        sigset_t sigset;
+        sigaddset(&sigset, SIGINT);
+        sigaddset(&sigset, SIGTERM);
+        sigaddset(&sigset, SIGQUIT);
+
+        int signum = -1;
+        ::sigwait(&sigset, &signum);
+
+        static const std::map<int, std::string> descriptions = {
+            { SIGINT,  "SIGINT"  },
+            { SIGQUIT, "SIGQUIT" },
+            { SIGTERM, "SIGTERM" }
+        };
+
+        std::cout << "[Runtime] Caught " << descriptions.at(signum) << ", exiting." << std::endl;
 
         // There's no way it can actually go wrong.
         return EXIT_SUCCESS;
     }
 
 private:
-    void
-    on_signal(const std::error_code& ec, int signum) {
-        if(ec == asio::error::operation_aborted) {
-            return;
-        }
-
-        static const std::map<int, std::string> signals = {
-            { SIGINT,  "SIGINT"  },
-            { SIGQUIT, "SIGQUIT" },
-            { SIGTERM, "SIGTERM" }
-        };
-
-        std::cout << "[Runtime] Caught " << signals.at(signum) << ", exiting." << std::endl;
-
-        m_asio.stop();
-    }
-
-private:
-    asio::io_service m_asio;
-    asio::signal_set m_signals;
-
     // An alternative signal stack for SIGSEGV handling.
     stack_t m_alt_stack;
 };
@@ -223,7 +209,7 @@ main(int argc, char* argv[]) {
 
     try {
         config.reset(new config_t(vm["configuration"].as<std::string>()));
-    } catch(const cocaine::error_t& e) {
+    } catch(const std::system_error& e) {
         std::cerr << cocaine::format("ERROR: unable to initialize the configuration - %s.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
@@ -247,7 +233,7 @@ main(int argc, char* argv[]) {
 
         try {
             pidfile.reset(new pid_file_t(pid_path));
-        } catch(const cocaine::error_t& e) {
+        } catch(const std::system_error& e) {
             std::cerr << cocaine::format("ERROR: unable to create the pidfile - %s.", e.what()) << std::endl;
             return EXIT_FAILURE;
         }
@@ -255,73 +241,37 @@ main(int argc, char* argv[]) {
 #endif
 
     // Logging
+    const auto backend = vm["logging"].as<std::string>();
 
-    auto  logging_id = vm["logging"].as<std::string>();
-    auto& repository = blackhole::repository_t::instance();
-
-    std::cout << cocaine::format("[Runtime] Initializing the logging, backend: %s.", logging_id) << std::endl;
-
-    // Available logging sinks.
-    typedef boost::mpl::vector<
-        blackhole::sink::stream_t,
-        blackhole::sink::files_t<>,
-        blackhole::sink::syslog_t<logging::priorities>,
-        blackhole::sink::socket_t<boost::asio::ip::tcp>,
-        blackhole::sink::socket_t<boost::asio::ip::udp>
-    > sinks_t;
-
-    // Available logging formatters.
-    typedef boost::mpl::vector<
-        blackhole::formatter::string_t,
-        blackhole::formatter::json_t
-    > formatters_t;
-
-    // Register frontends with all combinations of formatters and sinks with the logging repository.
-    repository.registrate<sinks_t, formatters_t>();
+    std::cout << cocaine::format("[Runtime] Initializing the logging system, backend: %s.", backend)
+              << std::endl;
 
     std::unique_ptr<logging::logger_t> logger;
+    std::unique_ptr<logging::log_t>    wrapper;
 
     try {
-        using blackhole::keyword::tag::timestamp_t;
-        using blackhole::keyword::tag::severity_t;
+        cocaine::logging::init_t logging(config->logging.loggers);
+        logger = logging.logger(backend);
 
-        // For each logging config define mappers. Then add them into the repository.
-        for(auto it = config->logging.loggers.begin(); it != config->logging.loggers.end(); ++it) {
-            // Configure some mappings for timestamps and severity attributes.
-            blackhole::mapping::value_t mapper;
-
-            mapper.add<severity_t<logging::priorities>>(&logging::map_severity);
-            mapper.add<timestamp_t>(it->second.timestamp);
-
-            // Attach them to the logging config.
-            auto  config    = it->second.config;
-            auto& frontends = config.frontends;
-
-            for(auto it = frontends.begin(); it != frontends.end(); ++it) {
-                it->formatter.mapper = mapper;
-            }
-
-            // Register logger configuration with the Blackhole's repository.
-            repository.add_config(config);
+        blackhole::attribute::set_t attributes;
+        if (logging.config(backend).attributes.count("source_host")) {
+            attributes.emplace_back("source_host", config->network.hostname);
         }
 
-        logger = std::make_unique<logging::logger_t>(
-            repository.create<logging::logger_t>(logging_id,
-                                                 config->logging.loggers.at(logging_id).verbosity)
-        );
-    } catch(const std::out_of_range& e) {
+        wrapper.reset(new logging::log_t(*logger, attributes));
+    } catch(const std::out_of_range&) {
         std::cerr << "ERROR: unable to initialize the logging - backend does not exist." << std::endl;
         return EXIT_FAILURE;
     }
 
+    COCAINE_LOG_INFO(wrapper, "initializing the server");
+
     std::unique_ptr<context_t> context;
 
-    std::cout << "[Runtime] Initializing the server." << std::endl;
-
     try {
-        context.reset(new context_t(*config, std::move(logger)));
-    } catch(const cocaine::error_t& e) {
-        std::cerr << cocaine::format("ERROR: unable to initialize the context - %s.", e.what()) << std::endl;
+        context.reset(new context_t(*config, std::move(wrapper)));
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_ERROR(logger, "unable to initialize the context - %s.", e.what());
         return EXIT_FAILURE;
     }
 

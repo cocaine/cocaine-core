@@ -23,6 +23,10 @@
 
 #include <blackhole/forwards.hpp>
 
+namespace asio {
+    class io_service;
+}
+
 namespace cocaine {
 
 class context_t;
@@ -84,6 +88,7 @@ struct protocol;
 namespace cocaine { namespace logging {
 
 enum priorities: int {
+    trace,
     debug,
     info,
     warning,

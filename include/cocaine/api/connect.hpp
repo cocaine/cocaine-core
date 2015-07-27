@@ -28,6 +28,8 @@
 #include "cocaine/rpc/session.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
+#include <asio/ip/tcp.hpp>
+
 namespace cocaine { namespace api {
 
 template<class Tag> class client;
@@ -35,7 +37,9 @@ template<class Tag> class client;
 namespace details {
 
 class basic_client_t {
-    std::shared_ptr<session_t> m_session;
+    typedef asio::ip::tcp protocol_type;
+
+    std::shared_ptr<session<protocol_type>> m_session;
 
 public:
     template<typename> friend class api::client;
@@ -57,7 +61,7 @@ public:
     // Modifiers
 
     void
-    attach(const std::shared_ptr<session_t>& session);
+    attach(const std::shared_ptr<session<protocol_type>>& session);
 };
 
 } // namespace details
@@ -80,7 +84,7 @@ public:
     typename traits<Event>::upstream_type
     invoke(const std::shared_ptr<typename traits<Event>::dispatch_type>& dispatch, Args&&... args) {
         if(!m_session) {
-            throw cocaine::error_t("client is not connected");
+            throw std::system_error(std::make_error_code(std::errc::not_connected));
         }
 
         if(std::is_same<typename result_of<Event>::type, io::mute_slot_tag>::value && dispatch) {

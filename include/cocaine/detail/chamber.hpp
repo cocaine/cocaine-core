@@ -66,10 +66,8 @@ public:
         return boost::accumulators::rolling_mean(*load_acc1.synchronize());
     }
 
-    auto
-    thread_id() const -> boost::thread::id {
-        return thread->get_id();
-    }
+    std::string
+    thread_id() const;
 };
 
 }} // namespace cocaine::io

@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_DECODER_HPP
 #define COCAINE_IO_DECODER_HPP
 
-#include "cocaine/rpc/asio/errors.hpp"
+#include "cocaine/errors.hpp"
 
 #include "cocaine/traits.hpp"
 

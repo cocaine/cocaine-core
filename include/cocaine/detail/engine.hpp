@@ -24,12 +24,13 @@
 #include "cocaine/common.hpp"
 
 #include <asio/deadline_timer.hpp>
-#include <asio/io_service.hpp>
-#include <asio/ip/tcp.hpp>
 
 namespace cocaine {
 
 class session_t;
+
+template<class Protocol>
+class session;
 
 class execution_unit_t {
     COCAINE_DECLARE_NONCOPYABLE(execution_unit_t)
@@ -59,8 +60,9 @@ public:
 
    ~execution_unit_t();
 
-    std::shared_ptr<session_t>
-    attach(const std::shared_ptr<asio::ip::tcp::socket>& ptr, const io::dispatch_ptr_t& dispatch);
+    template<class Socket>
+    std::shared_ptr<session<typename Socket::protocol_type>>
+    attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
     double
     utilization() const;

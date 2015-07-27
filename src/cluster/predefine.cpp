@@ -41,9 +41,9 @@ using namespace asio::ip;
 using namespace cocaine::io;
 using namespace cocaine::cluster;
 
-namespace ph = std::placeholders;
-
 namespace cocaine {
+
+namespace ph = std::placeholders;
 
 template<>
 struct dynamic_converter<predefine_cfg_t> {
@@ -57,7 +57,7 @@ struct dynamic_converter<predefine_cfg_t> {
         const dynamic_t& nodes = source.as_object().at("nodes", dynamic_t::object_t());
 
         if(nodes.as_object().empty()) {
-            throw cocaine::error_t("at least one node should be specified for predefined cluster");
+            throw cocaine::error_t("no nodes have been specified");
         }
 
         io_service service;
@@ -74,11 +74,7 @@ struct dynamic_converter<predefine_cfg_t> {
                     addr.substr(0, addr.rfind(":")), addr.substr(addr.rfind(":") + 1)
                 ));
             } catch(const std::system_error& e) {
-#if defined(HAVE_GCC48)
-                std::throw_with_nested(cocaine::error_t("unable to determine predefined node endpoints"));
-#else
-                throw cocaine::error_t("unable to determine predefined node endpoints");
-#endif
+                throw std::system_error(e.code(), "unable to determine predefined node endpoints");
             }
 
             result.endpoints[node->first] = std::vector<tcp::endpoint>(it, end);

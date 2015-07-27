@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_BUFFERED_READABLE_STREAM_HPP
 #define COCAINE_IO_BUFFERED_READABLE_STREAM_HPP
 
-#include "cocaine/rpc/asio/errors.hpp"
+#include "cocaine/errors.hpp"
 
 #include <functional>
 
@@ -31,8 +31,6 @@
 #include <cstring>
 
 namespace cocaine { namespace io {
-
-namespace ph = std::placeholders;
 
 template<class Protocol, class Decoder>
 class readable_stream:
@@ -94,6 +92,8 @@ public:
             // the ring in order to accomodate more data.
             m_ring.resize(m_ring.size() * 2);
         }
+
+        namespace ph = std::placeholders;
 
         m_channel->async_read_some(
             asio::buffer(m_ring.data() + m_rd_offset, m_ring.size() - m_rd_offset),

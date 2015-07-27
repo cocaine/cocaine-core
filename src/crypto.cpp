@@ -45,12 +45,10 @@ crypto<HashID>::sign(const std::string& message, const std::string& token_id) co
 
     try {
         token = m_store->template get<std::string>(m_service, token_id);
-    } catch(const storage_error_t& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to locate security token '%s' for service", token_id)(
-            "service", m_service
-        );
-
-        throw cocaine::error_t("security token '%s' has not been found", token_id);
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to load security token '%s' for service: [%d] %s", token_id,
+            e.code().value(), e.code().message());
+        throw std::system_error(error::token_not_found);
     }
 
     MHASH thread = mhash_hmac_init(HashID, const_cast<char*>(token.data()), token.size(), mhash_get_hash_pblock(HashID));

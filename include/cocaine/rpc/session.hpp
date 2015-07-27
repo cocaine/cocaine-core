@@ -24,16 +24,19 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
+#include <asio/generic/stream_protocol.hpp>
+
 #include "cocaine/rpc/asio/encoder.hpp"
 #include "cocaine/rpc/asio/decoder.hpp"
-
-#include <asio/ip/tcp.hpp>
 
 namespace cocaine {
 
 class session_t:
     public std::enable_shared_from_this<session_t>
 {
+    typedef asio::generic::stream_protocol protocol_type;
+    typedef io::channel<protocol_type> transport_type;
+
     class pull_action_t;
     class push_action_t;
 
@@ -46,9 +49,9 @@ class session_t:
 
     // The underlying connection.
 #if defined(__clang__)
-    std::shared_ptr<io::channel<asio::ip::tcp>> transport;
+    std::shared_ptr<transport_type> transport;
 #else
-    synchronized<std::shared_ptr<io::channel<asio::ip::tcp>>> transport;
+    synchronized<std::shared_ptr<transport_type>> transport;
 #endif
 
     // Initial dispatch. Internally synchronized.
@@ -65,21 +68,21 @@ class session_t:
 
 public:
     session_t(std::unique_ptr<logging::log_t> log,
-              std::unique_ptr<io::channel<asio::ip::tcp>> transport, const io::dispatch_ptr_t& prototype);
+              std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
 
     // Observers
 
     auto
     active_channels() const -> std::map<uint64_t, std::string>;
 
-    size_t
+    std::size_t
     memory_pressure() const;
 
     auto
     name() const -> std::string;
 
     auto
-    remote_endpoint() const -> asio::ip::tcp::endpoint;
+    remote_endpoint() const -> protocol_type::endpoint;
 
     // Modifiers
 
@@ -111,6 +114,25 @@ private:
 
     void
     revoke(uint64_t channel_id);
+};
+
+// Defined only for TCP and Local protocols.
+template<class Protocol>
+class session:
+    public session_t
+{
+public:
+    typedef Protocol protocol_type;
+    typedef typename protocol_type::endpoint endpoint_type;
+
+    typedef io::channel<protocol_type> transport_type;
+
+public:
+    session(std::unique_ptr<logging::log_t> log,
+            std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
+
+    auto
+    remote_endpoint() const -> endpoint_type;
 };
 
 } // namespace cocaine

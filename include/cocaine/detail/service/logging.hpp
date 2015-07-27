@@ -32,7 +32,8 @@ class logging_t:
     public api::service_t,
     public dispatch<io::log_tag>
 {
-    std::unique_ptr<logging::logger_t> m_logger;
+    std::unique_ptr<logging::logger_t> logger;
+    std::unique_ptr<logging::log_t>    wrapper;
 
 public:
     logging_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);
@@ -43,8 +44,8 @@ public:
 
 private:
     void
-    on_emit(logging::priorities level, std::string&& source, std::string&& message,
-            blackhole::attribute::set_t&& attributes);
+    on_emit(logging::priorities level, std::string source, std::string message,
+            blackhole::attribute::set_t attributes);
 };
 
 }} // namespace cocaine::service

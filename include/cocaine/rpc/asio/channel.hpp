@@ -45,11 +45,21 @@ struct channel {
         socket->non_blocking(true);
     }
 
+    // Conversion constructor between channels with compatible underlying protocols.
+    template<class OtherProtocol>
+    channel(channel<OtherProtocol>&& other):
+        socket(new socket_type(std::move(*other.socket))),
+        reader(new readable_stream<protocol_type, decoder_type>(socket)),
+        writer(new writable_stream<protocol_type, encoder_type>(socket))
+    {
+        // The socket is already in non-blocking mode.
+    }
+
    ~channel() {
         try {
             socket->shutdown(socket_type::shutdown_both);
             socket->close();
-        } catch(const std::system_error&) {
+        } catch(...) {
             // Might be already disconnected by the remote peer, so ignore all errors.
         }
     }

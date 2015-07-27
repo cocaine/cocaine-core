@@ -48,7 +48,7 @@
 #define COCAINE_UNUSED_(parameter)          \
     parameter __attribute__((unused))
 
-#include "cocaine/exceptions.hpp"
+#include "cocaine/errors.hpp"
 #include "cocaine/forwards.hpp"
 #include "cocaine/memory.hpp"
 

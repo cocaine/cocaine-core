@@ -4,21 +4,19 @@ PROJECT(COCAINE-CORE)
 
 SET(COCAINE_VERSION_MAJOR   0)
 SET(COCAINE_VERSION_MINOR   12)
-SET(COCAINE_VERSION_RELEASE 0)
+SET(COCAINE_VERSION_RELEASE 3)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-IF(NOT APPLE)
-    OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" ON)
-ELSE()
-    OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" OFF)
+IF(APPLE)
+    SET(CMAKE_MACOSX_RPATH ON)
 ENDIF()
 
-OPTION(COCAINE_ALLOW_BENCHMARKS "Build benchmarking tools" OFF)
+OPTION(COCAINE_ALLOW_BENCHMARKS "Build Benchmarking Tools" OFF)
 
+# Import our CMake modules
 INCLUDE(cmake/locate_library.cmake)
-
-LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
+INCLUDE(foreign/modules/AddCXXCompilerFlag.cmake)
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
@@ -31,11 +29,6 @@ FIND_PACKAGE(Boost 1.46.0
         program_options
         system
         thread)
-
-IF(COCAINE_ALLOW_CGROUPS)
-    LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
-    SET(LIBCGROUP_LIBRARY "cgroup")
-ENDIF()
 
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
@@ -52,15 +45,15 @@ CONFIGURE_FILE(
 
 INCLUDE_DIRECTORIES(
     ${Boost_INCLUDE_DIRS}
-    ${LIBCGROUP_INCLUDE_DIRS}
-    ${OPENSSL_INCLUDE_DIR}
     ${LIBMHASH_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
-    ${LIBARCHIVE_INCLUDE_DIRS}
     ${LIBLTDL_INCLUDE_DIRS})
 
+# If not included as SYSTEM, these libs would emit 100500 warnings.
 INCLUDE_DIRECTORIES(BEFORE
-    ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
+    SYSTEM ${PROJECT_SOURCE_DIR}/foreign/backward-cpp)
+
+INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/blackhole/src
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include
     ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
@@ -68,14 +61,13 @@ INCLUDE_DIRECTORIES(BEFORE
 
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
-    ${LIBCGROUP_LIBRARY_DIRS}
     ${LIBMHASH_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
-    ${LIBARCHIVE_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
 
 ADD_LIBRARY(cocaine-core SHARED
     src/actor.cpp
+    src/actor_unix.cpp
     src/api.cpp
     src/chamber.cpp
     src/cluster/multicast.cpp
@@ -88,33 +80,21 @@ ADD_LIBRARY(cocaine-core SHARED
     src/dispatch.cpp
     src/dynamic.cpp
     src/engine.cpp
+    src/errors.cpp
     src/essentials.cpp
     src/gateway/adhoc.cpp
-    src/isolate/process.cpp
-    src/isolate/process/archive.cpp
-    src/isolate/process/spooler.cpp
     src/logging.cpp
     src/repository.cpp
     src/service/locator.cpp
     src/service/locator/routing.cpp
     src/service/logging.cpp
-    src/service/node.cpp
-    src/service/node/app.cpp
-    src/service/node/engine.cpp
-    src/service/node/manifest.cpp
-    src/service/node/profile.cpp
-    src/service/node/queue.cpp
-    src/service/node/session.cpp
-    src/service/node/slave.cpp
     src/service/storage.cpp
     src/session.cpp
     src/storage/files.cpp
     src/unique_id.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-core
-    archive
     ${Boost_LIBRARIES}
-    ${LIBCGROUP_LIBRARY}
     ltdl
     mhash
     msgpack
@@ -134,8 +114,19 @@ TARGET_LINK_LIBRARIES(cocaine-runtime
     ${Boost_LIBRARIES}
     cocaine-core)
 
-SET_TARGET_PROPERTIES(cocaine-core cocaine-runtime PROPERTIES
-    COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
+# Try and enable C++11.
+ADD_CXX_COMPILER_FLAG(-std=c++11)
+IF(NOT HAVE_CXX_FLAG_STD_CXX11)
+  ADD_CXX_COMPILER_FLAG(-std=c++0x)
+ENDIF()
+
+# Turn compiler warnings.
+ADD_CXX_COMPILER_FLAG(-Wall)
+ADD_CXX_COMPILER_FLAG(-Wextra)
+ADD_CXX_COMPILER_FLAG(-Werror RELEASE)
+ADD_CXX_COMPILER_FLAG(-Woverloaded-virtual)
+ADD_CXX_COMPILER_FLAG(-pedantic)
+ADD_CXX_COMPILER_FLAG(-pedantic-errors)
 
 IF(COCAINE_ALLOW_BENCHMARKS)
     ADD_SUBDIRECTORY(tests)

@@ -27,8 +27,10 @@
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
+#include <asio/ip/tcp.hpp>
+#include <asio/local/stream_protocol.hpp>
+
 using namespace asio;
-using namespace asio::ip;
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -49,7 +51,7 @@ public:
     { }
 
     void
-    operator()(const std::shared_ptr<channel<tcp>> ptr);
+    operator()(const std::shared_ptr<channel<protocol_type>> ptr);
 
 private:
     void
@@ -57,7 +59,7 @@ private:
 };
 
 void
-session_t::pull_action_t::operator()(const std::shared_ptr<channel<tcp>> ptr) {
+session_t::pull_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
     ptr->reader->read(message, std::bind(&pull_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
@@ -82,12 +84,15 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
     if(const auto ptr = *session->transport.synchronize()) {
 #endif
         try {
+            // NOTE: In case the underlying slot has miserably failed to handle its exceptions, the
+            // client will be disconnected to prevent any further damage to the service and himself.
             session->handle(message);
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: [%d] %s", e.code().value(),
+                e.code().message());
+            return session->detach(e.code());
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception - %s", e.what());
-
-            // NOTE: This happens only when the underlying slot has miserably failed to handle its
-            // exceptions. In such case, the client is disconnected to prevent any further damage.
+            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: %s", e.what());
             return session->detach(error::uncaught_error);
         }
 
@@ -112,7 +117,7 @@ public:
     { }
 
     void
-    operator()(const std::shared_ptr<channel<tcp>> ptr);
+    operator()(const std::shared_ptr<channel<protocol_type>> ptr);
 
 private:
     void
@@ -120,7 +125,7 @@ private:
 };
 
 void
-session_t::push_action_t::operator()(const std::shared_ptr<channel<tcp>> ptr) {
+session_t::push_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
     ptr->writer->write(message, std::bind(&push_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
@@ -155,9 +160,9 @@ public:
 // Session
 
 session_t::session_t(std::unique_ptr<logging::log_t> log_,
-                     std::unique_ptr<channel<tcp>> transport_, const dispatch_ptr_t& prototype_):
+                     std::unique_ptr<io::channel<protocol_type>> transport_, const dispatch_ptr_t& prototype_):
     log(std::move(log_)),
-    transport(std::shared_ptr<channel<tcp>>(std::move(transport_))),
+    transport(std::shared_ptr<channel<protocol_type>>(std::move(transport_))),
     prototype(prototype_),
     max_channel_id(0)
 { }
@@ -175,7 +180,10 @@ session_t::handle(const decoder_t::message_type& message) {
 
         if(lb == ub) {
             if(channel_id <= max_channel_id) {
-                throw cocaine::error_t("specified channel id was revoked");
+                // NOTE: Checking whether channel number is always higher than the previous channel
+                // number is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be
+                // not the best approach, but since we have 2^64 possible channels it's good enough.
+                throw std::system_error(error::revoked_channel);
             }
 
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
@@ -191,10 +199,10 @@ session_t::handle(const decoder_t::message_type& message) {
     });
 
     if(!channel->dispatch) {
-        throw cocaine::error_t("no dispatch has been assigned");
+        throw std::system_error(error::unbound_dispatch);
     }
 
-    COCAINE_LOG_DEBUG(log, "handling %d: '%s' message in channel %d, dispatch: '%s'",
+    COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
         message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
         channel->dispatch->name());
 
@@ -250,7 +258,7 @@ session_t::revoke(uint64_t channel_id) {
 void
 session_t::detach(const std::error_code& ec) {
 #if defined(__clang__)
-    if(auto channel = std::atomic_exchange(&transport, std::shared_ptr<io::channel<tcp>>())) {
+    if(auto channel = std::atomic_exchange(&transport, std::shared_ptr<io::channel<protocol_type>>())) {
 #else
     if(auto channel = std::move(*transport.synchronize())) {
 #endif
@@ -290,10 +298,9 @@ session_t::pull() {
             ptr
         ));
     } else {
-        throw cocaine::error_t("session is not connected");
+        throw std::system_error(error::not_connected);
     }
 }
-
 void
 session_t::push(encoder_t::message_type&& message) {
 #if defined(__clang__)
@@ -326,7 +333,7 @@ session_t::active_channels() const {
     });
 }
 
-size_t
+std::size_t
 session_t::memory_pressure() const {
 #if defined(__clang__)
     if(const auto ptr = std::atomic_load(&transport)) {
@@ -344,9 +351,9 @@ session_t::name() const {
     return prototype ? prototype->name() : "<none>";
 }
 
-tcp::endpoint
+session_t::protocol_type::endpoint
 session_t::remote_endpoint() const {
-    tcp::endpoint endpoint;
+    protocol_type::endpoint endpoint;
 
 #if defined(__clang__)
     if(const auto ptr = std::atomic_load(&transport)) {
@@ -362,3 +369,62 @@ session_t::remote_endpoint() const {
 
     return endpoint;
 }
+
+// TODO: Move to a separate TU.
+namespace {
+
+ip::tcp::endpoint
+to_tcp_endpoint(const generic::stream_protocol::endpoint& endpoint) {
+    switch (endpoint.protocol().family()) {
+    case AF_INET: {
+        const sockaddr_in* addr = reinterpret_cast<const sockaddr_in*>(endpoint.data());
+        ip::address_v4::bytes_type array;
+        std::copy((char*)&addr->sin_addr, (char*)&addr->sin_addr + array.size(), array.begin());
+
+        ip::address_v4 address(array);
+        return ip::tcp::endpoint(
+            address,
+            detail::socket_ops::network_to_host_short(addr->sin_port)
+        );
+    }
+    case AF_INET6: {
+        const sockaddr_in6* addrv6 = reinterpret_cast<const sockaddr_in6*>(endpoint.data());
+        ip::address_v6::bytes_type array;
+        std::copy((char*)&addrv6->sin6_addr, (char*)&addrv6->sin6_addr + array.size(), array.begin());
+
+        ip::address_v6 address(array, addrv6->sin6_scope_id);
+        return ip::tcp::endpoint(
+            address,
+            detail::socket_ops::network_to_host_short(addrv6->sin6_port)
+        );
+    }
+    default:
+        throw std::system_error(std::error_code(EINVAL, std::system_category()), "invalid protocol");
+    };
+
+    return ip::tcp::endpoint();
+}
+
+} // namespace
+
+namespace cocaine {
+
+template<class Protocol>
+session<Protocol>::session(std::unique_ptr<logging::log_t> log,
+                           std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype):
+    session_t(std::move(log), std::make_unique<io::channel<asio::generic::stream_protocol>>(std::move(*transport)), std::move(prototype))
+{}
+
+template<>
+typename session<ip::tcp>::endpoint_type
+session<ip::tcp>::remote_endpoint() const {
+    return ::to_tcp_endpoint(session_t::remote_endpoint());
+}
+
+template
+class session<local::stream_protocol>;
+
+template
+class session<ip::tcp>;
+
+} // namespace cocaine

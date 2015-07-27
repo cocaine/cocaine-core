@@ -21,6 +21,8 @@
 #ifndef COCAINE_IO_ENCODER_HPP
 #define COCAINE_IO_ENCODER_HPP
 
+#include "cocaine/errors.hpp"
+
 #include "cocaine/rpc/protocol.hpp"
 
 #include "cocaine/traits.hpp"

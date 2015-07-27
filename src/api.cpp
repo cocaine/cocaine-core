@@ -25,6 +25,7 @@
 
 #include "cocaine/rpc/asio/channel.hpp"
 
+using namespace asio;
 using namespace asio::ip;
 
 using namespace cocaine::api::details;
@@ -64,9 +65,9 @@ basic_client_t::remote_endpoint() const {
 }
 
 void
-basic_client_t::attach(const std::shared_ptr<session_t>& session) {
+basic_client_t::attach(const std::shared_ptr<session<protocol_type>>& session) {
     if(m_session) {
-        throw cocaine::error_t("client is already connected");
+        throw std::system_error(std::make_error_code(std::errc::already_connected));
     }
 
     m_session = session;
@@ -81,7 +82,7 @@ storage(context_t& context, const std::string& name) {
     auto it = context.config.storages.find(name);
 
     if(it == context.config.storages.end()) {
-        throw repository_error_t("the '%s' storage is not configured", name);
+        throw std::system_error(std::make_error_code(std::errc::argument_out_of_domain), name);
     }
 
     return context.get<storage_t>(it->second.type, context, name, it->second.args);

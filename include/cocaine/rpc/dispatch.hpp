@@ -212,8 +212,7 @@ struct calling_visitor_t:
             // tuple type traits, in order to support parameter tags, like optional<T>.
             io::type_traits<typename io::event_traits<Event>::argument_type>::unpack(unpacked, args);
         } catch(const msgpack::type_error& e) {
-            // TODO: Throw a system_error with some meaningful error code.
-            throw cocaine::error_t("unable to unpack message arguments - %s", e.what());
+            throw std::system_error(error::invalid_argument, e.what());
         }
 
         // Call the slot with the upstream constrained with the event's upstream protocol type tag.
@@ -246,7 +245,7 @@ dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
     typedef io::event_traits<Event> traits;
 
     if(!m_slots->insert(std::make_pair(traits::id, ptr)).second) {
-        throw cocaine::error_t("duplicate type %d slot: %s", traits::id, Event::alias());
+        throw std::system_error(error::duplicate_slot, Event::alias());
     }
 
     return *this;
@@ -257,7 +256,7 @@ template<class Event>
 void
 dispatch<Tag>::forget() {
     if(!m_slots->erase(io::event_traits<Event>::id)) {
-        throw cocaine::error_t("type %d slot does not exist", io::event_traits<Event>::id);
+        throw std::system_error(error::slot_not_found);
     }
 }
 
@@ -285,7 +284,7 @@ dispatch<Tag>::process(int id, const Visitor& visitor) const {
             // via dispatch<T>::forget() without pulling the object from underneath itself.
             return lb->second;
         } else {
-            throw cocaine::error_t("type %d slot wasn't bound to this dispatch", id);
+            throw std::system_error(error::slot_not_found);
         }
     });
 

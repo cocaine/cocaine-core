@@ -27,7 +27,6 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/detail/engine.hpp"
-#include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/idl/primitive.hpp"
 #include "cocaine/idl/streaming.hpp"
@@ -40,6 +39,8 @@
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/map.hpp"
 #include "cocaine/traits/vector.hpp"
+
+#include "cocaine/unique_id.hpp"
 
 #include <asio/connect.hpp>
 
@@ -336,12 +337,8 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     try {
         const auto groups = storage->find("groups", std::vector<std::string>({"group", "active"}));
         on_refresh(groups);
-    } catch(const std::exception& e) {
-#if defined(HAVE_GCC48)
-        std::throw_with_nested(cocaine::error_t("unable to initialize routing groups"));
-#else
-        throw cocaine::error_t("unable to initialize routing groups");
-#endif
+    } catch(const std::system_error& e) {
+        throw std::system_error(e.code(), "unable to initialize routing groups");
     }
 
     context.listen(m_signals, asio);
@@ -398,7 +395,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
 
         auto& client = mapping->at(uuid).client;
 
-        client.attach(m_context.engine().attach(std::make_unique<tcp::socket>(std::move(*channel)),
+        client.attach(m_context.engine().attach(std::make_shared<tcp::socket>(std::move(*channel)),
             nullptr
         ));
 
@@ -514,7 +511,9 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
 
             values.insert({*it, storage->get<continuum_t::stored_type>("groups", *it)});
         }
-    } catch(const storage_error_t& e) {
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_ERROR(m_log, "unable to preload routing groups from the storage: [%d] %s",
+            e.code().value(), e.code().message());
         throw std::system_error(error::routing_storage_error);
     }
 
@@ -699,15 +698,15 @@ struct locator_category_t:
     }
 };
 
+} // namespace
+
+namespace cocaine { namespace error {
+
 auto
 locator_category() -> const std::error_category& {
     static locator_category_t instance;
     return instance;
 }
-
-} // namespace
-
-namespace cocaine { namespace error {
 
 auto
 make_error_code(locator_errors code) -> std::error_code {

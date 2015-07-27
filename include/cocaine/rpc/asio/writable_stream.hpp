@@ -21,7 +21,7 @@
 #ifndef COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 #define COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 
-#include "cocaine/rpc/asio/errors.hpp"
+#include "cocaine/errors.hpp"
 
 #include <functional>
 
@@ -31,8 +31,6 @@
 #include <deque>
 
 namespace cocaine { namespace io {
-
-namespace ph = std::placeholders;
 
 template<class Protocol, class Encoder>
 class writable_stream:
@@ -89,6 +87,8 @@ public:
             m_state = states::flushing;
         }
 
+        namespace ph = std::placeholders;
+
         m_channel->async_write_some(
             m_messages,
             std::bind(&writable_stream::flush, this->shared_from_this(), ph::_1, ph::_2)
@@ -141,6 +141,8 @@ private:
             m_state = states::idle;
             return;
         }
+
+        namespace ph = std::placeholders;
 
         m_channel->async_write_some(
             m_messages,
