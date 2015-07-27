@@ -168,7 +168,9 @@ chamber_t::~chamber_t() {
 std::string
 chamber_t::thread_id() const {
     std::ostringstream stream;
+
     stream << std::hex << std::internal << std::showbase << std::setw(2) << std::setfill('0');
     stream << thread->native_handle();
+
     return stream.str();
 }

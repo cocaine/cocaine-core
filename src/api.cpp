@@ -25,9 +25,6 @@
 
 #include "cocaine/rpc/asio/channel.hpp"
 
-#include <asio/generic/stream_protocol.hpp>
-#include <asio/local/stream_protocol.hpp>
-
 using namespace asio;
 using namespace asio::ip;
 

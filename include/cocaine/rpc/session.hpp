@@ -71,8 +71,7 @@ class session_t:
 
 public:
     session_t(std::unique_ptr<logging::log_t> log,
-              std::unique_ptr<transport_type> transport,
-              const io::dispatch_ptr_t& prototype);
+              std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
 
     // Observers
 
@@ -132,10 +131,11 @@ public:
     typedef io::channel<protocol_type> transport_type;
 
 public:
-    session(std::unique_ptr<logging::log_t> log, std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
+    session(std::unique_ptr<logging::log_t> log,
+            std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
 
-    endpoint_type
-    remote_endpoint() const;
+    auto
+    remote_endpoint() const -> endpoint_type;
 };
 
 } // namespace cocaine
