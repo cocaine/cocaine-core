@@ -1,4 +1,4 @@
-#include "cocaine/detail/service/node/actor.hpp"
+#include "cocaine/rpc/actor_unix.hpp"
 
 #include <boost/filesystem/operations.hpp>
 

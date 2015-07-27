@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/detail/unique_id.hpp"
+#include "cocaine/unique_id.hpp"
 
 #include <uuid/uuid.h>
 

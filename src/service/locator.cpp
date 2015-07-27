@@ -27,7 +27,6 @@
 #include "cocaine/context.hpp"
 
 #include "cocaine/detail/engine.hpp"
-#include "cocaine/detail/unique_id.hpp"
 
 #include "cocaine/idl/primitive.hpp"
 #include "cocaine/idl/streaming.hpp"
@@ -35,6 +34,8 @@
 #include "cocaine/logging.hpp"
 
 #include "cocaine/rpc/actor.hpp"
+
+#include "cocaine/unique_id.hpp"
 
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"

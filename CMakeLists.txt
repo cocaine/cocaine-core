@@ -8,18 +8,12 @@ endif()
 
 SET(COCAINE_VERSION_MAJOR   0)
 SET(COCAINE_VERSION_MINOR   12)
-SET(COCAINE_VERSION_RELEASE 1)
+SET(COCAINE_VERSION_RELEASE 2)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 IF(APPLE)
     SET(CMAKE_MACOSX_RPATH ON)
-ENDIF()
-
-IF(NOT APPLE)
-    OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" ON)
-ELSE()
-    OPTION(COCAINE_ALLOW_CGROUPS "Build CGroups support for Process Isolate" OFF)
 ENDIF()
 
 OPTION(COCAINE_ALLOW_TESTS "Build Tests" OFF)
@@ -28,8 +22,6 @@ OPTION(COCAINE_ALLOW_BENCHMARKS "Build benchmarking tools" OFF)
 # Import our CMake modules
 INCLUDE(cmake/locate_library.cmake)
 INCLUDE(foreign/modules/AddCXXCompilerFlag.cmake)
-
-LOCATE_LIBRARY(LIBARCHIVE "archive.h" "archive")
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
@@ -42,11 +34,6 @@ FIND_PACKAGE(Boost 1.46.0
         program_options
         system
         thread)
-
-IF(COCAINE_ALLOW_CGROUPS)
-    LOCATE_LIBRARY(LIBCGROUP "libcgroup.h" "cgroup")
-    SET(LIBCGROUP_LIBRARY "cgroup")
-ENDIF()
 
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
@@ -88,6 +75,7 @@ LINK_DIRECTORIES(
 
 ADD_LIBRARY(cocaine-core SHARED
     src/actor.cpp
+    src/actor_unix.cpp
     src/api.cpp
     src/chamber.cpp
     src/cluster/multicast.cpp
@@ -103,38 +91,11 @@ ADD_LIBRARY(cocaine-core SHARED
     src/errors.cpp
     src/essentials.cpp
     src/gateway/adhoc.cpp
-    src/isolate/process.cpp
-    src/isolate/process/archive.cpp
-    src/isolate/process/spooler.cpp
     src/logging.cpp
     src/repository.cpp
     src/service/locator.cpp
     src/service/locator/routing.cpp
     src/service/logging.cpp
-
-    src/service/node.cpp
-    src/service/node/actor.cpp
-    src/service/node/app.cpp
-    src/service/node/app/stats.cpp
-    src/service/node/balancing/load.cpp
-    src/service/node/dispatch/client.cpp
-    src/service/node/dispatch/worker.cpp
-    src/service/node/overseer.cpp
-    src/service/node/slave.cpp
-    src/service/node/slave/channel.cpp
-    src/service/node/slave/control.cpp
-    src/service/node/slave/error.cpp
-    src/service/node/slave/fetcher.cpp
-    src/service/node/slave/state/active.cpp
-    src/service/node/slave/state/handshaking.cpp
-    src/service/node/slave/state/sealing.cpp
-    src/service/node/slave/state/spawning.cpp
-    src/service/node/slave/state/state.cpp
-    src/service/node/slave/state/stopped.cpp
-    src/service/node/slave/state/terminating.cpp
-
-    src/service/node/manifest.cpp
-    src/service/node/profile.cpp
     src/service/storage.cpp
     src/session.cpp
     src/storage/files.cpp
@@ -144,7 +105,6 @@ ADD_SUBDIRECTORY(foreign/hpack-headers)
 
 TARGET_LINK_LIBRARIES(cocaine-core
     hpack-headers-static
-    archive
     ${Boost_LIBRARIES}
     ${LIBCGROUP_LIBRARY}
     ltdl

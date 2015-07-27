@@ -21,9 +21,6 @@
 #include "cocaine/errors.hpp"
 
 #include "cocaine/detail/service/locator.hpp"
-#include "cocaine/detail/service/node.hpp"
-#include "cocaine/detail/isolate/archive.hpp"
-#include "cocaine/detail/isolate/process.hpp"
 
 #include <asio/error.hpp>
 
@@ -239,12 +236,7 @@ registrar::impl_type::impl_type() {
         (0x7, &dispatch_category()                 )
         (0x8, &repository_category()               )
         (0x9, &security_category()                 )
-        (0xA, &locator_category()                  )
-        (0xB, &node_category()                     )
-    #ifdef COCAINE_ALLOW_CGROUPS
-        (0xC, &cgroup_category()                   )
-    #endif
-        (0xD, &archive_category()                  );
+        (0xA, &locator_category()                  );
 }
 
 synchronized<std::unique_ptr<registrar::impl_type>> registrar::ptr(std::make_unique<impl_type>());
