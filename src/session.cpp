@@ -303,20 +303,19 @@ session_t::pull() {
 }
 void
 session_t::push(encoder_t::message_type&& message) {
-    #if defined(__clang__)
-        if(const auto ptr = std::atomic_load(&transport)) {
-    #else
-        if(const auto ptr = *transport.synchronize()) {
-    #endif
-            // Use dispatch() instead of a direct call for thread safety.
-            ptr->socket->get_io_service().dispatch(std::bind(
-                &push_action_t::operator(),
-                std::make_shared<push_action_t>(std::move(message), shared_from_this()),
-                transport
-            ));
-        } else {
-            throw cocaine::error_t("session is not connected");
-        }
+#if defined(__clang__)
+    if(const auto ptr = std::atomic_load(&transport)) {
+#else
+    if(const auto ptr = *transport.synchronize()) {
+#endif
+        // Use dispatch() instead of a direct call for thread safety.
+        ptr->socket->get_io_service().dispatch(std::bind(&push_action_t::operator(),
+            std::make_shared<push_action_t>(std::move(message), shared_from_this()),
+            ptr
+        ));
+    } else {
+        throw cocaine::error_t("session is not connected");
+    }
 }
 
 // Information
