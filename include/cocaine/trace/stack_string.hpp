@@ -18,10 +18,12 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <string>
-
 #ifndef COCAINE_TRACE_STACK_STRING_HPP
 #define COCAINE_TRACE_STACK_STRING_HPP
+
+#include <cstring>
+#include <string>
+
 namespace cocaine {
 
 template<size_t N>
@@ -58,6 +60,6 @@ struct stack_str_t {
     }
 };
 
-}
-#endif // COCAINE_TRACE_STACK_STRING_HPP
+} // namespace cocaine
 
+#endif // COCAINE_TRACE_STACK_STRING_HPP

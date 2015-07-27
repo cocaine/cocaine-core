@@ -8,7 +8,7 @@ endif()
 
 SET(COCAINE_VERSION_MAJOR   0)
 SET(COCAINE_VERSION_MINOR   12)
-SET(COCAINE_VERSION_RELEASE 2)
+SET(COCAINE_VERSION_RELEASE 3)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -62,7 +62,6 @@ INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/blackhole/src
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include
     ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
-    ${PROJECT_SOURCE_DIR}/foreign/hpack-headers/include
     ${PROJECT_SOURCE_DIR}/include)
 
 LINK_DIRECTORIES(
@@ -91,6 +90,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/errors.cpp
     src/essentials.cpp
     src/gateway/adhoc.cpp
+    src/header.cpp
     src/logging.cpp
     src/repository.cpp
     src/service/locator.cpp
@@ -101,10 +101,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/storage/files.cpp
     src/unique_id.cpp)
 
-ADD_SUBDIRECTORY(foreign/hpack-headers)
-
 TARGET_LINK_LIBRARIES(cocaine-core
-    hpack-headers-static
     ${Boost_LIBRARIES}
     ${LIBCGROUP_LIBRARY}
     ltdl
@@ -141,6 +138,11 @@ add_cxx_compiler_flag(-pedantic)
 add_cxx_compiler_flag(-pedantic-errors)
 
 IF(COCAINE_ALLOW_TESTS OR COCAINE_ALLOW_BENCHMARKS)
+    add_custom_target(test
+        COMMAND ${CMAKE_BINARY_DIR}/tests/cocaine-core-unit
+        DEPENDS cocaine-core-unit
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+
     ADD_SUBDIRECTORY(tests)
 ENDIF()
 

@@ -30,8 +30,8 @@
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
 
-#include <hpack-headers/header.hpp>
-#include <hpack-headers/msgpack_traits.hpp>
+#include "cocaine/hpack/header.hpp"
+#include "cocaine/hpack/msgpack_traits.hpp"
 
 #include <cstring>
 
