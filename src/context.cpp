@@ -29,6 +29,8 @@
 
 #include "cocaine/rpc/actor.hpp"
 
+#include "cocaine/trace/trace.hpp"
+
 #include <blackhole/scoped_attributes.hpp>
 
 #include <boost/spirit/include/karma_char.hpp>

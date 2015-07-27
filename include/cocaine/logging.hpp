@@ -23,6 +23,8 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/trace/logger/blackhole.hpp"
+
 #include <blackhole/blackhole.hpp>
 #include <blackhole/keyword.hpp>
 #include <blackhole/logger/wrapper.hpp>
