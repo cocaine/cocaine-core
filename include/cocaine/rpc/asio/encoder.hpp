@@ -23,12 +23,13 @@
 
 #include "cocaine/errors.hpp"
 
-#include "cocaine/rpc/asio/header.hpp"
 #include "cocaine/rpc/protocol.hpp"
 
 #include "cocaine/traits.hpp"
-#include "cocaine/traits/header.hpp"
 #include "cocaine/traits/tuple.hpp"
+
+#include <hpack-headers/header.hpp>
+#include <hpack-headers/msgpack_traits.hpp>
 
 #include <cstring>
 
@@ -105,7 +106,7 @@ struct encoded:
 {
 private:
     template<class... Args>
-    encoded(header_table_t& /*header_table*/, uint64_t span, Args&&... args) {
+    encoded(hpack::header_table_t& /*header_table*/, uint64_t span, Args&&... args) {
         msgpack::packer<aux::encoded_buffers_t> packer(buffer);
 
         packer.pack_array(4);
@@ -118,9 +119,9 @@ private:
         type_traits<argument_type>::pack(packer, std::forward<Args>(args)...);
         packer.pack_array(3);
 
-        header_traits::pack<headers::trace_id<>>(packer);
-        header_traits::pack<headers::span_id<>>(packer);
-        header_traits::pack<headers::parent_id<>>(packer);
+        hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer);
+        hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer);
+        hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer);
     }
     friend struct encoder_t;
 };
@@ -134,7 +135,7 @@ struct encoder_t {
     }
 
 private:
-    io::header_table_t header_table;
+    hpack::header_table_t header_table;
 };
 
 }} // namespace cocaine::io
