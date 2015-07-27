@@ -35,10 +35,7 @@
 #include <asio/local/stream_protocol.hpp>
 
 using namespace asio;
-using namespace asio::ip;
-
 using namespace blackhole;
-
 using namespace cocaine;
 
 class execution_unit_t::gc_action_t:
@@ -156,7 +153,7 @@ execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_
         if (std::is_same<protocol_type, ip::tcp>::value) {
             // Disable Nagle's algorithm, since most of the service clients do not send or receive
             // more than a couple of kilobytes of data.
-            channel->socket->set_option(tcp::no_delay(true));
+            channel->socket->set_option(ip::tcp::no_delay(true));
             remote_endpoint = boost::lexical_cast<std::string>(ptr->remote_endpoint());
         } else if (std::is_same<protocol_type, local::stream_protocol>::value) {
             remote_endpoint = boost::lexical_cast<std::string>(endpoint);
@@ -165,8 +162,8 @@ execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_
         }
 
         std::unique_ptr<logging::log_t> log(new logging::log_t(*m_log, {
-            { "endpoint", remote_endpoint },
-            { "service",  dispatch ? dispatch->name() : "<none>" }
+            {"endpoint", remote_endpoint},
+            {"service",  dispatch ? dispatch->name() : "<none>"}
         }));
 
         COCAINE_LOG_DEBUG(log, "attached connection to engine, load: %.2f%%", utilization() * 100);
@@ -177,9 +174,7 @@ execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_
         throw std::system_error(e.code(), "client has disappeared while creating session");
     }
 
-    m_asio->dispatch([=]() mutable {
-        (m_sessions[fd] = std::move(session_))->pull();
-    });
+    m_asio->dispatch([=]() mutable { (m_sessions[fd] = std::move(session_))->pull(); });
 
     return session_;
 }

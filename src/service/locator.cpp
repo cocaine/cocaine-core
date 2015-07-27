@@ -35,12 +35,12 @@
 
 #include "cocaine/rpc/actor.hpp"
 
-#include "cocaine/unique_id.hpp"
-
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/map.hpp"
 #include "cocaine/traits/vector.hpp"
+
+#include "cocaine/unique_id.hpp"
 
 #include <asio/connect.hpp>
 

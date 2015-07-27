@@ -57,7 +57,7 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
     }
 
     on<io::log::emit>(std::bind(&logging_t::on_emit, this, ph::_1, ph::_2, ph::_3, ph::_4));
-    on<io::log::verbosity>([&]{return wrapper->log().verbosity();});
+    on<io::log::verbosity>([&]{ return wrapper->log().verbosity(); });
 }
 
 auto
