@@ -26,6 +26,7 @@
 #include <boost/thread/tss.hpp>
 #include <boost/optional.hpp>
 
+#include <cassert>
 #include <random>
 
 namespace cocaine {
