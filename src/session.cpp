@@ -22,11 +22,12 @@
 
 #include "cocaine/logging.hpp"
 
+#include "cocaine/rpc/asio/channel.hpp"
+
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
 #include <asio/ip/tcp.hpp>
-#include <asio/generic/stream_protocol.hpp>
 #include <asio/local/stream_protocol.hpp>
 
 using namespace asio;

@@ -24,13 +24,10 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
-#include "cocaine/rpc/asio/channel.hpp"
-#include "cocaine/rpc/asio/encoder.hpp"
-#include "cocaine/rpc/asio/decoder.hpp"
-
 #include <asio/generic/stream_protocol.hpp>
 
-#include <asio/ip/tcp.hpp>
+#include "cocaine/rpc/asio/encoder.hpp"
+#include "cocaine/rpc/asio/decoder.hpp"
 
 namespace cocaine {
 

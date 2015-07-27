@@ -24,8 +24,6 @@
 #include "cocaine/common.hpp"
 
 #include <asio/deadline_timer.hpp>
-#include <asio/io_service.hpp>
-#include <asio/ip/tcp.hpp>
 
 namespace cocaine {
 

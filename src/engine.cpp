@@ -30,6 +30,8 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
+#include <asio/io_service.hpp>
+#include <asio/ip/tcp.hpp>
 #include <asio/local/stream_protocol.hpp>
 
 using namespace asio;
