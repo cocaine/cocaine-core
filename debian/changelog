@@ -1,78 +1,10 @@
-cocaine-core (0.12.3.0~rc1) unstable; urgency=low
+cocaine-core (0.12.3.1) unstable; urgency=low
 
-  * Zipkin: first blood.
+  * Release 12.3.
+  * Pre-merging common changes for HPACK/Tracing.
+  * Node-compatible I/O.
 
- -- Evgeny Safronov <division494@gmail.com>  Mon, 27 Jul 2015 20:13:56 +0300
-
-cocaine-core (0.12.2.21) unstable; urgency=low
-
-  * Node: moved to plugins.
-
- -- Evgeny Safronov <division494@gmail.com>  Mon, 27 Jul 2015 16:16:12 +0300
-
-cocaine-core (0.12.2.20) unstable; urgency=low
-
-  * HPACK: headers as a separate lib.
-
- -- Evgeny Safronov <division494@gmail.com>  Mon, 27 Jul 2015 14:43:39 +0300
-
-cocaine-core (0.12.2.19) unstable; urgency=low
-
-  * Node: proper service destruction while bootstrap.
-    Now there shouldn't be deadlock if the bootstraping process has
-    miserably failed.
-    If the context was unable to bootstrap itself it removes all
-    services from the service list (including child services).
-    There is a chance that the app has been removed earlier during
-    the bootstrap failure, which invokes UB. This patch fixes that behavior.
-
- -- Evgeny Safronov <division494@gmail.com>  Fri, 24 Jul 2015 17:58:40 +0300
-
-cocaine-core (0.12.2.18) unstable; urgency=low
-
-  * Node: calculating total amount of spawned/crashed slaves.
-
- -- Evgeny Safronov <division494@gmail.com>  Fri, 24 Jul 2015 15:58:15 +0300
-
-cocaine-core (0.12.2.17) unstable; urgency=low
-
-  * Bug fix: notify all opened channels about slave's fatal errors.
-
- -- Evgeny Safronov <division494@gmail.com>  Fri, 24 Jul 2015 14:29:37 +0300
-
-cocaine-core (0.12.2.16) unstable; urgency=low
-
-  * Bug fix: stdout watcher pointer can now be accessed through multiple
-    threads.
-
- -- Evgeny Safronov <division494@gmail.com>  Fri, 24 Jul 2015 13:21:24 +0300
-
-cocaine-core (0.12.2.15) unstable; urgency=low
-
-  * Bug fix: stdout watcher is now thread-safe.
-
- -- Evgeny Safronov <division494@gmail.com>  Thu, 23 Jul 2015 13:51:32 +0300
-
-cocaine-core (0.12.2.14) unstable; urgency=low
-
-  * Bug fix: do not close application connection on recoverable errors.
-
- -- Evgeny Safronov <division494@gmail.com>  Tue, 21 Jul 2015 14:38:24 +0300
-
-cocaine-core (0.12.2.13) unstable; urgency=low
-
-  * Node: now apps can expand their actual manifests. Useful when someone has
-    externally changed the manifest and you want to see the real manifest
-    application started with. Activated through setting the proper flags (see
-    below).
-  * Node: applications can now report their actual profiles on info request.
-  * Node: now slaves can show their profiles expanded.
-  * Node: calculate app uptime using system clock instead of steady one.
-  * Node: slightly changed info report tags.
-  * Node: now node's info request accepts optional flags allowing to configure
-    what you want to see saving some internal locks on proper usage.
-
- -- Evgeny Safronov <division494@gmail.com>  Mon, 20 Jul 2015 19:44:18 +0300
+ -- Andrey Sibiryov <me@kobology.ru>  Mon, 27 Jul 2015 16:29:30 -0500
 
 cocaine-core (0.12.2.12) unstable; urgency=low
 
@@ -83,115 +15,19 @@ cocaine-core (0.12.2.12) unstable; urgency=low
 
  -- Evgeny Safronov <division494@gmail.com>  Mon, 20 Jul 2015 12:40:49 +0300
 
-cocaine-core (0.12.2.11) unstable; urgency=low
-
-  * Node: info response now contains slave's state name textual representation.
-
- -- Evgeny Safronov <division494@gmail.com>  Fri, 17 Jul 2015 15:25:03 +0300
-
-cocaine-core (0.12.2.10) unstable; urgency=low
-
-  * Bug fix: start terminate timer properly, before RPC call.
-    If a slave's session is already disconnected it should trigger immediate
-    shutting down, which cancels all the timers we've already started.
-
- -- Evgeny Safronov <division494@gmail.com>  Fri, 17 Jul 2015 13:29:11 +0300
-
-cocaine-core (0.12.2.9) unstable; urgency=low
-
-  * Bug fix: do not write crashlogs while terminating slaves.
-
- -- Evgeny Safronov <division494@gmail.com>  Thu, 16 Jul 2015 19:25:08 +0300
-
-cocaine-core (0.12.2.8) unstable; urgency=low
-
-  * Bug fix: fixed infinite trying to purse the queue. Previously all slave's
-    shutdown operations have been posted into the event loop to be sure, that
-    no cross-deadlocks occurs between session's internal state and overseer's
-    one. This action resulted in infinite `while (true)` loop in queue
-    balancing mechanism, because the slave hasn't been marked as broken (event
-    loop, remember?). This patch delays just calling cleanup handler, which
-    deletes the given slave from the pool.
-
- -- Evgeny Safronov <division494@gmail.com>  Thu, 16 Jul 2015 14:40:06 +0300
-
-cocaine-core (0.12.2.7) unstable; urgency=low
-
-  * Bug fix: preserve exception safety guarantee while injecting channels.
-    While injecting a queue event we accidentally moved the downstream
-    dispatch (C++ is not Rust, yeah), which led to the corrupted internal
-    upstream pointer if the whole inject operation failed.
-  * Bug fix: fixed possible race in balancer. On slave spawn and death events
-    involves deferred operations which may trigger when the balancer already
-    dead.
-  * Bug fix: null balancer should now return proper value from request method.
-
- -- Evgeny Safronov <division494@gmail.com>  Wed, 15 Jul 2015 19:35:43 +0300
-
-cocaine-core (0.12.2.6) unstable; urgency=low
-
-  * Bug fix: start slave spawning from the correct place.
-
- -- Evgeny Safronov <division494@gmail.com>  Wed, 15 Jul 2015 17:23:09 +0300
-
-cocaine-core (0.12.2.5) unstable; urgency=low
-
-  * Bug fix: fix deadlock on control discard. There was a cross-deadlock
-    between control session channels mutex and the overseer's pool mutex.
-  * Bug fix: properly start spawn timer before actually spawning.
-  * Profile: all timeouts can now be configured via profile.
-  * Logging: trace logging added to be able to watch spawn timer completion
-    and cancellation.
-
- -- Evgeny Safronov <division494@gmail.com>  Wed, 15 Jul 2015 15:38:33 +0300
-
 cocaine-core (0.12.2.4) unstable; urgency=low
 
   * Bug fix: fixed thread id inconsistency in logging between Blackhole's
     thread id and engine attribute.
-  * Bug fix: fixed application timeouts initialization by returning back
-    initialization from the profile.
-  * Bug fix: fixed assertion in context. Node service now should properly
-    clean up application services after itself.
 
  -- Evgeny Safronov <division494@gmail.com>  Wed, 15 Jul 2015 12:10:08 +0300
 
-cocaine-core (0.12.2.3) unstable; urgency=low
-
-  * Bug fix: fixed deadlock on slave death between overseer's queue and session's channel map.
-
- -- Evgeny Safronov <division494@gmail.com>  Tue, 14 Jul 2015 13:55:40 +0300
-
 cocaine-core (0.12.2.2) unstable; urgency=low
 
+  * Release 12.2.
   * Bug fix: fixed false sharing of signalfd between main process and its forks.
 
  -- Evgeny Safronov <division494@gmail.com>  Wed, 08 Jul 2015 23:23:49 +0300
-
-cocaine-core (0.12.2.1) unstable; urgency=low
-
-  * Bug fix: collecting zombie processes during overseers destruction.
-
- -- Evgeny Safronov <division494@gmail.com>  Wed, 08 Jul 2015 15:20:37 +0300
-
-cocaine-core (0.12.2.0) unstable; urgency=low
-
-  * Optional HPACK like headers extension. Mainly aims to ease internal protocol evolution.
-
- -- Evgeny Safronov <division494@gmail.com>  Tue, 07 Jul 2015 16:15:46 +0300
-
-cocaine-core (0.12.1.7) unstable; urgency=low
-
-  * Bug fix: fixed deadlock when unable to spawn a worker in a blocking way.
-    When unable to spawn more slaves, a spawning state invokes the slave termination, which in its
-    turn invokes self erasing from the pool. This requires acquiring a lock, so these operations
-    mustn't be processed in a sequence. One of the solutions is just to delay slave shutdown
-    operation. The second one is to use slave GC instead of cleanup callbacks. The third one is to
-    delay cleanup operation in the overseer.
-    This time we chose the first solution, cause it's the fastest way to fix this behavior, but it
-    leads to an infinite spinning until slave spawn.
-
- -- Evgeny Safronov <division494@gmail.com>  Mon, 06 Jul 2015 13:51:24 +0300
 
 cocaine-core (0.12.1.6) unstable; urgency=low
 
@@ -204,38 +40,9 @@ cocaine-core (0.12.1.6) unstable; urgency=low
 
  -- Evgeny Safronov <division494@gmail.com>  Fri, 03 Jul 2015 17:12:06 +0300
 
-cocaine-core (0.12.1.5) unstable; urgency=low
+cocaine-core (0.12.1.0) unstable; urgency=low
 
-  * More verbose failure notification from Node service.
-
- -- Evgeny Safronov <division494@gmail.com>  Thu, 02 Jul 2015 19:16:37 +0300
-
-cocaine-core (0.12.1.4) unstable; urgency=low
-
-  * API: isolate interface now has an ability to perform asynchronous spool.
-
- -- Evgeny Safronov <division494@gmail.com>  Wed, 01 Jul 2015 11:47:24 +0300
-
-cocaine-core (0.12.1.3~nightly) unstable; urgency=low
-
-  * Bug fix: fixed deadlock on immediately channel destruction.
-
- -- Evgeny Safronov <division494@gmail.com>  Tue, 26 Jun 2015 19:09:00 +0400
-
-cocaine-core (0.12.1.2~nightly) unstable; urgency=low
-
-  * Node service, version 2.
-
- -- Evgeny Safronov <division494@gmail.com>  Tue, 26 Jun 2015 16:48:23 +0400
-
-cocaine-core (0.12.1.1~nightly) unstable; urgency=low
-
-  * RPC error categories support.
-
- -- Evgeny Safronov <division494@gmail.com>  Tue, 26 Jun 2015 13:39:03 +0400
-
-cocaine-core (0.12.1.0~nightly) unstable; urgency=low
-
+  * Release 12.1.
   * Error categories support.
     Specifically, use it for RPC to send not only the error code itself, but
     also its category, so that other peers could actually understand what exactly
@@ -243,39 +50,11 @@ cocaine-core (0.12.1.0~nightly) unstable; urgency=low
 
  -- Evgeny Safronov <division494@gmail.com>  Tue, 16 Jun 2015 14:08:02 +0400
 
-cocaine-core (0.12.0.12~nightly) precise; urgency=low
+cocaine-core (0.12.0.12) unstable; urgency=low
 
   * Initializing the logging system in a separate translation unit.
 
  -- Evgeny Safronov <division494@gmail.com>  Tue, 09 Jun 2015 15:53:22 +0400
-
-cocaine-core (0.12.0.11~nightly) unstable; urgency=low
-
-  * Bugfix: fixed deadlock in node's engine which potentially results in app service paralyzing.
-
- -- Evgeny Safronov <division494@gmail.com>  Mon, 08 Jun 2015 15:34:01 +0400
-
-cocaine-core (0.12.0.10~nightly3) unstable; urgency=low
-
-  * Bugfix: race condition in engine_t::activate
-  * Bugfix: uncaught exception in app_t::enqueue during sending an error to disconnected client
-  * Bugfix: uncaught exception in engine_t::migration during sending an error to disconnected client
-
- -- Anton Matveenko <antmat@me.com>  Mon, 25 May 2015 14:22:01 +0400
-
-cocaine-core (0.12.0.10~nightly2) unstable; urgency=low
-
-  * Bugfix: reuse the same logger on "core" backend.
-
- -- Evgeny Safronov <division494@gmail.com>  Fri, 22 May 2015 16:32:01 +0400
-
-cocaine-core (0.12.0.10~nightly1) unstable; urgency=low
-
-  * Bugfix: fixed processing sessions on dead slaves.
-  * Bugfix: fixed phantom isolate/storage plugin caching.
-  * Bugfix: fixed race condition on app restart/stop.
-
- -- Evgeny Safronov <division494@gmail.com>  Thu, 21 May 2015 13:51:25 +0300
 
 cocaine-core (0.12.0.9) unstable; urgency=low
 
