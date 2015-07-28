@@ -79,7 +79,7 @@ public:
             if(!ec) {
                 m_rx_offset += bytes_decoded;
             }
-            return m_channel->get_io_service().post(cocaine::trace_t::bind(handle, ec));
+            return m_channel->get_io_service().post(std::bind(handle, ec));
         }
 
         if(m_rx_offset) {
