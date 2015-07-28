@@ -27,11 +27,11 @@
 #include "cocaine/traits/enum.hpp"
 #include "cocaine/traits/vector.hpp"
 
-using namespace blackhole;
-
 using namespace cocaine;
 using namespace cocaine::logging;
 using namespace cocaine::service;
+
+using namespace blackhole;
 
 namespace ph = std::placeholders;
 

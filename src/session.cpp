@@ -30,10 +30,10 @@
 #include <asio/ip/tcp.hpp>
 #include <asio/local/stream_protocol.hpp>
 
-using namespace asio;
-
 using namespace cocaine;
 using namespace cocaine::io;
+
+using namespace asio;
 
 // Session internals
 
@@ -415,11 +415,11 @@ namespace cocaine {
 
 template<class Protocol>
 session<Protocol>::session(std::unique_ptr<logging::log_t> log,
-                           std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype):
+                           std::unique_ptr<transport_type> transport, const dispatch_ptr_t& prototype):
     session_t(std::move(log),
-              std::make_unique<io::channel<asio::generic::stream_protocol>>(std::move(*transport)),
+              std::make_unique<io::channel<generic::stream_protocol>>(std::move(*transport)),
               std::move(prototype))
-{}
+{ }
 
 template<>
 typename session<ip::tcp>::endpoint_type

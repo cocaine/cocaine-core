@@ -34,9 +34,12 @@
 #include <asio/ip/tcp.hpp>
 #include <asio/local/stream_protocol.hpp>
 
-using namespace asio;
-using namespace blackhole;
 using namespace cocaine;
+using namespace cocaine::io;
+
+using namespace asio;
+
+using namespace blackhole;
 
 class execution_unit_t::gc_action_t:
     public std::enable_shared_from_this<gc_action_t>
@@ -96,10 +99,10 @@ execution_unit_t::gc_action_t::finalize(const std::error_code& ec) {
 
 execution_unit_t::execution_unit_t(context_t& context):
     m_asio(new io_service()),
-    m_chamber(new io::chamber_t("core:asio", m_asio)),
+    m_chamber(new chamber_t("core:asio", m_asio)),
     m_cron(*m_asio)
 {
-    m_log = context.log("core:asio", {{ "engine", m_chamber->thread_id() }});
+    m_log = context.log("core:asio", { attribute::make("engine", m_chamber->thread_id()) });
 
     m_asio->post(std::bind(&gc_action_t::operator(),
         std::make_shared<gc_action_t>(this, boost::posix_time::seconds(kCollectionInterval))
@@ -126,7 +129,7 @@ execution_unit_t::~execution_unit_t() {
 
 template<class Socket>
 std::shared_ptr<session<typename Socket::protocol_type>>
-execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_ptr_t& dispatch) {
+execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const dispatch_ptr_t& dispatch) {
     typedef Socket socket_type;
     typedef typename socket_type::protocol_type protocol_type;
 
@@ -147,7 +150,6 @@ execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_
             std::make_unique<socket_type>(*m_asio, endpoint.protocol(), fd)
         );
 
-        // Configuration part.
         std::string remote_endpoint;
 
         if (std::is_same<protocol_type, ip::tcp>::value) {
@@ -186,8 +188,8 @@ execution_unit_t::utilization() const {
 
 template
 std::shared_ptr<session<ip::tcp>>
-execution_unit_t::attach(const std::shared_ptr<ip::tcp::socket>&, const io::dispatch_ptr_t&);
+execution_unit_t::attach(const std::shared_ptr<ip::tcp::socket>&, const dispatch_ptr_t&);
 
 template
 std::shared_ptr<session<local::stream_protocol>>
-execution_unit_t::attach(const std::shared_ptr<local::stream_protocol::socket>&, const io::dispatch_ptr_t&);
+execution_unit_t::attach(const std::shared_ptr<local::stream_protocol::socket>&, const dispatch_ptr_t&);
