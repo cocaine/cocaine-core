@@ -108,7 +108,7 @@ struct encoded:
 {
 private:
     template<class... Args>
-    encoded(hpack::header_table_t& /*header_table*/, uint64_t span, Args&&... args) {
+    encoded(hpack::header_table_t& header_table, uint64_t span, Args&&... args) {
         msgpack::packer<aux::encoded_buffers_t> packer(buffer);
 
         packer.pack_array(4);
@@ -121,9 +121,13 @@ private:
         type_traits<argument_type>::pack(packer, std::forward<Args>(args)...);
         packer.pack_array(3);
 
-        hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer);
-        hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer);
-        hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer);
+        uint64_t trace_id  = trace_t::current().get_trace_id();
+        uint64_t span_id   = trace_t::current().get_id();
+        uint64_t parent_id = trace_t::current().get_parent_id();
+
+        hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer, header_table, hpack::header::create_data(trace_id));
+        hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer, header_table, hpack::header::create_data(span_id));
+        hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, header_table, hpack::header::create_data(parent_id));
     }
     friend struct encoder_t;
 };

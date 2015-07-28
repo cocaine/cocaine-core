@@ -109,7 +109,7 @@ TEST(header_table_t, push) {
     ASSERT_EQ(table[header_static_table_t::size], headers::make_header<headers::trace_id<>>());
     h = headers::make_header<headers::span_id<max_stored_span_id_test_value_t>>();
     table.push(h);
-    ASSERT_EQ(table.size(), 1);
+    ASSERT_EQ(table.size(), header_static_table_t::get_size()+ 1);
     h = headers::make_header<headers::span_id<big_test_value_t>>();
     table.push(h);
     ASSERT_TRUE(table.empty());
@@ -154,8 +154,8 @@ TEST(header_table_t, data_size) {
 
 TEST(header_table_t, size) {
     header_table_t table;
-    ASSERT_EQ(table.size(), 0);
-    size_t counter = 0;
+    ASSERT_EQ(table.size(), header_static_table_t::get_size());
+    size_t counter = header_static_table_t::get_size();
     auto h = headers::make_header<headers::span_id<>>();
     while(true) {
         if(table.data_capacity() - table.data_size() < h.http2_size()) {

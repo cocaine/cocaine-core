@@ -191,9 +191,9 @@ header_table_t::data_size() const {
 size_t
 header_table_t::size() const {
     if(header_upper_bound >= header_lower_bound) {
-        return header_upper_bound - header_lower_bound;
+        return header_static_table_t::size + header_upper_bound - header_lower_bound;
     } else {
-        return headers.size() - header_lower_bound + header_upper_bound;
+        return header_static_table_t::size + headers.size() - header_lower_bound + header_upper_bound;
     }
 }
 
@@ -308,7 +308,7 @@ header_table_t::find(const std::function<bool(const header_t&)> comp) {
 
 const header_t&
 header_table_t::operator[](size_t idx) {
-    if(idx == 0 || idx > headers.size()) {
+    if(idx == 0 || idx > headers.size() + header_static_table_t::size) {
         throw std::out_of_range("Invalid index for header table");
     }
     if(idx < header_static_table_t::size) {

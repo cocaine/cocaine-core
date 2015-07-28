@@ -43,12 +43,13 @@ struct msgpack_traits {
     template<class Header, class Stream>
     static
     void
-    pack(msgpack::packer<Stream>& packer, header_table_t& table, header::data_t& header_data) {
+    pack(msgpack::packer<Stream>& packer, header_table_t& table, const header::data_t& header_data) {
         size_t pos = header_static_table_t::idx<Header>();
         if(table[pos].get_value() == header_data) {
             packer.pack_fix_uint64(pos);
             return;
         }
+        packer.pack_array(3);
         header_t header(Header::name(), header_data);
         table.push(header);
         // true flag means store header in dynamic_table on receiver side
@@ -92,7 +93,7 @@ struct msgpack_traits {
             if(source.via.u64 >= table.size() || source.via.u64 == 0) {
                 throw std::system_error(
                     std::make_error_code(std::errc::invalid_argument),
-                    "Invalid index for header table"
+                    "Invalid index for header table: " + std::to_string(source.via.u64)
                 );
             }
             return table[source.via.u64];
