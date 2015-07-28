@@ -35,7 +35,7 @@ class session_t:
     public std::enable_shared_from_this<session_t>
 {
     typedef asio::generic::stream_protocol protocol_type;
-    typedef typename protocol_type::endpoint endpoint_type;
+    typedef protocol_type::endpoint endpoint_type;
 
     typedef io::channel<protocol_type> transport_type;
 
