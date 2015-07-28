@@ -203,7 +203,11 @@ session_t::handle(const decoder_t::message_type& message) {
     }
 
     COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
-        message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
+        message.type(),
+        channel->dispatch->root().count(message.type()) ?
+            std::get<0>(channel->dispatch->root().at(message.type()))
+          : "<undefined>",
+        channel_id,
         channel->dispatch->name());
 
     if((channel->dispatch = channel->dispatch->process(message, channel->upstream)
