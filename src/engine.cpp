@@ -129,7 +129,7 @@ execution_unit_t::~execution_unit_t() {
 
 template<class Socket>
 std::shared_ptr<session<typename Socket::protocol_type>>
-execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const dispatch_ptr_t& dispatch) {
+execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& dispatch) {
     typedef Socket socket_type;
     typedef typename socket_type::protocol_type protocol_type;
 
@@ -188,8 +188,8 @@ execution_unit_t::utilization() const {
 
 template
 std::shared_ptr<session<ip::tcp>>
-execution_unit_t::attach(const std::shared_ptr<ip::tcp::socket>&, const dispatch_ptr_t&);
+execution_unit_t::attach(std::unique_ptr<ip::tcp::socket>, const dispatch_ptr_t&);
 
 template
 std::shared_ptr<session<local::stream_protocol>>
-execution_unit_t::attach(const std::shared_ptr<local::stream_protocol::socket>&, const dispatch_ptr_t&);
+execution_unit_t::attach(std::unique_ptr<local::stream_protocol::socket>, const dispatch_ptr_t&);

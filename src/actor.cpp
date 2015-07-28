@@ -77,14 +77,14 @@ void
 actor_t::accept_action_t::finalize(const std::error_code& ec) {
     // Prepare the internal socket object for consequential operations by moving its contents to a
     // heap-allocated object, which in turn might be attached to an engine.
-    auto ptr = std::make_shared<tcp::socket>(std::move(socket));
+    auto ptr = std::make_unique<tcp::socket>(std::move(socket));
 
     switch(ec.value()) {
     case 0:
         COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd %d", ptr->native_handle());
 
         try {
-            parent->m_context.engine().attach(ptr, parent->m_prototype);
+            parent->m_context.engine().attach(std::move(ptr), parent->m_prototype);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: [%d] %s - %s",
                 e.code().value(), e.code().message(), e.what());
