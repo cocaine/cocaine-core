@@ -136,7 +136,7 @@ unix_actor_t::terminate() {
 
         COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
 
-        ptr       = nullptr;
+        ptr = nullptr;
     });
 
     // Be ready to restart the actor.
