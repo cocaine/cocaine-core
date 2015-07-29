@@ -1,4 +1,5 @@
 #include "cocaine/hpack/header.hpp"
+#include "cocaine/hpack/header.h"
 
 namespace cocaine { namespace hpack {
 
@@ -136,6 +137,11 @@ bool
 header_t::name_equal(const header_t& other) const {
     return name == other.name;
 }
+
+header_t::header_t(const ch_header& c_header) :
+    name({c_header.name.blob, c_header.name.size}),
+    value({c_header.value.blob, c_header.value.size})
+{}
 
 header_t::header_t(const header::data_t& _name, const header::data_t& _value) noexcept :
     name(_name),
@@ -327,3 +333,70 @@ header_table_t::operator[](size_t idx) {
 }
 
 }} // namespace cocaine::hpack
+
+
+extern "C" {
+
+struct ch_table {
+    cocaine::hpack::header_table_t table;
+};
+
+ch_table*
+ch_table_init() {
+    ch_table* data = new ch_table();
+    return data;
+}
+
+void
+ch_table_destroy(ch_table* table) {
+    delete table;
+}
+
+ch_header
+ch_table_get_header(ch_table* table, size_t idx) {
+    try {
+        auto h = table->table[idx];
+        return ch_header{{h.get_name().blob, h.get_name().size}, {h.get_value().blob, h.get_value().size}};
+    } catch(...) {
+        return ch_header();
+    }
+}
+
+void
+ch_table_push(ch_table* table, const ch_header* header) {
+    cocaine::hpack::header_t cpp_header(*header);
+    table->table.push(cpp_header);
+}
+
+size_t
+ch_table_find_by_full_match(ch_table* table, const ch_header* header) {
+    cocaine::hpack::header_t cpp_header(*header);
+    return table->table.find_by_full_match(cpp_header);
+}
+
+size_t
+ch_table_find_by_name(ch_table* table, const ch_header* header) {
+    cocaine::hpack::header_t cpp_header(*header);
+    return table->table.find_by_name(cpp_header);
+}
+
+size_t
+ch_table_data_size(ch_table* table) {
+    return table->table.data_size();
+}
+
+size_t
+ch_table_size(ch_table* table) {
+    return table->table.size();
+}
+
+size_t
+ch_table_data_capacity(ch_table* table) {
+    return table->table.data_capacity();
+}
+
+bool
+ch_table_empty(ch_table* table) {
+    return table->table.empty();
+}
+}
