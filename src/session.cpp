@@ -262,11 +262,11 @@ session_t::revoke(uint64_t channel_id) {
 void
 session_t::detach(const std::error_code& ec) {
 #if defined(__clang__)
-    if(auto channel = std::atomic_exchange(&transport, std::shared_ptr<transport_type>())) {
+    if(auto ptr = std::atomic_exchange(&transport, std::shared_ptr<transport_type>())) {
 #else
-    if(auto channel = std::move(*transport.synchronize())) {
+    if(auto ptr = std::move(*transport.synchronize())) {
 #endif
-        channel = nullptr;
+        ptr = nullptr;
         COCAINE_LOG_DEBUG(log, "detached session from the transport");
     } else {
         return;

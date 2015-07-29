@@ -67,7 +67,7 @@ namespace ph = std::placeholders;
 
 // Locator internals
 
-class locator_t::remote_t: public dispatch<event_traits<locator::connect>::upstream_type> {
+class locator_t::connect_sink_t: public dispatch<event_traits<locator::connect>::upstream_type> {
     locator_t  *const parent;
     std::string const uuid;
 
@@ -75,19 +75,19 @@ class locator_t::remote_t: public dispatch<event_traits<locator::connect>::upstr
     std::set<api::gateway_t::partition_t> active;
 
 public:
-    remote_t(locator_t *const parent_, const std::string& uuid_):
+    connect_sink_t(locator_t *const parent_, const std::string& uuid_):
         dispatch<event_traits<locator::connect>::upstream_type>(parent_->name() + ":client"),
         parent(parent_),
         uuid(uuid_)
     {
         typedef io::protocol<event_traits<locator::connect>::upstream_type>::scope protocol;
 
-        on<protocol::chunk>(std::bind(&remote_t::on_announce, this, ph::_1, ph::_2));
-        on<protocol::choke>(std::bind(&remote_t::on_shutdown, this));
+        on<protocol::chunk>(std::bind(&connect_sink_t::on_announce, this, ph::_1, ph::_2));
+        on<protocol::choke>(std::bind(&connect_sink_t::on_shutdown, this));
     }
 
     virtual
-   ~remote_t() {
+   ~connect_sink_t() {
         for(auto it = active.begin(); it != active.end(); ++it) tuple::invoke(
             *it,
             [this, &it](const std::string& name, unsigned int version)
@@ -114,7 +114,7 @@ private:
 };
 
 void
-locator_t::remote_t::discard(const std::error_code& ec) const {
+locator_t::connect_sink_t::discard(const std::error_code& ec) const {
     if(ec.value() == 0) return;
 
     COCAINE_LOG_ERROR(parent->m_log, "remote client discarded: [%d] %s", ec.value(), ec.message())(
@@ -125,7 +125,7 @@ locator_t::remote_t::discard(const std::error_code& ec) const {
 }
 
 void
-locator_t::remote_t::cleanup() {
+locator_t::connect_sink_t::cleanup() {
     for(auto it = parent->m_aggregate.begin(), end = parent->m_aggregate.end(); it != end;) {
         if(!it->second.empty()) {
             it++; continue;
@@ -138,8 +138,8 @@ locator_t::remote_t::cleanup() {
 }
 
 void
-locator_t::remote_t::on_announce(const std::string& node,
-                                 std::map<std::string, results::resolve>&& update)
+locator_t::connect_sink_t::on_announce(const std::string& node,
+                                       std::map<std::string, results::resolve>&& update)
 {
     if(node != uuid) {
         COCAINE_LOG_ERROR(parent->m_log, "remote client id mismatch: '%s' vs. '%s'", uuid, node);
@@ -189,7 +189,7 @@ locator_t::remote_t::on_announce(const std::string& node,
 }
 
 void
-locator_t::remote_t::on_shutdown() {
+locator_t::connect_sink_t::on_shutdown() {
     COCAINE_LOG_INFO(parent->m_log, "remote client closed the stream")(
         "uuid", uuid
     );
@@ -366,13 +366,14 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         return;
     }
 
-    mapping->operator[](uuid) = {endpoints, api::client<locator_tag>()};
+    auto socket = std::make_shared<tcp::socket>(m_asio);
 
-    auto  channel = std::make_shared<tcp::socket>(m_asio);
-    auto& wrapped = mapping->at(uuid).endpoints;
+    client_map_t::iterator it;
 
-    asio::async_connect(*channel, wrapped.begin(), wrapped.end(),
-        [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator endpoint)
+    std::tie(it, std::ignore) = mapping->emplace(uuid, uplink_t{endpoints, api::client<locator_tag>()});
+
+    asio::async_connect(*socket, it->second.endpoints.begin(), it->second.endpoints.end(),
+        [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator it)
     {
         auto mapping = m_clients.synchronize();
 
@@ -391,16 +392,16 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
             // TODO: Wrap link_node() in some sort of exponential back-off.
             return m_asio.post([&, uuid, endpoints] { link_node(uuid, endpoints); });
         } else {
-            COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
+            COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *it);
         }
 
         auto& client = mapping->at(uuid).client;
 
-        client.attach(m_context.engine().attach(std::make_unique<tcp::socket>(std::move(*channel)),
+        client.attach(m_context.engine().attach(std::make_unique<tcp::socket>(std::move(*socket)),
             nullptr
         ));
 
-        client.invoke<locator::connect>(std::make_shared<remote_t>(this, uuid), m_cfg.uuid);
+        client.invoke<locator::connect>(std::make_shared<connect_sink_t>(this, uuid), m_cfg.uuid);
     });
 
     COCAINE_LOG_INFO(m_log, "setting up remote client, trying %d route(s)", endpoints.size())(

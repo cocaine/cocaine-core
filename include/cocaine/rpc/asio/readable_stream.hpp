@@ -40,12 +40,12 @@ class readable_stream:
 
     static const size_t kInitialBufferSize = 65536;
 
-    typedef typename Protocol::socket channel_type;
+    typedef typename Protocol::socket socket_type;
 
     typedef Decoder decoder_type;
     typedef typename decoder_type::message_type message_type;
 
-    const std::shared_ptr<channel_type> m_channel;
+    const std::shared_ptr<socket_type> m_socket;
 
     typedef std::function<void(const std::error_code&)> handler_type;
 
@@ -56,8 +56,8 @@ class readable_stream:
 
 public:
     explicit
-    readable_stream(const std::shared_ptr<channel_type>& channel):
-        m_channel(channel)
+    readable_stream(const std::shared_ptr<socket_type>& socket):
+        m_socket(socket)
     {
         m_ring.resize(kInitialBufferSize);
         m_rd_offset = m_rx_offset = 0;
@@ -76,7 +76,7 @@ public:
                 m_rx_offset += bytes_decoded;
             }
 
-            return m_channel->get_io_service().post(std::bind(handle, ec));
+            return m_socket->get_io_service().post(std::bind(handle, ec));
         }
 
         if(m_rx_offset) {
@@ -95,7 +95,7 @@ public:
 
         namespace ph = std::placeholders;
 
-        m_channel->async_read_some(
+        m_socket->async_read_some(
             asio::buffer(m_ring.data() + m_rd_offset, m_ring.size() - m_rd_offset),
             std::bind(&readable_stream::fill, this->shared_from_this(), std::ref(message), handle, ph::_1, ph::_2)
         );
@@ -114,7 +114,7 @@ private:
                 return;
             }
 
-            return m_channel->get_io_service().post(std::bind(handle, ec));
+            return m_socket->get_io_service().post(std::bind(handle, ec));
         }
 
         m_rd_offset += bytes_read;
