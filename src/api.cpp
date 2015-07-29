@@ -23,7 +23,7 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/rpc/asio/channel.hpp"
+#include "cocaine/rpc/asio/transport.hpp"
 
 using namespace cocaine::api::details;
 

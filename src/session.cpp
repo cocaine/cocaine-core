@@ -22,7 +22,7 @@
 
 #include "cocaine/logging.hpp"
 
-#include "cocaine/rpc/asio/channel.hpp"
+#include "cocaine/rpc/asio/transport.hpp"
 
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
@@ -379,7 +379,7 @@ namespace cocaine {
 template<class Protocol>
 session<Protocol>::session(std::unique_ptr<logging::log_t> log, std::unique_ptr<transport_type> transport, const dispatch_ptr_t& prototype):
     session_t(std::move(log),
-              std::make_unique<io::channel<generic::stream_protocol>>(std::move(*transport)),
+              std::make_unique<io::transport<generic::stream_protocol>>(std::move(*transport)),
               std::move(prototype))
 { }
 
