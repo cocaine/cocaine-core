@@ -30,12 +30,13 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
+using namespace cocaine;
+using namespace cocaine::io;
+
 using namespace asio;
 using namespace asio::ip;
 
 using namespace blackhole;
-
-using namespace cocaine;
 
 // Actor internals
 
@@ -76,14 +77,14 @@ void
 actor_t::accept_action_t::finalize(const std::error_code& ec) {
     // Prepare the internal socket object for consequential operations by moving its contents to a
     // heap-allocated object, which in turn might be attached to an engine.
-    auto ptr = std::make_shared<tcp::socket>(std::move(socket));
+    auto ptr = std::make_unique<tcp::socket>(std::move(socket));
 
     switch(ec.value()) {
     case 0:
         COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd %d", ptr->native_handle());
 
         try {
-            parent->m_context.engine().attach(ptr, parent->m_prototype);
+            parent->m_context.engine().attach(std::move(ptr), parent->m_prototype);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: [%d] %s - %s",
                 e.code().value(), e.code().message(), e.what());
@@ -109,7 +110,7 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
 // Actor
 
 actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
-                 std::unique_ptr<io::basic_dispatch_t> prototype)
+                 std::unique_ptr<basic_dispatch_t> prototype)
 :
     m_context(context),
     m_log(context.log("core:asio", {
@@ -128,10 +129,10 @@ actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
     })),
     m_asio(asio)
 {
-    const io::basic_dispatch_t* prototype = &service->prototype();
+    const basic_dispatch_t* prototype = &service->prototype();
 
     // Aliasing the pointer to the service to point to the dispatch (sub-)object.
-    m_prototype = io::dispatch_ptr_t(
+    m_prototype = dispatch_ptr_t(
         std::shared_ptr<api::service_t>(std::move(service)),
         prototype
     );
@@ -190,7 +191,7 @@ actor_t::is_active() const {
     return static_cast<bool>(*m_acceptor.synchronize());
 }
 
-const io::basic_dispatch_t&
+const basic_dispatch_t&
 actor_t::prototype() const {
     return *m_prototype;
 }
@@ -220,7 +221,7 @@ actor_t::run() {
     ));
 
     // The post() above won't be executed until this thread is started.
-    m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_asio);
+    m_chamber = std::make_unique<chamber_t>(m_prototype->name(), m_asio);
 }
 
 void
@@ -238,7 +239,7 @@ actor_t::terminate() {
 
         COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
 
-        ptr       = nullptr;
+        ptr = nullptr;
     });
 
     // Be ready to restart the actor.

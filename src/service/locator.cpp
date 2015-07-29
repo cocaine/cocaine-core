@@ -54,14 +54,14 @@
 #include <boost/spirit/include/karma_list.hpp>
 #include <boost/spirit/include/karma_string.hpp>
 
+using namespace cocaine;
+using namespace cocaine::io;
+using namespace cocaine::service;
+
 using namespace asio;
 using namespace asio::ip;
 
 using namespace blackhole;
-
-using namespace cocaine;
-using namespace cocaine::io;
-using namespace cocaine::service;
 
 namespace ph = std::placeholders;
 
@@ -396,7 +396,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
 
         auto& client = mapping->at(uuid).client;
 
-        client.attach(m_context.engine().attach(std::make_shared<tcp::socket>(std::move(*channel)),
+        client.attach(m_context.engine().attach(std::make_unique<tcp::socket>(std::move(*channel)),
             nullptr
         ));
 

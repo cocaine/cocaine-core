@@ -26,20 +26,6 @@
 namespace cocaine {
 
 struct defaults {
-    // Default profile.
-    static const bool log_output;
-    static const float heartbeat_timeout;
-    static const float idle_timeout;
-    static const float startup_timeout;
-    static const float termination_timeout;
-    static const unsigned long pool_limit;
-    static const unsigned long queue_limit;
-    static const unsigned long concurrency;
-    static const unsigned long crashlog_limit;
-
-    // Default I/O policy.
-    static const float control_timeout;
-
     // Default paths.
     static const std::string plugins_path;
     static const std::string runtime_path;
