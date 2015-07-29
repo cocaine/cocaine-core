@@ -366,13 +366,10 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         return;
     }
 
-    auto socket = std::make_shared<tcp::socket>(m_asio);
+    auto  socket = std::make_shared<tcp::socket>(m_asio);
+    auto& uplink = ((*mapping)[uuid] = {endpoints, api::client<locator_tag>()});
 
-    client_map_t::iterator it;
-
-    std::tie(it, std::ignore) = mapping->emplace(uuid, uplink_t{endpoints, api::client<locator_tag>()});
-
-    asio::async_connect(*socket, it->second.endpoints.begin(), it->second.endpoints.end(),
+    asio::async_connect(*socket, uplink.endpoints.begin(), uplink.endpoints.end(),
         [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator it)
     {
         auto mapping = m_clients.synchronize();
