@@ -12,6 +12,7 @@ IF(APPLE)
     SET(CMAKE_MACOSX_RPATH ON)
 ENDIF()
 
+OPTION(COCAINE_ALLOW_TESTS "Build Tests" OFF)
 OPTION(COCAINE_ALLOW_BENCHMARKS "Build Benchmarking Tools" OFF)
 
 # Import our CMake modules
@@ -83,6 +84,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/errors.cpp
     src/essentials.cpp
     src/gateway/adhoc.cpp
+    src/header.cpp
     src/logging.cpp
     src/repository.cpp
     src/service/locator.cpp
@@ -128,7 +130,12 @@ ADD_CXX_COMPILER_FLAG(-Woverloaded-virtual)
 ADD_CXX_COMPILER_FLAG(-pedantic)
 ADD_CXX_COMPILER_FLAG(-pedantic-errors)
 
-IF(COCAINE_ALLOW_BENCHMARKS)
+IF(COCAINE_ALLOW_TESTS OR COCAINE_ALLOW_BENCHMARKS)
+    add_custom_target(test
+        COMMAND ${CMAKE_BINARY_DIR}/tests/cocaine-core-unit
+        DEPENDS cocaine-core-unit
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+
     ADD_SUBDIRECTORY(tests)
 ENDIF()
 

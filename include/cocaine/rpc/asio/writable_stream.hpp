@@ -52,12 +52,19 @@ class writable_stream:
 
     enum class states { idle, flushing } m_state;
 
+    encoder_type encoder;
+
 public:
     explicit
     writable_stream(const std::shared_ptr<channel_type>& channel):
         m_channel(channel),
         m_state(states::idle)
     { }
+
+    encoder_type&
+    get_encoder() {
+        return encoder;
+    }
 
     void
     write(const message_type& message, handler_type handle) {

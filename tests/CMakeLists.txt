@@ -26,3 +26,33 @@ IF(COCAINE_ALLOW_BENCHMARKS)
     SET_TARGET_PROPERTIES(cocaine-benchmark PROPERTIES
     COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
 ENDIF()
+
+# Unit tests
+IF(COCAINE_ALLOW_TESTS)
+    include(DownloadGoogleTesting)
+    download_google_testing()
+
+    INCLUDE_DIRECTORIES(
+        SYSTEM ${GTEST_INCLUDE_DIR}
+        SYSTEM ${GMOCK_INCLUDE_DIR})
+
+    LINK_DIRECTORIES(${GTEST_BINARY_DIR} ${GMOCK_BINARY_DIR})
+
+    INCLUDE_DIRECTORIES(
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+
+    ADD_EXECUTABLE(cocaine-core-unit
+        ${CMAKE_CURRENT_SOURCE_DIR}/unit/header.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/unit/header_table.cpp)
+
+    ADD_DEPENDENCIES(cocaine-core-unit googlemock)
+
+    TARGET_LINK_LIBRARIES(cocaine-core-unit
+        cocaine-core
+        gtest
+        gmock_main
+        gmock)
+
+    SET_TARGET_PROPERTIES(cocaine-core-unit PROPERTIES
+    COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
+ENDIF()

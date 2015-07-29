@@ -23,6 +23,9 @@
 
 #include "cocaine/errors.hpp"
 
+#include "cocaine/hpack/header.hpp"
+#include "cocaine/hpack/msgpack_traits.hpp"
+
 #include "cocaine/traits.hpp"
 
 namespace cocaine { namespace io {
@@ -49,8 +52,22 @@ struct decoded_message_t {
         return object.via.array.ptr[2];
     }
 
+    template<class Header>
+    boost::optional<hpack::header_t>
+    get_header() const {
+        for(const auto& header : headers) {
+            if(header.get_name() == Header::name()) {
+                return boost::make_optional(header);
+            }
+        }
+
+        return boost::none;
+    }
+
 private:
+    // The message do not own both of them.
     msgpack::object object;
+    std::vector<hpack::header_t> headers;
 };
 
 } // namespace aux
@@ -72,11 +89,21 @@ struct decoder_t {
         if(rv == msgpack::UNPACK_SUCCESS || rv == msgpack::UNPACK_EXTRA_BYTES) {
             if(message.object.type != msgpack::type::ARRAY || message.object.via.array.size < 3) {
                 ec = error::frame_format_error;
-            } else if(message.object.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER ||
-                      message.object.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER ||
-                      message.object.via.array.ptr[2].type != msgpack::type::ARRAY)
-            {
-                ec = error::frame_format_error;
+            } else {
+                bool error = false;
+                error = error || message.object.type != msgpack::type::ARRAY;
+                error = error || message.object.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER;
+                error = error || message.object.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER;
+                error = error || message.object.via.array.ptr[2].type != msgpack::type::ARRAY;
+
+                if(message.object.via.array.size > 3) {
+                    error = error || message.object.via.array.ptr[3].type != msgpack::type::ARRAY;
+                    error = error || !hpack::msgpack_traits::unpack_vector(message.object.via.array.ptr[3], header_table, message.headers);
+                }
+
+                if(error) {
+                    ec = error::frame_format_error;
+                }
             }
         } else if(rv == msgpack::UNPACK_CONTINUE) {
             ec = error::insufficient_bytes;
@@ -89,6 +116,7 @@ struct decoder_t {
 
 private:
     msgpack::zone zone;
+    hpack::header_table_t header_table;
 };
 
 }} // namespace cocaine::io
