@@ -370,7 +370,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
     auto& uplink = ((*mapping)[uuid] = {endpoints, api::client<locator_tag>()});
 
     asio::async_connect(*socket, uplink.endpoints.begin(), uplink.endpoints.end(),
-        [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator it)
+        [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator endpoint)
     {
         auto mapping = m_clients.synchronize();
 
@@ -389,7 +389,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
             // TODO: Wrap link_node() in some sort of exponential back-off.
             return m_asio.post([&, uuid, endpoints] { link_node(uuid, endpoints); });
         } else {
-            COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *it);
+            COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
         }
 
         auto& client = mapping->at(uuid).client;
