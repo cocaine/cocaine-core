@@ -139,7 +139,8 @@ header_t::name_equal(const header_t& other) const {
 }
 
 header_t::header_t(const ch_header& c_header) :
-    header_t(c_header.name.blob, c_header.name.size, c_header.value.blob, c_header.value.size)
+    name({c_header.name.blob, c_header.name.size}),
+    value({c_header.value.blob, c_header.value.size})
 {}
 
 header_t::header_t(const header::data_t& _name, const header::data_t& _value) noexcept :
