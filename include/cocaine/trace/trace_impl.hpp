@@ -48,11 +48,15 @@ class trace_t::push_scope_t {
 public:
     template<class RpcStr>
     push_scope_t(const RpcStr& _rpc_name){
-        trace_t::current().push(_rpc_name);
+        if(!trace_t::current().empty()) {
+            trace_t::current().push(_rpc_name);
+        }
     }
 
     ~push_scope_t() {
-        trace_t::current().pop();
+        if(!trace_t::current().empty()) {
+            trace_t::current().pop();
+        }
     }
 };
 
