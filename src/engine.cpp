@@ -25,7 +25,7 @@
 
 #include "cocaine/detail/chamber.hpp"
 
-#include "cocaine/rpc/asio/channel.hpp"
+#include "cocaine/rpc/asio/transport.hpp"
 #include "cocaine/rpc/session.hpp"
 
 #include <blackhole/scoped_attributes.hpp>
@@ -146,7 +146,7 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
         const auto endpoint = ptr->local_endpoint();
 
         // Copy the socket into the new reactor.
-        auto channel = std::make_unique<io::channel<protocol_type>>(
+        auto transport = std::make_unique<io::transport<protocol_type>>(
             std::make_unique<socket_type>(*m_asio, endpoint.protocol(), fd)
         );
 
@@ -155,7 +155,7 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
         if (std::is_same<protocol_type, ip::tcp>::value) {
             // Disable Nagle's algorithm, since most of the service clients do not send or receive
             // more than a couple of kilobytes of data.
-            channel->socket->set_option(ip::tcp::no_delay(true));
+            transport->socket->set_option(ip::tcp::no_delay(true));
             remote_endpoint = boost::lexical_cast<std::string>(ptr->remote_endpoint());
         } else if (std::is_same<protocol_type, local::stream_protocol>::value) {
             remote_endpoint = boost::lexical_cast<std::string>(endpoint);
@@ -171,7 +171,7 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
         COCAINE_LOG_DEBUG(log, "attached connection to engine, load: %.2f%%", utilization() * 100);
 
         // Create a new inactive session.
-        session_ = std::make_shared<session<protocol_type>>(std::move(log), std::move(channel), dispatch);
+        session_ = std::make_shared<session<protocol_type>>(std::move(log), std::move(transport), dispatch);
     } catch(const std::system_error& e) {
         throw std::system_error(e.code(), "client has disappeared while creating session");
     }

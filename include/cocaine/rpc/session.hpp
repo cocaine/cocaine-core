@@ -37,7 +37,7 @@ class session_t:
     typedef asio::generic::stream_protocol protocol_type;
     typedef protocol_type::endpoint endpoint_type;
 
-    typedef io::channel<protocol_type> transport_type;
+    typedef io::transport<protocol_type> transport_type;
 
     class pull_action_t;
     class push_action_t;
@@ -127,7 +127,7 @@ public:
     typedef Protocol protocol_type;
     typedef typename protocol_type::endpoint endpoint_type;
 
-    typedef io::channel<protocol_type> transport_type;
+    typedef io::transport<protocol_type> transport_type;
 
 public:
     session(std::unique_ptr<logging::log_t> log,
