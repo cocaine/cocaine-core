@@ -29,20 +29,24 @@ namespace cocaine {
 class trace_t::restore_scope_t {
 public:
     restore_scope_t(const boost::optional<trace_t>& new_trace) :
-        old_span(new_trace)
+        old_span(trace_t::current()),
+        restored(false)
     {
-        if(new_trace) {
+        if(new_trace && !new_trace->empty()) {
             trace_t::current() = new_trace.get();
+            restored = true;
         }
     }
     ~restore_scope_t() {
-        if(old_span) {
-            trace_t::current() = old_span.get();
+        if(restored) {
+            trace_t::current() = old_span;
         }
     }
 private:
-    boost::optional<trace_t> old_span;
+    trace_t old_span;
+    bool restored;
 };
+
 
 class trace_t::push_scope_t {
 public:

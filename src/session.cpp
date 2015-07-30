@@ -86,6 +86,7 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
             // NOTE: In case the underlying slot has miserably failed to handle its exceptions, the
             // client will be disconnected to prevent any further damage to the service and himself.
             session->handle(message);
+            message.clear();
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: [%d] %s", e.code().value(),
                 e.code().message());
@@ -202,24 +203,26 @@ session_t::handle(const decoder_t::message_type& message) {
         throw std::system_error(error::unbound_dispatch);
     }
 
-    COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
-        message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
-        channel->dispatch->name());
     auto trace_header = message.get_header<hpack::headers::trace_id<>>();
     auto span_header = message.get_header<hpack::headers::span_id<>>();
     auto parent_header = message.get_header<hpack::headers::parent_id<>>();
     boost::optional<trace_t> incoming_trace;
     if(trace_header && span_header && parent_header) {
         incoming_trace = trace_t(
-            message.get_header<hpack::headers::trace_id<>>()->get_value().convert<uint64_t>(),
-            message.get_header<hpack::headers::span_id<>>()->get_value().convert<uint64_t>(),
-            message.get_header<hpack::headers::parent_id<>>()->get_value().convert<uint64_t>(),
+            trace_header->get_value().convert<uint64_t>(),
+            span_header->get_value().convert<uint64_t>(),
+            parent_header->get_value().convert<uint64_t>(),
             std::get<0>(channel->dispatch->root().at(message.type())),
             prototype->name()
         );
     }
     trace_t::restore_scope_t trace_scope(incoming_trace);
 
+    COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
+        message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
+        channel->dispatch->name());
+
+    COCAINE_LOG_INFO(log, "sr");
     if((channel->dispatch = channel->dispatch->process(message, channel->upstream)
         .get_value_or(channel->dispatch)) == nullptr)
     {

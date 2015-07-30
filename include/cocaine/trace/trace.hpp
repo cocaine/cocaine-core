@@ -129,8 +129,8 @@ public:
     attributes() const {
         return {
             {"trace_id", {trace_id}},
-            {"span_id", {trace_id}},
-            {"parent_id", {trace_id}},
+            {"span_id", {span_id}},
+            {"parent_id", {parent_id}},
             {"rpc_name", {rpc_name.blob}},
             {"service_name", {service_name.blob}}
         };
