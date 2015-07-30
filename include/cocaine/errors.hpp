@@ -30,6 +30,7 @@ namespace cocaine { namespace error {
 
 enum transport_errors {
     frame_format_error = 1,
+    hpack_error,
     insufficient_bytes,
     parse_error
 };
