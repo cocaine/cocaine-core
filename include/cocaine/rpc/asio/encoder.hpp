@@ -83,9 +83,6 @@ private:
 struct encoded_message_t {
     friend struct io::encoder_t;
 
-    template<class>
-    friend struct io::encoded;
-
     auto
     data() const -> const char* {
         return buffer.vector.data();
@@ -100,48 +97,81 @@ private:
     encoded_buffers_t buffer;
 };
 
+struct unbound_message_t {
+    typedef std::function<aux::encoded_message_t(encoder_t&)> function_type;
+
+    // Partially applied message encoding function.
+    const function_type bind;
+
+    unbound_message_t(const function_type& bind_): bind(bind_) { }
+};
+
 } // namespace aux
 
-template<class Event>
-struct encoded:
-    public aux::encoded_message_t
-{
-private:
-    template<class... Args>
-    encoded(hpack::header_table_t& header_table, uint64_t span, Args&&... args) {
-        msgpack::packer<aux::encoded_buffers_t> packer(buffer);
+struct encoder_t {
+    COCAINE_DECLARE_NONCOPYABLE(encoder_t)
+
+    encoder_t() = default;
+   ~encoder_t() = default;
+
+    typedef aux::unbound_message_t message_type;
+
+    template<class Event, class... Args>
+    static inline
+    aux::encoded_message_t
+    tether(encoder_t& encoder, uint64_t channel_id, Args&... args) {
+        aux::encoded_message_t message;
+
+        msgpack::packer<aux::encoded_buffers_t> packer(message.buffer);
 
         packer.pack_array(4);
 
-        packer.pack(span);
+        // Channel ID & Message ID
+
+        packer.pack(channel_id);
         packer.pack(static_cast<uint64_t>(event_traits<Event>::id));
 
-        typedef typename event_traits<Event>::argument_type argument_type;
+        // Message arguments
 
-        type_traits<argument_type>::pack(packer, std::forward<Args>(args)...);
+        type_traits<typename event_traits<Event>::argument_type>::pack(packer,
+            std::forward<Args>(args)...);
+
+        // Optional message metadata
+
         packer.pack_array(3);
 
-        uint64_t trace_id  = trace_t::current().get_trace_id();
+		uint64_t trace_id  = trace_t::current().get_trace_id();
         uint64_t span_id   = trace_t::current().get_id();
         uint64_t parent_id = trace_t::current().get_parent_id();
 
-        hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer, header_table, hpack::header::create_data(trace_id));
-        hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer, header_table, hpack::header::create_data(span_id));
-        hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, header_table, hpack::header::create_data(parent_id));
-    }
-    friend struct encoder_t;
-};
+        hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer, encoder.hpack_context, hpack::header::create_data(trace_id));
+        hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer, encoder.hpack_context, hpack::header::create_data(span_id));
+        hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, encoder.hpack_context, hpack::header::create_data(parent_id));
 
-struct encoder_t {
-    typedef aux::encoded_message_t message_type;
-    template<class Event, class... Args>
-    encoded<Event>
-    encode(uint64_t span, Args&&... args) {
-        return encoded<Event>(header_table, span, std::forward<Args>(args)...);
+        return message;
+    }
+
+    aux::encoded_message_t
+    encode(const message_type& message) {
+        return message.bind(*this);
     }
 
 private:
-    hpack::header_table_t header_table;
+    // HPACK HTTP/2.0 tables.
+    hpack::header_table_t hpack_context;
+};
+
+template<class Event>
+struct encoded:
+    public aux::unbound_message_t
+{
+    template<class... Args>
+    encoded(uint64_t channel_id, Args&&... args):
+        unbound_message_t(std::bind(&encoder_t::tether<Event, Args...>,
+            std::placeholders::_1,
+            channel_id,
+            std::forward<Args>(args)...))
+    { }
 };
 
 }} // namespace cocaine::io

@@ -29,7 +29,6 @@
 namespace cocaine { namespace hpack {
 
 struct msgpack_traits {
-
     // Pack a header from static table with predefined value
     template<class Header, class Stream>
     static
@@ -87,8 +86,7 @@ struct msgpack_traits {
     static inline
     header_t
     unpack(const msgpack::object& source, header_table_t& table) {
-
-        //If header is fully from the table just fill it and return
+        // If header is fully from the table just fill it and return
         if(source.type == msgpack::type::POSITIVE_INTEGER) {
             if(source.via.u64 >= table.size() || source.via.u64 == 0) {
                 throw std::system_error(
@@ -113,7 +111,8 @@ struct msgpack_traits {
         header::data_t header_value;
         header_value.blob = value.via.raw.ptr;
         header_value.size = value.via.raw.size;
-        //We don't need to store header in the table
+
+        // We don't need to store header in the table
         header_t result(header_name, header_value);
         if(!source.via.array.ptr[0].via.boolean) {
             return result;

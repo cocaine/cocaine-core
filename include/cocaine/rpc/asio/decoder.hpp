@@ -23,10 +23,11 @@
 
 #include "cocaine/errors.hpp"
 
+#include "cocaine/hpack/header.hpp"
+
 #include "cocaine/traits.hpp"
 
-#include "cocaine/hpack/msgpack_traits.hpp"
-#include "cocaine/hpack/header.hpp"
+#include <boost/range/algorithm/find_if.hpp>
 
 namespace cocaine { namespace io {
 
@@ -53,14 +54,13 @@ struct decoded_message_t {
     }
 
     template<class Header>
-    boost::optional<hpack::header_t>
-    get_header() const {
-        for(const auto& header : headers) {
-            if(header.get_name() == Header::name()) {
-                return boost::make_optional(header);
-            }
-        }
-        return boost::none;
+    auto
+    meta() const -> boost::optional<hpack::header_t> {
+        auto it = boost::find_if(metadata, [](const hpack::header_t& element) -> bool {
+            return element.get_name() == Header::name();
+        });
+
+        return it == metadata.end() ? boost::none : boost::make_optional(*it);
     }
 
     void
@@ -69,9 +69,9 @@ struct decoded_message_t {
     }
 
 private:
-    //message do not own both,
+    // These objects keep references to message buffer in the Decoder.
     msgpack::object object;
-    std::vector<hpack::header_t> headers;
+    std::vector<hpack::header_t> metadata;
 };
 
 } // namespace aux
@@ -91,18 +91,18 @@ struct decoder_t {
         if(rv == msgpack::UNPACK_SUCCESS || rv == msgpack::UNPACK_EXTRA_BYTES) {
             if(message.object.type != msgpack::type::ARRAY || message.object.via.array.size < 3) {
                 ec = error::frame_format_error;
-            } else {
-                bool error = false;
-                error = error || message.object.type != msgpack::type::ARRAY;
-                error = error || message.object.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER;
-                error = error || message.object.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER;
-                error = error || message.object.via.array.ptr[2].type != msgpack::type::ARRAY;
-                if(message.object.via.array.size > 3) {
-                    error = error || message.object.via.array.ptr[3].type != msgpack::type::ARRAY;
-                    error = error || !hpack::msgpack_traits::unpack_vector(message.object.via.array.ptr[3], header_table, message.headers);
-                }
-                if(error) {
+            } else if(message.object.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER ||
+                      message.object.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER ||
+                      message.object.via.array.ptr[2].type != msgpack::type::ARRAY)
+            {
+                ec = error::frame_format_error;
+            } else if(message.object.via.array.size > 3) {
+                if(message.object.via.array.ptr[3].type != msgpack::type::ARRAY) {
                     ec = error::frame_format_error;
+                } else if(!hpack::msgpack_traits::unpack_vector(
+                          message.object.via.array.ptr[3], hpack_context, message.metadata))
+                {
+                    ec = error::hpack_error;
                 }
             }
         } else if(rv == msgpack::UNPACK_CONTINUE) {
@@ -116,7 +116,9 @@ struct decoder_t {
 
 private:
     msgpack::zone zone;
-    hpack::header_table_t header_table;
+
+    // HPACK HTTP/2.0 tables.
+    hpack::header_table_t hpack_context;
 };
 
 }} // namespace cocaine::io
