@@ -1,3 +1,9 @@
+cocaine-core (0.12.3.0~rc2) unstable; urgency=low
+
+  * Zipkin: second blood.
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 30 Jul 2015 16:28:49 +0300
+
 cocaine-core (0.12.3.0~rc1) unstable; urgency=low
 
   * Zipkin: first blood.
