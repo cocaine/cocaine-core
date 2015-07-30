@@ -50,7 +50,7 @@ struct data_t {
 
     template<class To>
     To
-    convert() {
+    convert() const {
         static_assert(std::is_pod<typename std::remove_reference<To>::type>::value &&
                       !std::is_pointer<typename std::remove_reference<To>::type>::value &&
                       !std::is_array<typename std::remove_reference<To>::type>::value,

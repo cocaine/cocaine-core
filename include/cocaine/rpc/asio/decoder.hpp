@@ -63,6 +63,11 @@ struct decoded_message_t {
         return boost::none;
     }
 
+    void
+    clear() {
+        headers.clear();
+    }
+
 private:
     //message do not own both,
     msgpack::object object;
