@@ -144,6 +144,9 @@ execution_unit_t::attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_
         throw std::system_error(errno, std::system_category(), "unable to clone client's socket");
     }
 
+    // Close the socket after `execve` to prevent leakage.
+    ::fcntl(fd, F_SETFD, FD_CLOEXEC);
+
     std::shared_ptr<session<protocol_type>> session_;
 
     try {
