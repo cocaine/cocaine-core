@@ -23,6 +23,9 @@
 
 #include "cocaine/errors.hpp"
 
+#include "cocaine/hpack/header.hpp"
+#include "cocaine/hpack/msgpack_traits.hpp"
+
 #include "cocaine/rpc/protocol.hpp"
 
 #include "cocaine/traits.hpp"
@@ -102,10 +105,10 @@ struct encoded:
     public aux::encoded_message_t
 {
     template<class... Args>
-    encoded(uint64_t span, Args&&... args) {
+    encoded(hpack::header_table_t&, uint64_t span, Args&&... args) {
         msgpack::packer<aux::encoded_buffers_t> packer(buffer);
 
-        packer.pack_array(3);
+        packer.pack_array(4);
 
         packer.pack(span);
         packer.pack(static_cast<uint64_t>(event_traits<Event>::id));
@@ -113,11 +116,28 @@ struct encoded:
         typedef typename event_traits<Event>::argument_type argument_type;
 
         type_traits<argument_type>::pack(packer, std::forward<Args>(args)...);
+
+        packer.pack_array(3);
+
+        hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer);
+        hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer);
+        hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer);
     }
+
+    friend struct encoder_t;
 };
 
 struct encoder_t {
     typedef aux::encoded_message_t message_type;
+
+    template<class Event, class... Args>
+    encoded<Event>
+    encode(uint64_t span, Args&&... args) {
+        return encoded<Event>(header_table, span, std::forward<Args>(args)...);
+    }
+
+private:
+    hpack::header_table_t header_table;
 };
 
 }} // namespace cocaine::io
