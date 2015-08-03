@@ -148,6 +148,8 @@ locator_t::connect_sink_t::on_announce(const std::string& node,
         return;
     }
 
+    if(update.empty()) return;
+
     auto lock = parent->m_clients.synchronize();
 
     for(auto it = update.begin(); it != update.end(); ++it) tuple::invoke(
@@ -487,11 +489,8 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
     // sent out on context service signals, and propagate to all nodes in the cluster.
     mapping->insert({uuid, stream});
 
-    if(m_snapshots.empty()) {
-        return stream;
-    } else {
-        return stream.write(m_cfg.uuid, m_snapshots);
-    }
+    // NOTE: Even if there's nothing to return, still send out an empty update.
+    return stream.write(m_cfg.uuid, m_snapshots);
 }
 
 void
@@ -585,11 +584,8 @@ locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results
         return mapping[ruid];
     });
 
-    if(results.empty()) {
-        return stream;
-    } else {
-        return stream.write(results);
-    }
+    // NOTE: Even if there's nothing to return, still send out an empty update.
+    return stream.write(results);
 }
 
 void
