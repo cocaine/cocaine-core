@@ -45,6 +45,16 @@ continuum_t::continuum_t(std::unique_ptr<logging::log_t> log, const stored_type&
         weight
     );
 
+    if (!length) {
+        throw cocaine::error_t("group must not be empty");
+    }
+
+    // each item in a routing group has its own positive integer weight,
+    // so the total weight must be more than 0
+    if (weight < std::numeric_limits<double>::epsilon()) {
+        throw cocaine::error_t("the total weight of group must be positive");
+    }
+
     union digest_t {
         char       hashed[16];
         point_type points[sizeof(hashed) / sizeof(point_type)];
