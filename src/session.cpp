@@ -213,7 +213,7 @@ session_t::handle(const decoder_t::message_type& message) {
             span_header->get_value().convert<uint64_t>(),
             parent_header->get_value().convert<uint64_t>(),
             std::get<0>(channel->dispatch->root().at(message.type())),
-            prototype->name()
+            name()
         );
     }
     trace_t::restore_scope_t trace_scope(incoming_trace);
