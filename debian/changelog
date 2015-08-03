@@ -1,3 +1,10 @@
+cocaine-core (0.12.3.0~rc4) unstable; urgency=low
+
+  * Bug fix: fixed SIGSEGV in session when tried to obtain a dispatch name
+    from an incoming remote client.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 03 Aug 2015 15:54:50 +0500
+
 cocaine-core (0.12.3.0~rc3) unstable; urgency=low
 
   * Bug fix: set FD_CLOEXEC flag to prevent leakage.
