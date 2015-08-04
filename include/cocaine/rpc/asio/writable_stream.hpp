@@ -60,29 +60,26 @@ public:
         m_state(states::idle)
     { }
 
-    encoder_type&
-    get_encoder() {
-        return encoder;
-    }
-
     void
     write(const message_type& message, handler_type handle) {
         size_t bytes_written = 0;
+
+        const auto encoded = encoder.encode(message);
 
         if(m_state == states::idle) {
             std::error_code ec;
 
             // Try to write some data right away, as we don't have anything pending.
-            bytes_written = m_channel->write_some(asio::buffer(message.data(), message.size()), ec);
+            bytes_written = m_channel->write_some(asio::buffer(encoded.data(), encoded.size()), ec);
 
-            if(!ec && bytes_written == message.size()) {
+            if(!ec && bytes_written == encoded.size()) {
                 return m_channel->get_io_service().post(std::bind(handle, ec));
             }
         }
 
         m_messages.emplace_back(
-            message.data() + bytes_written,
-            message.size() - bytes_written
+            encoded.data() + bytes_written,
+            encoded.size() - bytes_written
         );
 
         m_handlers.emplace_back(handle);

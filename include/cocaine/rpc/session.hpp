@@ -98,21 +98,8 @@ public:
     void
     pull();
 
-    // TODO: Do something with it.
-    template<class Event, class... Args>
     void
-    push(uint64_t channel_id, Args&&... args) {
-    #if defined(__clang__)
-        if(const auto ptr = std::atomic_load(&transport)) {
-    #else
-        if(const auto ptr = *transport.synchronize()) {
-    #endif
-            auto message = ptr->writer->get_encoder().encode<Event>(channel_id, std::forward<Args>(args)...);
-            push(ptr, std::move(message));
-        } else {
-            throw cocaine::error_t("session is not connected");
-        }
-    }
+    push(io::encoder_t::message_type&& message);
 
     // NOTE: Detaching a session destroys the connection but not necessarily the session itself, as
     // it might be still in use by shared upstreams even in other threads. In other words, this does
@@ -133,12 +120,8 @@ private:
 
     void
     revoke(uint64_t channel_id);
-
-    void
-    push(const std::shared_ptr<transport_type>& transport, io::encoder_t::message_type&& message);
 };
 
-// Defined only for TCP and Local protocols.
 template<class Protocol>
 class session:
     public session_t
