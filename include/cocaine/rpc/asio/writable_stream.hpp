@@ -71,9 +71,9 @@ public:
             std::error_code ec;
 
             // Try to write some data right away, as we don't have anything pending.
-            bytes_written = m_socket->write_some(asio::buffer(message.data(), message.size()), ec);
+            bytes_written = m_socket->write_some(asio::buffer(encoded.data(), encoded.size()), ec);
 
-            if(!ec && bytes_written == message.size()) {
+            if(!ec && bytes_written == encoded.size()) {
                 return m_socket->get_io_service().post(std::bind(handle, ec));
             }
         }
