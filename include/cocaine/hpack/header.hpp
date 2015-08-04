@@ -29,6 +29,8 @@
 #include <system_error>
 #include <vector>
 
+struct ch_header;
+
 namespace cocaine { namespace hpack {
 
 struct init_header_t;
@@ -48,7 +50,7 @@ struct data_t {
 
     template<class To>
     To
-    convert() {
+    convert() const {
         static_assert(std::is_pod<typename std::remove_reference<To>::type>::value &&
                       !std::is_pointer<typename std::remove_reference<To>::type>::value &&
                       !std::is_array<typename std::remove_reference<To>::type>::value,
@@ -151,6 +153,7 @@ public:
     header_t& operator=(const header_t&) = default;
     header_t(): name(), value() {}
 
+    header_t(const ch_header& c_header);
     // Create non-owning header on user-provided data
     template<class Header>
     static
