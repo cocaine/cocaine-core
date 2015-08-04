@@ -52,6 +52,8 @@ class writable_stream:
 
     enum class states { idle, flushing } m_state;
 
+    encoder_type encoder;
+
 public:
     explicit
     writable_stream(const std::shared_ptr<socket_type>& socket):
@@ -62,6 +64,8 @@ public:
     void
     write(const message_type& message, handler_type handle) {
         size_t bytes_written = 0;
+
+        const auto encoded = encoder.encode(message);
 
         if(m_state == states::idle) {
             std::error_code ec;
@@ -75,8 +79,8 @@ public:
         }
 
         m_messages.emplace_back(
-            message.data() + bytes_written,
-            message.size() - bytes_written
+            encoded.data() + bytes_written,
+            encoded.size() - bytes_written
         );
 
         m_handlers.emplace_back(handle);

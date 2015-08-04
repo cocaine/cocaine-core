@@ -63,6 +63,8 @@ class transport_category_t:
     message(int code) const -> std::string {
         if(code == cocaine::error::transport_errors::frame_format_error)
             return "message has an unexpected framing";
+        if(code == cocaine::error::transport_errors::hpack_error)
+            return "unable to decode message metadata";
         if(code == cocaine::error::transport_errors::insufficient_bytes)
             return "insufficient bytes provided to decode the message";
         if(code == cocaine::error::transport_errors::parse_error)

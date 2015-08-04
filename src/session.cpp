@@ -305,6 +305,7 @@ session_t::pull() {
         throw std::system_error(error::not_connected);
     }
 }
+
 void
 session_t::push(encoder_t::message_type&& message) {
 #if defined(__clang__)

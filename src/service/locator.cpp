@@ -522,15 +522,15 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
 
         std::tie(lb, ub) = values.equal_range(*it);
 
-        if(lb == ub) return;
-
         auto group_log = std::make_unique<logging::log_t>(*m_log, attribute::set_t({
             attribute::make("rg", *it)
         }));
 
-        COCAINE_LOG_INFO(group_log, "routing group %s", lb != ub ? "updated" : "removed");
+        if(lb != ub) {
+            mapping.insert({*it, continuum_t(std::move(group_log), lb->second)});
+        }
 
-        mapping.insert({*it, continuum_t(std::move(group_log), lb->second)});
+        COCAINE_LOG_INFO(m_log, "routing group %s", lb != ub ? "updated" : "removed")("rg", *it);
     });
 
     typedef std::vector<std::string> ruid_vector_t;
