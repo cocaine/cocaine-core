@@ -114,7 +114,7 @@ ch_table_data_capacity(ch_table* table);
 /**
  * Checks if dynamic part of header table is empty.
  */
-bool
+int
 ch_table_empty(ch_table* table);
 
 #ifdef __cplusplus
