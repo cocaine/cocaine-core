@@ -1,4 +1,4 @@
-What the hell is it? [![Build Status](https://travis-ci.org/cocaine/cocaine-core.png?branch=master)](https://travis-ci.org/cocaine/cocaine-core)
+What the hell is it? [![Build Status](https://travis-ci.org/cocaine/cocaine-core.png?branch=v0.12)](https://travis-ci.org/cocaine/cocaine-core)
 ====================
 
 > If you wanna hang out you've got to take her out; cocaine.<br>
