@@ -395,7 +395,7 @@ ch_table_data_capacity(ch_table* table) {
     return table->table.data_capacity();
 }
 
-bool
+int
 ch_table_empty(ch_table* table) {
     return table->table.empty();
 }
