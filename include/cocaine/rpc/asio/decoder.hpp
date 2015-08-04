@@ -23,7 +23,12 @@
 
 #include "cocaine/errors.hpp"
 
+#include "cocaine/hpack/header.hpp"
+#include "cocaine/hpack/msgpack_traits.hpp"
+
 #include "cocaine/traits.hpp"
+
+#include <boost/range/algorithm/find_if.hpp>
 
 namespace cocaine { namespace io {
 
@@ -49,8 +54,20 @@ struct decoded_message_t {
         return object.via.array.ptr[2];
     }
 
+    template<class Header>
+    auto
+    meta() const -> boost::optional<hpack::header_t> {
+        auto it = boost::find_if(metadata, [](const hpack::header_t& element) -> bool {
+            return element.get_name() == Header::name();
+        });
+
+        return it == metadata.end() ? boost::none : boost::make_optional(*it);
+    }
+
 private:
+    // These objects keep references to message buffer in the Decoder.
     msgpack::object object;
+    std::vector<hpack::header_t> metadata;
 };
 
 } // namespace aux
@@ -77,6 +94,14 @@ struct decoder_t {
                       message.object.via.array.ptr[2].type != msgpack::type::ARRAY)
             {
                 ec = error::frame_format_error;
+            } else if(message.object.via.array.size > 3) {
+                if(message.object.via.array.ptr[3].type != msgpack::type::ARRAY) {
+                    ec = error::frame_format_error;
+                } else if(!hpack::msgpack_traits::unpack_vector(
+                          message.object.via.array.ptr[3], hpack_context, message.metadata))
+                {
+                    ec = error::hpack_error;
+                }
             }
         } else if(rv == msgpack::UNPACK_CONTINUE) {
             ec = error::insufficient_bytes;
@@ -89,6 +114,9 @@ struct decoder_t {
 
 private:
     msgpack::zone zone;
+
+    // HPACK HTTP/2.0 tables.
+    hpack::header_table_t hpack_context;
 };
 
 }} // namespace cocaine::io

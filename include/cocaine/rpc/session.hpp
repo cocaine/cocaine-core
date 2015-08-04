@@ -118,7 +118,6 @@ private:
     revoke(uint64_t channel_id);
 };
 
-// Defined only for TCP and Local protocols.
 template<class Protocol>
 class session:
     public session_t
