@@ -122,4 +122,3 @@ ch_table_empty(ch_table* table);
 #endif
 
 #endif // COCAINE_HPACK_HEADER_H
-

@@ -1,4 +1,5 @@
 #include "cocaine/hpack/header.hpp"
+
 #include "cocaine/hpack/header.h"
 
 namespace cocaine { namespace hpack {
@@ -334,7 +335,6 @@ header_table_t::operator[](size_t idx) {
 
 }} // namespace cocaine::hpack
 
-
 extern "C" {
 
 struct ch_table {
@@ -399,4 +399,5 @@ int
 ch_table_empty(ch_table* table) {
     return table->table.empty();
 }
+
 }
