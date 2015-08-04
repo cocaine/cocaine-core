@@ -24,6 +24,7 @@
 #include "cocaine/errors.hpp"
 
 #include "cocaine/hpack/header.hpp"
+#include "cocaine/hpack/msgpack_traits.hpp"
 
 #include "cocaine/traits.hpp"
 
@@ -65,7 +66,7 @@ struct decoded_message_t {
 
     void
     clear() {
-        headers.clear();
+        metadata.clear();
     }
 
 private:

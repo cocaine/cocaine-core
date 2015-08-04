@@ -203,9 +203,9 @@ session_t::handle(const decoder_t::message_type& message) {
         throw std::system_error(error::unbound_dispatch);
     }
 
-    auto trace_header = message.get_header<hpack::headers::trace_id<>>();
-    auto span_header = message.get_header<hpack::headers::span_id<>>();
-    auto parent_header = message.get_header<hpack::headers::parent_id<>>();
+    auto trace_header = message.meta<hpack::headers::trace_id<>>();
+    auto span_header = message.meta<hpack::headers::span_id<>>();
+    auto parent_header = message.meta<hpack::headers::parent_id<>>();
     boost::optional<trace_t> incoming_trace;
     if(trace_header && span_header && parent_header) {
         incoming_trace = trace_t(
