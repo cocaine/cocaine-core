@@ -77,7 +77,7 @@ public:
            (span_id == zero_value != trace_id == zero_value) ||
            (trace_id == zero_value && parent_id != zero_value)
         ) {
-            throw cocaine::error_t("Invalid trace parameters: %lli %lli %lli", trace_id, span_id, parent_id);
+            throw cocaine::error_t("Invalid trace parameters: %llu %llu %llu", trace_id, span_id, parent_id);
         }
     }
 
