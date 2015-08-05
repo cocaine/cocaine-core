@@ -1,3 +1,10 @@
+cocaine-core (0.12.3.3+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Bug fix: fixed string literals binding
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 05 Aug 2015 12:25:00 +0500
+
 cocaine-core (0.12.3.2+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
