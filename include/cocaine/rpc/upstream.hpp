@@ -34,6 +34,7 @@ class basic_upstream_t {
     const uint64_t channel_id;
 
 public:
+    /* We only pass trace to client-side upstream, because we want to group all client-side sends under one trace_id */
     basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_, boost::optional<trace_t> client_trace_):
         session(session_),
         channel_id(channel_id_),
@@ -44,6 +45,7 @@ public:
     void
     send(Args&&... args);
 
+    /* none_t if upstream belongs to server side */
     boost::optional<trace_t> client_trace;
 };
 

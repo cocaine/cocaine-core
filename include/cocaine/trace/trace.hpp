@@ -21,6 +21,8 @@
 #ifndef COCAINE_TRACE_TRACE_HPP
 #define COCAINE_TRACE_TRACE_HPP
 
+#include "cocaine/errors.hpp"
+
 #include "cocaine/trace/stack_string.hpp"
 
 #include <boost/thread/tss.hpp>
