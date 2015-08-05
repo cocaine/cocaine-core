@@ -38,11 +38,14 @@ public:
     class restore_scope_t;
     class push_scope_t;
 
+    static constexpr uint64_t reserved_value = -1;
+    static constexpr uint64_t zero_value = 0;
+
     trace_t() :
-        trace_id(),
-        span_id(),
-        parent_id(),
-        parent_parent_id(),
+        trace_id(zero_value),
+        span_id(zero_value),
+        parent_id(zero_value),
+        parent_parent_id(reserved_value),
         start_time_us(),
         last_time_us(),
         rpc_name(),
@@ -58,12 +61,21 @@ public:
         trace_id(_trace_id),
         span_id(_span_id),
         parent_id(_parent_id),
-        parent_parent_id(),
+        parent_parent_id(reserved_value),
         start_time_us(),
         last_time_us(),
         rpc_name(_rpc_name),
         service_name(_service_name)
     {
+        if(parent_id == reserved_value ||
+           span_id == reserved_value ||
+           trace_id == reserved_value ||
+           // Partially empty trace - trace_id without span_id, vise versa or parent_id without trace_id
+           (span_id == zero_value != trace_id == zero_value) ||
+           (trace_id == zero_value && parent_id != zero_value)
+        ) {
+            throw cocaine::error_t("Invalid trace parameters: %lli %lli %lli", trace_id, span_id, parent_id);
+        }
     }
 
     template<class ServiceStr, class RpcStr>
@@ -71,7 +83,7 @@ public:
     trace_t
     generate(const RpcStr& _rpc_name, const ServiceStr& _service_name) {
         auto t_id = generate_id();
-        return trace_t(t_id, t_id, 0, _rpc_name, _service_name);
+        return trace_t(t_id, t_id, zero_value, _rpc_name, _service_name);
     }
 
     static
@@ -101,22 +113,28 @@ public:
 
     bool
     empty() const {
-        return trace_id == 0;
+        return trace_id == zero_value;
     }
 
     void
     pop() {
-        assert(parent_id != 0);
+        if(empty()) {
+            return;
+        }
+        assert(parent_id != zero_value);
         span_id = parent_id;
         parent_id = parent_parent_id;
         rpc_name = parent_rpc_name;
         parent_rpc_name.reset();
-        parent_parent_id = 0;
+        parent_parent_id = reserved_value;
     }
 
     template<class RpcString>
     void
     push(const RpcString& new_rpc_name) {
+        if(empty()) {
+            return;
+        }
         parent_rpc_name = rpc_name;
         rpc_name = new_rpc_name;
         parent_parent_id = parent_id;
@@ -126,7 +144,7 @@ public:
 
     bool
     pushed() const {
-        return parent_parent_id != 0;
+        return parent_parent_id != reserved_value;
     }
 
     template<class AttributeSet>
@@ -157,6 +175,7 @@ private:
     generate_id() {
         static std::random_device rd;
         static std::mt19937 gen(rd());
+        // Stupid zipkin-web can not handle unsigned ids. So we limit to signed diapason.
         static std::uniform_int_distribution<uint64_t> dis(1, std::numeric_limits<uint64_t>::max()/2-1);
         return dis(gen);
     }

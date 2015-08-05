@@ -50,12 +50,7 @@ public:
 template<class Event, class... Args>
 void
 basic_upstream_t::send(Args&&... args) {
-    boost::optional<trace_t> restore_trace;
-    if(client_trace) {
-        client_trace->push(Event::alias());
-        restore_trace = client_trace;
-    }
-    trace_t::restore_scope_t scope(restore_trace);
+    trace_t::restore_scope_t scope(client_trace);
     session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
 }
 

@@ -207,8 +207,6 @@ session_t::handle(const decoder_t::message_type& message) {
         }
         if(lb->second->upstream->client_trace) {
             incoming_trace = lb->second->upstream->client_trace;
-            // Pop trace inside upstream. current() trace will be poped further.
-            lb->second->upstream->client_trace->pop();
         } else {
             auto trace_header = message.meta<hpack::headers::trace_id<>>();
             auto span_header = message.meta<hpack::headers::span_id<>>();
@@ -261,7 +259,9 @@ upstream_ptr_t
 session_t::fork(const dispatch_ptr_t& dispatch) {
     return channels.apply([&](channel_map_t& mapping) -> upstream_ptr_t {
         const auto channel_id = ++max_channel_id;
-        const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id, trace_t::current());
+        auto trace = trace_t::current();
+        trace.push(dispatch->name());
+        const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id, trace);
 
         COCAINE_LOG_DEBUG(log, "forking new channel %d, dispatch: '%s'", channel_id,
             dispatch ? dispatch->name() : "<none>");
@@ -345,13 +345,14 @@ session_t::pull() {
 
 void
 session_t::push(encoder_t::message_type&& message) {
+    COCAINE_LOG_TRACE(log, "Pushing message to session");
 #if defined(__clang__)
     if(const auto ptr = std::atomic_load(&transport)) {
 #else
     if(const auto ptr = *transport.synchronize()) {
 #endif
         // Use dispatch() instead of a direct call for thread safety.
-        ptr->socket->get_io_service().dispatch(std::bind(&push_action_t::operator(),
+        ptr->socket->get_io_service().dispatch(trace_t::bind(&push_action_t::operator(),
             std::make_shared<push_action_t>(std::move(message), shared_from_this()),
             ptr
         ));
