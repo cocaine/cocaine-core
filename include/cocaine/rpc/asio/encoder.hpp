@@ -103,7 +103,7 @@ struct unbound_message_t {
     // Partially applied message encoding function.
     const function_type bind;
 
-    unbound_message_t(const function_type& bind_): bind(bind_) { }
+    unbound_message_t(function_type&& bind_): bind(std::move(bind_)) { }
 };
 
 } // namespace aux

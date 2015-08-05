@@ -48,6 +48,9 @@
 #define COCAINE_LOG_ERROR(_log_, ...) \
     COCAINE_LOG(_log_, ::cocaine::logging::error, __VA_ARGS__)
 
+#define COCAINE_LOG_ZIPKIN(_log_, ...) \
+    if(!trace_t::current().empty()) COCAINE_LOG_INFO(_log_, __VA_ARGS__)
+
 namespace cocaine { namespace logging {
 
 DECLARE_KEYWORD(source, std::string)

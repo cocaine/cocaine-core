@@ -21,12 +21,14 @@
 #ifndef COCAINE_TRACE_TRACE_HPP
 #define COCAINE_TRACE_TRACE_HPP
 
+#include "cocaine/errors.hpp"
+
 #include "cocaine/trace/stack_string.hpp"
 
-#include <boost/thread/tss.hpp>
+#include <boost/assert.hpp>
 #include <boost/optional.hpp>
+#include <boost/thread/tss.hpp>
 
-#include <cassert>
 #include <random>
 
 namespace cocaine {
@@ -38,11 +40,15 @@ public:
     class restore_scope_t;
     class push_scope_t;
 
+    // Special value that indicates that field(grand_parent_id) was not set via push.
+    static constexpr uint64_t uninitialized_value = -1;
+    static constexpr uint64_t zero_value = 0;
+
     trace_t() :
-        trace_id(),
-        span_id(),
-        parent_id(),
-        parent_parent_id(),
+        trace_id(zero_value),
+        span_id(zero_value),
+        parent_id(zero_value),
+        grand_parent_id(uninitialized_value),
         start_time_us(),
         last_time_us(),
         rpc_name(),
@@ -58,12 +64,21 @@ public:
         trace_id(_trace_id),
         span_id(_span_id),
         parent_id(_parent_id),
-        parent_parent_id(),
+        grand_parent_id(uninitialized_value),
         start_time_us(),
         last_time_us(),
         rpc_name(_rpc_name),
         service_name(_service_name)
     {
+        if(parent_id == uninitialized_value ||
+           span_id == uninitialized_value ||
+           trace_id == uninitialized_value ||
+           // Partially empty trace - trace_id without span_id, vise versa or parent_id without trace_id
+           (span_id == zero_value != trace_id == zero_value) ||
+           (trace_id == zero_value && parent_id != zero_value)
+        ) {
+            throw cocaine::error_t("Invalid trace parameters: %llu %llu %llu", trace_id, span_id, parent_id);
+        }
     }
 
     template<class ServiceStr, class RpcStr>
@@ -71,7 +86,7 @@ public:
     trace_t
     generate(const RpcStr& _rpc_name, const ServiceStr& _service_name) {
         auto t_id = generate_id();
-        return trace_t(t_id, t_id, 0, _rpc_name, _service_name);
+        return trace_t(t_id, t_id, zero_value, _rpc_name, _service_name);
     }
 
     static
@@ -101,27 +116,39 @@ public:
 
     bool
     empty() const {
-        return trace_id == 0;
+        return trace_id == zero_value;
     }
 
     void
     pop() {
-        assert(parent_id != 0);
+        if(empty()) {
+            return;
+        }
+        BOOST_ASSERT_MSG(parent_id != zero_value, "Can not pop trace - parent_id is 0");
+        BOOST_ASSERT_MSG(grand_parent_id != uninitialized_value, "Can not pop trace - grand_parent_id is uninitialized");
         span_id = parent_id;
-        parent_id = parent_parent_id;
+        parent_id = grand_parent_id;
         rpc_name = parent_rpc_name;
         parent_rpc_name.reset();
-        parent_parent_id = 0;
+        grand_parent_id = uninitialized_value;
     }
 
     template<class RpcString>
     void
     push(const RpcString& new_rpc_name) {
+        if(empty()) {
+            return;
+        }
         parent_rpc_name = rpc_name;
         rpc_name = new_rpc_name;
-        parent_parent_id = parent_id;
+        grand_parent_id = parent_id;
         parent_id = span_id;
         span_id = generate_id();
+    }
+
+    bool
+    pushed() const {
+        return grand_parent_id != uninitialized_value;
     }
 
     template<class AttributeSet>
@@ -152,6 +179,7 @@ private:
     generate_id() {
         static std::random_device rd;
         static std::mt19937 gen(rd());
+        // Stupid zipkin-web can not handle unsigned ids. So we limit to signed diapason.
         static std::uniform_int_distribution<uint64_t> dis(1, std::numeric_limits<uint64_t>::max()/2-1);
         return dis(gen);
     }
@@ -159,7 +187,7 @@ private:
     uint64_t trace_id;
     uint64_t span_id;
     uint64_t parent_id;
-    uint64_t parent_parent_id;
+    uint64_t grand_parent_id;
     uint64_t start_time_us;
     uint64_t last_time_us;
     stack_str_t<16> parent_rpc_name;
