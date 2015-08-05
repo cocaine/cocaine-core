@@ -124,6 +124,11 @@ public:
         span_id = generate_id();
     }
 
+    bool
+    pushed() const {
+        return parent_parent_id != 0;
+    }
+
     template<class AttributeSet>
     AttributeSet
     attributes() const {

@@ -34,19 +34,28 @@ class basic_upstream_t {
     const uint64_t channel_id;
 
 public:
-    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_):
+    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_, boost::optional<trace_t> client_trace_):
         session(session_),
-        channel_id(channel_id_)
+        channel_id(channel_id_),
+        client_trace(client_trace_)
     { }
 
     template<class Event, class... Args>
     void
     send(Args&&... args);
+
+    boost::optional<trace_t> client_trace;
 };
 
 template<class Event, class... Args>
 void
 basic_upstream_t::send(Args&&... args) {
+    boost::optional<trace_t> restore_trace;
+    if(client_trace) {
+        client_trace->push(Event::alias());
+        restore_trace = client_trace;
+    }
+    trace_t::restore_scope_t scope(restore_trace);
     session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
 }
 

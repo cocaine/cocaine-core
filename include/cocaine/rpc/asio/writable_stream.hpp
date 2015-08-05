@@ -73,7 +73,7 @@ public:
             bytes_written = m_channel->write_some(asio::buffer(encoded.data(), encoded.size()), ec);
 
             if(!ec && bytes_written == encoded.size()) {
-                return m_channel->get_io_service().post(std::bind(handle, ec));
+                return m_channel->get_io_service().post(trace_t::bind(handle, ec));
             }
         }
 
