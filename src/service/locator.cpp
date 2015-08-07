@@ -495,45 +495,36 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
 
 void
 locator_t::on_refresh(const std::vector<std::string>& groups) {
-    std::map<std::string, continuum_t::stored_type> values;
-    std::map<std::string, continuum_t::stored_type>::iterator lb, ub;
-
-    try {
-        const auto storage = api::storage(m_context, "core");
-        const auto updated = storage->find("groups", std::vector<std::string>({"group", "active"}));
-
-        for(auto it = groups.begin(); it != groups.end(); ++it) {
-            if(std::find(updated.begin(), updated.end(), *it) == updated.end()) {
-                continue;
-            }
-
-            values.insert({*it, storage->get<continuum_t::stored_type>("groups", *it)});
-        }
-    } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to preload routing groups from the storage: [%d] %s",
-            e.code().value(), e.code().message());
-        throw std::system_error(error::routing_storage_error);
-    }
-
-    for(auto it = groups.begin(); it != groups.end(); ++it) m_rgs.apply([&](rg_map_t& mapping) {
-        // Routing continuums can't be updated, only erased and reconstructed. This simplifies
-        // the logic greatly and doesn't impose any significant performance penalty.
-        mapping.erase(*it);
-
-        std::tie(lb, ub) = values.equal_range(*it);
-
-        auto group_log = std::make_unique<logging::log_t>(*m_log, attribute::set_t({
-            attribute::make("rg", *it)
-        }));
-
-        if(lb != ub) {
-            mapping.insert({*it, continuum_t(std::move(group_log), lb->second)});
-        }
-
-        COCAINE_LOG_INFO(m_log, "routing group %s", lb != ub ? "updated" : "removed")("rg", *it);
-    });
-
     typedef std::vector<std::string> ruid_vector_t;
+
+    const auto storage = api::storage(m_context, "core");
+    const auto updated = storage->find("groups", std::vector<std::string>({"group", "active"}));
+
+    m_rgs.unsafe() = std::accumulate(groups.begin(), groups.end(), *m_rgs.synchronize(),
+        [&](rg_map_t accumulator, const std::string& group) -> rg_map_t
+    {
+        accumulator.erase(group);
+
+        scoped_attributes_t attributes(*m_log, { attribute::make("rg", group) });
+
+        if(std::find(updated.begin(), updated.end(), group) != updated.end()) {
+            COCAINE_LOG_INFO(m_log, "updating routing group");
+
+            try {
+                accumulator.insert({group, {
+                    std::make_unique<logging::log_t>(*m_log, attribute::set_t()),
+                    storage->get<continuum_t::stored_type>("groups", group)}});
+            } catch(const std::system_error& e) {
+                COCAINE_LOG_ERROR(m_log, "unable to pre-load routing group for update: [%d] %s",
+                    e.code().value(), e.code().message());
+                throw std::system_error(error::routing_storage_error);
+            }
+        } else {
+            COCAINE_LOG_INFO(m_log, "removing routing group");
+        }
+
+        return accumulator;
+    });
 
     const auto ruids = m_routers.apply([&](const router_map_t& mapping) -> ruid_vector_t {
         return {boost::adaptors::keys(mapping).begin(), boost::adaptors::keys(mapping).end()};
