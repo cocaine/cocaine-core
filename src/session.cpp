@@ -248,7 +248,7 @@ session_t::revoke(uint64_t channel_id) {
         BOOST_ASSERT(it != mapping.end());
 
         if(it->second->dispatch) {
-            COCAINE_LOG_ERROR(log, "revoking channel %d with dispatch: '%s'", channel_id,
+            COCAINE_LOG_ERROR(log, "revoking channel %d, dispatch: '%s'", channel_id,
                 it->second->dispatch->name());
             it->second->dispatch->discard(std::error_code());
         } else {
