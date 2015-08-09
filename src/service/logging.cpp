@@ -41,23 +41,23 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
 {
     const auto backend = args.as_object().at("backend", "core").as_string();
 
-    try {
-        if(backend == "core") {
-            wrapper = context.log(format("%s/core", name));
-        } else {
+    if(backend != "core") {
+        try {
             logger = std::make_unique<logger_t>(repository_t::instance().create<logger_t>(
                 backend,
                 context.config.logging.loggers.at(backend).verbosity
             ));
-
-            wrapper.reset(new log_t(*logger, {{"source", format("%s/%s", name, backend)}}));
+        } catch(const std::out_of_range& e) {
+            throw cocaine::error_t("logger '%s' is not configured", backend);
         }
-    } catch(const std::out_of_range&) {
-        throw cocaine::error_t("logger '%s' is not configured", backend);
+
+        wrapper.reset(new log_t(*logger, {{"source", cocaine::format("%s/%s", name, backend)}}));
+    } else {
+        wrapper = context.log(cocaine::format("%s/core", name));
     }
 
     on<io::log::emit>(std::bind(&logging_t::on_emit, this, ph::_1, ph::_2, ph::_3, ph::_4));
-    on<io::log::verbosity>([&]{ return wrapper->log().verbosity(); });
+    on<io::log::verbosity>(std::bind(&logging_t::on_verbosity, this));
 }
 
 auto
@@ -69,10 +69,17 @@ void
 logging_t::on_emit(logging::priorities level, std::string source, std::string message,
                    blackhole::attribute::set_t attributes)
 {
-    if(auto record = wrapper->open_record(level, std::move(attributes))) {
-        record.insert(cocaine::logging::keyword::source() = std::move(source));
-        record.message(std::move(message));
+    auto record = wrapper->open_record(level, std::move(attributes));
 
-        wrapper->push(std::move(record));
-    }
+    if(!record) return;
+
+    record.insert(cocaine::logging::keyword::source() = std::move(source));
+    record.message(std::move(message));
+
+    wrapper->push(std::move(record));
+}
+
+logging::priorities
+logging_t::on_verbosity() const {
+    return wrapper->log().verbosity();
 }

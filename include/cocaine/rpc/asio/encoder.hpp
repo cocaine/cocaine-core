@@ -160,8 +160,8 @@ struct encoded:
     public aux::unbound_message_t
 {
     template<class... Args>
-    encoded(uint64_t channel_id, Args&&... args):
-        unbound_message_t(std::bind(&encoder_t::tether<Event, typename std::decay<Args>::type...>,
+    encoded(uint64_t channel_id, Args&&... args): unbound_message_t(
+        std::bind(&encoder_t::tether<Event, typename std::decay<Args>::type...>,
             std::placeholders::_1,
             channel_id,
             std::forward<Args>(args)...))
