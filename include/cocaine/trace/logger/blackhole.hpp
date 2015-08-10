@@ -26,7 +26,6 @@
 #include <blackhole/logger/wrapper.hpp>
 
 namespace cocaine { namespace logging {
-//class blackhole_logger :public cocaine::logging::log_t
 
 struct trace_attribute_fetcher_t {
     blackhole::attribute::set_t

@@ -28,6 +28,8 @@
 
 #include "cocaine/rpc/protocol.hpp"
 
+#include "cocaine/trace/trace.hpp"
+
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
 
