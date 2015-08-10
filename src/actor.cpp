@@ -204,9 +204,6 @@ actor_t::run() {
                 m_context.config.network.endpoint,
                 m_context.mapper.assign(m_prototype->name())
             });
-
-            // Close the socket after `execve` to prevent leakage.
-            ::fcntl(ptr->native_handle(), F_SETFD, FD_CLOEXEC);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
                 e.code().value(), e.code().message());

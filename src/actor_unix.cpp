@@ -100,9 +100,6 @@ unix_actor_t::run() {
     m_acceptor.apply([this](std::unique_ptr<protocol_type::acceptor>& ptr) {
         try {
             ptr = std::make_unique<protocol_type::acceptor>(*m_asio, this->endpoint);
-
-            // Close the socket after `execve` to prevent leakage.
-            ::fcntl(ptr->native_handle(), F_SETFD, FD_CLOEXEC);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
                 e.code().value(),

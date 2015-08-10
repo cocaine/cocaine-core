@@ -127,7 +127,6 @@ private:
 };
 
 void
-<<<<<<< HEAD
 session_t::push_action_t::operator()(const std::shared_ptr<transport_type> ptr) {
     if(!trace_t::current().empty()) {
         if(trace_t::current().pushed()) {
