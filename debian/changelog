@@ -11,6 +11,8 @@ cocaine-core (0.12.3.5) unstable; urgency=low
   * Bug fix: fixed string literals binding
   * Zipkin: fixes.
 
+ -- Anton Matveenko <antmat@me.com> Mon, 10 Aug 2015 17:22:30 +0300
+
 cocaine-core (0.12.3.1) unstable; urgency=low
 
   * Release 12.3.
