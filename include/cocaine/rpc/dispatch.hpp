@@ -65,7 +65,7 @@ public:
     boost::optional<dispatch_ptr_t>
     process(const decoder_t::message_type& message, const upstream_ptr_t& upstream) const = 0;
 
-    // Called on abnormal channel destruction. The idea is: if the client disconnects unexpectedly,
+    // Called on abnormal transport destruction. The idea's if the client disconnects unexpectedly,
     // i.e. not reaching the end of the dispatch graph, then some special handling might be needed.
     // Think 'zookeeper ephemeral nodes'.
 

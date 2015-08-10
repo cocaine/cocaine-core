@@ -94,13 +94,8 @@ public:
             "upstream protocol is not compatible with this message queue"
         );
 
-        attach(std::move(upstream.ptr));
-    }
-
-    void
-    attach(std::shared_ptr<upstream_type> upstream) {
         if(!m_operations.empty()) {
-            aux::frozen_visitor<upstream_type> visitor(upstream);
+            aux::frozen_visitor<upstream_type> visitor(upstream.ptr);
 
             // For some weird reasons, boost::apply_visitor() only accepts lvalue-references to the
             // visitor object, so there's no other choice but to actually bind it to a variable.
@@ -109,7 +104,7 @@ public:
             m_operations.clear();
         }
 
-        m_upstream = std::move(upstream);
+        m_upstream = std::move(upstream.ptr);
     }
 };
 

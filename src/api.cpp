@@ -23,15 +23,12 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/rpc/asio/channel.hpp"
+#include "cocaine/rpc/asio/transport.hpp"
 
-#include <asio/generic/stream_protocol.hpp>
-#include <asio/local/stream_protocol.hpp>
+using namespace cocaine::api::details;
 
 using namespace asio;
 using namespace asio::ip;
-
-using namespace cocaine::api::details;
 
 // Connect
 

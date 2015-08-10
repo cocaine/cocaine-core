@@ -71,19 +71,19 @@ class locator_t:
     public api::cluster_t::interface,
     public dispatch<io::locator_tag>
 {
-    class remote_t;
+    class connect_sink_t;
     class publish_slot_t;
 
     typedef std::map<std::string, continuum_t> rg_map_t;
 
-    class client_t
+    class uplink_t
     {
     public:
         std::vector<asio::ip::tcp::endpoint> endpoints;
         api::client<io::locator_tag> client;
     };
 
-    typedef std::map<std::string, client_t> client_map_t;
+    typedef std::map<std::string, uplink_t> client_map_t;
 
     typedef std::map<unsigned int, io::graph_root_t, std::greater<unsigned int>> partition_view_t;
 

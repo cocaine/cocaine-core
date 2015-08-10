@@ -24,8 +24,6 @@
 #include "cocaine/common.hpp"
 
 #include <asio/deadline_timer.hpp>
-#include <asio/io_service.hpp>
-#include <asio/ip/tcp.hpp>
 
 namespace cocaine {
 
@@ -65,10 +63,6 @@ public:
     template<class Socket>
     std::shared_ptr<session<typename Socket::protocol_type>>
     attach(std::unique_ptr<Socket> ptr, const io::dispatch_ptr_t& dispatch);
-
-    template<class Socket>
-    std::shared_ptr<session<typename Socket::protocol_type>>
-    attach(const std::shared_ptr<Socket>& ptr, const io::dispatch_ptr_t& dispatch);
 
     double
     utilization() const;

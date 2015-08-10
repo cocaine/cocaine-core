@@ -74,7 +74,7 @@ public:
 
             blackhole::log_config_t config;
 
-            /// Set of optional attributes with special meanings.
+            // Set of optional attributes with special meanings.
             std::set<std::string> attributes;
         };
 

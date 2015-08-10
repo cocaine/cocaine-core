@@ -88,7 +88,9 @@ struct decoder_t {
     size_t
     decode(const char* data, size_t size, message_type& message, std::error_code& ec) {
         size_t offset = 0;
+
         msgpack::unpack_return rv = msgpack::unpack(data, size, &offset, &zone, &message.object);
+
         if(rv == msgpack::UNPACK_SUCCESS || rv == msgpack::UNPACK_EXTRA_BYTES) {
             if(message.object.type != msgpack::type::ARRAY || message.object.via.array.size < 3) {
                 ec = error::frame_format_error;

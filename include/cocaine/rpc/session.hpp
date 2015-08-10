@@ -24,15 +24,10 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
-#include "cocaine/rpc/asio/channel.hpp"
-#include "cocaine/rpc/asio/encoder.hpp"
-#include "cocaine/rpc/asio/decoder.hpp"
-
-#include "cocaine/trace/trace.hpp"
-
 #include <asio/generic/stream_protocol.hpp>
 
-#include <asio/ip/tcp.hpp>
+#include "cocaine/rpc/asio/encoder.hpp"
+#include "cocaine/rpc/asio/decoder.hpp"
 
 namespace cocaine {
 
@@ -40,7 +35,9 @@ class session_t:
     public std::enable_shared_from_this<session_t>
 {
     typedef asio::generic::stream_protocol protocol_type;
-    typedef io::channel<protocol_type> transport_type;
+    typedef protocol_type::endpoint endpoint_type;
+
+    typedef io::transport<protocol_type> transport_type;
 
     class pull_action_t;
     class push_action_t;
@@ -73,8 +70,7 @@ class session_t:
 
 public:
     session_t(std::unique_ptr<logging::log_t> log,
-              std::unique_ptr<transport_type> transport,
-              const io::dispatch_ptr_t& prototype);
+              std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
 
     // Observers
 
@@ -88,7 +84,7 @@ public:
     name() const -> std::string;
 
     auto
-    remote_endpoint() const -> protocol_type::endpoint;
+    remote_endpoint() const -> endpoint_type;
 
     // Modifiers
 
@@ -130,13 +126,14 @@ public:
     typedef Protocol protocol_type;
     typedef typename protocol_type::endpoint endpoint_type;
 
-    typedef io::channel<protocol_type> transport_type;
+    typedef io::transport<protocol_type> transport_type;
 
 public:
-    session(std::unique_ptr<logging::log_t> log, std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
+    session(std::unique_ptr<logging::log_t> log,
+            std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
 
-    endpoint_type
-    remote_endpoint() const;
+    auto
+    remote_endpoint() const -> endpoint_type;
 };
 
 } // namespace cocaine

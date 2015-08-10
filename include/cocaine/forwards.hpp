@@ -70,7 +70,7 @@ struct encoder_t;
 struct decoder_t;
 
 template<class, class = encoder_t, class = decoder_t>
-struct channel;
+struct transport;
 
 // Generic RPC objects
 
@@ -95,13 +95,8 @@ enum priorities: int {
     error
 };
 
-template<class Wrapped, class AttributeFetcher>
-class dynamic_wrapper_t;
-
-struct trace_attribute_fetcher_t;
-
 typedef blackhole::verbose_logger_t<logging::priorities> logger_t;
-typedef dynamic_wrapper_t<logger_t, trace_attribute_fetcher_t> log_t;
+typedef blackhole::wrapper_t<logger_t> log_t;
 
 }} // namespace cocaine::logging
 

@@ -27,11 +27,11 @@
 #include "cocaine/traits/enum.hpp"
 #include "cocaine/traits/vector.hpp"
 
-using namespace blackhole;
-
 using namespace cocaine;
 using namespace cocaine::logging;
 using namespace cocaine::service;
+
+using namespace blackhole;
 
 namespace ph = std::placeholders;
 
@@ -45,20 +45,19 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
         if(backend == "core") {
             wrapper = context.log(format("%s/core", name));
         } else {
-            logger.reset(new logger_t(repository_t::instance().create<logger_t>(
+            logger = std::make_unique<logger_t>(repository_t::instance().create<logger_t>(
                 backend,
                 context.config.logging.loggers.at(backend).verbosity
-            )));
-            wrapper.reset(new log_t(*logger, {{ "source",  format("%s/%s", name, backend)}}));
+            ));
+
+            wrapper.reset(new log_t(*logger, {{"source", format("%s/%s", name, backend)}}));
         }
     } catch(const std::out_of_range&) {
         throw cocaine::error_t("logger '%s' is not configured", backend);
     }
 
     on<io::log::emit>(std::bind(&logging_t::on_emit, this, ph::_1, ph::_2, ph::_3, ph::_4));
-    on<io::log::verbosity>([&]() {
-        return wrapper->log().verbosity();
-    });
+    on<io::log::verbosity>([&]{ return wrapper->log().verbosity(); });
 }
 
 auto
@@ -67,9 +66,7 @@ logging_t::prototype() const -> const io::basic_dispatch_t& {
 }
 
 void
-logging_t::on_emit(logging::priorities level,
-                   std::string source,
-                   std::string message,
+logging_t::on_emit(logging::priorities level, std::string source, std::string message,
                    blackhole::attribute::set_t attributes)
 {
     if(auto record = wrapper->open_record(level, std::move(attributes))) {

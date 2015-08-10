@@ -29,8 +29,6 @@
 
 #include "cocaine/rpc/actor.hpp"
 
-#include "cocaine/trace/trace.hpp"
-
 #include <blackhole/scoped_attributes.hpp>
 
 #include <boost/spirit/include/karma_char.hpp>
@@ -171,13 +169,14 @@ context_t::remove(const std::string& name) {
         }
 
         service = std::move(it->second);
-
         list.erase(it);
     });
 
     service->terminate();
 
-    COCAINE_LOG_DEBUG(m_logger, "service has been stopped")("service", name);
+    COCAINE_LOG_DEBUG(m_logger, "service has been stopped")(
+        "service", name
+    );
 
     // Service is already terminated, so there's no reason to try to get its endpoints.
     std::vector<asio::ip::tcp::endpoint> nothing;

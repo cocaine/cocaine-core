@@ -38,12 +38,12 @@ class writable_stream:
 {
     COCAINE_DECLARE_NONCOPYABLE(writable_stream)
 
-    typedef typename Protocol::socket channel_type;
+    typedef typename Protocol::socket socket_type;
 
     typedef Encoder encoder_type;
     typedef typename encoder_type::message_type message_type;
 
-    const std::shared_ptr<channel_type> m_channel;
+    const std::shared_ptr<socket_type> m_socket;
 
     typedef std::function<void(const std::error_code&)> handler_type;
 
@@ -53,10 +53,11 @@ class writable_stream:
     enum class states { idle, flushing } m_state;
 
     encoder_type encoder;
+
 public:
     explicit
-    writable_stream(const std::shared_ptr<channel_type>& channel):
-        m_channel(channel),
+    writable_stream(const std::shared_ptr<socket_type>& socket):
+        m_socket(socket),
         m_state(states::idle)
     { }
 
@@ -70,10 +71,10 @@ public:
             std::error_code ec;
 
             // Try to write some data right away, as we don't have anything pending.
-            bytes_written = m_channel->write_some(asio::buffer(encoded.data(), encoded.size()), ec);
+            bytes_written = m_socket->write_some(asio::buffer(encoded.data(), encoded.size()), ec);
 
             if(!ec && bytes_written == encoded.size()) {
-                return m_channel->get_io_service().post(trace_t::bind(handle, ec));
+                return m_socket->get_io_service().post(trace_t::bind(handle, ec));
             }
         }
 
@@ -91,7 +92,8 @@ public:
         }
 
         namespace ph = std::placeholders;
-        m_channel->async_write_some(
+
+        m_socket->async_write_some(
             m_messages,
             std::bind(&writable_stream::flush, this->shared_from_this(), ph::_1, ph::_2)
         );
@@ -111,7 +113,7 @@ private:
             }
 
             while(!m_handlers.empty()) {
-                m_channel->get_io_service().post(std::bind(m_handlers.front(), ec));
+                m_socket->get_io_service().post(std::bind(m_handlers.front(), ec));
 
                 m_messages.pop_front();
                 m_handlers.pop_front();
@@ -133,7 +135,7 @@ private:
             bytes_written -= message_size;
 
             // Queue this block's handler for invocation.
-            m_channel->get_io_service().post(std::bind(m_handlers.front(), ec));
+            m_socket->get_io_service().post(std::bind(m_handlers.front(), ec));
 
             m_messages.pop_front();
             m_handlers.pop_front();
@@ -145,7 +147,8 @@ private:
         }
 
         namespace ph = std::placeholders;
-        m_channel->async_write_some(
+
+        m_socket->async_write_some(
             m_messages,
             std::bind(&writable_stream::flush, this->shared_from_this(), ph::_1, ph::_2)
         );

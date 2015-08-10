@@ -45,7 +45,7 @@ private:
     finalize(const std::error_code& ec) {
         // Prepare the internal socket object for consequential operations by moving its contents to a
         // heap-allocated object, which in turn might be attached to an engine.
-        auto ptr = std::make_shared<protocol_type::socket>(std::move(socket));
+        auto ptr = std::make_unique<protocol_type::socket>(std::move(socket));
 
         switch(ec.value()) {
         case 0:
@@ -53,7 +53,7 @@ private:
 
             try {
                 auto base = parent->fact();
-                auto session = parent->m_context.engine().attach(ptr, base);
+                auto session = parent->m_context.engine().attach(std::move(ptr), base);
                 parent->bind(base, std::move(session));
             } catch(const std::system_error& e) {
                 COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: [%d] %s - %s",
@@ -139,7 +139,7 @@ unix_actor_t::terminate() {
 
         COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
 
-        ptr       = nullptr;
+        ptr = nullptr;
     });
 
     // Be ready to restart the actor.

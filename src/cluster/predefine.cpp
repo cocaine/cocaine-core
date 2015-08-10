@@ -35,11 +35,11 @@
 
 #include <asio/io_service.hpp>
 
-using namespace asio;
-using namespace asio::ip;
-
 using namespace cocaine::io;
 using namespace cocaine::cluster;
+
+using namespace asio;
+using namespace asio::ip;
 
 namespace cocaine {
 
