@@ -25,6 +25,7 @@
 #include <array>
 #include <cassert>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <system_error>
 #include <vector>
