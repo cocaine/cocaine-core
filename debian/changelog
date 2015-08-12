@@ -1,3 +1,11 @@
+cocaine-core (0.12.3.5+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Bug fix: reset the signals set before waiting.
+    This saves us from waiting for random signals from memory garbage.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 12 Aug 2015 14:43:31 +0300
+
 cocaine-core (0.12.3.4+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
