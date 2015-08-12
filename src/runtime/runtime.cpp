@@ -133,6 +133,7 @@ struct runtime_t {
     int
     run() {
         sigset_t sigset;
+        sigemptyset(&sigset);
         sigaddset(&sigset, SIGINT);
         sigaddset(&sigset, SIGTERM);
         sigaddset(&sigset, SIGQUIT);
