@@ -85,7 +85,7 @@ class repository_t {
 
 public:
     explicit
-    repository_t(logging::logger_t& log);
+    repository_t(std::unique_ptr<logging::log_t> log);
 
    ~repository_t();
 

@@ -307,7 +307,7 @@ session_t::detach(const std::error_code& ec) {
         swapped = nullptr;
         COCAINE_LOG_DEBUG(log, "detached session from the transport");
     } else {
-        COCAINE_LOG_DEBUG(log, "ignoring detach request for session");
+        COCAINE_LOG_WARNING(log, "ignoring detach request for session");
     }
 
     channels.apply([&](channel_map_t& mapping) {
