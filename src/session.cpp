@@ -220,25 +220,6 @@ session_t::handle(const decoder_t::message_type& message) {
     }
 }
 
-upstream_ptr_t
-session_t::fork(const dispatch_ptr_t& dispatch) {
-    return channels.apply([&](channel_map_t& mapping) -> upstream_ptr_t {
-        const auto channel_id = ++max_channel_id;
-        const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
-
-        COCAINE_LOG_DEBUG(log, "forking new channel %d, dispatch: '%s'", channel_id,
-            dispatch ? dispatch->name() : "<none>");
-
-        if(dispatch) {
-            // NOTE: For mute slots, creating a new channel will essentially leak memory, since no
-            // response will ever be sent back, therefore the channel will never be revoked at all.
-            mapping.insert({channel_id, std::make_shared<channel_t>(dispatch, downstream)});
-        }
-
-        return downstream;
-    });
-}
-
 void
 session_t::revoke(uint64_t channel_id) {
     channels.apply([&](channel_map_t& mapping) {
@@ -259,31 +240,22 @@ session_t::revoke(uint64_t channel_id) {
     });
 }
 
-void
-session_t::detach(const std::error_code& ec) {
-#if defined(__clang__)
-    if(auto ptr = std::atomic_exchange(&transport, std::shared_ptr<transport_type>())) {
-#else
-    if(auto ptr = std::move(*transport.synchronize())) {
-#endif
-        ptr = nullptr;
-        COCAINE_LOG_DEBUG(log, "detached session from the transport");
-    } else {
-        return;
-    }
+upstream_ptr_t
+session_t::fork(const dispatch_ptr_t& dispatch) {
+    return channels.apply([&](channel_map_t& mapping) -> upstream_ptr_t {
+        const auto channel_id = ++max_channel_id;
+        const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
-    channels.apply([&](channel_map_t& mapping) {
-        if(mapping.empty()) {
-            return;
-        } else {
-            COCAINE_LOG_DEBUG(log, "discarding %d channel dispatch(es)", mapping.size());
+        COCAINE_LOG_DEBUG(log, "forking new channel %d, dispatch: '%s'", channel_id,
+            dispatch ? dispatch->name() : "<none>");
+
+        if(dispatch) {
+            // NOTE: For mute slots, creating a new channel will essentially leak memory, since no
+            // response will ever be sent back, therefore the channel will never be revoked at all.
+            mapping.insert({channel_id, std::make_shared<channel_t>(dispatch, downstream)});
         }
 
-        for(auto it = mapping.begin(); it != mapping.end(); ++it) {
-            if(it->second->dispatch) it->second->dispatch->discard(ec);
-        }
-
-        mapping.clear();
+        return downstream;
     });
 }
 
@@ -321,6 +293,34 @@ session_t::push(encoder_t::message_type&& message) {
     } else {
         throw std::system_error(error::not_connected);
     }
+}
+
+void
+session_t::detach(const std::error_code& ec) {
+#if defined(__clang__)
+    if(auto swapped = std::atomic_exchange(&transport, std::shared_ptr<transport_type>())) {
+#else
+    if(auto swapped = std::move(*transport.synchronize())) {
+#endif
+        swapped = nullptr;
+        COCAINE_LOG_DEBUG(log, "detached session from the transport");
+    } else {
+        COCAINE_LOG_DEBUG(log, "ignoring detach request for session");
+    }
+
+    channels.apply([&](channel_map_t& mapping) {
+        if(mapping.empty()) {
+            return;
+        } else {
+            COCAINE_LOG_DEBUG(log, "discarding %d channel dispatch(es)", mapping.size());
+        }
+
+        for(auto it = mapping.begin(); it != mapping.end(); ++it) {
+            if(it->second->dispatch) it->second->dispatch->discard(ec);
+        }
+
+        mapping.clear();
+    });
 }
 
 // Information
