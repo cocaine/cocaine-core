@@ -88,11 +88,10 @@ struct protocol;
 namespace cocaine { namespace logging {
 
 enum priorities: int {
-    trace,
-    debug,
-    info,
-    warning,
-    error
+    debug   =  0,
+    info    =  1,
+    warning =  2,
+    error   =  3
 };
 
 template<class Wrapped, class AttributeFetcher>

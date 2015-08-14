@@ -296,9 +296,7 @@ struct dynamic_converter<config_t::logging_t> {
     static inline
     logging::priorities
     logmask(const std::string& verbosity) {
-        if(verbosity == "trace") {
-            return logging::trace;
-        } else if(verbosity == "debug") {
+        if(verbosity == "debug") {
             return logging::debug;
         } else if(verbosity == "warning") {
             return logging::warning;
@@ -413,4 +411,3 @@ int
 config_t::versions() {
     return COCAINE_VERSION;
 }
-
