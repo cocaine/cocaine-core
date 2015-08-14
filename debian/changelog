@@ -1,3 +1,17 @@
+cocaine-core (0.12.3.7+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Hotfix: clear msgpack zone every decode iteration.
+    We have to clear msgpack zone every decoding iteration to prevent memory
+    leaking for objects structure, cause they have no way to notify about
+    self destruction. Hope someday we migrate to v1.* and everything will be
+    fine automatically.
+    It's also recommended to rebuild all your dependencies, because the
+    changed file is a part of public API and implicitly marked as inline,
+    which may result in unexpected behavior.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 14 Aug 2015 09:45:50 +0300
+
 cocaine-core (0.12.3.6+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
