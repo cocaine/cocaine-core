@@ -118,7 +118,7 @@ class locator_t:
     // Outgoing remote locator streams indexed by node uuid.
     synchronized<remote_map_t> m_remotes;
 
-    // Snapshot of the local service disposition. Synchronized with outgoing remote streams.
+    // Snapshots of the local service states. Synchronized with outgoing remote streams.
     std::map<std::string, results::resolve> m_snapshots;
 
     // Outgoing router streams indexed by some arbitrary router-provided uuid.
