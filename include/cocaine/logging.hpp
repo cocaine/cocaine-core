@@ -31,9 +31,6 @@
     if(auto _record_ = ::cocaine::logging::detail::logger_ptr(_log_)->open_record(_level_)) \
         ::blackhole::aux::logger::make_pusher(*(::cocaine::logging::detail::logger_ptr(_log_)), _record_, __VA_ARGS__)
 
-#define COCAINE_LOG_TRACE(_log_, ...) \
-    COCAINE_LOG(_log_, ::cocaine::logging::trace, __VA_ARGS__)
-
 #define COCAINE_LOG_DEBUG(_log_, ...) \
     COCAINE_LOG(_log_, ::cocaine::logging::debug, __VA_ARGS__)
 
