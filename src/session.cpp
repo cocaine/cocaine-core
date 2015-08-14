@@ -225,8 +225,10 @@ session_t::revoke(uint64_t channel_id) {
     channels.apply([&](channel_map_t& mapping) {
         auto it = mapping.find(channel_id);
 
-        // NOTE: Not sure if that can ever happen, but that's why people use asserts, right?
-        BOOST_ASSERT(it != mapping.end());
+        if(it == mapping.end()) {
+            COCAINE_LOG_WARNING(log, "ignoring revoke request for channel %d", channel_id);
+            return;
+        }
 
         if(it->second->dispatch) {
             COCAINE_LOG_ERROR(log, "revoking channel %d, dispatch: '%s'", channel_id,
