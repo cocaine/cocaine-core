@@ -152,12 +152,12 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
 
         std::string remote_endpoint;
 
-        if (std::is_same<protocol_type, ip::tcp>::value) {
+        if(std::is_same<protocol_type, ip::tcp>::value) {
             // Disable Nagle's algorithm, since most of the service clients do not send or receive
             // more than a couple of kilobytes of data.
             transport->socket->set_option(ip::tcp::no_delay(true));
             remote_endpoint = boost::lexical_cast<std::string>(ptr->remote_endpoint());
-        } else if (std::is_same<protocol_type, local::stream_protocol>::value) {
+        } else if(std::is_same<protocol_type, local::stream_protocol>::value) {
             remote_endpoint = boost::lexical_cast<std::string>(endpoint);
         } else {
             remote_endpoint = "<unknown>";

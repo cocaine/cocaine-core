@@ -101,7 +101,7 @@ repository_t::load(const std::string& path) {
     // proper order as well, if they add any to the error registrar.
     std::sort(paths.begin(), paths.end());
 
-    std::for_each(paths.begin(), paths.end(), [&](const std::string& plugin) {
+    std::for_each(paths.begin(), paths.end(), [this](const std::string& plugin) {
         open(plugin);
     });
 }

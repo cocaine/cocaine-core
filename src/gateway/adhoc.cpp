@@ -88,7 +88,7 @@ adhoc_t::cleanup(const std::string& uuid, const partition_t& name) {
     std::tie(lb, ub) = ptr->equal_range(name);
 
     // Since UUIDs are unique, only one remote will match the specified UUID.
-    auto it = std::find_if(lb, ub, [&uuid](const remote_map_t::value_type& value) -> bool {
+    auto it = std::find_if(lb, ub, [&](const remote_map_t::value_type& value) -> bool {
         return value.second.uuid == uuid;
     });
 

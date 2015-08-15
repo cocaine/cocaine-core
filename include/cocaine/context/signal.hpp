@@ -56,7 +56,7 @@ struct async_visitor:
     operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
         auto args = this->args;
 
-        asio.post([slot, args]() mutable {
+        asio.post([=]() mutable {
             (*slot)(std::move(args), upstream<void>());
         });
     }
