@@ -24,8 +24,6 @@
 #include "cocaine/common.hpp"
 #include "cocaine/repository.hpp"
 
-#include <asio/io_service.hpp>
-
 namespace cocaine { namespace api {
 
 struct service_t {

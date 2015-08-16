@@ -129,9 +129,7 @@ struct category_traits<storage_t> {
             ptr_type instance;
 
             instances.apply([&](std::map<std::string, std::weak_ptr<storage_t>>& instances) {
-                auto weak_ptr = instances[name];
-
-                if((instance = weak_ptr.lock()) == nullptr) {
+                if((instance = instances[name].lock()) == nullptr) {
                     instance = std::make_shared<T>(context, name, args);
                     instances[name] = instance;
                 }

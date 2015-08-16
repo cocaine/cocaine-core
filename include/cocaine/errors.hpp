@@ -73,8 +73,6 @@ make_error_code(security_errors code) -> std::error_code;
 // Error categories registrar
 
 struct registrar {
-    struct impl_type;
-
     static
     auto
     map(const std::error_category& ec) -> size_t;
@@ -86,10 +84,12 @@ struct registrar {
     // Modifiers
 
     static
-    bool
-    add(const std::error_category& ec);
+    auto
+    add(const std::error_category& ec) -> size_t;
 
 private:
+    struct impl_type;
+
     static
     synchronized<std::unique_ptr<impl_type>> ptr;
 };
