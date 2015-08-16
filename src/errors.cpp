@@ -21,11 +21,12 @@
 #include "cocaine/errors.hpp"
 
 #include "cocaine/detail/service/locator.hpp"
+#include "cocaine/detail/service/logging.hpp"
+#include "cocaine/detail/service/storage.hpp"
 
 #include <asio/error.hpp>
 
 #include <boost/assign/list_of.hpp>
-
 #include <boost/bimap.hpp>
 
 using namespace cocaine;
@@ -223,30 +224,39 @@ registrar::impl_type {
 
     mapping_t mapping;
 
+    // Dynamic error category name-based hash.
+    std::hash<std::string> hash;
+
     impl_type();
 };
 
 registrar::impl_type::impl_type() {
     mapping = boost::assign::list_of<mapping_t::relation>
-        (0x0, &unknown_category()                  )
-        (0x1, &std::system_category()              )
-        (0x2, &asio::error::get_system_category()  )
-        (0x3, &asio::error::get_netdb_category()   )
-        (0x4, &asio::error::get_addrinfo_category())
-        (0x5, &asio::error::get_misc_category()    )
-        (0x6, &transport_category()                )
-        (0x7, &dispatch_category()                 )
-        (0x8, &repository_category()               )
-        (0x9, &security_category()                 )
-        (0xA, &locator_category()                  );
+        (0x01, &std::system_category()              )
+        (0x02, &asio::error::get_system_category()  )
+        (0x03, &asio::error::get_netdb_category()   )
+        (0x04, &asio::error::get_addrinfo_category())
+        (0x05, &asio::error::get_misc_category()    )
+        (0x06, &transport_category()                )
+        (0x07, &dispatch_category()                 )
+        (0x08, &repository_category()               )
+        (0x09, &security_category()                 )
+        (0x0A, &locator_category()                  )
+        (0xFF, &unknown_category()                  );
 }
 
 synchronized<std::unique_ptr<registrar::impl_type>> registrar::ptr(std::make_unique<impl_type>());
 
-bool
-registrar::add(const std::error_category& ec) {
-    return ptr.apply([&](std::unique_ptr<impl_type>& impl) -> bool {
-        return impl->mapping.insert({impl->mapping.size(), &ec}).second;
+auto
+registrar::add(const std::error_category& ec) -> size_t {
+    return ptr.apply([&](std::unique_ptr<impl_type>& impl) -> size_t {
+        size_t index = impl->hash(ec.name()) | 0xFF;
+
+        if(impl->mapping.insert({index, &ec}).second) {
+            return index;
+        } else {
+            throw error_t("duplicate error category");
+        }
     });
 }
 
@@ -254,7 +264,7 @@ auto
 registrar::map(const std::error_category& ec) -> size_t {
     return ptr.apply([&](const std::unique_ptr<impl_type>& impl) -> size_t {
         if(impl->mapping.by<impl_type::ptr_tag>().count(&ec) == 0) {
-            return 0;
+            return 0xFF;
         } else {
             return impl->mapping.by<impl_type::ptr_tag>().at(&ec);
         }
