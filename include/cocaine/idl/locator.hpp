@@ -196,7 +196,8 @@ namespace cocaine { namespace error {
 
 enum locator_errors {
     service_not_available = 1,
-    routing_storage_error
+    routing_storage_error,
+    missing_version_error
 };
 
 auto

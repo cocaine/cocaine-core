@@ -23,7 +23,6 @@
 #define COCAINE_LOCATOR_SERVICE_HPP
 
 #include "cocaine/api/cluster.hpp"
-#include "cocaine/api/connect.hpp"
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/detail/service/locator/routing.hpp"
@@ -80,7 +79,7 @@ class locator_t:
     {
     public:
         std::vector<asio::ip::tcp::endpoint> endpoints;
-        api::client<io::locator_tag> client;
+        std::shared_ptr<session<asio::ip::tcp>> session;
     };
 
     typedef std::map<std::string, uplink_t> client_map_t;

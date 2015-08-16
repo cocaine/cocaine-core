@@ -46,6 +46,8 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
+#include <boost/range/numeric.hpp>
+
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/for_each.hpp>
 
@@ -236,13 +238,14 @@ public:
             std::tie(versions, protocol) = metadata;
 
             if(!protocol.empty() && versions == 0) {
-                throw std::system_error(std::make_error_code(std::errc::invalid_argument));
+                throw std::system_error(error::missing_version_error);
             }
 
             scoped_attributes_t attributes(*parent->m_log, { attribute::make("service", handle) });
 
             COCAINE_LOG_INFO(parent->m_log, "publishing external %s service with %d endpoints",
                 protocol.empty() ? "non-native" : "native", location.size());
+
             parent->on_service(handle, results::resolve{location, versions, protocol}, modes::exposed);
 
             return std::make_shared<publish_lock_t>(this, handle);
@@ -260,6 +263,7 @@ private:
 
         COCAINE_LOG_INFO(parent->m_log, "external service disconnected, unpublishing: [%d] %s",
             ec.value(), ec.message());
+
         return parent->on_service(handle, results::resolve{}, modes::removed);
     }
 };
@@ -369,7 +373,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
     }
 
     auto  socket = std::make_shared<tcp::socket>(m_asio);
-    auto& uplink = ((*mapping)[uuid] = {endpoints, api::client<locator_tag>()});
+    auto& uplink = ((*mapping)[uuid] = {endpoints, nullptr});
 
     asio::async_connect(*socket, uplink.endpoints.begin(), uplink.endpoints.end(),
         [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator endpoint)
@@ -394,13 +398,14 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
             COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
         }
 
-        auto& client = mapping->at(uuid).client;
-
-        client.attach(m_context.engine().attach(std::make_unique<tcp::socket>(std::move(*socket)),
+        auto& session = (mapping->at(uuid).session = m_context.engine().attach(
+            std::make_unique<tcp::socket>(std::move(*socket)),
             nullptr
         ));
 
-        client.invoke<locator::connect>(std::make_shared<connect_sink_t>(this, uuid), m_cfg.uuid);
+        session->fork(std::make_shared<connect_sink_t>(this, uuid))->send<locator::connect>(
+            m_cfg.uuid
+        );
     });
 
     COCAINE_LOG_INFO(m_log, "setting up remote client, trying %d route(s)", endpoints.size())(
@@ -421,6 +426,7 @@ locator_t::drop_node(const std::string& uuid) {
             "uuid", uuid
         );
 
+        mapping[uuid].session->detach(std::error_code());
         mapping.erase(uuid);
     });
 }
@@ -472,14 +478,14 @@ auto
 locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
     streamed<results::connect> stream;
 
+    scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
+
+    auto mapping = m_remotes.synchronize();
+
     if(!m_cluster) {
         // No cluster means there are no streams.
         return stream.close();
     }
-
-    auto mapping = m_remotes.synchronize();
-
-    scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
 
     if(!mapping->erase(uuid)) {
         COCAINE_LOG_INFO(m_log, "attaching an outgoing stream for locator");
@@ -500,7 +506,7 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
     const auto storage = api::storage(m_context, "core");
     const auto updated = storage->find("groups", std::vector<std::string>({"group", "active"}));
 
-    m_rgs.unsafe() = std::accumulate(groups.begin(), groups.end(), *m_rgs.synchronize(),
+    m_rgs.unsafe() = boost::accumulate(groups, *m_rgs.synchronize(),
         [&](rg_map_t accumulator, const std::string& group) -> rg_map_t
     {
         accumulator.erase(group);
@@ -511,9 +517,9 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
             COCAINE_LOG_INFO(m_log, "updating routing group");
 
             try {
-                accumulator.insert({group, {
+                accumulator.insert({group, continuum_t(
                     std::make_unique<logging::log_t>(*m_log, attribute::set_t()),
-                    storage->get<continuum_t::stored_type>("groups", group)}});
+                    storage->get<continuum_t::stored_type>("groups", group))});
             } catch(const std::system_error& e) {
                 COCAINE_LOG_ERROR(m_log, "unable to pre-load routing group for update: [%d] %s",
                     e.code().value(), e.code().message());
@@ -526,8 +532,10 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
         return accumulator;
     });
 
-    const auto ruids = m_routers.apply([&](const router_map_t& mapping) -> ruid_vector_t {
-        return {boost::adaptors::keys(mapping).begin(), boost::adaptors::keys(mapping).end()};
+    const auto ruids = boost::accumulate(*m_routers.synchronize(), ruid_vector_t{},
+        [](ruid_vector_t result, const router_map_t::value_type& value) -> ruid_vector_t
+    {
+        result.push_back(value.first); return result;
     });
 
     for(auto it = ruids.begin(); it != ruids.end(); ++it) try {
@@ -541,25 +549,24 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
 
 results::cluster
 locator_t::on_cluster() const {
-    results::cluster result;
-
-    auto mapping = m_clients.synchronize();
-
-    std::transform(mapping->begin(), mapping->end(), std::inserter(result, result.end()),
-        [](const client_map_t::value_type& value) -> results::cluster::value_type
+    return boost::accumulate(*m_clients.synchronize(), results::cluster{},
+        [](results::cluster result, const client_map_t::value_type& value) -> results::cluster
     {
-        return {value.first, value.second.client.remote_endpoint()};
-    });
+        const auto& session = value.second.session;
 
-    return result;
+        // NOTE: Some sessions might be nullptr because there is a connection attempt in progress.
+        result[value.first] = session ? session->remote_endpoint() : ip::tcp::endpoint();
+
+        return result;
+    });
 }
 
 auto
 locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results::routing> {
-    auto mapping = m_rgs.synchronize();
-
     auto results = results::routing();
     auto builder = std::inserter(results, results.end());
+
+    auto mapping = m_rgs.synchronize();
 
     std::transform(mapping->begin(), mapping->end(), builder,
         [](const rg_map_t::value_type& value) -> results::routing::value_type
@@ -585,9 +592,9 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
         return;
     }
 
-    auto mapping = m_remotes.synchronize();
-
     scoped_attributes_t attributes(*m_log, { attribute::make("service", name) });
+
+    auto mapping = m_remotes.synchronize();
 
     if(mode == modes::exposed) {
         if(m_snapshots.count(name) != 0) {
@@ -599,8 +606,6 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
     } else {
         m_snapshots.erase(name);
     }
-
-    if(mapping->empty()) return;
 
     const auto response = results::connect{m_cfg.uuid, {{name, meta}}};
 
@@ -628,9 +633,9 @@ locator_t::on_context_shutdown() {
         mapping.clear();
     });
 
-    m_cluster = nullptr;
-
     m_remotes.apply([this](remote_map_t& mapping) {
+        m_cluster = nullptr;
+
         if(mapping.empty()) {
             return;
         } else {
@@ -678,6 +683,8 @@ struct locator_category_t:
             return "service is not available";
           case cocaine::error::locator_errors::routing_storage_error:
             return "routing storage is unavailable";
+          case cocaine::error::locator_errors::missing_version_error:
+            return "missing protocol version";
         }
 
         return "cocaine.service.locator error";
