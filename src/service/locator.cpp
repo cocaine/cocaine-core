@@ -398,7 +398,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
             COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
         }
 
-        auto& session = (mapping->at(uuid).session = m_context.engine().attach(
+        auto& session = (mapping->at(uuid).ptr = m_context.engine().attach(
             std::make_unique<tcp::socket>(std::move(*socket)),
             nullptr
         ));
@@ -426,7 +426,7 @@ locator_t::drop_node(const std::string& uuid) {
             "uuid", uuid
         );
 
-        mapping[uuid].session->detach(std::error_code());
+        mapping[uuid].ptr->detach(std::error_code());
         mapping.erase(uuid);
     });
 }
@@ -552,7 +552,7 @@ locator_t::on_cluster() const {
     return boost::accumulate(*m_clients.synchronize(), results::cluster{},
         [](results::cluster result, const client_map_t::value_type& value) -> results::cluster
     {
-        const auto& session = value.second.session;
+        const auto& session = value.second.ptr;
 
         // NOTE: Some sessions might be nullptr because there is a connection attempt in progress.
         result[value.first] = session ? session->remote_endpoint() : ip::tcp::endpoint();
