@@ -349,7 +349,6 @@ session_t::pull() {
 
 void
 session_t::push(encoder_t::message_type&& message) {
-    COCAINE_LOG_TRACE(log, "pushing message to session");
 #if defined(__clang__)
     if(const auto ptr = std::atomic_load(&transport)) {
 #else
