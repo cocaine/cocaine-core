@@ -141,7 +141,7 @@ struct encoder_t {
 
         packer.pack_array(3);
 
-		uint64_t trace_id  = trace_t::current().get_trace_id();
+        uint64_t trace_id  = trace_t::current().get_trace_id();
         uint64_t span_id   = trace_t::current().get_id();
         uint64_t parent_id = trace_t::current().get_parent_id();
 

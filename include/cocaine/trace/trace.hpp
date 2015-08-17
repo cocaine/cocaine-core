@@ -49,8 +49,6 @@ public:
         span_id(zero_value),
         parent_id(zero_value),
         grand_parent_id(uninitialized_value),
-        start_time_us(),
-        last_time_us(),
         rpc_name(),
         service_name()
     {}
@@ -65,8 +63,6 @@ public:
         span_id(_span_id),
         parent_id(_parent_id),
         grand_parent_id(uninitialized_value),
-        start_time_us(),
-        last_time_us(),
         rpc_name(_rpc_name),
         service_name(_service_name)
     {
@@ -188,8 +184,6 @@ private:
     uint64_t span_id;
     uint64_t parent_id;
     uint64_t grand_parent_id;
-    uint64_t start_time_us;
-    uint64_t last_time_us;
     stack_str_t<16> parent_rpc_name;
     stack_str_t<16> rpc_name;
     stack_str_t<16> service_name;
