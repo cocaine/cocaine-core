@@ -70,8 +70,8 @@ public:
            span_id == uninitialized_value ||
            trace_id == uninitialized_value ||
            // Partially empty trace - trace_id without span_id, vise versa or parent_id without trace_id
-           (span_id == zero_value != trace_id == zero_value) ||
-           (trace_id == zero_value && parent_id != zero_value)
+           ((span_id == zero_value) != (trace_id == zero_value)) ||
+           ((trace_id == zero_value) && (parent_id != zero_value))
         ) {
             throw cocaine::error_t("Invalid trace parameters: %llu %llu %llu", trace_id, span_id, parent_id);
         }
