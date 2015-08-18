@@ -21,15 +21,10 @@
 #ifndef COCAINE_TRACE_TRACE_HPP
 #define COCAINE_TRACE_TRACE_HPP
 
-#include "cocaine/errors.hpp"
-
 #include "cocaine/trace/stack_string.hpp"
 
 #include <boost/assert.hpp>
 #include <boost/optional.hpp>
-#include <boost/thread/tss.hpp>
-
-#include <random>
 
 namespace cocaine {
 class trace_t {
@@ -37,115 +32,77 @@ public:
     template <class F>
     class callable_wrapper_t;
 
+
     class restore_scope_t;
     class push_scope_t;
 
+    typedef stack_str<16> stack_string_t;
     // Special value that indicates that field(grand_parent_id) was not set via push.
     static constexpr uint64_t uninitialized_value = -1;
     static constexpr uint64_t zero_value = 0;
 
-    trace_t() :
-        trace_id(zero_value),
-        span_id(zero_value),
-        parent_id(zero_value),
-        grand_parent_id(uninitialized_value),
-        rpc_name(),
-        service_name()
-    {}
+    /**
+     * Construct an empty trace
+     */
+    trace_t();
 
-    template<class ServiceStr, class RpcStr>
+    /**
+     * Construct trace wih specified tuple of ids and service and rpc name
+     */
     trace_t(uint64_t _trace_id,
             uint64_t _span_id,
             uint64_t _parent_id,
-            const RpcStr& _rpc_name,
-            const ServiceStr& _service_name) :
-        trace_id(_trace_id),
-        span_id(_span_id),
-        parent_id(_parent_id),
-        grand_parent_id(uninitialized_value),
-        rpc_name(_rpc_name),
-        service_name(_service_name)
-    {
-        if(parent_id == uninitialized_value ||
-           span_id == uninitialized_value ||
-           trace_id == uninitialized_value ||
-           // Partially empty trace - trace_id without span_id, vise versa or parent_id without trace_id
-           ((span_id == zero_value) != (trace_id == zero_value)) ||
-           ((trace_id == zero_value) && (parent_id != zero_value))
-        ) {
-            throw cocaine::error_t("Invalid trace parameters: %llu %llu %llu", trace_id, span_id, parent_id);
-        }
-    }
+            const stack_string_t& _rpc_name,
+            const stack_string_t& _service_name);
 
-    template<class ServiceStr, class RpcStr>
+    /**
+     * Generate a new trace with specified service and rpc name
+     */
     static
     trace_t
-    generate(const RpcStr& _rpc_name, const ServiceStr& _service_name) {
-        auto t_id = generate_id();
-        return trace_t(t_id, t_id, zero_value, _rpc_name, _service_name);
-    }
+    generate(const stack_string_t& _rpc_name, const stack_string_t& _service_name);
 
+    /**
+     * Return current trace.
+     * Trace is usually set via scope guards
+     * and passed via callback wrapper in async callbacks.
+     */
     static
     trace_t&
-    current() {
-        static boost::thread_specific_ptr<trace_t> t;
-        if(t.get() == nullptr) {
-            t.reset(new trace_t());
-        }
-        return *t.get();
-    }
+    current();
 
     uint64_t
-    get_parent_id() const {
-        return parent_id;
-    }
+    get_parent_id() const;
 
     uint64_t
-    get_trace_id() const {
-        return trace_id;
-    }
+    get_trace_id() const;
 
     uint64_t
-    get_id() const {
-        return span_id;
-    }
+    get_id() const;
 
+    /**
+     * Check if trace is empty (was not set via any of scope guards)
+     */
     bool
-    empty() const {
-        return trace_id == zero_value;
-    }
+    empty() const;
 
+    /**
+     * Pop trace after finished RPC call
+     */
     void
-    pop() {
-        if(empty()) {
-            return;
-        }
-        BOOST_ASSERT_MSG(parent_id != zero_value, "Can not pop trace - parent_id is 0");
-        BOOST_ASSERT_MSG(grand_parent_id != uninitialized_value, "Can not pop trace - grand_parent_id is uninitialized");
-        span_id = parent_id;
-        parent_id = grand_parent_id;
-        rpc_name = parent_rpc_name;
-        parent_rpc_name.reset();
-        grand_parent_id = uninitialized_value;
-    }
+    pop();
 
-    template<class RpcString>
+    /**
+     * Push trace before making an RPC call
+     */
     void
-    push(const RpcString& new_rpc_name) {
-        if(empty()) {
-            return;
-        }
-        parent_rpc_name = rpc_name;
-        rpc_name = new_rpc_name;
-        grand_parent_id = parent_id;
-        parent_id = span_id;
-        span_id = generate_id();
-    }
+    push(const stack_string_t& new_rpc_name);
 
+    /**
+     * Check if trace were pushed.
+     */
     bool
-    pushed() const {
-        return grand_parent_id != uninitialized_value;
-    }
+    pushed() const;
 
     template<class AttributeSet>
     AttributeSet
@@ -170,27 +127,72 @@ public:
     mem_fn(Method m) -> callable_wrapper_t<decltype(std::mem_fn(std::forward<Method>(m)))>;
 
 private:
+
     static
     uint64_t
-    generate_id() {
-        static std::random_device rd;
-        static std::mt19937 gen(rd());
-        // Stupid zipkin-web can not handle unsigned ids. So we limit to signed diapason.
-        static std::uniform_int_distribution<uint64_t> dis(1, std::numeric_limits<uint64_t>::max()/2-1);
-        return dis(gen);
-    }
+    generate_id();
 
     uint64_t trace_id;
     uint64_t span_id;
     uint64_t parent_id;
     uint64_t grand_parent_id;
-    stack_str_t<16> parent_rpc_name;
-    stack_str_t<16> rpc_name;
-    stack_str_t<16> service_name;
+    stack_string_t parent_rpc_name;
+    stack_string_t rpc_name;
+    stack_string_t service_name;
 };
+
+class trace_t::restore_scope_t {
+public:
+    restore_scope_t(const boost::optional<trace_t>& new_trace);
+    ~restore_scope_t();
+private:
+    trace_t old_span;
+    bool restored;
+};
+
+
+class trace_t::push_scope_t {
+public:
+    push_scope_t(const stack_string_t& _rpc_name);
+    ~push_scope_t();
+};
+
+template <class F>
+class trace_t::callable_wrapper_t
+{
+public:
+    inline
+    callable_wrapper_t(F&& _f) :
+        f(std::move(_f)),
+        stored_trace(trace_t::current())
+    {}
+
+    template<class ...Args>
+    auto
+    operator()(Args&& ...args) -> decltype(std::declval<F>()(args...)) {
+        restore_scope_t scope(stored_trace);
+        return f(std::forward<Args>(args)...);
+    }
+
+private:
+    F f;
+    trace_t stored_trace;
+};
+
+template<class... Args>
+auto
+trace_t::bind(Args&& ...args) -> callable_wrapper_t<decltype(std::bind(std::forward<Args>(args)...))> {
+    typedef callable_wrapper_t<decltype(std::bind(std::forward<Args>(args)...))> Result;
+    return Result(std::bind(std::forward<Args>(args)...));
 }
 
-#include "cocaine/trace/trace_impl.hpp"
+template<class Method>
+auto
+trace_t::mem_fn(Method m) -> callable_wrapper_t<decltype(std::mem_fn(std::forward<Method>(m)))> {
+    typedef callable_wrapper_t<decltype(std::mem_fn(std::forward<Method>(m)))> Result;
+    return Result(std::mem_fn(std::forward<Method>(m)));
+}
+}
 
 #endif // COCAINE_TRACE_TRACE_HPP
 
