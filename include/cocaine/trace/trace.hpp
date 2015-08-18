@@ -32,13 +32,17 @@ public:
     template <class F>
     class callable_wrapper_t;
 
-
     class restore_scope_t;
     class push_scope_t;
 
     typedef stack_str<16> stack_string_t;
-    // Special value that indicates that field(grand_parent_id) was not set via push.
-    static constexpr uint64_t uninitialized_value = -1;
+
+    struct state_t {
+        uint64_t span_id;
+        uint64_t parent_id;
+        stack_string_t rpc_name;
+    };
+
     static constexpr uint64_t zero_value = 0;
 
     /**
@@ -109,9 +113,9 @@ public:
     attributes() const {
         return {
             {"trace_id", {trace_id}},
-            {"span_id", {span_id}},
-            {"parent_id", {parent_id}},
-            {"rpc_name", {rpc_name.blob}},
+            {"span_id", {state.span_id}},
+            {"parent_id", {state.parent_id}},
+            {"rpc_name", {state.rpc_name.blob}},
             {"service_name", {service_name.blob}}
         };
     }
@@ -133,11 +137,8 @@ private:
     generate_id();
 
     uint64_t trace_id;
-    uint64_t span_id;
-    uint64_t parent_id;
-    uint64_t grand_parent_id;
-    stack_string_t parent_rpc_name;
-    stack_string_t rpc_name;
+    state_t state;
+    boost::optional<state_t> previous_state;
     stack_string_t service_name;
 };
 
