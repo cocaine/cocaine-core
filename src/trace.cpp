@@ -26,13 +26,16 @@
 
 #include <random>
 
+namespace {
+    bool check_range(uint64_t val) {
+        static const uint64_t max = (1ull << 63) - 1;
+        return val <= max;
+    }
+}
 namespace cocaine {
     trace_t::trace_t() :
         trace_id(zero_value),
-        span_id(zero_value),
-        parent_id(zero_value),
-        grand_parent_id(uninitialized_value),
-        rpc_name(),
+        state({zero_value, zero_value, {}}),
         service_name()
     {}
 
@@ -42,20 +45,25 @@ namespace cocaine {
             const stack_string_t& _rpc_name,
             const stack_string_t& _service_name) :
         trace_id(_trace_id),
-        span_id(_span_id),
-        parent_id(_parent_id),
-        grand_parent_id(uninitialized_value),
-        rpc_name(_rpc_name),
+        state({_span_id, _parent_id, _rpc_name}),
+        previous_state(boost::none),
         service_name(_service_name)
     {
-        if(parent_id == uninitialized_value ||
-           span_id == uninitialized_value ||
-           trace_id == uninitialized_value ||
-           // Partially empty trace - trace_id without span_id, vise versa or parent_id without trace_id
-           ((span_id == zero_value) != (trace_id == zero_value)) ||
-           ((trace_id == zero_value) && (parent_id != zero_value))
-        ) {
-            throw cocaine::error_t("Invalid trace parameters: %llu %llu %llu", trace_id, span_id, parent_id);
+        // Check that values are in valid range.
+        if(!check_range(trace_id) || !check_range(state.span_id) || !check_range(state.parent_id)) {
+            throw cocaine::error_t("Invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
+        }
+
+        if(trace_id == zero_value) {
+            // If we create empty trace all values should be zero
+            if(state.parent_id != zero_value || state.span_id != zero_value) {
+                throw cocaine::error_t("Invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
+            }
+        } else {
+            // If trace_id is not zero - span_id should be present.
+            if(state.span_id == zero_value) {
+                throw cocaine::error_t("Invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
+            }
         }
     }
 
@@ -77,7 +85,7 @@ namespace cocaine {
 
     uint64_t
     trace_t::get_parent_id() const {
-        return parent_id;
+        return state.parent_id;
     }
 
     uint64_t
@@ -87,7 +95,7 @@ namespace cocaine {
 
     uint64_t
     trace_t::get_id() const {
-        return span_id;
+        return state.span_id;
     }
 
     bool
@@ -100,13 +108,10 @@ namespace cocaine {
         if(empty()) {
             return;
         }
-        BOOST_ASSERT_MSG(parent_id != zero_value, "Can not pop trace - parent_id is 0");
-        BOOST_ASSERT_MSG(grand_parent_id != uninitialized_value, "Can not pop trace - grand_parent_id is uninitialized");
-        span_id = parent_id;
-        parent_id = grand_parent_id;
-        rpc_name = parent_rpc_name;
-        parent_rpc_name.reset();
-        grand_parent_id = uninitialized_value;
+        BOOST_ASSERT_MSG(state.parent_id != zero_value, "Can not pop trace - parent_id is 0");
+        BOOST_ASSERT_MSG(previous_state.is_initialized(), "Can not pop trace - pushed state is none");
+        state = previous_state.get();
+        previous_state = boost::none;
     }
 
     void
@@ -114,16 +119,15 @@ namespace cocaine {
         if(empty()) {
             return;
         }
-        parent_rpc_name = rpc_name;
-        rpc_name = new_rpc_name;
-        grand_parent_id = parent_id;
-        parent_id = span_id;
-        span_id = generate_id();
+        previous_state = state;
+        state.span_id = generate_id();
+        state.parent_id = previous_state->span_id;
+        state.rpc_name = new_rpc_name;
     }
 
     bool
     trace_t::pushed() const {
-        return grand_parent_id != uninitialized_value;
+        return previous_state.is_initialized();
     }
 
     uint64_t
