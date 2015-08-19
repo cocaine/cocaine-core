@@ -1,3 +1,11 @@
+cocaine-core (0.12.3.8+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Hotfix: Extend lifetime of encoded message to prevent writable stream
+    buffer corruption.
+
+ -- Anton Matveenko <antmat@me.com>  Wed, 19 Aug 2015 21:26:50 +0300
+
 cocaine-core (0.12.3.7+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
