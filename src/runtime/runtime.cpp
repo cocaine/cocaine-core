@@ -253,13 +253,13 @@ main(int argc, char* argv[]) {
     try {
         cocaine::logging::init_t logging(config->logging.loggers);
         logger = logging.logger(backend);
-
         blackhole::attribute::set_t attributes;
         if (logging.config(backend).attributes.count("source_host")) {
             attributes.emplace_back("source_host", config->network.hostname);
         }
 
         wrapper.reset(new logging::log_t(*logger, attributes));
+        COCAINE_LOG_DEV_INIT(*wrapper);
     } catch(const std::out_of_range&) {
         std::cerr << "ERROR: unable to initialize the logging - backend does not exist." << std::endl;
         return EXIT_FAILURE;

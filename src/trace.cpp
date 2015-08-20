@@ -35,19 +35,16 @@ namespace {
 namespace cocaine {
     trace_t::trace_t() :
         trace_id(zero_value),
-        state({zero_value, zero_value, {}}),
-        service_name()
+        state({zero_value, zero_value, {}})
     {}
 
     trace_t::trace_t(uint64_t _trace_id,
             uint64_t _span_id,
             uint64_t _parent_id,
-            const stack_string_t& _rpc_name,
-            const stack_string_t& _service_name) :
+            const stack_string_t& _rpc_name) :
         trace_id(_trace_id),
         state({_span_id, _parent_id, _rpc_name}),
-        previous_state(boost::none),
-        service_name(_service_name)
+        previous_state(boost::none)
     {
         // Check that values are in valid range.
         if(!check_range(trace_id) || !check_range(state.span_id) || !check_range(state.parent_id)) {
@@ -68,9 +65,9 @@ namespace cocaine {
     }
 
     trace_t
-    trace_t::generate(const stack_string_t& _rpc_name, const stack_string_t& _service_name) {
+    trace_t::generate(const stack_string_t& _rpc_name) {
         auto t_id = generate_id();
-        return trace_t(t_id, t_id, zero_value, _rpc_name, _service_name);
+        return trace_t(t_id, t_id, zero_value, _rpc_name);
     }
 
 
@@ -137,6 +134,26 @@ namespace cocaine {
         // Stupid zipkin-web can not handle unsigned ids. So we limit to signed diapason.
         static std::uniform_int_distribution<uint64_t> dis(1, std::numeric_limits<uint64_t>::max()/2-1);
         return dis(gen);
+    }
+
+    std::string
+    trace_t::to_hex_string(uint64_t val) {
+        /* This solution do not fill preceding 0's
+        std::ostringstream oss;
+        oss << std::hex << val;
+        return oss.str();
+        */
+
+        std::string ret;
+        ret.resize(16);
+        static char digits[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b',
+            'c', 'd', 'e', 'f' };
+        for(size_t i = 0; i < 16; i++) {
+            size_t idx = (val & (0xful << (60 - i*4))) >> (60 - i*4);
+            BOOST_ASSERT(idx < sizeof(digits));
+            ret[i] = digits[idx];
+        }
+        return std::move(ret);
     }
 
     trace_t::restore_scope_t::restore_scope_t(const boost::optional<trace_t>& new_trace) :

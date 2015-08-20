@@ -14,6 +14,7 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 OPTION(COCAINE_ALLOW_TESTS "Build Tests" OFF)
 OPTION(COCAINE_ALLOW_BENCHMARKS "Build benchmarking tools" OFF)
+OPTION(COCAINE_DEBUG OFF)
 
 # Import our CMake modules
 INCLUDE(cmake/locate_library.cmake)

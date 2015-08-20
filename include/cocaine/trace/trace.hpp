@@ -56,15 +56,14 @@ public:
     trace_t(uint64_t _trace_id,
             uint64_t _span_id,
             uint64_t _parent_id,
-            const stack_string_t& _rpc_name,
-            const stack_string_t& _service_name);
+            const stack_string_t& _rpc_name);
 
     /**
      * Generate a new trace with specified service and rpc name
      */
     static
     trace_t
-    generate(const stack_string_t& _rpc_name, const stack_string_t& _service_name);
+    generate(const stack_string_t& _rpc_name);
 
     /**
      * Return current trace.
@@ -110,13 +109,23 @@ public:
 
     template<class AttributeSet>
     AttributeSet
+    formatted_attributes() const {
+        return {
+            {"trace_id", {to_hex_string(trace_id)}},
+            {"span_id", {to_hex_string(state.span_id)}},
+            {"parent_id", {to_hex_string(state.parent_id)}},
+            {"rpc_name", {state.rpc_name.blob}}
+        };
+    }
+
+    template<class AttributeSet>
+    AttributeSet
     attributes() const {
         return {
             {"trace_id", {trace_id}},
             {"span_id", {state.span_id}},
             {"parent_id", {state.parent_id}},
-            {"rpc_name", {state.rpc_name.blob}},
-            {"service_name", {service_name.blob}}
+            {"rpc_name", {state.rpc_name.blob}}
         };
     }
 
@@ -136,10 +145,13 @@ private:
     uint64_t
     generate_id();
 
+    static
+    std::string
+    to_hex_string(uint64_t val);
+
     uint64_t trace_id;
     state_t state;
     boost::optional<state_t> previous_state;
-    stack_string_t service_name;
 };
 
 class trace_t::restore_scope_t {

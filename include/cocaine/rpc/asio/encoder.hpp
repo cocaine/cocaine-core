@@ -148,7 +148,7 @@ struct encoder_t {
         hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer, encoder.hpack_context, hpack::header::create_data(trace_id));
         hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer, encoder.hpack_context, hpack::header::create_data(span_id));
         hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, encoder.hpack_context, hpack::header::create_data(parent_id));
-
+        COCAINE_LOG_DEV("MESSAGE TID: %llu", trace_id);
         return message;
     }
 

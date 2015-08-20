@@ -96,7 +96,6 @@ enum priorities: int {
 
 template<class Wrapped, class AttributeFetcher>
 class dynamic_wrapper_t;
-
 struct trace_attribute_fetcher_t;
 
 typedef blackhole::verbose_logger_t<logging::priorities> logger_t;
