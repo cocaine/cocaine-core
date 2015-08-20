@@ -27,6 +27,12 @@
 #include <boost/optional.hpp>
 
 namespace cocaine {
+
+namespace trace {
+std::string
+to_hex_string(uint64_t val);
+}
+
 class trace_t {
 public:
     template <class F>
@@ -35,7 +41,7 @@ public:
     class restore_scope_t;
     class push_scope_t;
 
-    typedef stack_str<16> stack_string_t;
+    typedef stack_string<16> stack_string_t;
 
     struct state_t {
         uint64_t span_id;
@@ -51,7 +57,7 @@ public:
     trace_t();
 
     /**
-     * Construct trace wih specified tuple of ids and service and rpc name
+     * Construct trace with specified tuple of ids and service and rpc name
      */
     trace_t(uint64_t _trace_id,
             uint64_t _span_id,
@@ -111,9 +117,9 @@ public:
     AttributeSet
     formatted_attributes() const {
         return {
-            {"trace_id", {to_hex_string(trace_id)}},
-            {"span_id", {to_hex_string(state.span_id)}},
-            {"parent_id", {to_hex_string(state.parent_id)}},
+            {"trace_id", {trace::to_hex_string(trace_id)}},
+            {"span_id", {trace::to_hex_string(state.span_id)}},
+            {"parent_id", {trace::to_hex_string(state.parent_id)}},
             {"rpc_name", {state.rpc_name.blob}}
         };
     }
@@ -144,10 +150,6 @@ private:
     static
     uint64_t
     generate_id();
-
-    static
-    std::string
-    to_hex_string(uint64_t val);
 
     uint64_t trace_id;
     state_t state;

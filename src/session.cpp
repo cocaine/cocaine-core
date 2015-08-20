@@ -216,8 +216,7 @@ session_t::handle(const decoder_t::message_type& message) {
                     trace_header->get_value().convert<uint64_t>(),
                     span_header->get_value().convert<uint64_t>(),
                     parent_header->get_value().convert<uint64_t>(),
-                    std::get<0>(lb->second->dispatch->root().at(message.type())),
-                    name()
+                    std::get<0>(lb->second->dispatch->root().at(message.type()))
                 );
             }
         }

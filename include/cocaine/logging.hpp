@@ -22,23 +22,11 @@
 #define COCAINE_LOGGING_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/trace/logger/blackhole.hpp"
-
-#include "cocaine/trace/logger/blackhole.hpp"
 
 #include <blackhole/blackhole.hpp>
 #include <blackhole/keyword.hpp>
 #include <blackhole/logger/wrapper.hpp>
-#include <cassert>
-#ifdef COCAINE_DEBUG
-    cocaine::logging::log_t*&
-    get_cocaine_dev_logger__();
-    #define COCAINE_LOG_DEV_INIT(log) get_cocaine_dev_logger__() = &log;
-    #define COCAINE_LOG_DEV(...) COCAINE_LOG_INFO(*(get_cocaine_dev_logger__()), __VA_ARGS__)
-#else
-    #define COCAINE_LOG_DEV_INIT(log) ((void)0)
-    #define COCAINE_LOG_DEV(...) ((void)0)
-#endif
+
 #define COCAINE_LOG(_log_, _level_, ...) \
     if(auto _record_ = ::cocaine::logging::detail::logger_ptr(_log_)->open_record(_level_)) \
         ::blackhole::aux::logger::make_pusher(*(::cocaine::logging::detail::logger_ptr(_log_)), _record_, __VA_ARGS__)

@@ -260,7 +260,6 @@ main(int argc, char* argv[]) {
         }
 
         wrapper.reset(new logging::log_t(*logger, attributes));
-        COCAINE_LOG_DEV_INIT(*wrapper);
     } catch(const std::out_of_range&) {
         std::cerr << "ERROR: unable to initialize the logging - backend does not exist." << std::endl;
         return EXIT_FAILURE;
