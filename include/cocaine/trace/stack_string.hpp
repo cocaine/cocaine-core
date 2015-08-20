@@ -27,30 +27,30 @@
 namespace cocaine {
 
 template<size_t N>
-struct stack_str {
+struct stack_string {
     static constexpr size_t max_size = N;
     char blob[N+1];
     size_t size;
 
-    stack_str(const char* lit) {
+    stack_string(const char* lit) {
         size = std::min(N, strlen(lit));
         memcpy(blob, lit, size);
         blob[size] = '\0';
     }
 
-    stack_str(const char* lit, size_t sz) {
+    stack_string(const char* lit, size_t sz) {
         size = std::min(N, sz);
         memcpy(blob, lit, size);
         blob[size] = '\0';
     }
 
-    stack_str(const std::string& source) {
+    stack_string(const std::string& source) {
         size = std::min(N, source.size());
         memcpy(blob, source.c_str(), size);
         blob[size] = '\0';
     }
 
-    stack_str() :
+    stack_string() :
         blob(),
         size(0)
     {}
