@@ -138,12 +138,11 @@ namespace cocaine {
 
     std::string
     trace_t::to_hex_string(uint64_t val) {
-        /* This solution do not fill preceding 0's
         std::ostringstream oss;
         oss << std::hex << val;
         return oss.str();
-        */
 
+		/* Just in case we need preceeding zeros for hex numbers.
         std::string ret;
         ret.resize(16);
         static char digits[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b',
@@ -154,6 +153,7 @@ namespace cocaine {
             ret[i] = digits[idx];
         }
         return std::move(ret);
+		*/
     }
 
     trace_t::restore_scope_t::restore_scope_t(const boost::optional<trace_t>& new_trace) :
