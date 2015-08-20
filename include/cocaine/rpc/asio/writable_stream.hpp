@@ -22,6 +22,7 @@
 #define COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 
 #include "cocaine/errors.hpp"
+#include "cocaine/logging.hpp"
 
 #include <functional>
 
@@ -65,6 +66,7 @@ public:
     write(const message_type& message, handler_type handle) {
         size_t bytes_written = 0;
 
+        COCAINE_LOG_DEV("Writing message. %llu", trace_t::current().get_id());
         const auto encoded = encoder.encode(message);
 
         if(m_state == states::idle) {

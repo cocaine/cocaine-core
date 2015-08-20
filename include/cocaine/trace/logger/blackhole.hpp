@@ -31,7 +31,7 @@ struct trace_attribute_fetcher_t {
     blackhole::attribute::set_t
     operator()() const {
         if(!trace_t::current().empty()) {
-            return trace_t::current().attributes<blackhole::attribute::set_t>();
+            return trace_t::current().formatted_attributes<blackhole::attribute::set_t>();
         }
         return blackhole::attribute::set_t();
     }
