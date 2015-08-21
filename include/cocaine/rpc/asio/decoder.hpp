@@ -64,6 +64,11 @@ struct decoded_message_t {
         return it == metadata.end() ? boost::none : boost::make_optional(*it);
     }
 
+    void
+    clear() {
+        metadata.clear();
+    }
+
 private:
     // These objects keep references to message buffer in the Decoder.
     msgpack::object object;

@@ -34,19 +34,25 @@ class basic_upstream_t {
     const uint64_t channel_id;
 
 public:
-    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_):
+    /* We only pass trace to client-side upstream, because we want to group all client-side sends under one trace_id */
+    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_, boost::optional<trace_t> client_trace_):
         session(session_),
-        channel_id(channel_id_)
+        channel_id(channel_id_),
+        client_trace(client_trace_)
     { }
 
     template<class Event, class... Args>
     void
     send(Args&&... args);
+
+    /* none_t if upstream belongs to server side */
+    boost::optional<trace_t> client_trace;
 };
 
 template<class Event, class... Args>
 void
 basic_upstream_t::send(Args&&... args) {
+    trace_t::restore_scope_t scope(client_trace);
     session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
 }
 

@@ -22,6 +22,8 @@
 #ifndef COCAINE_HPACK_HEADER_H
 #define COCAINE_HPACK_HEADER_H
 
+#include <stddef.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

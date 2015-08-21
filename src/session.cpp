@@ -87,6 +87,7 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
             // NOTE: In case the underlying slot has miserably failed to handle its exceptions, the
             // client will be disconnected to prevent any further damage to the service and himself.
             session->handle(message);
+            message.clear();
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: [%d] %s", e.code().value(),
                 e.code().message());
@@ -127,7 +128,15 @@ private:
 
 void
 session_t::push_action_t::operator()(const std::shared_ptr<transport_type> ptr) {
-    ptr->writer->write(message, std::bind(&push_action_t::finalize,
+    if(!trace_t::current().empty()) {
+        if(trace_t::current().pushed()) {
+            COCAINE_LOG_INFO(session->log, "cs");
+        } else {
+            COCAINE_LOG_INFO(session->log, "ss");
+        }
+    }
+
+    ptr->writer->write(message, trace_t::bind(&push_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -135,6 +144,7 @@ session_t::push_action_t::operator()(const std::shared_ptr<transport_type> ptr) 
 
 void
 session_t::push_action_t::finalize(const std::error_code& ec) {
+    COCAINE_LOG_ZIPKIN(session->log, "after send");
     if(ec.value() == 0) return;
 
     if(ec != asio::error::eof) {
@@ -172,6 +182,7 @@ session_t::session_t(std::unique_ptr<logging::log_t> log_, std::unique_ptr<trans
 void
 session_t::handle(const decoder_t::message_type& message) {
     const channel_map_t::key_type channel_id = message.span();
+    boost::optional<trace_t> incoming_trace;
 
     const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {
         channel_map_t::const_iterator lb, ub;
@@ -188,10 +199,26 @@ session_t::handle(const decoder_t::message_type& message) {
 
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
                 prototype,
-                std::make_shared<basic_upstream_t>(shared_from_this(), channel_id)
+                // Do not store trace if we handling server side.
+                std::make_shared<basic_upstream_t>(shared_from_this(), channel_id, boost::none)
             )});
 
             max_channel_id = channel_id;
+        }
+        if(lb->second->upstream->client_trace) {
+            incoming_trace = lb->second->upstream->client_trace;
+        } else {
+            auto trace_header = message.meta<hpack::headers::trace_id<>>();
+            auto span_header = message.meta<hpack::headers::span_id<>>();
+            auto parent_header = message.meta<hpack::headers::parent_id<>>();
+            if(trace_header && span_header && parent_header) {
+                incoming_trace = trace_t(
+                    trace_header->get_value().convert<uint64_t>(),
+                    span_header->get_value().convert<uint64_t>(),
+                    parent_header->get_value().convert<uint64_t>(),
+                    std::get<0>(lb->second->dispatch->root().at(message.type()))
+                );
+            }
         }
 
         // NOTE: The virtual channel pointer is copied here to avoid data races.
@@ -202,6 +229,8 @@ session_t::handle(const decoder_t::message_type& message) {
         throw std::system_error(error::unbound_dispatch);
     }
 
+    trace_t::restore_scope_t trace_scope(incoming_trace);
+
     COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
         message.type(),
         channel->dispatch->root().count(message.type()) ?
@@ -209,6 +238,15 @@ session_t::handle(const decoder_t::message_type& message) {
           : "<undefined>",
         channel_id,
         channel->dispatch->name());
+
+    if(!trace_t::current().empty()) {
+        if(trace_t::current().pushed()) {
+            COCAINE_LOG_INFO(log, "cr");
+            trace_t::current().pop();
+        } else {
+            COCAINE_LOG_INFO(log, "sr");
+        }
+    }
 
     if((channel->dispatch = channel->dispatch->process(message, channel->upstream)
         .get_value_or(channel->dispatch)) == nullptr)
@@ -246,7 +284,9 @@ upstream_ptr_t
 session_t::fork(const dispatch_ptr_t& dispatch) {
     return channels.apply([&](channel_map_t& mapping) -> upstream_ptr_t {
         const auto channel_id = ++max_channel_id;
-        const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
+        auto trace = trace_t::current();
+        trace.push(dispatch->name());
+        const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id, trace);
 
         COCAINE_LOG_DEBUG(log, "forking new channel %d, dispatch: '%s'", channel_id,
             dispatch ? dispatch->name() : "<none>");
@@ -288,7 +328,7 @@ session_t::push(encoder_t::message_type&& message) {
     if(const auto ptr = *transport.synchronize()) {
 #endif
         // Use dispatch() instead of a direct call for thread safety.
-        ptr->socket->get_io_service().dispatch(std::bind(&push_action_t::operator(),
+        ptr->socket->get_io_service().dispatch(trace_t::bind(&push_action_t::operator(),
             std::make_shared<push_action_t>(std::move(message), shared_from_this()),
             ptr
         ));

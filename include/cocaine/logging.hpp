@@ -23,6 +23,8 @@
 
 #include "cocaine/common.hpp"
 
+#include "cocaine/trace/logger/blackhole.hpp"
+
 #include <blackhole/blackhole.hpp>
 #include <blackhole/keyword.hpp>
 #include <blackhole/logger/wrapper.hpp>
@@ -42,6 +44,9 @@
 
 #define COCAINE_LOG_ERROR(_log_, ...) \
     COCAINE_LOG(_log_, ::cocaine::logging::error, __VA_ARGS__)
+
+#define COCAINE_LOG_ZIPKIN(_log_, ...) \
+    if(!trace_t::current().empty()) COCAINE_LOG_INFO(_log_, __VA_ARGS__)
 
 namespace cocaine { namespace logging {
 
