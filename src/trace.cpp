@@ -28,11 +28,18 @@
 #include <sstream>
 
 namespace {
-    bool check_range(uint64_t val) {
-        static const uint64_t max = (1ull << 63) - 1;
-        return val <= max;
-    }
+
+inline
+bool
+check_range(std::uint64_t val) noexcept {
+    // We limit incoming traces to signed positive range, because Zipkin accepts it that way.
+    static const std::uint64_t max = std::numeric_limits<std::int64_t>::max();
+
+    return val <= max;
 }
+
+} // namespace
+
 namespace cocaine {
 
 namespace trace {
@@ -42,7 +49,8 @@ to_hex_string(uint64_t val) {
     oss << std::hex << val;
     return oss.str();
 }
-}
+
+} // namespace cocaine
 
 trace_t::trace_t() :
     trace_id(zero_value),
@@ -81,13 +89,13 @@ trace_t::generate(const stack_string_t& _rpc_name) {
     return trace_t(t_id, t_id, zero_value, _rpc_name);
 }
 
-
 trace_t&
 trace_t::current() {
     static boost::thread_specific_ptr<trace_t> t;
     if(t.get() == nullptr) {
         t.reset(new trace_t());
     }
+
     return *t.get();
 }
 
@@ -116,6 +124,7 @@ trace_t::pop() {
     if(empty()) {
         return;
     }
+
     BOOST_ASSERT_MSG(state.parent_id != zero_value, "Can not pop trace - parent_id is 0");
     BOOST_ASSERT_MSG(previous_state.is_initialized(), "Can not pop trace - pushed state is none");
     state = previous_state.get();
@@ -127,6 +136,7 @@ trace_t::push(const stack_string_t& new_rpc_name) {
     if(empty()) {
         return;
     }
+
     previous_state = state;
     state.span_id = generate_id();
     state.parent_id = previous_state->span_id;
@@ -143,7 +153,7 @@ trace_t::generate_id() {
     static std::random_device rd;
     static std::mt19937 gen(rd());
     // Stupid zipkin-web can not handle unsigned ids. So we limit to signed diapason.
-    static std::uniform_int_distribution<uint64_t> dis(1, std::numeric_limits<uint64_t>::max()/2-1);
+    static std::uniform_int_distribution<uint64_t> dis(1, std::numeric_limits<uint64_t>::max() / 2 - 1);
     return dis(gen);
 }
 
@@ -174,5 +184,5 @@ trace_t::push_scope_t::~push_scope_t() {
         trace_t::current().pop();
     }
 }
-}
 
+} // namespace cocaine

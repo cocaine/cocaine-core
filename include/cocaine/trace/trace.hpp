@@ -210,4 +210,3 @@ trace_t::mem_fn(Method m) -> callable_wrapper_t<decltype(std::mem_fn(std::forwar
 }
 
 #endif // COCAINE_TRACE_TRACE_HPP
-
