@@ -78,11 +78,7 @@ public:
             }
         }
 
-        m_messages.emplace_back(
-            encoded.data() + bytes_written,
-            encoded.size() - bytes_written
-        );
-
+        m_messages.emplace_back(encoded.data() + bytes_written, encoded.size() - bytes_written);
         m_handlers.emplace_back(handle);
 
         if(m_state == states::flushing) {
