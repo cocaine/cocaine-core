@@ -42,7 +42,7 @@ trace_t::trace_t(uint64_t trace_id_,
     state({span_id_, parent_id_, rpc_name_}),
     previous_state(boost::none)
 {
-    auto check_range = [](uint64_t value) {
+    auto check_range = [](uint64_t value) -> bool {
         static const uint64_t max = (1ull << 63) - 1;
         return value <= max;
     };
