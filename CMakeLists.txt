@@ -14,6 +14,7 @@ ENDIF()
 
 OPTION(COCAINE_ALLOW_TESTS "Build Tests" OFF)
 OPTION(COCAINE_ALLOW_BENCHMARKS "Build Benchmarking Tools" OFF)
+OPTION(COCAINE_DEBUG OFF)
 
 # Import our CMake modules
 INCLUDE(cmake/locate_library.cmake)
@@ -93,6 +94,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/storage.cpp
     src/session.cpp
     src/storage/files.cpp
+    src/trace.cpp
     src/unique_id.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-core

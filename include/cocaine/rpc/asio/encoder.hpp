@@ -28,6 +28,8 @@
 
 #include "cocaine/rpc/protocol.hpp"
 
+#include "cocaine/trace/trace.hpp"
+
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
 
@@ -101,7 +103,7 @@ struct unbound_message_t {
     // Partially applied message encoding function.
     const function_type bind;
 
-    unbound_message_t(const function_type& bind_): bind(bind_) { }
+    unbound_message_t(function_type&& bind_): bind(std::move(bind_)) { }
 };
 
 } // namespace aux
@@ -117,7 +119,7 @@ struct encoder_t {
     template<class Event, class... Args>
     static inline
     aux::encoded_message_t
-    tether(encoder_t& COCAINE_UNUSED_(encoder), uint64_t channel_id, Args&... args) {
+    tether(encoder_t& encoder, uint64_t channel_id, Args&... args) {
         aux::encoded_message_t message;
 
         msgpack::packer<aux::encoded_buffers_t> packer(message.buffer);
@@ -138,9 +140,13 @@ struct encoder_t {
 
         packer.pack_array(3);
 
-        hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer);
-        hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer);
-        hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer);
+        uint64_t trace_id  = trace_t::current().get_trace_id();
+        uint64_t span_id   = trace_t::current().get_id();
+        uint64_t parent_id = trace_t::current().get_parent_id();
+
+        hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer, encoder.hpack_context, hpack::header::create_data(trace_id));
+        hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer, encoder.hpack_context, hpack::header::create_data(span_id));
+        hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, encoder.hpack_context, hpack::header::create_data(parent_id));
 
         return message;
     }

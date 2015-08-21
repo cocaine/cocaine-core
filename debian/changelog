@@ -1,3 +1,18 @@
+cocaine-core (0.12.3.5) unstable; urgency=low
+
+  * Aggregated changes from 3hren/nightly:
+  * Zipkin: first blood.
+  * Zipkin: second blood.
+  * Bug fix: set FD_CLOEXEC flag to prevent leakage.
+  * Bug fix: fixed SIGSEGV in session when tried to obtain a dispatch name
+    from an incoming remote client.
+  * Bug fix: forbid empty groups. Both empty groups and with zero total
+    weights are invalid now. Both of them make no sense from the routing point.
+  * Bug fix: fixed string literals binding
+  * Zipkin: fixes.
+
+ -- Anton Matveenko <antmat@me.com> Mon, 10 Aug 2015 17:22:30 +0300
+
 cocaine-core (0.12.3.1) unstable; urgency=low
 
   * Release 12.3.
