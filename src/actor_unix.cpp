@@ -101,9 +101,10 @@ unix_actor_t::run() {
         try {
             ptr = std::make_unique<protocol_type::acceptor>(*m_asio, this->endpoint);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s - %s",
                 e.code().value(),
-                e.code().message());
+                e.code().message(),
+                e.what());
             throw;
         }
 

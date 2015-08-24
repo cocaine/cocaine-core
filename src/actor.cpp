@@ -169,8 +169,8 @@ actor_t::endpoints() const {
             flags
         ));
     } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: [%d] %s", e.code().value(),
-            e.code().message());
+        COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: [%d] %s - %s", e.code().value(),
+            e.code().message(), e.what());
         return std::vector<tcp::endpoint>();
     }
 
@@ -205,8 +205,8 @@ actor_t::run() {
                 m_context.mapper.assign(m_prototype->name())
             });
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
-                e.code().value(), e.code().message());
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s - %s",
+                e.code().value(), e.code().message(), e.what());
             throw;
         }
 
