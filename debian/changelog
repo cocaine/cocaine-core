@@ -1,3 +1,59 @@
+cocaine-core (0.12.3.10+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Tracing: remove unused parameters, move code to *.cpp as far as CNF
+    links with cocaine-core
+  * Tracing: removed `service_name` attribute.
+  * Tracing: using hex trace param without preceding zeroes.
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 20 Aug 2015 18:51:29 +0300
+
+cocaine-core (0.12.3.9+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Config: dropped Node service from default config.
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 20 Aug 2015 12:33:17 +0300
+
+cocaine-core (0.12.3.8+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Hotfix: Extend lifetime of encoded message to prevent writable stream
+    buffer corruption.
+
+ -- Anton Matveenko <antmat@me.com>  Wed, 19 Aug 2015 21:26:50 +0300
+
+cocaine-core (0.12.3.7+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Hotfix: clear msgpack zone every decode iteration.
+    We have to clear msgpack zone every decoding iteration to prevent memory
+    leaking for objects structure, cause they have no way to notify about
+    self destruction. Hope someday we migrate to v1.* and everything will be
+    fine automatically.
+    It's also recommended to rebuild all your dependencies, because the
+    changed file is a part of public API and implicitly marked as inline,
+    which may result in unexpected behavior.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 14 Aug 2015 09:45:50 +0300
+
+cocaine-core (0.12.3.6+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Logging: no more trace.
+    Accidentally we have broken an API, so we have to rollback here to prevent
+    further damage.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 14 Aug 2015 09:31:31 +0300
+
+cocaine-core (0.12.3.5+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Bug fix: reset the signals set before waiting.
+    This saves us from waiting for random signals from memory garbage.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 12 Aug 2015 14:43:31 +0300
+
 cocaine-core (0.12.3.5) unstable; urgency=low
 
   * Aggregated changes from 3hren/nightly:

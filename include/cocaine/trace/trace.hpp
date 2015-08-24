@@ -27,8 +27,7 @@
 
 namespace cocaine {
 
-class trace_t
-{
+class trace_t {
 public:
     template<class F>
     class callable_wrapper;
@@ -209,4 +208,3 @@ trace_t::mem_fn(Method m) -> callable_wrapper<decltype(std::mem_fn(std::forward<
 } // namespace cocaine
 
 #endif // COCAINE_TRACE_TRACE_HPP
-
