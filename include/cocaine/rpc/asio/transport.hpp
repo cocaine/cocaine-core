@@ -46,8 +46,8 @@ struct transport {
     }
 
     // Conversion constructor between transports with compatible underlying protocols.
-    template<class OtherProtocol>
-    transport(transport<OtherProtocol>&& other):
+    template<class OtherProtocol, class OtherEncoder, class OtherDecoder>
+    transport(transport<OtherProtocol, OtherEncoder, OtherDecoder>&& other):
         socket(new socket_type(std::move(*other.socket))),
         reader(new readable_stream<protocol_type, decoder_type>(socket)),
         writer(new writable_stream<protocol_type, encoder_type>(socket))
