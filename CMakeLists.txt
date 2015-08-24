@@ -2,18 +2,18 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
 PROJECT(COCAINE-CORE)
 
-if(APPLE)
-    set(CMAKE_MACOSX_RPATH ON)
-endif()
-
 SET(COCAINE_VERSION_MAJOR   0)
 SET(COCAINE_VERSION_MINOR   12)
 SET(COCAINE_VERSION_RELEASE 3)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
+IF(APPLE)
+    SET(CMAKE_MACOSX_RPATH ON)
+ENDIF()
+
 OPTION(COCAINE_ALLOW_TESTS "Build Tests" OFF)
-OPTION(COCAINE_ALLOW_BENCHMARKS "Build benchmarking tools" OFF)
+OPTION(COCAINE_ALLOW_BENCHMARKS "Build Benchmarking Tools" OFF)
 OPTION(COCAINE_DEBUG OFF)
 
 # Import our CMake modules
@@ -47,15 +47,15 @@ CONFIGURE_FILE(
 
 INCLUDE_DIRECTORIES(
     ${Boost_INCLUDE_DIRS}
-    ${LIBCGROUP_INCLUDE_DIRS}
-    ${OPENSSL_INCLUDE_DIR}
     ${LIBMHASH_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
-    ${LIBARCHIVE_INCLUDE_DIRS}
     ${LIBLTDL_INCLUDE_DIRS})
 
+# If not included as SYSTEM, these libs would emit 100500 warnings.
 INCLUDE_DIRECTORIES(BEFORE
-    SYSTEM ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
+    SYSTEM ${PROJECT_SOURCE_DIR}/foreign/backward-cpp)
+
+INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/blackhole/src
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include
     ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
@@ -63,10 +63,8 @@ INCLUDE_DIRECTORIES(BEFORE
 
 LINK_DIRECTORIES(
     ${Boost_LIBRARY_DIRS}
-    ${LIBCGROUP_LIBRARY_DIRS}
     ${LIBMHASH_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
-    ${LIBARCHIVE_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
 
 ADD_LIBRARY(cocaine-core SHARED
@@ -101,7 +99,6 @@ ADD_LIBRARY(cocaine-core SHARED
 
 TARGET_LINK_LIBRARIES(cocaine-core
     ${Boost_LIBRARIES}
-    ${LIBCGROUP_LIBRARY}
     ltdl
     mhash
     msgpack
@@ -122,18 +119,18 @@ TARGET_LINK_LIBRARIES(cocaine-runtime
     cocaine-core)
 
 # Try and enable C++11.
-add_cxx_compiler_flag(-std=c++11)
+ADD_CXX_COMPILER_FLAG(-std=c++11)
 IF(NOT HAVE_CXX_FLAG_STD_CXX11)
-  add_cxx_compiler_flag(-std=c++0x)
+  ADD_CXX_COMPILER_FLAG(-std=c++0x)
 ENDIF()
 
 # Turn compiler warnings.
-add_cxx_compiler_flag(-Wall)
-add_cxx_compiler_flag(-Wextra)
-add_cxx_compiler_flag(-Werror RELEASE)
-add_cxx_compiler_flag(-Woverloaded-virtual)
-add_cxx_compiler_flag(-pedantic)
-add_cxx_compiler_flag(-pedantic-errors)
+ADD_CXX_COMPILER_FLAG(-Wall)
+ADD_CXX_COMPILER_FLAG(-Wextra)
+ADD_CXX_COMPILER_FLAG(-Werror RELEASE)
+ADD_CXX_COMPILER_FLAG(-Woverloaded-virtual)
+ADD_CXX_COMPILER_FLAG(-pedantic)
+ADD_CXX_COMPILER_FLAG(-pedantic-errors)
 
 IF(COCAINE_ALLOW_TESTS OR COCAINE_ALLOW_BENCHMARKS)
     add_custom_target(test

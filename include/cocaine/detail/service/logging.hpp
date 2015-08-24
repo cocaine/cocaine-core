@@ -44,10 +44,11 @@ public:
 
 private:
     void
-    on_emit(logging::priorities level,
-            std::string source,
-            std::string message,
+    on_emit(logging::priorities level, std::string source, std::string message,
             blackhole::attribute::set_t attributes);
+
+    auto
+    on_verbosity() const -> logging::priorities;
 };
 
 }} // namespace cocaine::service

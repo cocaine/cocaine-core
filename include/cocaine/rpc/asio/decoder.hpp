@@ -89,7 +89,7 @@ struct decoder_t {
     decode(const char* data, size_t size, message_type& message, std::error_code& ec) {
         size_t offset = 0;
         // NOTE: We have to clear msgpack zone every decoding iteration to prevent memory leaking
-        // for objects structure, cause they have no way to notify about self destruction. Hope
+        // for objects structure, because they have no way to notify about self-destruction. Hope
         // someday we migrate to v1.* and everything will be fine automatically.
         zone.clear();
 

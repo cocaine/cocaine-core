@@ -26,7 +26,6 @@
 #include <blackhole/logger/wrapper.hpp>
 
 namespace cocaine { namespace logging {
-//class blackhole_logger :public cocaine::logging::log_t
 
 struct trace_attribute_fetcher_t {
     blackhole::attribute::set_t
@@ -34,38 +33,41 @@ struct trace_attribute_fetcher_t {
         if(!trace_t::current().empty()) {
             return trace_t::current().formatted_attributes<blackhole::attribute::set_t>();
         }
+
         return blackhole::attribute::set_t();
     }
 };
 
 template<class Wrapped, class AttributeFetcher>
-class dynamic_wrapper_t:
-public blackhole::wrapper_base_t<Wrapped>
+class dynamic_wrapper:
+    public blackhole::wrapper_base_t<Wrapped>
 {
-    static_assert(std::is_same<
-                  typename blackhole::unwrap<Wrapped>::logger_type,
-                  blackhole::verbose_logger_t<typename blackhole::unwrap<Wrapped>::logger_type::level_type>
-              >::value, "Invalid logger type for dynamic wrapper");
+    static_assert(
+        std::is_same<
+            typename blackhole::unwrap<Wrapped>::logger_type,
+            blackhole::verbose_logger_t<typename blackhole::unwrap<Wrapped>::logger_type::level_type>
+        >::value, "invalid logger type for dynamic wrapper");
+
     typedef blackhole::wrapper_base_t<Wrapped> base_type;
 
 public:
     typedef typename base_type::underlying_type underlying_type;
 
 public:
-    dynamic_wrapper_t(underlying_type& wrapped, blackhole::attribute::set_t attributes) :
+    dynamic_wrapper(underlying_type& wrapped, blackhole::attribute::set_t attributes):
         base_type(wrapped, std::move(attributes))
     {}
 
-    dynamic_wrapper_t(const dynamic_wrapper_t& wrapper, const blackhole::attribute::set_t& attributes) :
+    dynamic_wrapper(const dynamic_wrapper& wrapper, const blackhole::attribute::set_t& attributes):
         base_type(wrapper, attributes)
     {}
 
-    dynamic_wrapper_t(dynamic_wrapper_t&& other) :
+    dynamic_wrapper(dynamic_wrapper&& other):
         base_type(std::move(other))
     {}
 
-    dynamic_wrapper_t& operator=(dynamic_wrapper_t&& other) {
-        base_type::operator =(std::move(other));
+    dynamic_wrapper& operator=(dynamic_wrapper&& other) {
+        base_type::operator=(std::move(other));
         return *this;
     }
 

@@ -22,17 +22,18 @@
 
 #include "cocaine/logging.hpp"
 
+#include "cocaine/rpc/asio/transport.hpp"
+
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
 #include <asio/ip/tcp.hpp>
-#include <asio/generic/stream_protocol.hpp>
 #include <asio/local/stream_protocol.hpp>
-
-using namespace asio;
 
 using namespace cocaine;
 using namespace cocaine::io;
+
+using namespace asio;
 
 // Session internals
 
@@ -50,7 +51,7 @@ public:
     { }
 
     void
-    operator()(const std::shared_ptr<channel<protocol_type>> ptr);
+    operator()(const std::shared_ptr<transport_type> ptr);
 
 private:
     void
@@ -58,8 +59,8 @@ private:
 };
 
 void
-session_t::pull_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
-    ptr->reader->read(message, trace_t::bind(&pull_action_t::finalize,
+session_t::pull_action_t::operator()(const std::shared_ptr<transport_type> ptr) {
+    ptr->reader->read(message, std::bind(&pull_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -96,6 +97,7 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
             return session->detach(error::uncaught_error);
         }
 
+        // Cycle the transport back into the message pump.
         operator()(std::move(ptr));
     } else {
         COCAINE_LOG_DEBUG(session->log, "ignoring invocation due to detached session");
@@ -117,7 +119,7 @@ public:
     { }
 
     void
-    operator()(const std::shared_ptr<channel<protocol_type>> ptr);
+    operator()(const std::shared_ptr<transport_type> ptr);
 
 private:
     void
@@ -125,7 +127,7 @@ private:
 };
 
 void
-session_t::push_action_t::operator()(const std::shared_ptr<channel<protocol_type>> ptr) {
+session_t::push_action_t::operator()(const std::shared_ptr<transport_type> ptr) {
     if(!trace_t::current().empty()) {
         if(trace_t::current().pushed()) {
             COCAINE_LOG_INFO(session->log, "cs");
@@ -168,11 +170,9 @@ public:
 
 // Session
 
-session_t::session_t(std::unique_ptr<logging::log_t> log_,
-                     std::unique_ptr<io::channel<protocol_type>> transport_,
-                     const dispatch_ptr_t& prototype_):
+session_t::session_t(std::unique_ptr<logging::log_t> log_, std::unique_ptr<transport_type> transport_, const dispatch_ptr_t& prototype_):
     log(std::move(log_)),
-    transport(std::shared_ptr<channel<protocol_type>>(std::move(transport_))),
+    transport(std::shared_ptr<transport_type>(std::move(transport_))),
     prototype(prototype_),
     max_channel_id(0)
 { }
@@ -232,7 +232,11 @@ session_t::handle(const decoder_t::message_type& message) {
     trace_t::restore_scope_t trace_scope(incoming_trace);
 
     COCAINE_LOG_DEBUG(log, "invocation type %llu: '%s' in channel %llu, dispatch: '%s'",
-        message.type(), std::get<0>(channel->dispatch->root().at(message.type())), channel_id,
+        message.type(),
+        channel->dispatch->root().count(message.type()) ?
+            std::get<0>(channel->dispatch->root().at(message.type()))
+          : "<undefined>",
+        channel_id,
         channel->dispatch->name());
 
     if(!trace_t::current().empty()) {
@@ -252,6 +256,28 @@ session_t::handle(const decoder_t::message_type& message) {
         // session::detach(), which was called during the dispatch::process().
         if(!channel.unique()) revoke(channel_id);
     }
+}
+
+void
+session_t::revoke(uint64_t channel_id) {
+    channels.apply([&](channel_map_t& mapping) {
+        auto it = mapping.find(channel_id);
+
+        if(it == mapping.end()) {
+            COCAINE_LOG_WARNING(log, "ignoring revoke request for channel %d", channel_id);
+            return;
+        }
+
+        if(it->second->dispatch) {
+            COCAINE_LOG_ERROR(log, "revoking channel %d, dispatch: '%s'", channel_id,
+                it->second->dispatch->name());
+            it->second->dispatch->discard(std::error_code());
+        } else {
+            COCAINE_LOG_DEBUG(log, "revoking channel %d", channel_id);
+        }
+
+        mapping.erase(it);
+    });
 }
 
 upstream_ptr_t
@@ -275,54 +301,6 @@ session_t::fork(const dispatch_ptr_t& dispatch) {
     });
 }
 
-void
-session_t::revoke(uint64_t channel_id) {
-    channels.apply([&](channel_map_t& mapping) {
-        auto it = mapping.find(channel_id);
-
-        // NOTE: Not sure if that can ever happen, but that's why people use asserts, right?
-        BOOST_ASSERT(it != mapping.end());
-
-        if(it->second->dispatch) {
-            COCAINE_LOG_ERROR(log, "revoking channel %d with dispatch: '%s'", channel_id,
-                it->second->dispatch->name());
-            it->second->dispatch->discard(std::error_code());
-        } else {
-            COCAINE_LOG_DEBUG(log, "revoking channel %d", channel_id);
-        }
-
-        mapping.erase(it);
-    });
-}
-
-void
-session_t::detach(const std::error_code& ec) {
-#if defined(__clang__)
-    if(auto channel = std::atomic_exchange(&transport, std::shared_ptr<io::channel<protocol_type>>())) {
-#else
-    if(auto channel = std::move(*transport.synchronize())) {
-#endif
-        channel = nullptr;
-        COCAINE_LOG_DEBUG(log, "detached session from the transport");
-    } else {
-        return;
-    }
-
-    channels.apply([&](channel_map_t& mapping) {
-        if(mapping.empty()) {
-            return;
-        } else {
-            COCAINE_LOG_DEBUG(log, "discarding %d channel dispatch(es)", mapping.size());
-        }
-
-        for(auto it = mapping.begin(); it != mapping.end(); ++it) {
-            if(it->second->dispatch) it->second->dispatch->discard(ec);
-        }
-
-        mapping.clear();
-    });
-}
-
 // Channel I/O
 
 void
@@ -333,7 +311,7 @@ session_t::pull() {
     if(const auto ptr = *transport.synchronize()) {
 #endif
         // Use dispatch() instead of a direct call for thread safety.
-        ptr->socket->get_io_service().dispatch(trace_t::bind(&pull_action_t::operator(),
+        ptr->socket->get_io_service().dispatch(std::bind(&pull_action_t::operator(),
             std::make_shared<pull_action_t>(shared_from_this()),
             ptr
         ));
@@ -357,6 +335,34 @@ session_t::push(encoder_t::message_type&& message) {
     } else {
         throw std::system_error(error::not_connected);
     }
+}
+
+void
+session_t::detach(const std::error_code& ec) {
+#if defined(__clang__)
+    if(auto swapped = std::atomic_exchange(&transport, std::shared_ptr<transport_type>())) {
+#else
+    if(auto swapped = std::move(*transport.synchronize())) {
+#endif
+        swapped = nullptr;
+        COCAINE_LOG_DEBUG(log, "detached session from the transport");
+    } else {
+        COCAINE_LOG_WARNING(log, "ignoring detach request for session");
+    }
+
+    channels.apply([&](channel_map_t& mapping) {
+        if(mapping.empty()) {
+            return;
+        } else {
+            COCAINE_LOG_DEBUG(log, "discarding %d channel dispatch(es)", mapping.size());
+        }
+
+        for(auto it = mapping.begin(); it != mapping.end(); ++it) {
+            if(it->second->dispatch) it->second->dispatch->discard(ec);
+        }
+
+        mapping.clear();
+    });
 }
 
 // Information
@@ -392,9 +398,9 @@ session_t::name() const {
     return prototype ? prototype->name() : "<none>";
 }
 
-session_t::protocol_type::endpoint
+session_t::endpoint_type
 session_t::remote_endpoint() const {
-    protocol_type::endpoint endpoint;
+    endpoint_type endpoint;
 
 #if defined(__clang__)
     if(const auto ptr = std::atomic_load(&transport)) {
@@ -411,54 +417,28 @@ session_t::remote_endpoint() const {
     return endpoint;
 }
 
-// TODO: Move to a separate TU.
-namespace {
-
-ip::tcp::endpoint
-to_tcp_endpoint(const generic::stream_protocol::endpoint& endpoint) {
-    switch (endpoint.protocol().family()) {
-    case AF_INET: {
-        const sockaddr_in* addr = reinterpret_cast<const sockaddr_in*>(endpoint.data());
-        ip::address_v4::bytes_type array;
-        std::copy((char*)&addr->sin_addr, (char*)&addr->sin_addr + array.size(), array.begin());
-
-        ip::address_v4 address(array);
-        return ip::tcp::endpoint(
-            address,
-            detail::socket_ops::network_to_host_short(addr->sin_port)
-        );
-    }
-    case AF_INET6: {
-        const sockaddr_in6* addrv6 = reinterpret_cast<const sockaddr_in6*>(endpoint.data());
-        ip::address_v6::bytes_type array;
-        std::copy((char*)&addrv6->sin6_addr, (char*)&addrv6->sin6_addr + array.size(), array.begin());
-
-        ip::address_v6 address(array, addrv6->sin6_scope_id);
-        return ip::tcp::endpoint(
-            address,
-            detail::socket_ops::network_to_host_short(addrv6->sin6_port)
-        );
-    }
-    default:
-        throw std::system_error(std::error_code(EINVAL, std::system_category()), "invalid protocol");
-    };
-
-    return ip::tcp::endpoint();
-}
-
-} // namespace
-
 namespace cocaine {
 
 template<class Protocol>
-session<Protocol>::session(std::unique_ptr<logging::log_t> log, std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype):
-    session_t(std::move(log), std::make_unique<io::channel<asio::generic::stream_protocol>>(std::move(*transport)), std::move(prototype))
-{}
+session<Protocol>::session(std::unique_ptr<logging::log_t> log, std::unique_ptr<transport_type> transport, const dispatch_ptr_t& prototype):
+    session_t(std::move(log),
+              std::make_unique<io::transport<generic::stream_protocol>>(std::move(*transport)),
+              std::move(prototype))
+{ }
 
 template<>
 typename session<ip::tcp>::endpoint_type
 session<ip::tcp>::remote_endpoint() const {
-    return ::to_tcp_endpoint(session_t::remote_endpoint());
+    const auto source = session_t::remote_endpoint();
+
+    BOOST_ASSERT(source.protocol() == ip::tcp::v4() || source.protocol() == ip::tcp::v6());
+
+    auto transformed = ip::tcp::endpoint();
+
+    transformed.resize(source.size());
+    std::memcpy(transformed.data(), source.data(), source.size());
+
+    return transformed;
 }
 
 template

@@ -21,13 +21,12 @@
 #ifndef COCAINE_CONTEXT_SIGNAL_HPP
 #define COCAINE_CONTEXT_SIGNAL_HPP
 
-#include "cocaine/locked_ptr.hpp"
-
 #include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/frozen.hpp"
 
 #include <algorithm>
 #include <list>
+#include <mutex>
 
 namespace cocaine {
 
@@ -56,7 +55,7 @@ struct async_visitor:
     operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
         auto args = this->args;
 
-        asio.post([slot, args]() mutable {
+        asio.post([=]() mutable {
             (*slot)(std::move(args), upstream<void>());
         });
     }
@@ -100,40 +99,45 @@ class retroactive_signal {
         asio::io_service& asio;
     };
 
-    // Separately synchronized to keep the boost::signals2 guarantees.
-    synchronized<std::list<variant_type>> history;
-    synchronized<std::list<subscriber_t>> subscribers;
+    std::mutex mutex;
+
+    std::list<variant_type> history;
+    std::list<subscriber_t> subscribers;
 
 public:
     void
     listen(const std::shared_ptr<const dispatch<Tag>>& slot, asio::io_service& asio) {
-        subscribers->push_back(subscriber_t{slot, asio});
+        std::lock_guard<std::mutex> guard(mutex);
 
-        auto ptr     = history.synchronize();
         auto visitor = aux::event_visitor<Tag>(slot, asio);
 
-        std::for_each(ptr->begin(), ptr->end(), boost::apply_visitor(visitor));
+        for(auto it = history.begin(); it != history.end(); ++it) {
+            boost::apply_visitor(visitor, *it);
+        }
+
+        subscribers.emplace_back(subscriber_t{slot, asio});
     }
 
     template<class Event, class... Args>
     void
     invoke(Args&&... args) {
-        auto event = variant_type(io::make_frozen<Event>(std::forward<Args>(args)...));
-        auto ptr   = subscribers.synchronize();
+        std::lock_guard<std::mutex> guard(mutex);
 
-        for(auto it = ptr->begin(); it != ptr->end();) {
+        auto variant = variant_type(io::make_frozen<Event>(std::forward<Args>(args)...));
+
+        for(auto it = subscribers.begin(); it != subscribers.end();) {
             auto slot = it->slot.lock();
 
             if(!slot) {
-                it = ptr->erase(it); continue;
+                it = subscribers.erase(it); continue;
             }
 
-            boost::apply_visitor(aux::event_visitor<Tag>(slot, it->asio), event);
+            boost::apply_visitor(aux::event_visitor<Tag>(slot, it->asio), variant);
 
             ++it;
         }
 
-        history->emplace_back(std::move(event));
+        history.emplace_back(std::move(variant));
     }
 };
 

@@ -86,7 +86,6 @@ stacktrace(int signum, siginfo_t* COCAINE_UNUSED_(info), void* context) {
 struct runtime_t {
     runtime_t() {
         // Establish an alternative signal stack
-
         const size_t alt_stack_size = 8 * 1024 * 1024;
 
         m_alt_stack.ss_sp = new char[alt_stack_size];
@@ -133,12 +132,14 @@ struct runtime_t {
     int
     run() {
         sigset_t sigset;
+
         sigemptyset(&sigset);
         sigaddset(&sigset, SIGINT);
         sigaddset(&sigset, SIGTERM);
         sigaddset(&sigset, SIGQUIT);
 
         int signum = -1;
+
         ::sigwait(&sigset, &signum);
 
         static const std::map<int, std::string> descriptions = {
@@ -242,6 +243,7 @@ main(int argc, char* argv[]) {
 #endif
 
     // Logging
+
     const auto backend = vm["logging"].as<std::string>();
 
     std::cout << cocaine::format("[Runtime] Initializing the logging system, backend: %s.", backend)
@@ -251,15 +253,17 @@ main(int argc, char* argv[]) {
     std::unique_ptr<logging::log_t>    wrapper;
 
     try {
+        blackhole::attribute::set_t attributes;
+
         cocaine::logging::init_t logging(config->logging.loggers);
         logger = logging.logger(backend);
-        blackhole::attribute::set_t attributes;
-        if (logging.config(backend).attributes.count("source_host")) {
+
+        if(logging.config(backend).attributes.count("source_host")) {
             attributes.emplace_back("source_host", config->network.hostname);
         }
 
         wrapper.reset(new logging::log_t(*logger, attributes));
-    } catch(const std::out_of_range&) {
+    } catch(const std::out_of_range& e) {
         std::cerr << "ERROR: unable to initialize the logging - backend does not exist." << std::endl;
         return EXIT_FAILURE;
     }

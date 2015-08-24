@@ -23,7 +23,6 @@
 #define COCAINE_LOCATOR_SERVICE_HPP
 
 #include "cocaine/api/cluster.hpp"
-#include "cocaine/api/connect.hpp"
 #include "cocaine/api/service.hpp"
 
 #include "cocaine/detail/service/locator/routing.hpp"
@@ -71,19 +70,19 @@ class locator_t:
     public api::cluster_t::interface,
     public dispatch<io::locator_tag>
 {
-    class remote_t;
+    class connect_sink_t;
     class publish_slot_t;
 
     typedef std::map<std::string, continuum_t> rg_map_t;
 
-    class client_t
+    class uplink_t
     {
     public:
         std::vector<asio::ip::tcp::endpoint> endpoints;
-        api::client<io::locator_tag> client;
+        std::shared_ptr<session<asio::ip::tcp>> ptr;
     };
 
-    typedef std::map<std::string, client_t> client_map_t;
+    typedef std::map<std::string, uplink_t> client_map_t;
 
     typedef std::map<unsigned int, io::graph_root_t, std::greater<unsigned int>> partition_view_t;
 
@@ -118,7 +117,7 @@ class locator_t:
     // Outgoing remote locator streams indexed by node uuid.
     synchronized<remote_map_t> m_remotes;
 
-    // Snapshot of the local service disposition. Synchronized with outgoing remote streams.
+    // Snapshots of the local service states. Synchronized with outgoing remote streams.
     std::map<std::string, results::resolve> m_snapshots;
 
     // Outgoing router streams indexed by some arbitrary router-provided uuid.

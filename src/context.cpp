@@ -29,8 +29,6 @@
 
 #include "cocaine/rpc/actor.hpp"
 
-#include "cocaine/trace/trace.hpp"
-
 #include <blackhole/scoped_attributes.hpp>
 
 #include <boost/spirit/include/karma_char.hpp>
@@ -41,19 +39,19 @@
 using namespace cocaine;
 using namespace cocaine::io;
 
-context_t::context_t(config_t config_, std::unique_ptr<logging::log_t> logger):
+using namespace blackhole;
+
+context_t::context_t(config_t config_, std::unique_ptr<logging::log_t> log_):
     config(config_),
     mapper(config_)
 {
-    m_logger = std::move(logger);
+    m_log = std::move(log_);
 
-    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
-        logging::keyword::source() = "core"
-    }));
+    scoped_attributes_t guard(*m_log, attribute::set_t({logging::keyword::source() = "core"}));
 
-    COCAINE_LOG_INFO(m_logger, "initializing the core");
+    COCAINE_LOG_INFO(m_log, "initializing the core");
 
-    m_repository = std::make_unique<api::repository_t>(m_logger->log());
+    m_repository = std::make_unique<api::repository_t>(log("repository"));
 
     // Load the builtin plugins.
     essentials::initialize(*m_repository);
@@ -61,54 +59,23 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::log_t> logger):
     // Load the rest of plugins.
     m_repository->load(config.path.plugins);
 
-    // Spin up the configured services.
+    // Spin up all the configured services, launch execution units.
     bootstrap();
 }
 
 context_t::~context_t() {
-    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
-        logging::keyword::source() = "core"
-    }));
+    scoped_attributes_t guard(*m_log, attribute::set_t({logging::keyword::source() = "core"}));
 
-    COCAINE_LOG_INFO(m_logger, "stopping %d service(s)", m_services->size());
-
-    // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
-    // the outstanding connections are closed, so services have a chance to send their last wishes.
-    m_signals.invoke<context::shutdown>();
-
-    // Stop the service from accepting new clients or doing any processing. Pop them from the active
-    // service list into this temporary storage, and then destroy them all at once. This is needed
-    // because sessions in the execution units might still have references to the services, and their
-    // lives have to be extended until those sessions are active.
-    std::vector<std::unique_ptr<actor_t>> actors;
-
-    for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
-        try {
-            actors.push_back(remove(it->first));
-        } catch(...) {
-            // A service might be absent because it has failed to start during the bootstrap.
-            continue;
-        }
-    }
-
-    // There should be no outstanding services left. All the extra services spawned by others, like
-    // app invocation services from the node service, should be dead by now.
-    BOOST_ASSERT(m_services->empty());
-
-    COCAINE_LOG_INFO(m_logger, "stopping %d execution unit(s)", m_pool.size());
-
-    m_pool.clear();
-
-    // Destroy the service objects.
-    actors.clear();
-
-    COCAINE_LOG_INFO(m_logger, "core has been terminated");
+    // Signal and stop all the services, shut down execution units.
+    terminate();
 }
 
 std::unique_ptr<logging::log_t>
-context_t::log(const std::string& source, blackhole::attribute::set_t attributes) {
+context_t::log(const std::string& source, attribute::set_t attributes) {
     attributes.emplace_back(logging::keyword::source() = source);
-    return std::make_unique<logging::log_t>(*m_logger, std::move(attributes));
+
+    // TODO: Make it possible to use in-place operator+= to fill in more attributes?
+    return std::make_unique<logging::log_t>(*m_log, std::move(attributes));
 }
 
 namespace {
@@ -127,9 +94,7 @@ struct match {
 
 void
 context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
-    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
-        logging::keyword::source() = "core"
-    }));
+    scoped_attributes_t guard(*m_log, attribute::set_t({logging::keyword::source() = "core"}));
 
     const actor_t& actor = *service;
 
@@ -140,7 +105,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
         service->run();
 
-        COCAINE_LOG_DEBUG(m_logger, "service has been started")(
+        COCAINE_LOG_DEBUG(m_log, "service has been started")(
             "service", name
         );
 
@@ -157,9 +122,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
 std::unique_ptr<actor_t>
 context_t::remove(const std::string& name) {
-    blackhole::scoped_attributes_t guard(*m_logger, blackhole::attribute::set_t({
-        logging::keyword::source() = "core"
-    }));
+    scoped_attributes_t guard(*m_log, attribute::set_t({logging::keyword::source() = "core"}));
 
     std::unique_ptr<actor_t> service;
 
@@ -170,14 +133,14 @@ context_t::remove(const std::string& name) {
             throw cocaine::error_t("service '%s' doesn't exist", name);
         }
 
-        service = std::move(it->second);
-
-        list.erase(it);
+        service = std::move(it->second); list.erase(it);
     });
 
     service->terminate();
 
-    COCAINE_LOG_DEBUG(m_logger, "service has been stopped")("service", name);
+    COCAINE_LOG_DEBUG(m_log, "service has been stopped")(
+        "service", name
+    );
 
     // Service is already terminated, so there's no reason to try to get its endpoints.
     std::vector<asio::ip::tcp::endpoint> nothing;
@@ -224,24 +187,22 @@ context_t::engine() {
 
 void
 context_t::bootstrap() {
-    COCAINE_LOG_INFO(m_logger, "starting %d execution unit(s)", config.network.pool);
+    COCAINE_LOG_INFO(m_log, "starting %d execution unit(s)", config.network.pool);
 
     while(m_pool.size() != config.network.pool) {
         m_pool.emplace_back(std::make_unique<execution_unit_t>(*this));
     }
 
-    COCAINE_LOG_INFO(m_logger, "starting %d service(s)", config.services.size());
+    COCAINE_LOG_INFO(m_log, "starting %d service(s)", config.services.size());
 
     std::vector<std::string> errored;
 
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
-        blackhole::scoped_attributes_t attributes(*m_logger, {
-            blackhole::attribute::make("service", it->first)
-        });
+        scoped_attributes_t attributes(*m_log, {attribute::make("service", it->first)});
 
         const auto asio = std::make_shared<asio::io_service>();
 
-        COCAINE_LOG_DEBUG(m_logger, "starting service");
+        COCAINE_LOG_DEBUG(m_log, "starting service");
 
         try {
             insert(it->first, std::make_unique<actor_t>(*this, asio, get<api::service_t>(
@@ -252,38 +213,67 @@ context_t::bootstrap() {
                 it->second.args
             )));
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_logger, "unable to initialize service: [%d] %s", e.code().value(),
+            COCAINE_LOG_ERROR(m_log, "unable to initialize service: [%d] %s", e.code().value(),
                 e.code().message());
             errored.push_back(it->first);
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_logger, "unable to initialize service: %s", e.what());
+            COCAINE_LOG_ERROR(m_log, "unable to initialize service: %s", e.what());
             errored.push_back(it->first);
         }
     }
 
     if(!errored.empty()) {
+        COCAINE_LOG_ERROR(m_log, "emergency core shutdown");
+
+        // Signal and stop all the services, shut down execution units.
+        terminate();
+
         std::ostringstream stream;
         std::ostream_iterator<char> builder(stream);
 
         boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
 
-        COCAINE_LOG_ERROR(m_logger, "emergency core shutdown");
-
-        m_signals.invoke<io::context::shutdown>();
-
-        while(!m_services->empty()) {
-            std::unique_ptr<actor_t> service;
-
-            m_services.apply([&](service_list_t& list) {
-                service = std::move(list.back().second);
-                list.pop_back();
-            });
-
-            service->terminate();
-        }
-
-        throw cocaine::error_t("couldn't start %d service(s): %s", errored.size(), stream.str());
+        throw cocaine::error_t("couldn't start core because of %d service(s): %s",
+            errored.size(), stream.str()
+        );
     } else {
         m_signals.invoke<io::context::prepared>();
     }
+}
+
+void
+context_t::terminate() {
+    COCAINE_LOG_INFO(m_log, "stopping %d service(s)", m_services->size());
+
+    // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
+    // the outstanding connections are closed, so services have a chance to send their last wishes.
+    m_signals.invoke<context::shutdown>();
+
+    // Stop the service from accepting new clients or doing any processing. Pop them from the active
+    // service list into this temporary storage, and then destroy them all at once. This is needed
+    // because sessions in the execution units might still have references to the services, and their
+    // lives have to be extended until those sessions are active.
+    std::vector<std::unique_ptr<actor_t>> actors;
+
+    for(auto it = config.services.rbegin(); it != config.services.rend(); ++it) {
+        try {
+            actors.push_back(remove(it->first));
+        } catch(...) {
+            // A service might be absent because it has failed to start during the bootstrap.
+            continue;
+        }
+    }
+
+    // There should be no outstanding services left. All the extra services spawned by others, like
+    // app invocation services from the node service, should be dead by now.
+    BOOST_ASSERT(m_services->empty());
+
+    COCAINE_LOG_INFO(m_log, "stopping %d execution unit(s)", m_pool.size());
+
+    m_pool.clear();
+
+    // Destroy the service objects.
+    actors.clear();
+
+    COCAINE_LOG_INFO(m_log, "core has been terminated");
 }

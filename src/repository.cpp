@@ -60,10 +60,8 @@ typedef void (*initialize_fn_t)(repository_t&);
 
 } // namespace
 
-repository_t::repository_t(logging::logger_t& logger):
-    m_log(new logging::log_t(logger, blackhole::attribute::set_t({
-        logging::keyword::source() = "repository"
-    })))
+repository_t::repository_t(std::unique_ptr<logging::log_t> log):
+    m_log(std::move(log))
 {
     if(lt_dlinit() != 0) throw std::system_error(error::ltdl_error);
 }
@@ -103,7 +101,7 @@ repository_t::load(const std::string& path) {
     // proper order as well, if they add any to the error registrar.
     std::sort(paths.begin(), paths.end());
 
-    std::for_each(paths.begin(), paths.end(), [&](const std::string& plugin) {
+    std::for_each(paths.begin(), paths.end(), [this](const std::string& plugin) {
         open(plugin);
     });
 }

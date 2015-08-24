@@ -50,7 +50,7 @@ class context_t {
 
     // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
     // for the Blackhole, when all the common stuff is extracted to a separate library.
-    std::unique_ptr<logging::log_t> m_logger;
+    std::unique_ptr<logging::log_t> m_log;
 
     // NOTE: This is the first object in the component tree, all the other dynamic components, be it
     // storages or isolates, have to be declared after this one.
@@ -73,7 +73,7 @@ public:
     port_mapping_t mapper;
 
 public:
-    context_t(config_t config, std::unique_ptr<logging::log_t> logger);
+    context_t(config_t config, std::unique_ptr<logging::log_t> log);
    ~context_t();
 
     std::unique_ptr<logging::log_t>
@@ -109,6 +109,9 @@ public:
 private:
     void
     bootstrap();
+
+    void
+    terminate();
 };
 
 template<class Category, class... Args>

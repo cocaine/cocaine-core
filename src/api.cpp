@@ -18,63 +18,9 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/api/connect.hpp"
 #include "cocaine/api/storage.hpp"
 
 #include "cocaine/context.hpp"
-
-#include "cocaine/rpc/asio/channel.hpp"
-
-#include <asio/generic/stream_protocol.hpp>
-#include <asio/local/stream_protocol.hpp>
-
-using namespace asio;
-using namespace asio::ip;
-
-using namespace cocaine::api::details;
-
-// Connect
-
-basic_client_t::basic_client_t(basic_client_t&& other) {
-    *this = std::move(other);
-}
-
-basic_client_t::~basic_client_t() {
-    if(m_session) {
-        // No error.
-        m_session->detach(std::error_code());
-    }
-}
-
-basic_client_t&
-basic_client_t::operator=(basic_client_t&& rhs) {
-    if(m_session && m_session != rhs.m_session) {
-        // No error.
-        m_session->detach(std::error_code());
-    }
-
-    m_session = std::move(rhs.m_session);
-
-    return *this;
-}
-
-tcp::endpoint
-basic_client_t::remote_endpoint() const {
-    if(!m_session) {
-        return tcp::endpoint();
-    } else {
-        return m_session->remote_endpoint();
-    }
-}
-
-void
-basic_client_t::attach(const std::shared_ptr<session<protocol_type>>& session) {
-    if(m_session) {
-        throw std::system_error(std::make_error_code(std::errc::already_connected));
-    }
-
-    m_session = session;
-}
 
 namespace cocaine { namespace api {
 

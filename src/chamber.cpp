@@ -20,6 +20,9 @@
 
 #include "cocaine/detail/chamber.hpp"
 
+#include <iomanip>
+#include <sstream>
+
 #if defined(__linux__)
     #include <sys/prctl.h>
 #elif defined(__APPLE__)
@@ -27,9 +30,6 @@
 #endif
 
 #include <sys/resource.h>
-
-#include <iomanip>
-#include <sstream>
 
 using namespace cocaine::io;
 
@@ -168,7 +168,9 @@ chamber_t::~chamber_t() {
 std::string
 chamber_t::thread_id() const {
     std::ostringstream stream;
+
     stream << std::hex << std::internal << std::showbase << std::setw(2) << std::setfill('0');
     stream << thread->native_handle();
+
     return stream.str();
 }
