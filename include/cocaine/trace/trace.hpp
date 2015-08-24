@@ -27,7 +27,8 @@
 
 namespace cocaine {
 
-class trace_t {
+class trace_t
+{
 public:
     template<class F>
     class callable_wrapper;

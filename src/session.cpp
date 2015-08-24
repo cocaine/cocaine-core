@@ -89,8 +89,8 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
             session->handle(message);
             message.clear();
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: [%d] %s",
-                e.code().value(), e.what());
+            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: [%d] %s", e.code().value(),
+                e.what());
             return session->detach(e.code());
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: %s", e.what());
