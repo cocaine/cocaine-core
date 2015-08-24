@@ -27,11 +27,6 @@
 
 namespace cocaine {
 
-namespace trace {
-std::string
-to_hex_string(uint64_t val);
-}
-
 class trace_t {
 public:
     template<class F>
@@ -142,7 +137,6 @@ public:
     mem_fn(Method m) -> callable_wrapper<decltype(std::mem_fn(std::forward<Method>(m)))>;
 
 private:
-
     static
     uint64_t
     generate_id();

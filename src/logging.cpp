@@ -22,14 +22,6 @@
 
 #include <cxxabi.h>
 
-#ifdef COCAINE_DEBUG
-cocaine::logging::log_t*&
-get_cocaine_dev_logger__() {
-    static cocaine::logging::log_t* log = nullptr;
-    return log;
-}
-#endif
-
 namespace cocaine { namespace logging {
 
 std::string
