@@ -27,8 +27,12 @@
 
 namespace cocaine {
 
-class trace_t
-{
+namespace trace {
+std::string
+to_hex_string(uint64_t val);
+}
+
+class trace_t {
 public:
     template<class F>
     class callable_wrapper;
@@ -138,6 +142,7 @@ public:
     mem_fn(Method m) -> callable_wrapper<decltype(std::mem_fn(std::forward<Method>(m)))>;
 
 private:
+
     static
     uint64_t
     generate_id();
@@ -209,4 +214,3 @@ trace_t::mem_fn(Method m) -> callable_wrapper<decltype(std::mem_fn(std::forward<
 } // namespace cocaine
 
 #endif // COCAINE_TRACE_TRACE_HPP
-

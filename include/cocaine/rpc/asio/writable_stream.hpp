@@ -49,6 +49,7 @@ class writable_stream:
     typedef std::function<void(const std::error_code&)> handler_type;
 
     std::deque<asio::const_buffer> m_messages;
+    std::deque<typename Encoder::encoded_message_type> m_encoded_messages;
     std::deque<handler_type> m_handlers;
 
     enum class states { idle, flushing } m_state;
@@ -66,7 +67,7 @@ public:
     write(const message_type& message, handler_type handle) {
         size_t bytes_written = 0;
 
-        const auto encoded = encoder.encode(message);
+        auto encoded = encoder.encode(message);
 
         if(m_state == states::idle) {
             std::error_code ec;
@@ -81,6 +82,7 @@ public:
 
         m_messages.emplace_back(encoded.data() + bytes_written, encoded.size() - bytes_written);
         m_handlers.emplace_back(handle);
+        m_encoded_messages.emplace_back(std::move(encoded));
 
         if(m_state == states::flushing) {
             return;
@@ -114,6 +116,7 @@ private:
 
                 m_messages.pop_front();
                 m_handlers.pop_front();
+                m_encoded_messages.pop_front();
             }
 
             return;
@@ -136,6 +139,7 @@ private:
 
             m_messages.pop_front();
             m_handlers.pop_front();
+            m_encoded_messages.pop_front();
         }
 
         if(m_messages.empty() && m_state == states::flushing) {

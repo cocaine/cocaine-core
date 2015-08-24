@@ -71,7 +71,6 @@ trace_t::generate(const std::string& rpc_name) {
     return trace_t(t_id, t_id, zero_value, rpc_name);
 }
 
-
 trace_t&
 trace_t::current() {
     static boost::thread_specific_ptr<trace_t> t;
