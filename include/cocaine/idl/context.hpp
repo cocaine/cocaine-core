@@ -23,10 +23,15 @@
 
 #include "cocaine/idl/locator.hpp"
 
+#include "cocaine/traits/endpoint.hpp"
+#include "cocaine/traits/siginfo.hpp"
+#include "cocaine/traits/graph.hpp"
+
+#include <signal.h>
+
 namespace cocaine { namespace io {
 
 struct context_tag;
-
 // Context signals interface
 
 struct context {
@@ -38,6 +43,22 @@ struct prepared {
     static const char* alias() {
         return "prepared";
     }
+
+    typedef void upstream_type;
+};
+
+struct os_signal {
+    typedef context_tag tag;
+    typedef context_tag dispatch_type;
+
+    static const char* alias() {
+        return "os_signal";
+    }
+
+    typedef boost::mpl::list<
+          int
+        , siginfo_t
+    >::type argument_type;
 
     typedef void upstream_type;
 };
@@ -101,6 +122,8 @@ struct protocol<context_tag> {
         // Fired first thing on context shutdown. This is a very good time to cleanup persistent
         // connections, synchronize disk state and so on.
         context::shutdown,
+        // Fired on posix signal
+        context::os_signal,
         // Fired on service creation, after service's thread is launched and is ready to accept
         // and process new incoming connections.
         context::service::exposed,
@@ -114,4 +137,17 @@ struct protocol<context_tag> {
 
 }} // namespace cocaine::io
 
+namespace cocaine { namespace aux {
+template<class Event>
+struct history_traits;
+
+template<>
+struct history_traits<io::context::os_signal> {
+    template<class History, class Variant>
+    static void
+    apply(History&, Variant&&) {
+    }
+};
+
+}} // namespace cocaine::aux
 #endif

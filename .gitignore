@@ -3,3 +3,4 @@ include/cocaine/config.hpp
 
 # Build directory
 build/*
+tests/build/*

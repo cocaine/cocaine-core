@@ -89,6 +89,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/logging.cpp
     src/service/storage.cpp
     src/session.cpp
+    src/signal.cpp
     src/storage/files.cpp
     src/trace.cpp
     src/trace/logger.cpp

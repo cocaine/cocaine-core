@@ -52,6 +52,7 @@ factory<cocaine::logging::console_t>::type() -> const char* {
 auto
 factory<cocaine::logging::console_t>::from(const config::node_t&) -> cocaine::logging::console_t {
     return {};
+
 }
 
-}  // namespace blackhole
+}// namespace blackhole
