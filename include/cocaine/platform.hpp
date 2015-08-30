@@ -26,15 +26,15 @@
 #endif
 
 #if defined(__GNUC__)
-    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 4
+    #if (__GNUC__ == 4 && __GNUC_MINOR__ >= 4) || (__GNUC__ == 5)
         #define HAVE_GCC44
     #endif
 
-    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 6
+    #if (__GNUC__ == 4 && __GNUC_MINOR__ >= 6) || (__GNUC__ == 5)
         #define HAVE_GCC46
     #endif
 
-    #if __GNUC__ == 4 && __GNUC_MINOR__ >= 7
+    #if (__GNUC__ == 4 && __GNUC_MINOR__ >= 7) || (__GNUC__ == 5)
         #define HAVE_GCC47
     #endif
 
