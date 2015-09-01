@@ -48,10 +48,11 @@ struct is_cocaine_plugin_t {
     template<typename T>
     bool
     operator()(const T& entry) const {
-        // We first take path ("/lib/cocaine/super_plugin.cocaine-plugin.whatever")
-        // remove platform dependent extension ("/lib/cocaine/super_plugin.cocaine-plugin")
-        // and check if it is "cocaine-plugin"
-        return fs::is_regular_file(entry) && entry.path().filename().replace_extension().extension() == ".cocaine-plugin";
+        // Strip the path from its platform-dependent extension and make sure that the
+        // remaining extension matches "cocaine-plugin".
+        // An example path on Linux: "/usr/lib/cocaine/plugin-name.cocaine-plugin.so".
+        return fs::is_regular_file(entry) &&
+               entry.path().filename().replace_extension().extension() == ".cocaine-plugin";
     }
 };
 
