@@ -46,8 +46,7 @@ crypto<HashID>::sign(const std::string& message, const std::string& token_id) co
     try {
         token = m_store->template get<std::string>(m_service, token_id);
     } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to load security token '%s' for service: [%d] %s - %s", token_id,
-            e.code().value(), e.code().message(), e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to load security token '%s' for service: %s", token_id, error::what(e));
         throw std::system_error(error::token_not_found);
     }
 

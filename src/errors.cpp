@@ -188,6 +188,11 @@ security_category() -> const std::error_category& {
 
 namespace cocaine { namespace error {
 
+std::string
+what(const std::system_error& e) {
+    return format("[%d] %s", e.code().value(), e.code().message(), e.what());
+}
+
 auto
 make_error_code(transport_errors code) -> std::error_code {
     return std::error_code(static_cast<int>(code), transport_category());
