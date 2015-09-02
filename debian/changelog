@@ -1,3 +1,9 @@
+cocaine-core (0.12.3.11+nmu1) unstable; urgency=low
+
+  * Plugins: use double extension for plugins.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 01 Sep 2015 21:52:12 +0300
+
 cocaine-core (0.12.3.10+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
