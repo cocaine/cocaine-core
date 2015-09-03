@@ -348,6 +348,7 @@ session_t::detach(const std::error_code& ec) {
         COCAINE_LOG_DEBUG(log, "detached session from the transport");
     } else {
         COCAINE_LOG_WARNING(log, "ignoring detach request for session");
+        return;
     }
 
     channels.apply([&](channel_map_t& mapping) {
