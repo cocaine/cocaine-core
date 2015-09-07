@@ -119,7 +119,7 @@ to_string(const std::system_error& e);
 
 } // namespace error
 
-// Backward-compatibility for plugins.
+// For backward-compatibility with fucking computers.
 using error::error_t;
 
 } // namespace cocaine

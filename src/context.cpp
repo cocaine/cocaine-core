@@ -100,7 +100,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
     m_services.apply([&](service_list_t& list) {
         if(std::count_if(list.begin(), list.end(), match{name})) {
-            throw error::error_t("service '%s' already exists", name);
+            throw cocaine::error_t("service '%s' already exists", name);
         }
 
         service->run();
@@ -130,7 +130,7 @@ context_t::remove(const std::string& name) {
         auto it = std::find_if(list.begin(), list.end(), match{name});
 
         if(it == list.end()) {
-            throw error::error_t("service '%s' doesn't exist", name);
+            throw cocaine::error_t("service '%s' doesn't exist", name);
         }
 
         service = std::move(it->second); list.erase(it);
@@ -232,7 +232,7 @@ context_t::bootstrap() {
 
         boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
 
-        throw error::error_t("couldn't start core because of %d service(s): %s",
+        throw cocaine::error_t("couldn't start core because of %d service(s): %s",
             errored.size(), stream.str()
         );
     } else {
