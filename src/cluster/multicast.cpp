@@ -70,7 +70,7 @@ struct dynamic_converter<multicast_cfg_t> {
                 source.as_object().at("port", 10053u).as_uint()
             );
         } catch(std::out_of_range& e) {
-            throw error::error_t("no multicast group has been specified");
+            throw cocaine::error_t("no multicast group has been specified");
         }
 
         result.interval = boost::posix_time::seconds(
