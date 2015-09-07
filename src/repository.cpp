@@ -153,12 +153,10 @@ repository_t::open(const std::string& target) {
         try {
             initialize.call(*this);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: [%d] %s - %s", e.code().value(),
-                e.code().message(), e.what());
+            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: %s", error::what(e));
             throw std::system_error(error::initialization_error);
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: %s",
-                e.what());
+            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: %s", e.what());
             throw std::system_error(error::initialization_error);
         }
     } else {

@@ -213,8 +213,7 @@ context_t::bootstrap() {
                 it->second.args
             )));
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize service: [%d] %s", e.code().value(),
-                e.code().message());
+            COCAINE_LOG_ERROR(m_log, "unable to initialize service: %s", error::what(e));
             errored.push_back(it->first);
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(m_log, "unable to initialize service: %s", e.what());

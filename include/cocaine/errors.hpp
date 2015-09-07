@@ -28,6 +28,9 @@
 
 namespace cocaine { namespace error {
 
+std::string
+what(const std::system_error& e);
+
 enum transport_errors {
     frame_format_error = 1,
     hpack_error,
