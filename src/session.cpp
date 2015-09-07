@@ -89,8 +89,7 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
             session->handle(message);
             message.clear();
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: [%d] %s", e.code().value(),
-                e.code().message());
+            COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: %s", error::to_string(e));
             return session->detach(e.code());
         } catch(const std::exception& e) {
             COCAINE_LOG_ERROR(session->log, "uncaught invocation exception: %s", e.what());
@@ -348,6 +347,7 @@ session_t::detach(const std::error_code& ec) {
         COCAINE_LOG_DEBUG(log, "detached session from the transport");
     } else {
         COCAINE_LOG_WARNING(log, "ignoring detach request for session");
+        return;
     }
 
     channels.apply([&](channel_map_t& mapping) {

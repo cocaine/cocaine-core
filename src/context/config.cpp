@@ -314,13 +314,13 @@ config_t::config_t(const std::string& source) {
     const auto source_file_status = fs::status(source);
 
     if(!fs::exists(source_file_status) || !fs::is_regular_file(source_file_status)) {
-        throw cocaine::error_t("configuration file path is invalid");
+        throw error::error_t("configuration file path is invalid");
     }
 
     fs::ifstream stream(source);
 
     if(!stream) {
-        throw cocaine::error_t("unable to read configuration file");
+        throw error::error_t("unable to read configuration file");
     }
 
     rapidjson::MemoryPoolAllocator<> json_allocator;
@@ -331,9 +331,9 @@ config_t::config_t(const std::string& source) {
 
     if(!json_reader.Parse<rapidjson::kParseDefaultFlags>(json_stream, configuration_constructor)) {
         if(json_reader.HasParseError()) {
-            throw cocaine::error_t("configuration file is corrupted - %s", json_reader.GetParseError());
+            throw error::error_t("configuration file is corrupted - %s", json_reader.GetParseError());
         } else {
-            throw cocaine::error_t("configuration file is corrupted");
+            throw error::error_t("configuration file is corrupted");
         }
     }
 
@@ -342,7 +342,7 @@ config_t::config_t(const std::string& source) {
     // Version validation
 
     if(root.as_object().at("version", 0).to<unsigned int>() != 3) {
-        throw cocaine::error_t("configuration file version is invalid");
+        throw error::error_t("configuration file version is invalid");
     }
 
     const auto path_config    = root.as_object().at("paths",   dynamic_t::object_t()).as_object();
@@ -356,9 +356,9 @@ config_t::config_t(const std::string& source) {
     const auto runtime_path_status = fs::status(path.runtime);
 
     if(!fs::exists(runtime_path_status)) {
-        throw cocaine::error_t("directory %s does not exist", path.runtime);
+        throw error::error_t("directory %s does not exist", path.runtime);
     } else if(!fs::is_directory(runtime_path_status)) {
-        throw cocaine::error_t("%s is not a directory", path.runtime);
+        throw error::error_t("%s is not a directory", path.runtime);
     }
 
     // Network configuration
@@ -384,7 +384,7 @@ config_t::config_t(const std::string& source) {
     network.pool     = network_config.at("pool", boost::thread::hardware_concurrency() * 2).as_uint();
 
     if(network.pool <= 0) {
-        throw cocaine::error_t("network I/O pool size must be positive");
+        throw error::error_t("network I/O pool size must be positive");
     }
 
     if(network_config.count("pinned")) {

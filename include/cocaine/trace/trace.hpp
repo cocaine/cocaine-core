@@ -209,4 +209,3 @@ trace_t::mem_fn(Method m) -> callable_wrapper<decltype(std::mem_fn(std::forward<
 } // namespace cocaine
 
 #endif // COCAINE_TRACE_TRACE_HPP
-

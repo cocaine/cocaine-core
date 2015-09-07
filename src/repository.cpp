@@ -48,7 +48,11 @@ struct is_cocaine_plugin_t {
     template<typename T>
     bool
     operator()(const T& entry) const {
-        return fs::is_regular_file(entry) && entry.path().extension() == ".cocaine-plugin";
+        // Strip the path from its platform-dependent extension and make sure that the
+        // remaining extension matches "cocaine-plugin".
+        // An example path on Linux: "/usr/lib/cocaine/plugin-name.cocaine-plugin.so".
+        return fs::is_regular_file(entry) &&
+               entry.path().filename().replace_extension().extension() == ".cocaine-plugin";
     }
 };
 
@@ -149,12 +153,10 @@ repository_t::open(const std::string& target) {
         try {
             initialize.call(*this);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: [%d] %s - %s", e.code().value(),
-                e.code().message(), e.what());
+            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: %s", error::to_string(e));
             throw std::system_error(error::initialization_error);
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: %s",
-                e.what());
+            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: %s", e.what());
             throw std::system_error(error::initialization_error);
         }
     } else {

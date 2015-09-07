@@ -56,8 +56,8 @@ private:
                 auto session = parent->m_context.engine().attach(std::move(ptr), base);
                 parent->bind(base, std::move(session));
             } catch(const std::system_error& e) {
-                COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: [%d] %s - %s",
-                    e.code().value(), e.code().message(), e.what());
+                COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: %s",
+                    error::to_string(e));
                 ptr = nullptr;
             }
 
@@ -101,9 +101,8 @@ unix_actor_t::run() {
         try {
             ptr = std::make_unique<protocol_type::acceptor>(*m_asio, this->endpoint);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: [%d] %s",
-                e.code().value(),
-                e.code().message());
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: %s",
+                error::to_string(e));
             throw;
         }
 

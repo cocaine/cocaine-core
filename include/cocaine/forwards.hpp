@@ -23,10 +23,6 @@
 
 #include <blackhole/forwards.hpp>
 
-namespace asio {
-    class io_service;
-}
-
 namespace cocaine {
 
 class context_t;
@@ -103,5 +99,13 @@ typedef blackhole::verbose_logger_t<logging::priorities> logger_t;
 typedef dynamic_wrapper<logger_t, trace_attribute_fetcher_t> log_t;
 
 }} // namespace cocaine::logging
+
+// Third-party forwards
+
+namespace asio {
+
+class io_service;
+
+} // namespace asio
 
 #endif

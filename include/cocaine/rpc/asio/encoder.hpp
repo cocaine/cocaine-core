@@ -115,6 +115,7 @@ struct encoder_t {
    ~encoder_t() = default;
 
     typedef aux::unbound_message_t message_type;
+    typedef aux::encoded_message_t encoded_message_type;
 
     template<class Event, class... Args>
     static inline

@@ -94,16 +94,33 @@ private:
     synchronized<std::unique_ptr<impl_type>> ptr;
 };
 
-} // namespace error
+// Generic exception
 
 struct error_t:
     public std::system_error
 {
+    static const std::error_code kInvalidArgumentErrorCode;
+
     template<class... Args>
     error_t(const std::string& e, const Args&... args):
-        std::system_error(std::make_error_code(std::errc::invalid_argument), format(e, args...))
+        std::system_error(kInvalidArgumentErrorCode, cocaine::format(e, args...))
+    { }
+
+    template<class E, class... Args,
+             class = typename std::enable_if<std::is_error_code_enum<E>::value ||
+                                             std::is_error_condition_enum<E>::value>::type>
+    error_t(const E ec, const std::string& e, const Args&... args):
+        std::system_error(std::make_error_code(ec), cocaine::format(e, args...))
     { }
 };
+
+std::string
+to_string(const std::system_error& e);
+
+} // namespace error
+
+// Backward-compatibility for plugins.
+using error::error_t;
 
 } // namespace cocaine
 
