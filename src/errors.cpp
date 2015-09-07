@@ -213,6 +213,9 @@ to_string(const std::system_error& e) {
     return cocaine::format("[%d] %s", e.code().value(), e.code().message(), e.what());
 }
 
+const std::error_code
+error_t::kInvalidArgumentErrorCode = std::make_error_code(std::errc::invalid_argument);
+
 }} // namespace cocaine::error
 
 // Error category registrar
@@ -286,6 +289,3 @@ registrar::map(size_t id) -> const std::error_category& {
         }
     });
 }
-
-const std::error_code
-error_t::kInvalidArgumentErrorCode = std::make_error_code(std::errc::invalid_argument);
