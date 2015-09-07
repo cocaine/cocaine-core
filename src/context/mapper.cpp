@@ -56,7 +56,7 @@ port_mapping_t::assign(const std::string& name) {
     std::lock_guard<std::mutex> guard(m_mutex);
 
     if(m_in_use.count(name)) {
-        throw cocaine::error_t("named port is already in use");
+        throw error::error_t("named port is already in use");
     }
 
     if(m_pinned.count(name)) {
@@ -64,7 +64,7 @@ port_mapping_t::assign(const std::string& name) {
     }
 
     if(m_shared.empty()) {
-        throw cocaine::error_t("no ports left for allocation");
+        throw error::error_t("no ports left for allocation");
     }
 
     const auto port = m_shared.front(); m_shared.pop_front();
@@ -77,7 +77,7 @@ port_mapping_t::retain(const std::string& name) {
     std::lock_guard<std::mutex> guard(m_mutex);
 
     if(!m_in_use.count(name)) {
-        throw cocaine::error_t("named port was never assigned");
+        throw error::error_t("named port was never assigned");
     }
 
     if(!m_pinned.count(name)) {

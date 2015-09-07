@@ -48,7 +48,7 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
                 context.config.logging.loggers.at(backend).verbosity
             ));
         } catch(const std::out_of_range& e) {
-            throw cocaine::error_t("logger '%s' is not configured", backend);
+            throw error::error_t("logger '%s' is not configured", backend);
         }
 
         wrapper.reset(new log_t(*logger, {{"source", cocaine::format("%s/%s", name, backend)}}));

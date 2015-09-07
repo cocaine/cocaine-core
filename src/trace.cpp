@@ -49,18 +49,18 @@ trace_t::trace_t(uint64_t trace_id_,
 
     // Check that values are in valid range.
     if(!check_range(trace_id) || !check_range(state.span_id) || !check_range(state.parent_id)) {
-        throw cocaine::error_t("invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
+        throw error::error_t("invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
     }
 
     if(trace_id == zero_value) {
         // If we create empty trace all values should be zero
         if(state.parent_id != zero_value || state.span_id != zero_value) {
-            throw cocaine::error_t("invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
+            throw error::error_t("invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
         }
     } else {
         // If trace_id is not zero - span_id should be present.
         if(state.span_id == zero_value) {
-            throw cocaine::error_t("invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
+            throw error::error_t("invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
         }
     }
 }

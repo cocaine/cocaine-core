@@ -521,7 +521,8 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
                     std::make_unique<logging::log_t>(*m_log, attribute::set_t()),
                     storage->get<continuum_t::stored_type>("groups", group))});
             } catch(const std::system_error& e) {
-                COCAINE_LOG_ERROR(m_log, "unable to pre-load routing group for update: %s", error::what(e));
+                COCAINE_LOG_ERROR(m_log, "unable to pre-load routing group for update: %s",
+                    error::to_string(e));
                 throw std::system_error(error::routing_storage_error);
             }
         } else {

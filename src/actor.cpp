@@ -86,7 +86,8 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
         try {
             parent->m_context.engine().attach(std::move(ptr), parent->m_prototype);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: %s", error::what(e));
+            COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: %s",
+                error::to_string(e));
             ptr = nullptr;
         }
 
@@ -168,7 +169,7 @@ actor_t::endpoints() const {
             flags
         ));
     } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: %s", error::what(e));
+        COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: %s", error::to_string(e));
         return std::vector<tcp::endpoint>();
     }
 
@@ -203,7 +204,8 @@ actor_t::run() {
                 m_context.mapper.assign(m_prototype->name())
             });
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: %s", error::what(e));
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: %s",
+                error::to_string(e));
             throw;
         }
 
