@@ -54,7 +54,7 @@ struct dynamic_converter<predefine_cfg_t> {
     convert(const dynamic_t& source) {
         result_type result;
 
-        const dynamic_t& nodes = source.as_object().at("nodes", dynamic_t::object_t());
+        const dynamic_t& nodes = source.as_object().at("nodes", dynamic_t::empty_object);
 
         if(nodes.as_object().empty()) {
             throw cocaine::error_t("no nodes have been specified");
