@@ -403,9 +403,13 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
             nullptr
         ));
 
-        session->fork(std::make_shared<connect_sink_t>(this, uuid))->send<locator::connect>(
-            m_cfg.uuid
-        );
+        try {
+            session->fork(std::make_shared<connect_sink_t>(this, uuid))
+                ->send<locator::connect>(m_cfg.uuid);
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to set up remote client stream to remote: %s", error::to_string(e));
+            mapping->erase(uuid);
+        }
     });
 
     COCAINE_LOG_INFO(m_log, "setting up remote client, trying %d route(s)", endpoints.size())(
