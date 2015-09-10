@@ -210,7 +210,7 @@ make_error_code(security_errors code) -> std::error_code {
 
 std::string
 to_string(const std::system_error& e) {
-    return cocaine::format("[%d] %s", e.code().value(), e.code().message(), e.what());
+    return cocaine::format("[%d] %s", e.code().value(), e.what());
 }
 
 const std::error_code
