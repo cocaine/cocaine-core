@@ -1,3 +1,15 @@
+cocaine-core (0.12.3.13+nmu1) UNRELEASED; urgency=low
+
+  * Non-maintainer upload.
+  * Fix(errors): now error messages should be properly formatted.
+  * Fix(predefine): fixed use of deleted temporary object if no nodes
+    specified.
+  * Fix(locator): fixed crash in the case of short-living remote clients.
+    The runtime should no longer crash if the remote node has immediately
+    disappeared after been connected.
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 10 Sep 2015 18:59:42 +0300
+
 cocaine-core (0.12.3.12+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
