@@ -7,6 +7,7 @@ cocaine-core (0.12.3.13+nmu1) UNRELEASED; urgency=low
   * Fix(locator): fixed crash in the case of short-living remote clients.
     The runtime should no longer crash if the remote node has immediately
     disappeared after been connected.
+  * Fix(engine): fixed infinite hanging on execution unit shutdown.
 
  -- Evgeny Safronov <division494@gmail.com>  Thu, 10 Sep 2015 18:59:42 +0300
 
