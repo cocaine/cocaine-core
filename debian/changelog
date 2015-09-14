@@ -10,6 +10,11 @@ cocaine-core (0.12.3.13+nmu1) UNRELEASED; urgency=low
   * Fix(engine): fixed infinite hanging on execution unit shutdown.
   * Misc(actor): more verbose error logging - now it's possible to see what
     endpoint failed to be bound.
+  * Misc(session): revoked channel id is now displayed in logs.
+    This change adds more information about dropped channels by displaying
+    channel id.
+    In logs it will be: `uncaught invocation exception: [4] 42: specified
+    channel was revoked`.
 
  -- Evgeny Safronov <division494@gmail.com>  Thu, 10 Sep 2015 18:59:42 +0300
 
