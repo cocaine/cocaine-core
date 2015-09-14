@@ -90,6 +90,7 @@ public:
 
     virtual
    ~connect_sink_t() {
+        auto lock = parent->m_clients.synchronize();
         for(auto it = active.begin(); it != active.end(); ++it) tuple::invoke(
             *it,
             [&](const std::string& name, unsigned int version)
@@ -378,37 +379,41 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
     asio::async_connect(*socket, uplink.endpoints.begin(), uplink.endpoints.end(),
         [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator endpoint)
     {
-        auto mapping = m_clients.synchronize();
+        std::shared_ptr<uplink_t::session_type> session;
+        {
+            auto mapping = m_clients.synchronize();
 
-        scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
+            scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
 
-        if(mapping->count(uuid) == 0) {
-            COCAINE_LOG_ERROR(m_log, "remote disappeared while connecting");
-            return;
+            if(mapping->count(uuid) == 0) {
+                COCAINE_LOG_ERROR(m_log, "remote disappeared while connecting");
+                return;
+            }
+
+            if(ec) {
+                mapping->erase(uuid);
+
+                COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s",
+                    ec.value(), ec.message());
+                // TODO: Wrap link_node() in some sort of exponential back-off.
+                return m_asio.post([=] { link_node(uuid, endpoints); });
+            } else {
+                COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
+            }
+
+            session = (mapping->at(uuid).ptr = m_context.engine().attach(
+                std::make_unique<tcp::socket>(std::move(*socket)),
+                nullptr
+            ));
         }
 
-        if(ec) {
-            mapping->erase(uuid);
-
-            COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s",
-                ec.value(), ec.message());
-            // TODO: Wrap link_node() in some sort of exponential back-off.
-            return m_asio.post([=] { link_node(uuid, endpoints); });
-        } else {
-            COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
-        }
-
-        auto& session = (mapping->at(uuid).ptr = m_context.engine().attach(
-            std::make_unique<tcp::socket>(std::move(*socket)),
-            nullptr
-        ));
-
+        // session_t::fork is thread safe, so do fork outside the lock.
         try {
             session->fork(std::make_shared<connect_sink_t>(this, uuid))
                 ->send<locator::connect>(m_cfg.uuid);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to set up remote client stream to remote: %s", error::to_string(e));
-            mapping->erase(uuid);
+            m_clients->erase(uuid);
         }
     });
 
@@ -420,9 +425,10 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
 void
 locator_t::drop_node(const std::string& uuid) {
     m_remotes->erase(uuid);
-
+    std::shared_ptr<uplink_t::session_type> session;
     m_clients.apply([&](client_map_t& mapping) {
-        if(!m_gateway || mapping.count(uuid) == 0) {
+        auto it = mapping.find(uuid);
+        if(!m_gateway || it == mapping.end()) {
             return;
         }
 
@@ -430,9 +436,12 @@ locator_t::drop_node(const std::string& uuid) {
             "uuid", uuid
         );
 
-        mapping[uuid].ptr->detach(std::error_code());
+        session = it->second.ptr;
         mapping.erase(uuid);
     });
+    if(session) {
+        session->detach(std::error_code());
+    }
 }
 
 std::string
