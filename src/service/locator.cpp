@@ -91,6 +91,7 @@ public:
     virtual
    ~connect_sink_t() {
         auto lock = parent->m_clients.synchronize();
+
         for(auto it = active.begin(); it != active.end(); ++it) tuple::invoke(
             *it,
             [&](const std::string& name, unsigned int version)
@@ -412,7 +413,8 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
             session->fork(std::make_shared<connect_sink_t>(this, uuid))
                 ->send<locator::connect>(m_cfg.uuid);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to set up remote client stream to remote: %s", error::to_string(e));
+            COCAINE_LOG_ERROR(m_log, "unable to set up remote client stream to remote: %s",
+                error::to_string(e));
             m_clients->erase(uuid);
         }
     });

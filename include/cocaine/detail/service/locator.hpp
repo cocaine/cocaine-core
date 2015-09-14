@@ -79,6 +79,7 @@ class locator_t:
     {
     public:
         typedef session<asio::ip::tcp> session_type;
+
         std::vector<asio::ip::tcp::endpoint> endpoints;
         std::shared_ptr<session_type> ptr;
     };
