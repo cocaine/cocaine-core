@@ -8,6 +8,8 @@ cocaine-core (0.12.3.13+nmu1) UNRELEASED; urgency=low
     The runtime should no longer crash if the remote node has immediately
     disappeared after been connected.
   * Fix(engine): fixed infinite hanging on execution unit shutdown.
+  * Misc(actor): more verbose error logging - now it's possible to see what
+    endpoint failed to be bound.
 
  -- Evgeny Safronov <division494@gmail.com>  Thu, 10 Sep 2015 18:59:42 +0300
 
