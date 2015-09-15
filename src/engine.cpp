@@ -64,14 +64,16 @@ private:
 
 void
 execution_unit_t::gc_action_t::operator()() {
-    if(parent->m_cron) {
-        parent->m_cron->expires_from_now(repeat);
-
-        parent->m_cron->async_wait(std::bind(&gc_action_t::finalize,
-            shared_from_this(),
-            std::placeholders::_1
-        ));
+    if(!parent->m_cron) {
+        return;
     }
+
+    parent->m_cron->expires_from_now(repeat);
+
+    parent->m_cron->async_wait(std::bind(&gc_action_t::finalize,
+        shared_from_this(),
+        std::placeholders::_1
+    ));
 }
 
 void
