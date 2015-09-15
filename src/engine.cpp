@@ -64,9 +64,13 @@ private:
 
 void
 execution_unit_t::gc_action_t::operator()() {
-    parent->m_cron.expires_from_now(repeat);
+    if(!parent->m_cron) {
+        return;
+    }
 
-    parent->m_cron.async_wait(std::bind(&gc_action_t::finalize,
+    parent->m_cron->expires_from_now(repeat);
+
+    parent->m_cron->async_wait(std::bind(&gc_action_t::finalize,
         shared_from_this(),
         std::placeholders::_1
     ));
@@ -100,7 +104,7 @@ execution_unit_t::gc_action_t::finalize(const std::error_code& ec) {
 execution_unit_t::execution_unit_t(context_t& context):
     m_asio(new io_service()),
     m_chamber(new chamber_t("core:asio", m_asio)),
-    m_cron(*m_asio)
+    m_cron(new asio::deadline_timer(*m_asio))
 {
     m_log = context.log("core:asio", { attribute::make("engine", m_chamber->thread_id()) });
 
@@ -120,7 +124,9 @@ execution_unit_t::~execution_unit_t() {
             it->second->detach(std::error_code());
         }
 
-        m_cron.cancel();
+        // NOTE: It's okay to destroy deadline timer here, because garbage collector always performs
+        // existence check for timer.
+        m_cron.reset();
     });
 
     // NOTE: This will block until all the outstanding operations are complete.

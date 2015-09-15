@@ -52,7 +52,7 @@ class execution_unit_t {
 
     // Collects detached sessions every kCollectionInterval seconds. Normally, session slots will be
     // reused because of system fd rotation, but for low loads this will help a bit.
-    asio::deadline_timer m_cron;
+    std::unique_ptr<asio::deadline_timer> m_cron;
 
 public:
     explicit

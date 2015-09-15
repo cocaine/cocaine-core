@@ -1,5 +1,13 @@
+cocaine-core (0.12.3.12+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Bug fix: do not allow to detach session more than once.
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 03 Sep 2015 18:56:42 +0300
+
 cocaine-core (0.12.3.11+nmu1) unstable; urgency=low
 
+  * Non-maintainer upload.
   * Plugins: use double extension for plugins.
 
  -- Evgeny Safronov <division494@gmail.com>  Tue, 01 Sep 2015 21:52:12 +0300
