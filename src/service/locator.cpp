@@ -388,24 +388,28 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         }
 
         if(ec) {
+            COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s", ec.value(), ec.message());
             mapping->erase(uuid);
 
-            COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s",
-                ec.value(), ec.message());
             // TODO: Wrap link_node() in some sort of exponential back-off.
             return m_asio.post([=] { link_node(uuid, endpoints); });
-        } else {
-            COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
         }
+
+        COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
 
         auto& session = (mapping->at(uuid).ptr = m_context.engine().attach(
             std::make_unique<tcp::socket>(std::move(*socket)),
             nullptr
         ));
 
-        session->fork(std::make_shared<connect_sink_t>(this, uuid))->send<locator::connect>(
-            m_cfg.uuid
-        );
+        auto upstream = session->fork(std::make_shared<connect_sink_t>(this, uuid));
+
+        try {
+            upstream->send<locator::connect>(m_cfg.uuid);
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_ERROR(m_log, "unable to set up remote stream: %s", error::to_string(e));
+            mapping->erase(uuid);
+        }
     });
 
     COCAINE_LOG_INFO(m_log, "setting up remote client, trying %d route(s)", endpoints.size())(
