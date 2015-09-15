@@ -193,7 +193,7 @@ session_t::handle(const decoder_t::message_type& message) {
                 // NOTE: Checking whether channel number is always higher than the previous channel
                 // number is similar to an infinite TIME_WAIT timeout for TCP sockets. It might be
                 // not the best approach, but since we have 2^64 possible channels it's good enough.
-                throw std::system_error(error::revoked_channel);
+                throw std::system_error(error::revoked_channel, std::to_string(channel_id));
             }
 
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
