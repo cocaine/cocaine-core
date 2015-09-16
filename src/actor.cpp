@@ -198,21 +198,23 @@ actor_t::prototype() const {
 void
 actor_t::run() {
     m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
+        tcp::endpoint endpoint;
+
         try {
-            ptr = std::make_unique<tcp::acceptor>(*m_asio, tcp::endpoint {
+            endpoint = tcp::endpoint {
                 m_context.config.network.endpoint,
                 m_context.mapper.assign(m_prototype->name())
-            });
+            };
+
+            ptr = std::make_unique<tcp::acceptor>(*m_asio, endpoint);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: %s",
-                error::to_string(e));
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint %s for service: %s",
+                endpoint, error::to_string(e));
             throw;
         }
 
         std::error_code ec;
-        const auto endpoint = ptr->local_endpoint(ec);
-
-        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", endpoint);
+        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", ptr->local_endpoint(ec));
     });
 
     m_asio->post(std::bind(&accept_action_t::operator(),
