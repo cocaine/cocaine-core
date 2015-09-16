@@ -213,7 +213,8 @@ actor_t::run() {
             throw;
         }
 
-        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", endpoint);
+        std::error_code ec;
+        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", ptr->local_endpoint(ec));
     });
 
     m_asio->post(std::bind(&accept_action_t::operator(),
