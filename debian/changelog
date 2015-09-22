@@ -1,4 +1,4 @@
-cocaine-core (0.12.3.16+nmu1) UNRELEASED; urgency=low
+cocaine-core (0.12.3.16+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
   * Misc(actor): allow to reuse TW sockets for bind for acceptor sockets.
