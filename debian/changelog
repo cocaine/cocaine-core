@@ -1,3 +1,10 @@
+cocaine-core (0.12.3.16+nmu1) UNRELEASED; urgency=low
+
+  * Non-maintainer upload.
+  * Misc(actor): allow to reuse TW sockets for bind for acceptor sockets.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 22 Sep 2015 14:12:34 +0300
+
 cocaine-core (0.12.3.15+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
