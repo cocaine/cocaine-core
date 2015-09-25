@@ -136,9 +136,8 @@ struct msgpack_traits {
                         obj.via.array.ptr[1].type == msgpack::type::POSITIVE_INTEGER ||
                         obj.via.array.ptr[1].type == msgpack::type::RAW
                    ) && (
-                        //Either raw data or a number.
-                        obj.via.array.ptr[2].type == msgpack::type::RAW ||
-                        obj.via.array.ptr[2].type == msgpack::type::POSITIVE_INTEGER
+                        //Raw data.
+                        obj.via.array.ptr[2].type == msgpack::type::RAW
                    )
                )
             ) {
