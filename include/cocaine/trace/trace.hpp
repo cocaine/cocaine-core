@@ -147,8 +147,8 @@ private:
     to_hex_string(uint64_t val);
 
     uint64_t trace_id;
-    state_t state;
-    boost::optional<state_t> previous_state;
+    state_t state, previous_state;
+    bool was_pushed;
 };
 
 class trace_t::restore_scope_t

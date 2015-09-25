@@ -40,18 +40,8 @@ trace_t::trace_t(uint64_t trace_id_,
                  const std::string& rpc_name_):
     trace_id(trace_id_),
     state({span_id_, parent_id_, rpc_name_}),
-    previous_state(boost::none)
+    previous_state()
 {
-    auto check_range = [](uint64_t value) -> bool {
-        static const uint64_t max = (1ull << 63) - 1;
-        return value <= max;
-    };
-
-    // Check that values are in valid range.
-    if(!check_range(trace_id) || !check_range(state.span_id) || !check_range(state.parent_id)) {
-        throw cocaine::error_t("invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
-    }
-
     if(trace_id == zero_value) {
         // If we create empty trace all values should be zero
         if(state.parent_id != zero_value || state.span_id != zero_value) {
@@ -106,9 +96,9 @@ trace_t::pop() {
         return;
     }
     BOOST_ASSERT_MSG(state.parent_id != zero_value, "cannot pop trace - parent_id is 0");
-    BOOST_ASSERT_MSG(previous_state.is_initialized(), "cannot pop trace - pushed state is none");
-    state = previous_state.get();
-    previous_state = boost::none;
+    BOOST_ASSERT_MSG(was_pushed, "cannot pop trace - pushed state is none");
+    state = previous_state;
+    was_pushed = false;
 }
 
 void
@@ -116,15 +106,16 @@ trace_t::push(const std::string& new_rpc_name) {
     if(empty()) {
         return;
     }
+    was_pushed = true;
     previous_state = state;
     state.span_id = generate_id();
-    state.parent_id = previous_state->span_id;
+    state.parent_id = previous_state.span_id;
     state.rpc_name = new_rpc_name;
 }
 
 bool
 trace_t::pushed() const {
-    return previous_state.is_initialized();
+    return was_pushed;
 }
 
 uint64_t
