@@ -23,6 +23,7 @@
 
 #include <memory>
 
+#ifndef __cpp_lib_make_unique
 namespace std {
 
 template<class T, class... Args>
@@ -32,6 +33,7 @@ make_unique(Args&&... args) {
 }
 
 } // namespace std
+#endif
 
 namespace cocaine { namespace io {
 
