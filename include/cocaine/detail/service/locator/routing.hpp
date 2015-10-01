@@ -72,7 +72,7 @@ public:
     all() const;
 
 private:
-    const std::shared_ptr<logging::log_t> m_log;
+    std::shared_ptr<logging::log_t> m_log;
 
     // The hashring.
     std::vector<element_t> m_elements;
