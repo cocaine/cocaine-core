@@ -209,7 +209,6 @@ actor_t::run() {
 
         try {
             ptr = std::make_unique<tcp::acceptor>(*m_asio, endpoint);
-            ptr->set_option(asio::socket_base::reuse_address(true));
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint %s for service: %s",
                 endpoint, error::to_string(e));
