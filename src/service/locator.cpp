@@ -494,7 +494,6 @@ locator_t::drop_node(const std::string& uuid) {
         );
 
         session = it->second.ptr;
-
         mapping.erase(it);
     });
 

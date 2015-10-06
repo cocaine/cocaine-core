@@ -79,10 +79,8 @@ class locator_t:
     class uplink_t
     {
     public:
-        typedef session<asio::ip::tcp> session_type;
-
         std::vector<asio::ip::tcp::endpoint> endpoints;
-        std::shared_ptr<session_type> ptr;
+        std::shared_ptr<session<asio::ip::tcp>> ptr;
     };
 
     typedef std::map<std::string, uplink_t> client_map_t;
