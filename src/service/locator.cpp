@@ -91,6 +91,7 @@ public:
     virtual
    ~connect_sink_t() {
         auto lock = parent->m_clients.synchronize();
+
         for(auto it = active.begin(); it != active.end(); ++it) tuple::invoke(
             *it,
             [&](const std::string& name, unsigned int version)
@@ -379,7 +380,8 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
     asio::async_connect(*socket, uplink.endpoints.begin(), uplink.endpoints.end(),
         [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator endpoint)
     {
-        std::shared_ptr<uplink_t::session_type> session;
+        std::shared_ptr<session<asio::ip::tcp>> session;
+
         {
             auto mapping = m_clients.synchronize();
 
@@ -424,9 +426,12 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
 void
 locator_t::drop_node(const std::string& uuid) {
     m_remotes->erase(uuid);
-    std::shared_ptr<uplink_t::session_type> session;
+
+    std::shared_ptr<session<asio::ip::tcp>> session;
+
     m_clients.apply([&](client_map_t& mapping) {
         auto it = mapping.find(uuid);
+
         if(!m_gateway || it == mapping.end()) {
             return;
         }
@@ -436,8 +441,9 @@ locator_t::drop_node(const std::string& uuid) {
         );
 
         session = it->second.ptr;
-        mapping.erase(uuid);
+        mapping.erase(it);
     });
+
     if(session) {
         session->detach(std::error_code());
     }
