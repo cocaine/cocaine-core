@@ -37,8 +37,6 @@ class execution_unit_t {
 
     class gc_action_t;
 
-    std::unique_ptr<logging::log_t> m_log;
-
     // Connections
 
     std::map<int, std::shared_ptr<session_t>> m_sessions;
@@ -47,6 +45,9 @@ class execution_unit_t {
 
     std::shared_ptr<asio::io_service> m_asio;
     std::unique_ptr<io::chamber_t> m_chamber;
+
+    // Initialized here because of the dependency on the io::chamber_t's thread ID.
+    const std::unique_ptr<logging::log_t> m_log;
 
     static const unsigned int kCollectionInterval = 60;
 
