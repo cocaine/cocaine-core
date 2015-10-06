@@ -72,6 +72,7 @@ class locator_t:
 {
     class connect_sink_t;
     class publish_slot_t;
+    class routing_slot_t;
 
     typedef std::map<std::string, continuum_t> rg_map_t;
 

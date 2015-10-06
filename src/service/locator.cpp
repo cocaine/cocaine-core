@@ -268,6 +268,75 @@ private:
     }
 };
 
+class locator_t::routing_slot_t:
+    public basic_slot<locator::routing>
+{
+    struct lock_t:
+        public basic_slot<locator::routing>::dispatch_type
+    {
+        routing_slot_t *const parent;
+        std::string     const handle;
+
+        lock_t(routing_slot_t *const parent_, const std::string& handle_):
+            basic_slot<locator::routing>::dispatch_type("routing"),
+            parent(parent_),
+            handle(handle_)
+        {
+            on<locator::routing::discard>([&] {
+                discard({});
+            });
+        }
+
+        virtual
+        void
+        discard(const std::error_code& ec) const {
+            parent->discard(ec, handle);
+        }
+    };
+
+    typedef std::shared_ptr<const basic_slot::dispatch_type> result_type;
+
+    locator_t *const parent;
+
+public:
+    routing_slot_t(locator_t *const parent_):
+        parent(parent_)
+    {}
+
+    boost::optional<result_type>
+    operator()(tuple_type&& args, upstream_type&& upstream) {
+        struct channel_t {
+            streamed<results::routing> stream;
+            result_type dispatch;
+        };
+
+        auto channel = tuple::invoke(std::move(args), [&](const std::string& ruid) -> channel_t {
+            auto stream = parent->on_routing(ruid, true);
+            return {std::move(stream), std::make_shared<lock_t>(this, ruid)};
+        });
+
+        channel.stream.attach(std::move(upstream));
+
+        return boost::make_optional(channel.dispatch);
+    }
+
+private:
+    void
+    discard(const std::error_code& ec, const std::string& handle) {
+        switch (ec.value()) {
+        case 0:
+        case asio::error::eof:
+            COCAINE_LOG_INFO(parent->m_log, "detaching an outgoing stream for router '%s'", handle);
+            break;
+        default:
+            COCAINE_LOG_WARNING(parent->m_log, "detaching an outgoing stream for router '%s': [%d] %s",
+                handle, ec.value(), ec.message());
+        };
+
+        parent->m_routers->erase(handle);
+    }
+};
+
 // Locator
 
 locator_cfg_t::locator_cfg_t(const std::string& name_, const dynamic_t& root):
@@ -290,9 +359,9 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     on<locator::connect>(std::bind(&locator_t::on_connect, this, ph::_1));
     on<locator::refresh>(std::bind(&locator_t::on_refresh, this, ph::_1));
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
-    on<locator::routing>(std::bind(&locator_t::on_routing, this, ph::_1, true));
 
     on<locator::publish>(std::make_shared<publish_slot_t>(this));
+    on<locator::routing>(std::make_shared<routing_slot_t>(this));
 
     // Service restrictions
 
@@ -542,10 +611,14 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
         result.push_back(value.first); return result;
     });
 
-    for(auto it = ruids.begin(); it != ruids.end(); ++it) try {
-        on_routing(*it);
-    } catch(...) {
-        m_routers->erase(*it);
+    for(auto it = ruids.begin(); it != ruids.end(); ++it) {
+        try {
+            on_routing(*it);
+        } catch(const std::system_error& e) {
+            COCAINE_LOG_WARNING(m_log, "unable to send routing updates to %s: %s", *it,
+                error::to_string(e));
+            m_routers->erase(*it);
+        }
     }
 
     COCAINE_LOG_DEBUG(m_log, "enqueued sending routing updates to %d router(s)", ruids.size());
