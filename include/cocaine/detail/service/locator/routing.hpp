@@ -72,7 +72,8 @@ public:
     all() const;
 
 private:
-    std::shared_ptr<logging::log_t> m_log;
+    // Shared to allow cloning of rg_map_t for routing group updates.
+    const std::shared_ptr<logging::log_t> m_log;
 
     // The hashring.
     std::vector<element_t> m_elements;

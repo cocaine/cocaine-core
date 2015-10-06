@@ -102,10 +102,11 @@ execution_unit_t::gc_action_t::finalize(const std::error_code& ec) {
 execution_unit_t::execution_unit_t(context_t& context):
     m_asio(new io_service()),
     m_chamber(new chamber_t("core:asio", m_asio)),
+    m_log(context.log("core:asio", {
+        attribute::make("engine", m_chamber->thread_id())
+    })),
     m_cron(new asio::deadline_timer(*m_asio))
 {
-    m_log = context.log("core:asio", { attribute::make("engine", m_chamber->thread_id()) });
-
     m_asio->post(std::bind(&gc_action_t::operator(),
         std::make_shared<gc_action_t>(this, boost::posix_time::seconds(kCollectionInterval))
     ));

@@ -521,43 +521,39 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
     const auto storage = api::storage(m_context, "core");
     const auto updated = storage->find("groups", std::vector<std::string>({"group", "active"}));
 
-    // Perform complete operation under the lock to avoid race conditions.
-    m_rgs.apply([&](rg_map_t& rgs) {
-        // Make a deep copy.
-        auto accumulator = rgs;
+    m_rgs.apply([&](rg_map_t& original) {
+        // Make a deep copy of the original routing group mapping to use as the accumulator, for
+        // guaranteed atomicity of routing group updates.
+        rg_map_t clone = original;
 
-        for(const auto& group : groups) {
-            accumulator.erase(group);
-
+        original = std::move(std::accumulate(groups.begin(), groups.end(), std::ref(clone),
+            [&](rg_map_t& result, const std::string& group) -> std::reference_wrapper<rg_map_t>
+        {
             scoped_attributes_t attributes(*m_log, { attribute::make("rg", group) });
 
-            if(std::find(updated.begin(), updated.end(), group) != updated.end()) {
-                COCAINE_LOG_INFO(m_log, "updating routing group");
+            result.erase(group);
 
-                try {
-                    // NOTE: With Clang or GCC 5.0 we can just emplace without this voodoo temporary
-                    // variable magic.
-                    std::pair<std::string, continuum_t> value(
-                        std::piecewise_construct,
-                        std::forward_as_tuple(group),
-                        std::forward_as_tuple(
-                            std::make_unique<logging::log_t>(*m_log, attribute::set_t()),
-                            storage->get<continuum_t::stored_type>("groups", group)
-                        )
-                    );
-
-                    accumulator.insert(std::move(value));
-                } catch(const std::system_error& e) {
-                    COCAINE_LOG_ERROR(m_log, "unable to pre-load routing group for update: %s",
-                        error::to_string(e));
-                    throw std::system_error(error::routing_storage_error);
-                }
-            } else {
+            if(std::find(updated.begin(), updated.end(), group) == updated.end()) {
                 COCAINE_LOG_INFO(m_log, "removing routing group");
-            }
-        }
 
-        rgs = std::move(accumulator);
+                // There's no routing group with this name in the storage anymore, so do nothing.
+                return std::ref(result);
+            }
+
+            COCAINE_LOG_INFO(m_log, "updating routing group");
+
+            try {
+                result.insert(std::make_pair(group, continuum_t(
+                    std::make_unique<logging::log_t>(*m_log, attribute::set_t()),
+                    storage->get<continuum_t::stored_type>("groups", group))));
+            } catch(const std::system_error& e) {
+                COCAINE_LOG_ERROR(m_log, "unable to pre-load routing group data for update: %s",
+                    error::to_string(e));
+                throw std::system_error(error::routing_storage_error);
+            }
+
+            return std::ref(result);
+        }).get());
     });
 
     const auto ruids = boost::accumulate(*m_routers.synchronize(), ruid_vector_t{},
