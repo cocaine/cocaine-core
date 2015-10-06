@@ -146,6 +146,7 @@ continuum_t::all() const -> std::vector<std::tuple<point_type, std::string>> {
     typedef std::vector<std::tuple<point_type, std::string>> result_type;
 
     result_type tuples;
+    tuples.reserve(m_elements.size());
 
     std::transform(m_elements.begin(), m_elements.end(), std::back_inserter(tuples),
         [](const element_t& element) -> result_type::value_type
