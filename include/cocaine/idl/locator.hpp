@@ -141,8 +141,20 @@ struct publish {
     >::type argument_type;
 };
 
+struct routing_tag;
 struct routing {
+    struct discard {
+        typedef locator::routing_tag tag;
+
+        static const char* alias() {
+            return "discard";
+        }
+
+        typedef void upstream_type;
+    };
+
     typedef locator_tag tag;
+    typedef locator::routing_tag dispatch_type;
 
     static const char* alias() {
         return "routing";
@@ -164,7 +176,7 @@ struct routing {
 template<>
 struct protocol<locator_tag> {
     typedef boost::mpl::int_<
-        2
+        3
     >::type version;
 
     typedef boost::mpl::list<
@@ -177,6 +189,17 @@ struct protocol<locator_tag> {
     >::type messages;
 
     typedef locator scope;
+};
+
+template<>
+struct protocol<locator::routing_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        locator::routing::discard
+    >::type messages;
 };
 
 template<>
