@@ -46,10 +46,11 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
-#include <boost/range/numeric.hpp>
-
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/for_each.hpp>
+#include <boost/range/algorithm/transform.hpp>
+
+#include <boost/range/numeric.hpp>
 
 #include <boost/spirit/include/karma_char.hpp>
 #include <boost/spirit/include/karma_generate.hpp>
@@ -130,7 +131,7 @@ locator_t::connect_sink_t::discard(const std::error_code& ec) const {
 
 void
 locator_t::connect_sink_t::cleanup() {
-    for(auto it = parent->m_aggregate.begin(), end = parent->m_aggregate.end(); it != end;) {
+    for(auto it = parent->m_aggregate.begin(), end = parent->m_aggregate.end(); it != end; /***/) {
         if(!it->second.empty()) {
             it++; continue;
         }
@@ -380,33 +381,38 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
     asio::async_connect(*socket, uplink.endpoints.begin(), uplink.endpoints.end(),
         [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator endpoint)
     {
-        std::shared_ptr<uplink_t::session_type> session;
+        scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
+
+        auto session = m_clients.apply(
+            [&](client_map_t& mapping) -> std::shared_ptr<cocaine::session<asio::ip::tcp>>
         {
-            auto mapping = m_clients.synchronize();
-
-            scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
-
-            if(mapping->count(uuid) == 0) {
+            if(mapping.count(uuid) == 0) {
                 COCAINE_LOG_ERROR(m_log, "remote disappeared while connecting");
-                return;
+                return nullptr;
             }
 
             if(ec) {
-                mapping->erase(uuid);
+                COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s", ec.value(), ec.message());
+                mapping.erase(uuid);
 
                 COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s",
                     ec.value(), ec.message());
                 // TODO: Wrap link_node() in some sort of exponential back-off.
-                return m_asio.post([=] { link_node(uuid, endpoints); });
-            } else {
-                COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
+
+                m_asio.post([=] { link_node(uuid, endpoints); });
+                return nullptr;
             }
 
-            session = (mapping->at(uuid).ptr = m_context.engine().attach(
-                std::make_unique<tcp::socket>(std::move(*socket)),
-                nullptr
-            ));
-        }
+            COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
+
+            // Uniquify the socket object.
+            auto ptr = std::make_unique<tcp::socket>(std::move(*socket));
+
+            return (mapping.at(uuid).ptr = m_context.engine().attach(std::move(ptr), nullptr));
+        });
+
+        // Something went wrong in the session creation code above, bail out.
+        if(!session) return;
 
         // session_t::fork is thread safe, so do fork outside the lock.
         try {
@@ -590,9 +596,7 @@ locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results
     auto results = results::routing();
     auto builder = std::inserter(results, results.end());
 
-    auto mapping = m_rgs.synchronize();
-
-    std::transform(mapping->begin(), mapping->end(), builder,
+    boost::transform(*m_rgs.synchronize(), builder,
         [](const rg_map_t::value_type& value) -> results::routing::value_type
     {
         return {value.first, value.second.all()};
@@ -633,7 +637,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
 
     const auto response = results::connect{m_cfg.uuid, {{name, meta}}};
 
-    for(auto it = mapping->begin(); it != mapping->end();) try {
+    for(auto it = mapping->begin(); it != mapping->end(); /***/) try {
         it->second.write(response);
         it++;
     } catch(...) {
