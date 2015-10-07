@@ -30,20 +30,17 @@
 
 namespace cocaine { namespace io {
 
-template<class Tag, class Upstream = basic_upstream_t> class message_queue;
+template<class Tag> class message_queue;
 
 namespace mpl = boost::mpl;
 
 namespace aux {
 
-template<class Upstream>
 struct frozen_visitor:
     public boost::static_visitor<void>
 {
-    typedef Upstream upstream_type;
-
     explicit
-    frozen_visitor(const std::shared_ptr<upstream_type>& upstream_):
+    frozen_visitor(const std::shared_ptr<basic_upstream_t>& upstream_):
         upstream(upstream_)
     { }
 
@@ -54,21 +51,19 @@ struct frozen_visitor:
     }
 
 private:
-    const std::shared_ptr<upstream_type>& upstream;
+    const std::shared_ptr<basic_upstream_t>& upstream;
 };
 
 } // namespace aux
 
-template<class Tag, class Upstream>
+template<class Tag>
 class message_queue {
-    typedef Upstream upstream_type;
-
     // Operation log.
     std::vector<typename make_frozen_over<Tag>::type> m_operations;
 
     // The upstream might be attached during message invocation, so it has to be synchronized for
     // thread safety - the atomicity guarantee of the shared_ptr<T> is not enough.
-    std::shared_ptr<upstream_type> m_upstream;
+    std::shared_ptr<basic_upstream_t> m_upstream;
 
 public:
     template<class Event, class... Args>
@@ -95,7 +90,7 @@ public:
         );
 
         if(!m_operations.empty()) {
-            aux::frozen_visitor<upstream_type> visitor(upstream.ptr);
+            aux::frozen_visitor visitor(upstream.ptr);
 
             // For some weird reasons, boost::apply_visitor() only accepts lvalue-references to the
             // visitor object, so there's no other choice but to actually bind it to a variable.
