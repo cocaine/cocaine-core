@@ -197,7 +197,7 @@ locator_t::connect_sink_t::on_announce(const std::string& node,
 
 void
 locator_t::connect_sink_t::on_shutdown() {
-    COCAINE_LOG_INFO(parent->m_log, "remote client closed the stream")(
+    COCAINE_LOG_INFO(parent->m_log, "remote client closed its stream")(
         "uuid", uuid
     );
 
@@ -214,7 +214,7 @@ class locator_t::publish_slot_t: public basic_slot<locator::publish> {
             parent(parent_),
             handle(handle_)
         {
-            on<locator::publish::discard>([this] { discard(std::error_code()); });
+            on<locator::publish::discard>([this] { discard({}); });
         }
 
         virtual
@@ -235,6 +235,8 @@ public:
             [this](std::string&& handle, std::vector<tcp::endpoint>&& location,
                    std::tuple<unsigned int, graph_root_t>&& metadata) -> result_type
         {
+            scoped_attributes_t attributes(*parent->m_log, { attribute::make("service", handle) });
+
             unsigned int versions;
             graph_root_t protocol;
 
@@ -244,10 +246,9 @@ public:
                 throw std::system_error(error::missing_version_error);
             }
 
-            scoped_attributes_t attributes(*parent->m_log, { attribute::make("service", handle) });
-
-            COCAINE_LOG_INFO(parent->m_log, "publishing external %s service with %d endpoints",
-                protocol.empty() ? "non-native" : "native", location.size());
+            COCAINE_LOG_INFO(parent->m_log, "publishing %s external service with %d endpoints",
+                protocol.empty() ? "non-native" : "native",
+                location.size());
 
             parent->on_service(handle, results::resolve{location, versions, protocol}, modes::exposed);
 
@@ -268,6 +269,55 @@ private:
             ec.value(), ec.message());
 
         return parent->on_service(handle, results::resolve{}, modes::removed);
+    }
+};
+
+class locator_t::routing_slot_t: public basic_slot<locator::routing> {
+    struct routing_lock_t: public basic_slot<locator::routing>::dispatch_type {
+        routing_slot_t *const parent;
+        std::string     const handle;
+
+        routing_lock_t(routing_slot_t *const parent_, const std::string& handle_):
+            basic_slot<locator::routing>::dispatch_type("routing"),
+            parent(parent_),
+            handle(handle_)
+        {
+            on<locator::routing::discard>([this] { discard({}); });
+        }
+
+        virtual
+        void
+        discard(const std::error_code& ec) const { parent->discard(ec, handle); }
+    };
+
+    typedef std::shared_ptr<const basic_slot::dispatch_type> result_type;
+
+    locator_t *const parent;
+
+public:
+    routing_slot_t(locator_t *const parent_): parent(parent_) { }
+
+    auto
+    operator()(tuple_type&& args, upstream_type&& upstream) -> boost::optional<result_type> {
+        const auto ruid = std::get<0>(args);
+
+        auto rv = parent->on_routing(ruid, true);
+        auto dispatch = std::make_shared<routing_lock_t>(this, ruid);
+
+        // Try to flush the initial routing group information (if available). This can throw.
+        rv.attach(std::move(upstream));
+
+        return boost::make_optional(result_type(dispatch));
+    }
+
+private:
+    void
+    discard(const std::error_code& ec, const std::string& handle) {
+        COCAINE_LOG_DEBUG(parent->m_log, "detaching outgoing stream for router '%s': [%d] %s",
+            handle,
+            ec.value(), ec.message());
+
+        parent->m_routers->erase(handle);
     }
 };
 
@@ -293,9 +343,9 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     on<locator::connect>(std::bind(&locator_t::on_connect, this, ph::_1));
     on<locator::refresh>(std::bind(&locator_t::on_refresh, this, ph::_1));
     on<locator::cluster>(std::bind(&locator_t::on_cluster, this));
-    on<locator::routing>(std::bind(&locator_t::on_routing, this, ph::_1, true));
 
     on<locator::publish>(std::make_shared<publish_slot_t>(this));
+    on<locator::routing>(std::make_shared<routing_slot_t>(this));
 
     // Service restrictions
 
@@ -508,8 +558,8 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
         return stream.close();
     }
 
-    if(!mapping->erase(uuid)) {
-        COCAINE_LOG_INFO(m_log, "attaching an outgoing stream for locator");
+    if(mapping->erase(uuid) == 0) {
+        COCAINE_LOG_INFO(m_log, "attaching outgoing stream for locator");
     }
 
     // Store the stream to synchronize future service updates with the remote node. Updates are
@@ -546,9 +596,9 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
                 return std::ref(result);
             }
 
-            COCAINE_LOG_INFO(m_log, "updating routing group");
-
             try {
+                COCAINE_LOG_INFO(m_log, "updating routing group");
+
                 result.insert(std::make_pair(group, continuum_t(
                     std::make_unique<logging::log_t>(*m_log, attribute::set_t()),
                     storage->get<continuum_t::stored_type>("groups", group))));
@@ -570,7 +620,10 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
 
     for(auto it = ruids.begin(); it != ruids.end(); ++it) try {
         on_routing(*it);
-    } catch(...) {
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_WARNING(m_log, "unable to enqueue routing updates for router '%s': %s",
+            *it,
+            error::to_string(e));
         m_routers->erase(*it);
     }
 
@@ -604,7 +657,7 @@ locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results
 
     auto stream = m_routers.apply([&](router_map_t& mapping) -> streamed<results::routing> {
         if(mapping.count(ruid) == 0 || (replace && mapping.erase(ruid))) {
-            COCAINE_LOG_INFO(m_log, "attaching an outgoing stream for router '%s'", ruid);
+            COCAINE_LOG_INFO(m_log, "attaching outgoing stream for router '%s'", ruid);
         }
 
         return mapping[ruid];
@@ -640,7 +693,10 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
     for(auto it = mapping->begin(); it != mapping->end(); /***/) try {
         it->second.write(response);
         it++;
-    } catch(...) {
+    } catch(const std::system_error& e) {
+        COCAINE_LOG_WARNING(m_log, "unable to enqueue service updates for locator '%s': %s",
+            it->first,
+            error::to_string(e));
         it = mapping->erase(it);
     }
 
