@@ -16,7 +16,7 @@ OPTION(COCAINE_ALLOW_TESTS "Build Tests" OFF)
 OPTION(COCAINE_ALLOW_BENCHMARKS "Build Benchmarking Tools" OFF)
 OPTION(COCAINE_DEBUG OFF)
 
-# Import our CMake modules
+# Import our CMake modules.
 INCLUDE(cmake/locate_library.cmake)
 INCLUDE(foreign/modules/AddCXXCompilerFlag.cmake)
 
@@ -25,12 +25,11 @@ IF(NOT APPLE)
     SET(LIBBFD_LIBRARY "bfd" "dl")
 ENDIF()
 
-FIND_PACKAGE(Boost 1.46.0
-    REQUIRED COMPONENTS
-        filesystem
-        program_options
-        system
-        thread)
+FIND_PACKAGE(Boost 1.46.0 REQUIRED COMPONENTS
+    filesystem
+    program_options
+    system
+    thread)
 
 LOCATE_LIBRARY(LIBLTDL "ltdl.h" "ltdl")
 LOCATE_LIBRARY(LIBMSGPACK "msgpack.hpp" "msgpack")
@@ -45,20 +44,18 @@ CONFIGURE_FILE(
     "${PROJECT_SOURCE_DIR}/config.hpp.in"
     "${PROJECT_SOURCE_DIR}/include/cocaine/config.hpp")
 
-INCLUDE_DIRECTORIES(
+INCLUDE_DIRECTORIES(SYSTEM
     ${Boost_INCLUDE_DIRS}
     ${LIBMHASH_INCLUDE_DIRS}
     ${LIBMSGPACK_INCLUDE_DIRS}
-    ${LIBLTDL_INCLUDE_DIRS})
-
-# If not included as SYSTEM, these libs would emit 100500 warnings.
-INCLUDE_DIRECTORIES(BEFORE
-    SYSTEM ${PROJECT_SOURCE_DIR}/foreign/backward-cpp)
+    ${LIBLTDL_INCLUDE_DIRS}
+    # Bundled third-party libraries.
+    ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
+    ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
+    ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include)
 
 INCLUDE_DIRECTORIES(BEFORE
     ${PROJECT_SOURCE_DIR}/foreign/blackhole/src
-    ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include
-    ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
     ${PROJECT_SOURCE_DIR}/include)
 
 LINK_DIRECTORIES(
@@ -120,6 +117,7 @@ TARGET_LINK_LIBRARIES(cocaine-runtime
 
 # Try and enable C++11.
 ADD_CXX_COMPILER_FLAG(-std=c++11)
+
 IF(NOT HAVE_CXX_FLAG_STD_CXX11)
   ADD_CXX_COMPILER_FLAG(-std=c++0x)
 ENDIF()
@@ -133,11 +131,10 @@ ADD_CXX_COMPILER_FLAG(-pedantic)
 ADD_CXX_COMPILER_FLAG(-pedantic-errors)
 
 IF(COCAINE_ALLOW_TESTS OR COCAINE_ALLOW_BENCHMARKS)
-    add_custom_target(test
+    ADD_CUSTOM_TARGET(test
         COMMAND ${CMAKE_BINARY_DIR}/tests/cocaine-core-unit
         DEPENDS cocaine-core-unit
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
-
     ADD_SUBDIRECTORY(tests)
 ENDIF()
 

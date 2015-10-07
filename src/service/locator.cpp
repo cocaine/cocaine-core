@@ -46,10 +46,11 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
-#include <boost/range/numeric.hpp>
-
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/for_each.hpp>
+#include <boost/range/algorithm/transform.hpp>
+
+#include <boost/range/numeric.hpp>
 
 #include <boost/spirit/include/karma_char.hpp>
 #include <boost/spirit/include/karma_generate.hpp>
@@ -90,6 +91,8 @@ public:
 
     virtual
    ~connect_sink_t() {
+        auto lock = parent->m_clients.synchronize();
+
         for(auto it = active.begin(); it != active.end(); ++it) tuple::invoke(
             *it,
             [&](const std::string& name, unsigned int version)
@@ -128,7 +131,7 @@ locator_t::connect_sink_t::discard(const std::error_code& ec) const {
 
 void
 locator_t::connect_sink_t::cleanup() {
-    for(auto it = parent->m_aggregate.begin(), end = parent->m_aggregate.end(); it != end;) {
+    for(auto it = parent->m_aggregate.begin(), end = parent->m_aggregate.end(); it != end; /***/) {
         if(!it->second.empty()) {
             it++; continue;
         }
@@ -378,29 +381,35 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
     asio::async_connect(*socket, uplink.endpoints.begin(), uplink.endpoints.end(),
         [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator endpoint)
     {
-        auto mapping = m_clients.synchronize();
-
         scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
 
-        if(mapping->count(uuid) == 0) {
-            COCAINE_LOG_ERROR(m_log, "remote disappeared while connecting");
-            return;
-        }
+        auto session = m_clients.apply(
+            [&](client_map_t& mapping) -> std::shared_ptr<cocaine::session<asio::ip::tcp>>
+        {
+            if(mapping.count(uuid) == 0) {
+                COCAINE_LOG_ERROR(m_log, "remote disappeared while connecting");
+                return nullptr;
+            }
 
-        if(ec) {
-            COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s", ec.value(), ec.message());
-            mapping->erase(uuid);
+            if(ec) {
+                COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s", ec.value(), ec.message());
+                mapping.erase(uuid);
 
-            // TODO: Wrap link_node() in some sort of exponential back-off.
-            return m_asio.post([=] { link_node(uuid, endpoints); });
-        }
+                // TODO: Wrap link_node() in some sort of exponential back-off.
+                m_asio.post([=] { link_node(uuid, endpoints); });
+                return nullptr;
+            }
 
-        COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
+            COCAINE_LOG_DEBUG(m_log, "connected to remote via %s", *endpoint);
 
-        auto& session = (mapping->at(uuid).ptr = m_context.engine().attach(
-            std::make_unique<tcp::socket>(std::move(*socket)),
-            nullptr
-        ));
+            // Uniquify the socket object.
+            auto ptr = std::make_unique<tcp::socket>(std::move(*socket));
+
+            return (mapping.at(uuid).ptr = m_context.engine().attach(std::move(ptr), nullptr));
+        });
+
+        // Something went wrong in the session creation code above, bail out.
+        if(!session) return;
 
         auto upstream = session->fork(std::make_shared<connect_sink_t>(this, uuid));
 
@@ -408,7 +417,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
             upstream->send<locator::connect>(m_cfg.uuid);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to set up remote stream: %s", error::to_string(e));
-            mapping->erase(uuid);
+            m_clients->erase(uuid);
         }
     });
 
@@ -421,8 +430,12 @@ void
 locator_t::drop_node(const std::string& uuid) {
     m_remotes->erase(uuid);
 
+    std::shared_ptr<session<asio::ip::tcp>> session;
+
     m_clients.apply([&](client_map_t& mapping) {
-        if(!m_gateway || mapping.count(uuid) == 0) {
+        auto it = mapping.find(uuid);
+
+        if(!m_gateway || it == mapping.end()) {
             return;
         }
 
@@ -430,9 +443,13 @@ locator_t::drop_node(const std::string& uuid) {
             "uuid", uuid
         );
 
-        mapping[uuid].ptr->detach(std::error_code());
-        mapping.erase(uuid);
+        session = it->second.ptr;
+        mapping.erase(it);
     });
+
+    if(session) {
+        session->detach(std::error_code());
+    }
 }
 
 std::string
@@ -510,30 +527,39 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
     const auto storage = api::storage(m_context, "core");
     const auto updated = storage->find("groups", std::vector<std::string>({"group", "active"}));
 
-    m_rgs.unsafe() = boost::accumulate(groups, *m_rgs.synchronize(),
-        [&](rg_map_t accumulator, const std::string& group) -> rg_map_t
-    {
-        accumulator.erase(group);
+    m_rgs.apply([&](rg_map_t& original) {
+        // Make a deep copy of the original routing group mapping to use as the accumulator, for
+        // guaranteed atomicity of routing group updates.
+        rg_map_t clone = original;
 
-        scoped_attributes_t attributes(*m_log, { attribute::make("rg", group) });
+        original = std::move(std::accumulate(groups.begin(), groups.end(), std::ref(clone),
+            [&](rg_map_t& result, const std::string& group) -> std::reference_wrapper<rg_map_t>
+        {
+            scoped_attributes_t attributes(*m_log, { attribute::make("rg", group) });
 
-        if(std::find(updated.begin(), updated.end(), group) != updated.end()) {
+            result.erase(group);
+
+            if(std::find(updated.begin(), updated.end(), group) == updated.end()) {
+                COCAINE_LOG_INFO(m_log, "removing routing group");
+
+                // There's no routing group with this name in the storage anymore, so do nothing.
+                return std::ref(result);
+            }
+
             COCAINE_LOG_INFO(m_log, "updating routing group");
 
             try {
-                accumulator.insert({group, continuum_t(
+                result.insert(std::make_pair(group, continuum_t(
                     std::make_unique<logging::log_t>(*m_log, attribute::set_t()),
-                    storage->get<continuum_t::stored_type>("groups", group))});
+                    storage->get<continuum_t::stored_type>("groups", group))));
             } catch(const std::system_error& e) {
-                COCAINE_LOG_ERROR(m_log, "unable to pre-load routing group for update: %s",
+                COCAINE_LOG_ERROR(m_log, "unable to pre-load routing group data for update: %s",
                     error::to_string(e));
                 throw std::system_error(error::routing_storage_error);
             }
-        } else {
-            COCAINE_LOG_INFO(m_log, "removing routing group");
-        }
 
-        return accumulator;
+            return std::ref(result);
+        }).get());
     });
 
     const auto ruids = boost::accumulate(*m_routers.synchronize(), ruid_vector_t{},
@@ -570,9 +596,7 @@ locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results
     auto results = results::routing();
     auto builder = std::inserter(results, results.end());
 
-    auto mapping = m_rgs.synchronize();
-
-    std::transform(mapping->begin(), mapping->end(), builder,
+    boost::transform(*m_rgs.synchronize(), builder,
         [](const rg_map_t::value_type& value) -> results::routing::value_type
     {
         return {value.first, value.second.all()};
@@ -613,7 +637,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
 
     const auto response = results::connect{m_cfg.uuid, {{name, meta}}};
 
-    for(auto it = mapping->begin(); it != mapping->end();) try {
+    for(auto it = mapping->begin(); it != mapping->end(); /***/) try {
         it->second.write(response);
         it++;
     } catch(...) {
