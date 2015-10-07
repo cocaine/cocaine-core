@@ -142,6 +142,7 @@ struct publish {
 };
 
 struct routing_tag;
+
 struct routing {
     struct discard {
         typedef locator::routing_tag tag;
@@ -192,17 +193,6 @@ struct protocol<locator_tag> {
 };
 
 template<>
-struct protocol<locator::routing_tag> {
-    typedef boost::mpl::int_<
-        1
-    >::type version;
-
-    typedef boost::mpl::list<
-        locator::routing::discard
-    >::type messages;
-};
-
-template<>
 struct protocol<locator::publish_tag> {
     typedef boost::mpl::int_<
         1
@@ -210,6 +200,17 @@ struct protocol<locator::publish_tag> {
 
     typedef boost::mpl::list<
         locator::publish::discard
+    >::type messages;
+};
+
+template<>
+struct protocol<locator::routing_tag> {
+    typedef boost::mpl::int_<
+        1
+    >::type version;
+
+    typedef boost::mpl::list<
+        locator::routing::discard
     >::type messages;
 };
 
