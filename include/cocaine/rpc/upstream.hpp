@@ -58,7 +58,7 @@ basic_upstream_t::send(Args&&... args) {
 
 // Forwards for the upstream<T> class
 
-template<class Tag, class Upstream> class message_queue;
+template<class Tag> class message_queue;
 
 } // namespace io
 
@@ -69,7 +69,7 @@ class allowing:
 
 template<class Tag>
 class upstream {
-    template<class, class> friend class io::message_queue;
+    template<class> friend class io::message_queue;
 
     // The original untyped upstream.
     io::upstream_ptr_t ptr;
