@@ -1,6 +1,7 @@
 cocaine-core (0.12.3.19+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
+  * perf(locator): update routing groups without O(N^2) complexity.
   * perf(continuum): preallocate enough space for continuum dump
 
  -- Evgeny Safronov <division494@gmail.com>  Wed, 07 Oct 2015 13:18:04 +0300
