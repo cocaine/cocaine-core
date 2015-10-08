@@ -1,3 +1,11 @@
+cocaine-core (0.12.4.1+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * fix(core): C++14 aware `make_unique` function
+  * fix(cmake): mark all external libraries as system to suppress its warnings
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 08 Oct 2015 16:32:16 +0300
+
 cocaine-core (0.12.4.0+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
