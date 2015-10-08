@@ -1,7 +1,15 @@
+cocaine-core (0.12.4.0+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * api(mq): dropped an unused template parameter
+  * fix(locator): make router streams auto disposable
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 08 Oct 2015 13:57:05 +0300
+
 cocaine-core (0.12.3.19+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
-  * perf(locator): update routing groups without O(N^2) complexity.
+  * perf(locator): update routing groups without O(N^2) complexity
   * perf(continuum): preallocate enough space for continuum dump
 
  -- Evgeny Safronov <division494@gmail.com>  Wed, 07 Oct 2015 13:18:04 +0300
