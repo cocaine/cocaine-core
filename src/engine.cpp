@@ -64,14 +64,16 @@ private:
 
 void
 execution_unit_t::gc_action_t::operator()() {
-    if(parent->m_cron) {
-        parent->m_cron->expires_from_now(repeat);
-
-        parent->m_cron->async_wait(std::bind(&gc_action_t::finalize,
-            shared_from_this(),
-            std::placeholders::_1
-        ));
+    if(!parent->m_cron) {
+        return;
     }
+
+    parent->m_cron->expires_from_now(repeat);
+
+    parent->m_cron->async_wait(std::bind(&gc_action_t::finalize,
+        shared_from_this(),
+        std::placeholders::_1
+    ));
 }
 
 void
@@ -137,6 +139,7 @@ std::shared_ptr<session<typename Socket::protocol_type>>
 execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& dispatch) {
     typedef Socket socket_type;
     typedef typename socket_type::protocol_type protocol_type;
+    typedef session<protocol_type> session_type;
 
     int fd;
 
@@ -144,7 +147,7 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
         throw std::system_error(errno, std::system_category(), "unable to clone client's socket");
     }
 
-    std::shared_ptr<session<protocol_type>> session_;
+    std::shared_ptr<session_type> session_;
 
     try {
         // Local endpoint address of the socket to be cloned.
@@ -176,7 +179,7 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
         COCAINE_LOG_DEBUG(log, "attached connection to engine, load: %.2f%%", utilization() * 100);
 
         // Create a new inactive session.
-        session_ = std::make_shared<session<protocol_type>>(std::move(log), std::move(transport), dispatch);
+        session_ = std::make_shared<session_type>(std::move(log), std::move(transport), dispatch);
     } catch(const std::system_error& e) {
         throw std::system_error(e.code(), "client has disappeared while creating session");
     }

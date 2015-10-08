@@ -445,10 +445,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
                 COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s", ec.value(), ec.message());
                 mapping.erase(uuid);
 
-                COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [%d] %s",
-                    ec.value(), ec.message());
                 // TODO: Wrap link_node() in some sort of exponential back-off.
-
                 m_asio.post([=] { link_node(uuid, endpoints); });
                 return nullptr;
             }
@@ -482,9 +479,12 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
 void
 locator_t::drop_node(const std::string& uuid) {
     m_remotes->erase(uuid);
-    std::shared_ptr<uplink_t::session_type> session;
+
+    std::shared_ptr<session<asio::ip::tcp>> session;
+
     m_clients.apply([&](client_map_t& mapping) {
         auto it = mapping.find(uuid);
+
         if(!m_gateway || it == mapping.end()) {
             return;
         }
@@ -494,8 +494,10 @@ locator_t::drop_node(const std::string& uuid) {
         );
 
         session = it->second.ptr;
-        mapping.erase(uuid);
+
+        mapping.erase(it);
     });
+
     if(session) {
         session->detach(std::error_code());
     }
