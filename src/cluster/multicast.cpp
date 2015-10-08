@@ -45,13 +45,13 @@ namespace cocaine {
 namespace ph = std::placeholders;
 
 template<>
-struct dynamic_converter<address> {
-    typedef address result_type;
+struct dynamic_converter<ip::address> {
+    typedef ip::address result_type;
 
     static
     result_type
     convert(const dynamic_t& source) {
-        return address::from_string(source.as_string());
+        return ip::address::from_string(source.as_string());
     }
 };
 
@@ -66,7 +66,7 @@ struct dynamic_converter<multicast_cfg_t> {
 
         try {
             result.endpoint = udp::endpoint(
-                source.as_object().at("group").to<address>(),
+                source.as_object().at("group").to<ip::address>(),
                 source.as_object().at("port", 10053u).as_uint()
             );
         } catch(std::out_of_range& e) {
@@ -114,7 +114,7 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
         auto interface = args.as_object().at("interface");
 
         if(m_cfg.endpoint.address().is_v4()) {
-            m_socket.set_option(multicast::outbound_interface(interface.to<address>().to_v4()));
+            m_socket.set_option(multicast::outbound_interface(interface.to<ip::address>().to_v4()));
         } else {
             m_socket.set_option(multicast::outbound_interface(interface.as_uint()));
         }

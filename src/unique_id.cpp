@@ -58,12 +58,6 @@ unique_id_t::operator==(const unique_id_t& other) const {
            uuid[1] == other.uuid[1];
 }
 
-bool
-unique_id_t::ensure(const std::string& string) {
-    uuid_t uuid;
-    return uuid_parse(string.c_str(), uuid) == 0;
-}
-
 namespace cocaine {
 
 std::ostream&

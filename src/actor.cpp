@@ -102,8 +102,9 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
         break;
     }
 
-    // TODO: Find out if it's always a good idea to continue accepting connections no matter what.
-    // For example, destroying a socket from outside this thread will trigger weird stuff on Linux.
+    // TODO(@kobolog): Find out if it's always a good idea to continue accepting connections no
+    // matter what. E.g., destroying a socket from outside this thread will trigger weird stuff
+    // on Linux.
     operator()();
 }
 

@@ -76,16 +76,11 @@ class locator_t:
 
     typedef std::map<std::string, continuum_t> rg_map_t;
 
-    class uplink_t
-    {
-    public:
-        std::vector<asio::ip::tcp::endpoint> endpoints;
-        std::shared_ptr<session<asio::ip::tcp>> ptr;
-    };
+    typedef std::map<std::string, std::shared_ptr<session<asio::ip::tcp>>> client_map_t;
 
-    typedef std::map<std::string, uplink_t> client_map_t;
-
-    typedef std::map<unsigned int, io::graph_root_t, std::greater<unsigned int>> partition_view_t;
+    typedef std::map<unsigned int, io::graph_root_t,
+        std::greater<unsigned int>
+    > partition_view_t;
 
     typedef std::map<std::string, streamed<results::connect>> remote_map_t;
     typedef std::map<std::string, streamed<results::routing>> router_map_t;
@@ -182,12 +177,5 @@ private:
 };
 
 }} // namespace cocaine::service
-
-namespace cocaine { namespace error {
-
-auto
-locator_category() -> const std::error_category&;
-
-}} // namespace cocaine::error
 
 #endif

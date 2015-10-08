@@ -74,7 +74,7 @@ public:
     template<typename Level>
     blackhole::record_t
     open_record(Level level, blackhole::attribute::set_t attributes = blackhole::attribute::set_t()) const {
-        // TODO: Do this under lock or drop assignment.
+        // TODO(@antmat): Do this under lock or drop assignment.
         AttributeFetcher fetcher;
         const auto& dynamic_attributes = fetcher();
         std::copy(this->attributes.begin(), this->attributes.end(), std::back_inserter(attributes));

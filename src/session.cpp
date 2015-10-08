@@ -144,9 +144,10 @@ session_t::push_action_t::operator()(const std::shared_ptr<transport_type> ptr) 
 void
 session_t::push_action_t::finalize(const std::error_code& ec) {
     COCAINE_LOG_ZIPKIN(session->log, "after send");
-    if(ec.value() == 0) return;
 
-    if(ec != asio::error::eof) {
+    if(ec.value() == 0) {
+        return;
+    } else if(ec != asio::error::eof) {
         COCAINE_LOG_ERROR(session->log, "client disconnected: [%d] %s", ec.value(), ec.message());
     } else {
         COCAINE_LOG_DEBUG(session->log, "client disconnected");
@@ -204,6 +205,7 @@ session_t::handle(const decoder_t::message_type& message) {
 
             max_channel_id = channel_id;
         }
+
         if(lb->second->upstream->client_trace) {
             incoming_trace = lb->second->upstream->client_trace;
         } else {
@@ -247,9 +249,11 @@ session_t::handle(const decoder_t::message_type& message) {
         }
     }
 
-    if((channel->dispatch = channel->dispatch->process(message, channel->upstream)
-        .get_value_or(channel->dispatch)) == nullptr)
-    {
+    auto transition = channel->dispatch->process(message.type(), rpc_t {
+        message.args(),
+        channel->upstream});
+
+    if((channel->dispatch = transition.get_value_or(channel->dispatch)) == nullptr) {
         // NOTE: If the client has sent us the last message according to our dispatch graph, revoke
         // the channel. No-op if the channel is no longer in the mapping, e.g., was discarded during
         // session::detach(), which was called during the dispatch::process().

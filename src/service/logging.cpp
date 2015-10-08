@@ -71,7 +71,9 @@ logging_t::on_emit(logging::priorities level, std::string source, std::string me
 {
     auto record = wrapper->open_record(level, std::move(attributes));
 
-    if(!record) return;
+    if(!record) {
+        return;
+    }
 
     record.insert(cocaine::logging::keyword::source() = std::move(source));
     record.message(std::move(message));

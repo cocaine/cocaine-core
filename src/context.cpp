@@ -31,11 +31,6 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
-#include <boost/spirit/include/karma_char.hpp>
-#include <boost/spirit/include/karma_generate.hpp>
-#include <boost/spirit/include/karma_list.hpp>
-#include <boost/spirit/include/karma_string.hpp>
-
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -47,17 +42,14 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::log_t> log_):
 {
     m_log = std::move(log_);
 
+    // Load up all the plugins, builtin and external.
+    m_repository = std::make_unique<api::repository_t>(log("repository"));
+    essentials::initialize(*m_repository);
+    m_repository->load(config.path.plugins);
+
     scoped_attributes_t guard(*m_log, attribute::set_t({logging::keyword::source() = "core"}));
 
     COCAINE_LOG_INFO(m_log, "initializing the core");
-
-    m_repository = std::make_unique<api::repository_t>(log("repository"));
-
-    // Load the builtin plugins.
-    essentials::initialize(*m_repository);
-
-    // Load the rest of plugins.
-    m_repository->load(config.path.plugins);
 
     // Spin up all the configured services, launch execution units.
     bootstrap();
@@ -74,7 +66,7 @@ std::unique_ptr<logging::log_t>
 context_t::log(const std::string& source, attribute::set_t attributes) {
     attributes.emplace_back(logging::keyword::source() = source);
 
-    // TODO: Make it possible to use in-place operator+= to fill in more attributes?
+    // TODO(@kobolog): Make it possible to use in-place operator+= to fill in more attributes?
     return std::make_unique<logging::log_t>(*m_log, std::move(attributes));
 }
 
@@ -222,19 +214,11 @@ context_t::bootstrap() {
     }
 
     if(!errored.empty()) {
-        COCAINE_LOG_ERROR(m_log, "emergency core shutdown");
-
         // Signal and stop all the services, shut down execution units.
         terminate();
 
-        std::ostringstream stream;
-        std::ostream_iterator<char> builder(stream);
-
-        boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
-
-        throw cocaine::error_t("couldn't start core because of %d service(s): %s",
-            errored.size(), stream.str()
-        );
+        // Force runtime to terminate.
+        throw cocaine::error_t("unable to start %d service(s): %s", boost::algorithm::join(errored, ", "));
     } else {
         m_signals.invoke<io::context::prepared>();
     }

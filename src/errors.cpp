@@ -34,25 +34,21 @@ using namespace cocaine::error;
 
 namespace {
 
-class unknown_category_t:
-    public std::error_category
-{
+class unknown_category_t: public std::error_category {
     virtual
     auto
     name() const throw() -> const char* {
-        return "unknown category";
+        return "unknown error category";
     }
 
     virtual
     auto
     message(int) const -> std::string {
-        return "unknown category error";
+        return "unknown error";
     }
 };
 
-class transport_category_t:
-    public std::error_category
-{
+class transport_category_t: public std::error_category {
     virtual
     auto
     name() const throw() -> const char* {
@@ -71,13 +67,11 @@ class transport_category_t:
         if(code == cocaine::error::transport_errors::parse_error)
             return "unable to parse the incoming data";
 
-        return "cocaine.rpc.transport error";
+        return cocaine::format("generic %s error", name());
     }
 };
 
-class dispatch_category_t:
-    public std::error_category
-{
+class dispatch_category_t: public std::error_category {
     virtual
     auto
     name() const throw() -> const char* {
@@ -102,13 +96,11 @@ class dispatch_category_t:
         if(code == cocaine::error::dispatch_errors::uncaught_error)
             return "uncaught invocation exception";
 
-        return "cocaine.rpc.dispatch error";
+        return cocaine::format("generic %s error", name());
     }
 };
 
-class repository_category_t:
-    public std::error_category
-{
+class repository_category_t: public std::error_category {
     virtual
     auto
     name() const throw() -> const char* {
@@ -131,13 +123,11 @@ class repository_category_t:
         if(code == cocaine::error::repository_errors::version_mismatch)
             return "component version requirements are not met";
 
-        return "cocaine.plugins error";
+        return cocaine::format("generic %s error", name());
     }
 };
 
-class security_category_t:
-    public std::error_category
-{
+class security_category_t: public std::error_category {
     virtual
     auto
     name() const throw() -> const char* {
@@ -150,7 +140,28 @@ class security_category_t:
         if(code == cocaine::error::security_errors::token_not_found)
             return "specified token is not available";
 
-        return "cocaine.security error";
+        return cocaine::format("generic %s error", name());
+    }
+};
+
+struct locator_category_t: public std::error_category {
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.service.locator";
+    }
+
+    virtual
+    auto
+    message(int code) const -> std::string {
+        if(code == cocaine::error::locator_errors::service_not_available)
+            return "service is not available";
+        if(code == cocaine::error::locator_errors::routing_storage_error)
+            return "routing storage is unavailable";
+        if(code == cocaine::error::locator_errors::missing_version_error)
+            return "missing protocol version";
+
+        return cocaine::format("generic %s error", name());
     }
 };
 
@@ -184,6 +195,12 @@ security_category() -> const std::error_category& {
     return instance;
 }
 
+auto
+locator_category() -> const std::error_category& {
+    static locator_category_t instance;
+    return instance;
+}
+
 } // namespace
 
 namespace cocaine { namespace error {
@@ -207,6 +224,13 @@ auto
 make_error_code(security_errors code) -> std::error_code {
     return std::error_code(static_cast<int>(code), security_category());
 }
+
+auto
+make_error_code(locator_errors code) -> std::error_code {
+    return std::error_code(static_cast<int>(code), locator_category());
+}
+
+// Generic error message formatting
 
 std::string
 to_string(const std::system_error& e) {

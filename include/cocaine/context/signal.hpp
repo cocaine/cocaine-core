@@ -47,20 +47,16 @@ struct async_visitor:
 
     template<class Other>
     result_type
-    operator()(const std::shared_ptr<io::basic_slot<Other>>& COCAINE_UNUSED_(slot)) const {
+    operator()(const std::shared_ptr<io::basic_slot<Other>> COCAINE_UNUSED_(slot)) const {
         __builtin_unreachable();
     }
 
     result_type
-    operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
-        auto args = this->args;
-
-        asio.post([=]() mutable {
-            (*slot)(std::move(args), upstream<void>());
-        });
+    operator()(const std::shared_ptr<io::basic_slot<Event>> slot) {
+        asio.post([=]() mutable { (*slot)(std::move(args), upstream<void>()); });
     }
 
-    const tuple_type& args;
+    const tuple_type  args;
     asio::io_service& asio;
 };
 

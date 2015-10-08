@@ -64,10 +64,7 @@ adhoc_t::consume(const std::string& uuid,
 {
     auto ptr = m_remotes.synchronize();
 
-    ptr->insert({
-        name,
-        remote_t{uuid, endpoints}
-    });
+    ptr->insert({name, remote_t{uuid, endpoints}});
 
     COCAINE_LOG_DEBUG(m_log, "registering destination with %d endpoints", endpoints.size())(
         "service", std::get<0>(name),

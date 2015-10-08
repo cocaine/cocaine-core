@@ -130,15 +130,15 @@ struct sequence_type_error:
 struct sequence_size_error:
     public msgpack::type_error
 {
-    sequence_size_error(size_t size, size_t minimal):
-        message(cocaine::format("sequence size mismatch - got %d element(s), expected at least %d",
-            size, minimal
-        ))
+    sequence_size_error(size_t actual, size_t target): message(cocaine::format(
+        "sequence size mismatch - expected at least %d element(s), got %d",
+        target,
+        actual))
     { }
 
     virtual
    ~sequence_size_error() throw() {
-        // Empty.
+        // Empty. Required because of the mandatory throw() specification.
     }
 
     virtual
@@ -331,7 +331,7 @@ struct type_traits<std::tuple<Args...>> {
 template<typename T, typename U>
 struct type_traits<std::pair<T, U>>: public type_traits<std::tuple<T, U>> { };
 #else
-// Workaround for libraries, that violates the standard.
+// Workaround for libraries which violate the standard.
 template<typename T, typename U>
 struct type_traits<std::pair<T, U>> {
     typedef typename itemize<T, U>::type sequence_type;

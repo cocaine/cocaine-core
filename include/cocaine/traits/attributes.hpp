@@ -33,8 +33,8 @@ struct type_traits<blackhole::attribute::value_t> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer, const blackhole::attribute::value_t& source) {
-        blackhole::formatter::msgpack_visitor<Stream> visitor(&packer);
+    pack(msgpack::packer<Stream>& target, const blackhole::attribute::value_t& source) {
+        blackhole::formatter::msgpack_visitor<Stream> visitor(&target);
         boost::apply_visitor(visitor, source);
     }
 
@@ -73,8 +73,8 @@ struct type_traits<blackhole::attribute_t> {
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer, const blackhole::attribute_t& source) {
-        type_traits<blackhole::attribute::value_t>::pack(packer, source.value);
+    pack(msgpack::packer<Stream>& target, const blackhole::attribute_t& source) {
+        type_traits<blackhole::attribute::value_t>::pack(target, source.value);
     }
 
     static inline

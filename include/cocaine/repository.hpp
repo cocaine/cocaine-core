@@ -114,7 +114,7 @@ repository_t::get(const std::string& name, Args&&... args) const {
         throw std::system_error(error::component_not_found, name);
     }
 
-    auto it = m_categories.at(id).find(name);
+    const auto it = m_categories.at(id).find(name);
 
     // TEST: Ensure that the plugin is of the actually specified category.
     BOOST_ASSERT(it->second->type_id() == typeid(Category));

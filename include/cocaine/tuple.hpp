@@ -32,6 +32,8 @@
 
 namespace cocaine { namespace tuple {
 
+// Tuple element selection functor for standard algorithms
+
 template<size_t N>
 struct nth_element {
     template<class Tuple>
@@ -40,6 +42,8 @@ struct nth_element {
         return std::get<N>(tuple);
     }
 };
+
+// Folding MPL lists into a tuple's template argument pack
 
 namespace aux {
 
@@ -57,6 +61,20 @@ template<class End, class... Args>
 struct fold_impl<End, End, Args...> {
     typedef std::tuple<Args...> type;
 };
+
+} // namespace aux
+
+template<typename TypeList>
+struct fold {
+    typedef typename aux::fold_impl<
+        typename boost::mpl::begin<TypeList>::type,
+        typename boost::mpl::end  <TypeList>::type
+    >::type type;
+};
+
+// Function invocation with arguments provided as a tuple
+
+namespace aux {
 
 template<class IndexSequence>
 struct invoke_impl;
@@ -83,16 +101,6 @@ struct invoke_impl<index_sequence<Indices...>> {
 };
 
 } // namespace aux
-
-template<typename TypeList>
-struct fold {
-    typedef typename aux::fold_impl<
-        typename boost::mpl::begin<TypeList>::type,
-        typename boost::mpl::end  <TypeList>::type
-    >::type type;
-};
-
-// Function invocation with arguments provided as a tuple
 
 template<class F, class... Args>
 inline

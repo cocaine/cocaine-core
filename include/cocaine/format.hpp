@@ -34,8 +34,8 @@ substitute(boost::format&& message) {
 template<typename T, class... Args>
 static inline
 std::string
-substitute(boost::format&& message, const T& argument, const Args&... args) {
-    return substitute(std::move(message % argument), args...);
+substitute(boost::format&& message, T&& argument, Args&&... args) {
+    return substitute(std::move(message % std::forward<T>(argument)), std::forward<Args>(args)...);
 }
 
 } // namespace aux
@@ -43,11 +43,11 @@ substitute(boost::format&& message, const T& argument, const Args&... args) {
 template<class... Args>
 static inline
 std::string
-format(const std::string& format, const Args&... args) {
+format(const std::string& format, Args&&... args) {
     try {
-        return aux::substitute(std::move(boost::format(format)), args...);
+        return aux::substitute(std::move(boost::format(format)), std::forward<Args>(args)...);
     } catch(const boost::io::format_error& e) {
-        return aux::substitute(std::move(boost::format("<unable to format message - %s>")), e.what());
+        return aux::substitute(std::move(boost::format("<invalid string format - %s>")), e.what());
     }
 }
 
