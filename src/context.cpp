@@ -149,32 +149,33 @@ context_t::remove(const std::string& name) {
 
 boost::optional<const actor_t&>
 context_t::locate(const std::string& name) const {
-    auto ptr = m_services.synchronize();
-    auto it  = std::find_if(ptr->begin(), ptr->end(), match{name});
+    return m_services.apply(
+        [&](const service_list_t& list) -> boost::optional<const actor_t&>
+    {
+        // TODO(@kobolog):
+        //   - Return something better than a const reference, since it can become
+        //     dangling if some other thread removes the referenced service, e.g.
+        //     Node Service removes some service, while a client resolves its name.
 
-    if(it == ptr->end()) {
-        return boost::none;
-    }
+        auto it = std::find_if(list.begin(), list.end(), match{name});
 
-    return boost::optional<const actor_t&>(it->second->is_active(), *it->second);
+        if(it == list.end() || !it->second->is_active()) {
+            return boost::none;
+        } else {
+            return boost::optional<const actor_t&>(*it->second);
+        }
+    });
 }
-
-namespace {
-
-struct utilization_t {
-    typedef std::unique_ptr<execution_unit_t> value_type;
-
-    bool
-    operator()(const value_type& lhs, const value_type& rhs) const {
-        return lhs->utilization() < rhs->utilization();
-    }
-};
-
-} // namespace
 
 execution_unit_t&
 context_t::engine() {
-    return **std::min_element(m_pool.begin(), m_pool.end(), utilization_t());
+    typedef std::unique_ptr<execution_unit_t> value_type;
+
+    return **std::min_element(m_pool.begin(), m_pool.end(),
+        [](const value_type& lhs, const value_type& rhs) -> bool
+    {
+        return lhs->utilization() < rhs->utilization();
+    });
 }
 
 void
