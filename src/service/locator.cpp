@@ -689,6 +689,8 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
     //   - Batch updates into reasonable-sized announces and flush every few seconds.
 
     m_remotes.apply([&](remote_map_t& mapping) {
+        const auto update = results::connect{m_cfg.uuid, {{name, meta}}};
+
         if(mode == modes::exposed) {
             if(m_snapshots.count(name) != 0) {
                 COCAINE_LOG_ERROR(m_log, "duplicate service detected");
@@ -699,8 +701,6 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
         } else {
             m_snapshots.erase(name);
         }
-
-        const auto update = results::connect{m_cfg.uuid, {{name, meta}}};
 
         for(auto it = mapping.begin(); it != mapping.end(); /***/) try {
             it->second.write(update);

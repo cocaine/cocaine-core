@@ -47,16 +47,20 @@ struct async_visitor:
 
     template<class Other>
     result_type
-    operator()(const std::shared_ptr<io::basic_slot<Other>> COCAINE_UNUSED_(slot)) const {
+    operator()(const std::shared_ptr<io::basic_slot<Other>> /**/) const {
         __builtin_unreachable();
     }
 
     result_type
-    operator()(const std::shared_ptr<io::basic_slot<Event>> slot) {
-        asio.post([=]() mutable { (*slot)(std::move(args), upstream<void>()); });
+    operator()(const std::shared_ptr<io::basic_slot<Event>> slot) const {
+        auto args = this->args;
+
+        asio.post([=]() mutable {
+            (*slot)(std::move(args), upstream<void>());
+        });
     }
 
-    const tuple_type  args;
+    const tuple_type& args;
     asio::io_service& asio;
 };
 
@@ -64,23 +68,27 @@ template<class Tag>
 struct event_visitor:
     public boost::static_visitor<void>
 {
-    event_visitor(const std::shared_ptr<const dispatch<Tag>>& slot_, asio::io_service& asio_):
-        slot(slot_),
+    typedef std::shared_ptr<const dispatch<Tag>> focal_type;
+
+    event_visitor(const focal_type& goal_, asio::io_service& asio_):
+        goal(goal_),
         asio(asio_)
     { }
 
     template<class Event>
     result_type
     operator()(const io::frozen<Event>& event) const {
+        auto visitor = async_visitor<Event>(event.tuple, asio);
+
         try {
-            slot->process(io::event_traits<Event>::id, async_visitor<Event>(event.tuple, asio));
+            goal->process(io::event_traits<Event>::id, visitor);
         } catch(const std::system_error& e) {
             if(e.code() != error::slot_not_found) throw;
         }
     }
 
 private:
-    const std::shared_ptr<const dispatch<Tag>>& slot;
+    const focal_type& goal;
     asio::io_service& asio;
 };
 
@@ -88,30 +96,30 @@ private:
 
 template<class Tag>
 class retroactive_signal {
-    typedef typename io::make_frozen_over<Tag>::type variant_type;
-
     struct subscriber_t {
-        std::weak_ptr<const dispatch<Tag>> slot;
+        std::weak_ptr<const dispatch<Tag>> goal;
         asio::io_service& asio;
     };
 
+    typedef typename io::make_frozen_over<Tag>::type variant_type;
+
     std::mutex mutex;
 
-    std::list<variant_type> history;
+    std::list<variant_type> past_events;
     std::list<subscriber_t> subscribers;
 
 public:
     void
-    listen(const std::shared_ptr<const dispatch<Tag>>& slot, asio::io_service& asio) {
+    listen(const std::shared_ptr<const dispatch<Tag>>& goal, asio::io_service& asio) {
         std::lock_guard<std::mutex> guard(mutex);
 
-        auto visitor = aux::event_visitor<Tag>(slot, asio);
+        auto visitor = aux::event_visitor<Tag>(goal, asio);
 
-        for(auto it = history.begin(); it != history.end(); ++it) {
+        for(auto it = past_events.begin(); it != past_events.end(); ++it) {
             boost::apply_visitor(visitor, *it);
         }
 
-        subscribers.emplace_back(subscriber_t{slot, asio});
+        subscribers.emplace_back(subscriber_t{goal, asio});
     }
 
     template<class Event, class... Args>
@@ -122,18 +130,18 @@ public:
         auto variant = variant_type(io::make_frozen<Event>(std::forward<Args>(args)...));
 
         for(auto it = subscribers.begin(); it != subscribers.end();) {
-            auto slot = it->slot.lock();
+            auto goal = it->goal.lock();
 
-            if(!slot) {
+            if(!goal) {
                 it = subscribers.erase(it); continue;
             }
 
-            boost::apply_visitor(aux::event_visitor<Tag>(slot, it->asio), variant);
+            boost::apply_visitor(aux::event_visitor<Tag>(goal, it->asio), variant);
 
             ++it;
         }
 
-        history.emplace_back(std::move(variant));
+        past_events.emplace_back(std::move(variant));
     }
 };
 
