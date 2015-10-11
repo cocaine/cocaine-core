@@ -511,35 +511,36 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
         }
     });
 
-    scoped_attributes_t attributes(*m_log, { attribute::make("service", remapped) });
-
     // TODO(@kobolog):
     //   - Separate aggregate and client synchronization, like in RGs vs. Routers.
-    //   - Move local actor resolving back out of the critical section.
 
-    return m_clients.apply([&](const client_map_t& /***/) -> results::resolve {
+    scoped_attributes_t attributes(*m_log, { attribute::make("service", remapped) });
+
+    const auto remote = m_clients.apply(
+        [&](const client_map_t& /***/) -> boost::optional<quote_t>
+    {
         auto it = m_aggregate.end();
 
-        if(const auto provided = m_context.locate(remapped)) {
-            COCAINE_LOG_DEBUG(m_log, "providing service using local actor");
+        if(m_gateway && (it = m_aggregate.find(remapped)) != m_aggregate.end()) {
+            const auto& service = *it->second.begin();
 
-            return results::resolve{
-                provided.get().endpoints(),
-                provided.get().prototype().version(),
-                provided.get().prototype().root()
-            };
-        } else if(m_gateway && (it = m_aggregate.find(remapped)) != m_aggregate.end()) {
-            const auto& protocol = *it->second.begin();
-
-            return results::resolve{
-                m_gateway->resolve(api::gateway_t::partition_t{remapped, protocol.first}),
-                protocol.first,
-                protocol.second
+            return quote_t{
+                m_gateway->resolve(api::gateway_t::partition_t{remapped, service.first}),
+                service.first,
+                service.second
             };
         } else {
-            throw std::system_error(error::service_not_available);
+            return boost::none;
         }
     });
+
+    if(const auto quoted = m_context.locate(remapped)) {
+        return results::resolve{quoted->location, quoted->version, quoted->protocol};
+    } else if(remote) {
+        return results::resolve{remote->location, remote->version, remote->protocol};
+    } else {
+        throw std::system_error(error::service_not_available);
+    }
 }
 
 auto

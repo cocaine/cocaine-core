@@ -147,22 +147,21 @@ context_t::remove(const std::string& name) {
     return service;
 }
 
-boost::optional<const actor_t&>
+boost::optional<quote_t>
 context_t::locate(const std::string& name) const {
     return m_services.apply(
-        [&](const service_list_t& list) -> boost::optional<const actor_t&>
+        [&](const service_list_t& list) -> boost::optional<quote_t>
     {
-        // TODO(@kobolog):
-        //   - Return something better than a const reference, since it can become
-        //     dangling if some other thread removes the referenced service, e.g.
-        //     Node Service removes some service, while a client resolves its name.
-
         auto it = std::find_if(list.begin(), list.end(), match{name});
 
-        if(it == list.end() || !it->second->is_active()) {
-            return boost::none;
+        if(it != list.end() && it->second->is_active()) {
+            return quote_t{
+                it->second->endpoints(),
+                it->second->prototype().version(),
+                it->second->prototype().root()
+            };
         } else {
-            return boost::optional<const actor_t&>(*it->second);
+            return boost::none;
         }
     });
 }

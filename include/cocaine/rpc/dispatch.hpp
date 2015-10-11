@@ -77,8 +77,8 @@ public:
     root() const -> const graph_root_t& = 0;
 
     virtual
-    int
-    version() const = 0;
+    auto
+    version() const -> unsigned int = 0;
 
     // Called on abnormal transport destruction. The idea's if the client disconnects unexpectedly,
     // i.e. not reaching the end of the dispatch graph, then some special handling might be needed.
@@ -200,8 +200,8 @@ public:
     }
 
     virtual
-    int
-    version() const {
+    auto
+    version() const -> unsigned int {
         return io::protocol<Tag>::version::value;
     }
 

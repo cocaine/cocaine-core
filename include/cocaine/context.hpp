@@ -38,10 +38,12 @@
 
 namespace cocaine {
 
-// Context
-
+class quote_t;
 class actor_t;
+
 class execution_unit_t;
+
+// Context
 
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
@@ -91,7 +93,7 @@ public:
     remove(const std::string& name) -> std::unique_ptr<actor_t>;
 
     auto
-    locate(const std::string& name) const -> boost::optional<const actor_t&>;
+    locate(const std::string& name) const -> boost::optional<quote_t>;
 
     // Signals API
 

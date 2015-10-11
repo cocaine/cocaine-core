@@ -159,14 +159,14 @@ multicast_t::on_publish(const std::error_code& ec) {
         return;
     }
 
-    const auto actor = m_context.locate("locator");
+    const auto quoted = m_context.locate("locator");
 
-    if(!actor) {
+    if(!quoted) {
         COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: locator is not available");
         return;
     }
 
-    const auto endpoints = actor.get().endpoints();
+    const auto endpoints = quoted->location;
 
     if(!endpoints.empty()) {
         COCAINE_LOG_DEBUG(m_log, "announcing %d local endpoint(s)", endpoints.size())(

@@ -24,9 +24,19 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
+#include "cocaine/rpc/graph.hpp"
+
 #include <asio/ip/tcp.hpp>
 
 namespace cocaine {
+
+class quote_t
+{
+public:
+    std::vector<asio::ip::tcp::endpoint> location;
+    unsigned int version;
+    io::graph_root_t protocol;
+};
 
 class actor_t {
     COCAINE_DECLARE_NONCOPYABLE(actor_t)
