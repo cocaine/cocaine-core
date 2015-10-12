@@ -65,7 +65,7 @@ class context_t {
     synchronized<service_list_t> m_services;
 
     // Context signalling hub.
-    retroactive_signal<io::context_tag> m_signals;
+    synchronized<signal<io::context_tag>> m_signals;
 
 public:
     const config_t config;
@@ -99,7 +99,7 @@ public:
 
     void
     listen(const std::shared_ptr<dispatch<io::context_tag>>& slot, asio::io_service& asio) {
-        m_signals.listen(slot, asio);
+        m_signals->listen(slot, asio);
     }
 
     // Network I/O

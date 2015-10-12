@@ -39,14 +39,17 @@
 #include <boost/assert.hpp>
 #include <boost/version.hpp>
 
+#define COCAINE_UNUSED_(parameter)          \
+    parameter __attribute__((unused))
+
+#define COCAINE_UNREACHABLE                 \
+    __builtin_unreachable
+
 #define COCAINE_DECLARE_NONCOPYABLE(type)   \
     type(const type& other) = delete;       \
                                             \
     type&                                   \
     operator=(const type& other) = delete;
-
-#define COCAINE_UNUSED_(parameter)          \
-    parameter __attribute__((unused))
 
 #include "cocaine/errors.hpp"
 #include "cocaine/forwards.hpp"

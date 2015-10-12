@@ -26,124 +26,123 @@
 
 #include <algorithm>
 #include <list>
-#include <mutex>
 
 namespace cocaine {
 
-template<class Tag> class retroactive_signal;
+template<class Tag> class signal;
 
 namespace aux {
 
 template<class Event>
-struct async_visitor:
+class async_visitor:
     public boost::static_visitor<void>
 {
     typedef typename io::basic_slot<Event>::tuple_type tuple_type;
 
-    async_visitor(const tuple_type& args_, asio::io_service& asio_):
-        args(args_),
-        asio(asio_)
+    const tuple_type& args;
+    asio::io_service& asio;
+
+public:
+    async_visitor(const tuple_type& args, asio::io_service& asio):
+        args(args),
+        asio(asio)
     { }
 
-    template<class Other>
     result_type
-    operator()(const std::shared_ptr<io::basic_slot<Other>> /**/) const {
-        __builtin_unreachable();
-    }
+    operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
+        auto& args = this->args;
+        auto  weak = std::weak_ptr<io::basic_slot<Event>>(slot);
 
-    result_type
-    operator()(const std::shared_ptr<io::basic_slot<Event>> slot) const {
-        auto args = this->args;
-
-        asio.post([=]() mutable {
-            (*slot)(std::move(args), upstream<void>());
+        asio.post([weak, args]() {
+            // Slot will be gone either because the dispatch was destroyed
+            // or because either forget<Event>() or halt() has been called.
+            if(auto ptr = weak.lock()) (*ptr)(tuple_type(args), {});
         });
     }
 
-    const tuple_type& args;
-    asio::io_service& asio;
+    template<class Other>
+    result_type
+    operator()(const std::shared_ptr<io::basic_slot<Other>>& /**/) const {
+        COCAINE_UNREACHABLE();
+    }
 };
 
 template<class Tag>
-struct event_visitor:
-    public boost::static_visitor<void>
+class event_visitor:
+    public boost::static_visitor<bool>
 {
-    typedef std::shared_ptr<const dispatch<Tag>> focal_type;
+    typedef std::weak_ptr<const dispatch<Tag>> target_type;
 
-    event_visitor(const focal_type& goal_, asio::io_service& asio_):
-        goal(goal_),
-        asio(asio_)
+    const target_type weak;
+    asio::io_service& asio;
+
+public:
+    event_visitor(const target_type& weak, asio::io_service& asio):
+        weak(weak),
+        asio(asio)
     { }
 
     template<class Event>
     result_type
     operator()(const io::frozen<Event>& event) const {
-        auto visitor = async_visitor<Event>(event.tuple, asio);
+        const auto target  = weak.lock();
+        const auto visitor = async_visitor<Event>(event.tuple, asio);
 
-        try {
-            goal->process(io::event_traits<Event>::id, visitor);
+        if(target) try {
+            target->process(io::event_traits<Event>::id, visitor);
         } catch(const std::system_error& e) {
             if(e.code() != error::slot_not_found) throw;
         }
-    }
 
-private:
-    const focal_type& goal;
-    asio::io_service& asio;
+        return target != nullptr;
+    }
 };
 
 } // namespace aux
 
 template<class Tag>
-class retroactive_signal {
-    struct subscriber_t {
-        std::weak_ptr<const dispatch<Tag>> goal;
-        asio::io_service& asio;
-    };
-
+class signal {
     typedef typename io::make_frozen_over<Tag>::type variant_type;
+    typedef aux::event_visitor<Tag> visitor_type;
 
-    std::mutex mutex;
-
-    std::list<variant_type> past_events;
-    std::list<subscriber_t> subscribers;
+    std::list<variant_type> past;
+    std::list<visitor_type> visitors;
 
 public:
-    void
-    listen(const std::shared_ptr<const dispatch<Tag>>& goal, asio::io_service& asio) {
-        std::lock_guard<std::mutex> guard(mutex);
-
-        auto visitor = aux::event_visitor<Tag>(goal, asio);
-
-        for(auto it = past_events.begin(); it != past_events.end(); ++it) {
-            boost::apply_visitor(visitor, *it);
-        }
-
-        subscribers.emplace_back(subscriber_t{goal, asio});
-    }
+    typedef std::shared_ptr<const dispatch<Tag>> target_type;
 
     template<class Event, class... Args>
     void
-    invoke(Args&&... args) {
-        std::lock_guard<std::mutex> guard(mutex);
+    invoke(Args&&... args);
 
-        auto variant = variant_type(io::make_frozen<Event>(std::forward<Args>(args)...));
+    void
+    listen(const target_type& target, asio::io_service& asio);
+};
 
-        for(auto it = subscribers.begin(); it != subscribers.end();) {
-            auto goal = it->goal.lock();
+template<class Tag> template<class Event, class... Args>
+void
+signal<Tag>::invoke(Args&&... args) {
+    past.emplace_back(io::make_frozen<Event>(
+        std::forward<Args>(args)...));
 
-            if(!goal) {
-                it = subscribers.erase(it); continue;
-            }
-
-            boost::apply_visitor(aux::event_visitor<Tag>(goal, it->asio), variant);
-
-            ++it;
+    for(auto it = visitors.begin(); it != visitors.end(); /***/) {
+        if(boost::apply_visitor(*it, past.back())) {
+            it++; continue;
         }
 
-        past_events.emplace_back(std::move(variant));
+        it = visitors.erase(it);
     }
-};
+}
+
+template<class Tag>
+void
+signal<Tag>::listen(const target_type& target, asio::io_service& asio) {
+    visitors.emplace_back(aux::event_visitor<Tag>(target, asio));
+
+    std::for_each(past.begin(), past.end(), [this](const variant_type& e) {
+        boost::apply_visitor(visitors.back(), e);
+    });
+}
 
 } // namespace cocaine
 
