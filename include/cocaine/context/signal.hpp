@@ -34,30 +34,21 @@ template<class Tag> class signal;
 namespace aux {
 
 template<class Event>
-class async_visitor:
-    public boost::static_visitor<void>
-{
+class async_visitor: public boost::static_visitor<void> {
     typedef typename io::basic_slot<Event>::tuple_type tuple_type;
 
+    // Reference is kept alive by signal<Tag>, since all events are added
+    // to the list of past events first and passed to visitors afterwards.
     const tuple_type& args;
-    asio::io_service& asio;
 
 public:
-    async_visitor(const tuple_type& args, asio::io_service& asio):
-        args(args),
-        asio(asio)
+    async_visitor(const tuple_type& args_):
+        args(args_)
     { }
 
     result_type
     operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
-        auto& args = this->args;
-        auto  weak = std::weak_ptr<io::basic_slot<Event>>(slot);
-
-        asio.post([weak, args]() {
-            // Slot will be gone either because the dispatch was destroyed
-            // or because either forget<Event>() or halt() has been called.
-            if(auto ptr = weak.lock()) (*ptr)(tuple_type(args), {});
-        });
+        (*slot)(tuple_type(args), upstream<void>());
     }
 
     template<class Other>
@@ -68,34 +59,37 @@ public:
 };
 
 template<class Tag>
-class event_visitor:
-    public boost::static_visitor<bool>
-{
+class event_visitor: public boost::static_visitor<bool> {
     typedef std::weak_ptr<const dispatch<Tag>> target_type;
 
     const target_type weak;
     asio::io_service& asio;
 
 public:
-    event_visitor(const target_type& weak, asio::io_service& asio):
-        weak(weak),
-        asio(asio)
+    event_visitor(const target_type& weak_, asio::io_service& asio_):
+        weak(weak_),
+        asio(asio_)
     { }
 
     template<class Event>
     result_type
     operator()(const io::frozen<Event>& event) const {
         const auto target  = weak.lock();
-        const auto visitor = async_visitor<Event>(event.tuple, asio);
+        const auto visitor = async_visitor<Event>(event.tuple);
 
-        if(target) try {
-            target->process(io::event_traits<Event>::id, visitor);
-        } catch(const std::system_error& e) {
-            if(e.code() != error::slot_not_found) throw;
-        }
+        if(target) asio.post([=]() {
+            try {
+                target->process(io::event_traits<Event>::id, visitor);
+            } catch(const std::system_error& e) {
+                if(e.code() != error::slot_not_found) throw;
+            }
+        });
 
-        return target != nullptr;
+        return static_cast<bool>(target);
     }
+
+    void
+    discard() { if(auto target = weak.lock()) target->discard({ }); }
 };
 
 } // namespace aux
@@ -122,26 +116,30 @@ public:
 template<class Tag> template<class Event, class... Args>
 void
 signal<Tag>::invoke(Args&&... args) {
-    past.emplace_back(io::make_frozen<Event>(
-        std::forward<Args>(args)...));
+    past.emplace_back(
+        io::make_frozen<Event>(std::forward<Args>(args)...));
 
     for(auto it = visitors.begin(); it != visitors.end(); /***/) {
         if(boost::apply_visitor(*it, past.back())) {
-            it++; continue;
+            it++;
+        } else {
+            it = visitors.erase(it);
         }
-
-        it = visitors.erase(it);
     }
 }
 
 template<class Tag>
 void
 signal<Tag>::listen(const target_type& target, asio::io_service& asio) {
-    visitors.emplace_back(aux::event_visitor<Tag>(target, asio));
+    auto visitor = aux::event_visitor<Tag>(target, asio);
 
-    std::for_each(past.begin(), past.end(), [this](const variant_type& e) {
-        boost::apply_visitor(visitors.back(), e);
-    });
+    for(const auto& frozen: past) {
+        boost::apply_visitor(visitor, frozen);
+    }
+
+    // Add the new target to the list of targets only when all past events
+    // have been triggered for it - to avoid weird non-synchronized issues.
+    visitors.emplace_back(std::move(visitor));
 }
 
 } // namespace cocaine
