@@ -74,10 +74,11 @@ public:
     template<class Event>
     result_type
     operator()(const io::frozen<Event>& event) const {
-        const auto target  = weak.lock();
-        const auto visitor = async_visitor<Event>(event.tuple);
+        const auto target = weak.lock();
 
         if(target) asio.post([=]() {
+            const auto visitor = async_visitor<Event>(event.tuple);
+
             try {
                 target->process(io::event_traits<Event>::id, visitor);
             } catch(const std::system_error& e) {
