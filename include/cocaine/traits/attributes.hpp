@@ -1,6 +1,6 @@
 /*
     Copyright (c) 2014+ Evgeny Safronov <division494@gmail.com>
-    Copyright (c) 2011-2014 Other contributors as noted in the AUTHORS file.
+    Copyright (c) 2011-2015 Other contributors as noted in the AUTHORS file.
 
     This file is part of Cocaine.
 
