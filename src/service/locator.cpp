@@ -525,18 +525,16 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
             return boost::none;
         }
 
-        unsigned int version;
-        graph_root_t protocol;
+        auto protocol = graph_root_t{};
+        auto version  = 0u;
 
         // Aggregate is (version, protocol) tuples sorted by version in descending order, so
         // the most recent protocol version is chosen here and resolved against the Gateway.
         std::tie(version, protocol) = *it->second.begin();
 
-        return quote_t{
-            m_gateway->resolve(api::gateway_t::partition_t{remapped, version}),
-            version,
-            std::move(protocol)
-        };
+        auto location = m_gateway->resolve(api::gateway_t::partition_t{remapped, version});
+
+        return quote_t{std::move(location), version, std::move(protocol)};
     });
 
     if(const auto quoted = m_context.locate(remapped)) {
