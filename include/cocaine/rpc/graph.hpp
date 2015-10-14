@@ -25,6 +25,8 @@
 #include <string>
 #include <tuple>
 
+#include <boost/functional/hash_fwd.hpp>
+
 #include <boost/optional.hpp>
 
 namespace cocaine { namespace io {
@@ -51,6 +53,15 @@ typedef std::map<
     int,
     std::tuple<std::string, boost::optional<graph_node_t>, boost::optional<graph_node_t>>
 > graph_root_t;
+
+// Support for computing hashes of protocols. Unless two different protocols have identical message
+// names in exactly the same spots in the graph, with exactly the same transitions, it'll be unique.
+
+template<class T>
+size_t
+hash_value(const boost::optional<T>& optional) {
+    return optional ? boost::hash<T>{}(optional.get()) : 0;
+}
 
 }} // namespace cocaine::io
 

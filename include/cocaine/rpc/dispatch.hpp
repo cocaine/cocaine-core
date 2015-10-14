@@ -270,7 +270,7 @@ dispatch<Tag>::drop() {
 template<class Tag>
 boost::optional<io::dispatch_ptr_t>
 dispatch<Tag>::process(int id, const io::rpc_t& rpc) const {
-    return process(id, rpc);
+    return process<io::rpc_t>(id, rpc);
 }
 
 template<class Tag> template<class Visitor>

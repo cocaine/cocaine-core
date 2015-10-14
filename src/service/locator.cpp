@@ -109,9 +109,9 @@ locator_t::connect_sink_t::~connect_sink_t() {
 
     for(auto it = active.begin(); it != active.end(); ++it) tuple::invoke(
         *it,
-        [&](const std::string& name, unsigned int version)
+        [&](const std::string& name, unsigned int versions)
     {
-        if(!parent->m_gateway->cleanup(uuid, *it)) parent->m_aggregate[name].erase(version);
+        if(!parent->m_gateway->cleanup(uuid, *it)) parent->m_aggregate[name].erase(versions);
     });
 
     cleanup();
@@ -425,15 +425,15 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         return;
     };
 
-    typedef std::pair<std::unique_ptr<tcp::socket>, std::vector<tcp::endpoint>> uplink_type;
+    typedef std::pair<std::vector<tcp::endpoint>, std::unique_ptr<tcp::socket>> uplink_type;
 
     const auto uplink = std::make_shared<uplink_type>(
-        std::make_unique<tcp::socket>(m_asio),
         // This vector should be kept alive because of the retarded ASIO API.
-        endpoints
+        endpoints,
+        std::make_unique<tcp::socket>(m_asio)
     );
 
-    asio::async_connect(*uplink->first, uplink->second.begin(), uplink->second.end(),
+    asio::async_connect(*uplink->second, uplink->first.begin(), uplink->first.end(),
         [=](const std::error_code& ec, std::vector<tcp::endpoint>::const_iterator endpoint)
     {
         scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
@@ -441,7 +441,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         auto session = m_clients.apply(
             [&](client_map_t& mapping) -> client_map_t::mapped_type
         {
-            auto ptr = std::move(uplink->first);
+            auto ptr = std::move(uplink->second);
 
             if(mapping.count(uuid) == 0) {
                 COCAINE_LOG_ERROR(m_log, "remote has been lost during the connection attempt");
@@ -521,17 +521,22 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
     {
         auto it = m_aggregate.end();
 
-        if(m_gateway && (it = m_aggregate.find(remapped)) != m_aggregate.end()) {
-            const auto& service = *it->second.begin();
-
-            return quote_t{
-                m_gateway->resolve(api::gateway_t::partition_t{remapped, service.first}),
-                service.first,
-                service.second
-            };
-        } else {
+        if(!m_gateway || (it = m_aggregate.find(remapped)) == m_aggregate.end()) {
             return boost::none;
         }
+
+        unsigned int version;
+        graph_root_t protocol;
+
+        // Aggregate is (version, protocol) tuples sorted by version in descending order, so
+        // the most recent protocol version is chosen here and resolved against the Gateway.
+        std::tie(version, protocol) = *it->second.begin();
+
+        return quote_t{
+            m_gateway->resolve(api::gateway_t::partition_t{remapped, version}),
+            version,
+            std::move(protocol)
+        };
     });
 
     if(const auto quoted = m_context.locate(remapped)) {
