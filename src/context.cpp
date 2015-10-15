@@ -149,16 +149,18 @@ context_t::remove(const std::string& name) {
 
 boost::optional<quote_t>
 context_t::locate(const std::string& name) const {
-    return m_services.apply(
-        [&](const service_list_t& list) -> boost::optional<quote_t>
-    {
-        const auto it = std::find_if(list.begin(), list.end(), match{name});
+    return m_services.apply([&](const service_list_t& list) -> boost::optional<quote_t> {
+        auto it = std::find_if(list.begin(), list.end(), match{name});
 
-        if(it != list.end() && it->second->is_active()) {
-            auto  bound = it->second->endpoints();
-            auto& proto = it->second->prototype();
+        if (it != list.end()) {
+            auto  endpoints = it->second->endpoints();
+            auto& prototype = it->second->prototype();
 
-            return quote_t{std::move(bound), proto.version(), proto.root()};
+            // TODO(@kobolog): Figure out if there should always be some endpoints for a
+            // service. Useless is_active() check was dropped, so adding this assert JIC.
+            BOOST_ASSERT(!endpoints.empty());
+
+            return quote_t{std::move(endpoints), prototype.version(), prototype.root()};
         } else {
             return boost::none;
         }
