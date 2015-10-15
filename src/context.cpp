@@ -152,14 +152,13 @@ context_t::locate(const std::string& name) const {
     return m_services.apply(
         [&](const service_list_t& list) -> boost::optional<quote_t>
     {
-        auto it = std::find_if(list.begin(), list.end(), match{name});
+        const auto it = std::find_if(list.begin(), list.end(), match{name});
 
         if(it != list.end() && it->second->is_active()) {
-            return quote_t{
-                it->second->endpoints(),
-                it->second->prototype().version(),
-                it->second->prototype().root()
-            };
+            auto  bound = it->second->endpoints();
+            auto& proto = it->second->prototype();
+
+            return quote_t{std::move(bound), proto.version(), proto.root()};
         } else {
             return boost::none;
         }

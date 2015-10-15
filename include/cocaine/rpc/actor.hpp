@@ -24,9 +24,9 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
-#include "cocaine/rpc/graph.hpp"
-
 #include <asio/ip/tcp.hpp>
+
+#include "cocaine/rpc/graph.hpp"
 
 namespace cocaine {
 
