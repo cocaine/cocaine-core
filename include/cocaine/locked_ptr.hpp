@@ -73,6 +73,18 @@ private:
     std::unique_lock<mutex_type> guard;
 };
 
+template<class Lockable>
+struct locked_ptr<void, Lockable> {
+    typedef void value_type;
+    typedef Lockable mutex_type;
+
+    locked_ptr(mutex_type& mutex_): guard(mutex_) { }
+    locked_ptr(locked_ptr&& o): guard(std::move(o.guard)) { }
+
+private:
+    std::unique_lock<mutex_type> guard;
+};
+
 template<class T, class Lockable = std::mutex>
 struct synchronized {
     typedef T value_type;
@@ -143,6 +155,45 @@ struct synchronized {
 
 private:
     value_type m_value;
+    mutex_type mutable m_mutex;
+};
+
+template<class Lockable>
+struct synchronized<void, Lockable> {
+    typedef void value_type;
+    typedef Lockable mutex_type;
+
+    // Safe getters
+
+    typedef locked_ptr<void, Lockable> ptr_type;
+
+    auto
+    synchronize() -> ptr_type {
+        return ptr_type(m_mutex);
+    }
+
+    auto
+    synchronize() const -> ptr_type {
+        return ptr_type(m_mutex);
+    }
+
+    // Synchronized operations
+
+    template<class F>
+    auto
+    apply(F&& functor) -> decltype(functor()) {
+        const auto ptr = synchronize();
+        return functor();
+    }
+
+    template<class F>
+    auto
+    apply(F&& functor) const -> decltype(functor()) {
+        const auto ptr = synchronize();
+        return functor();
+    }
+
+private:
     mutex_type mutable m_mutex;
 };
 
