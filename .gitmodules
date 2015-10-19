@@ -16,3 +16,6 @@
 [submodule "foreign/modules"]
 	path = foreign/modules
 	url = https://github.com/3Hren/modules.git
+[submodule "foreign/metrics"]
+	path = foreign/metrics
+	url = https://github.com/3Hren/metrics.git
