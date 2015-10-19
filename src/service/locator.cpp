@@ -542,7 +542,7 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
     } else if(remote) {
         return results::resolve{remote->location, remote->version, remote->protocol};
     } else {
-        throw std::system_error(error::service_not_available);
+        throw std::system_error(error::service_not_available, remapped);
     }
 }
 
