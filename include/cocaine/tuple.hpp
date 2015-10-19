@@ -32,15 +32,6 @@
 
 namespace cocaine { namespace tuple {
 
-template<size_t N>
-struct nth_element {
-    template<class Tuple>
-    typename std::tuple_element<N, Tuple>::type
-    operator()(const Tuple& tuple) const {
-        return std::get<N>(tuple);
-    }
-};
-
 namespace aux {
 
 template<class It, class End, class... Args>
