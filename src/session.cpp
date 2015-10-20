@@ -226,7 +226,7 @@ session_t::handle(const decoder_t::message_type& message) {
     });
 
     if(!channel->dispatch) {
-        throw std::system_error(error::unbound_dispatch);
+        throw std::system_error(error::unbound_dispatch, std::to_string(channel_id));
     }
 
     trace_t::restore_scope_t trace_scope(incoming_trace);

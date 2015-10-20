@@ -143,7 +143,7 @@ repository_t::insert(const std::string& name) {
     const auto id = typeid(category_type).name();
 
     if(m_categories.count(id) && m_categories.at(id).count(name)) {
-        throw std::system_error(error::duplicate_component);
+        throw std::system_error(error::duplicate_component, name);
     }
 
     COCAINE_LOG_DEBUG(m_log, "registering component '%s' in category '%s'",

@@ -263,7 +263,7 @@ template<class Tag> template<class Event>
 void
 dispatch<Tag>::drop() {
     if(!m_slots->erase(io::event_traits<Event>::id)) {
-        throw std::system_error(error::slot_not_found);
+        throw std::system_error(error::slot_not_found, Event::alias());
     }
 }
 

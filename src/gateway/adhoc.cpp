@@ -43,7 +43,7 @@ adhoc_t::resolve(const partition_t& name) const -> std::vector<asio::ip::tcp::en
     auto ptr = m_remotes.synchronize();
 
     if(!ptr->count(name)) {
-        throw std::system_error(error::service_not_available);
+        throw cocaine::error_t(error::service_not_available, std::get<0>(name));
     }
 
     std::tie(lb, ub) = ptr->equal_range(name);

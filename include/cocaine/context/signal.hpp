@@ -82,6 +82,9 @@ public:
             try {
                 target->process(io::event_traits<Event>::id, visitor);
             } catch(const std::system_error& e) {
+                // Propagate exceptions to the ASIO thread even though it
+                // will terminate the Runtime. It is better than silently
+                // ignoring signal handling exceptions.
                 if(e.code() != error::slot_not_found) throw;
             }
         });
@@ -90,7 +93,9 @@ public:
     }
 
     void
-    discard() { if(auto target = weak.lock()) target->discard({ }); }
+    discard() {
+        if(auto target = weak.lock()) target->discard(std::error_code());
+    }
 };
 
 } // namespace aux

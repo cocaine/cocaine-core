@@ -219,7 +219,7 @@ context_t::bootstrap() {
         terminate();
 
         // Force runtime to terminate.
-        throw cocaine::error_t("unable to start %d service(s): %s", boost::algorithm::join(errored, ", "));
+        throw cocaine::error_t(std::errc::operation_canceled, boost::algorithm::join(errored, ", "));
     } else {
         m_signals->invoke<io::context::prepared>();
     }
