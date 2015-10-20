@@ -628,6 +628,7 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
             *it,
             error::to_string(e));
 
+        // No close() required before stream destruction since it was already disconnected.
         m_routers->erase(*it);
     }
 
@@ -713,6 +714,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
                 it->first,
                 error::to_string(e));
 
+            // No close() required before stream destruction since it was already disconnected.
             it = mapping.erase(it);
         }
 
@@ -733,7 +735,6 @@ locator_t::on_context_shutdown() {
 
         boost::for_each(mapping | boost::adaptors::map_values, [](client_map_t::mapped_type& ptr) {
             ptr->detach(std::error_code{});
-            ptr = nullptr;
         });
     });
 
@@ -761,5 +762,7 @@ locator_t::on_context_shutdown() {
         });
     });
 
+    // It will remove all slots from the dispatch. If there are pending signals already waiting in
+    // the event loop's queue, they won't be triggered since no slots will be bound at that point.
     m_signals->halt();
 }
