@@ -199,22 +199,29 @@ actor_t::prototype() const {
 void
 actor_t::run() {
     m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
-        std::error_code ec;
         tcp::endpoint endpoint;
 
         try {
-            endpoint = tcp::endpoint{m_context.config.network.endpoint, m_context.mapper.assign(m_prototype->name())};
+            endpoint = tcp::endpoint{
+                m_context.config.network.endpoint,
+                m_context.mapper.assign(m_prototype->name())
+            };
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to assign a local endpoint to service: %s", error::to_string(e));
+            COCAINE_LOG_ERROR(m_log, "port mapper is unable to assign an endpoint to service: %s",
+                error::to_string(e));
             throw;
         }
- 
+
         try {
             ptr = std::make_unique<tcp::acceptor>(*m_asio, endpoint);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint %s for service: %s", endpoint, error::to_string(e));
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint %s for service: %s", endpoint,
+                error::to_string(e));
             throw;
         }
+
+        // We don't really care about this error code, it's here to swallow the exception, if any.
+        std::error_code ec;
 
         COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", ptr->local_endpoint(ec));
     });
