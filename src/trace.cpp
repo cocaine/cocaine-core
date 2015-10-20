@@ -31,7 +31,9 @@ using namespace cocaine;
 
 trace_t::trace_t():
     trace_id(zero_value),
-    state({zero_value, zero_value, {}})
+    state({zero_value, zero_value, {}}),
+    previous_state(),
+    was_pushed(false)
 {}
 
 trace_t::trace_t(uint64_t trace_id_,
@@ -40,7 +42,8 @@ trace_t::trace_t(uint64_t trace_id_,
                  const std::string& rpc_name_):
     trace_id(trace_id_),
     state({span_id_, parent_id_, rpc_name_}),
-    previous_state()
+    previous_state(),
+    was_pushed(false)
 {
     if(trace_id == zero_value) {
         // If we create empty trace all values should be zero
