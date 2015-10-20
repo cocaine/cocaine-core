@@ -46,13 +46,13 @@ class execution_unit_t {
     std::shared_ptr<asio::io_service> m_asio;
     std::unique_ptr<io::chamber_t> m_chamber;
 
-    // Initialized here because of the dependency on the io::chamber_t's thread ID.
+    // Initialized here because of the dependency on the io::chamber_t's thread_id().
     const std::unique_ptr<logging::log_t> m_log;
 
     static const unsigned int kCollectionInterval = 60;
 
-    // Collects detached sessions every kCollectionInterval seconds. Normally, session slots will be
-    // reused because of system fd rotation, but for low loads this will help a bit.
+    // Collects detached sessions every kCollectionInterval seconds. Normally, slots
+    // will be reused with system fd rotation, but on low loads this will help a bit.
     std::unique_ptr<asio::deadline_timer> m_cron;
 
 public:
