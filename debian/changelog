@@ -1,3 +1,10 @@
+cocaine-core (0.12.4.6+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * fix(logging): fixed bug in Blackhole applied after the previous change
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 23 Oct 2015 16:54:37 +0300
+
 cocaine-core (0.12.4.5+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
