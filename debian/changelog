@@ -1,3 +1,13 @@
+cocaine-core (0.12.4.5+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * feat(logging): new Blackhole version support with configurable json
+    formatter feature, allowing to filter duplicate attributes
+  * fix(config): add missing include
+  * chore(actor): reduce symbol pollution
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 23 Oct 2015 13:21:10 +0300
+
 cocaine-core (0.12.4.4+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
