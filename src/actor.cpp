@@ -34,7 +34,7 @@ using namespace cocaine;
 using namespace cocaine::io;
 
 using namespace asio;
-using namespace asio::ip;
+using ip::tcp;
 
 using namespace blackhole;
 
