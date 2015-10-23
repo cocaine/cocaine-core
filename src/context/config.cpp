@@ -31,6 +31,7 @@
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/thread/thread.hpp>
 
 #include "rapidjson/reader.h"
 
