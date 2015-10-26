@@ -37,8 +37,8 @@ template<class Event>
 class async_visitor: public boost::static_visitor<void> {
     typedef typename io::basic_slot<Event>::tuple_type tuple_type;
 
-    // Reference is kept alive by signal<Tag>, since all events are added
-    // to the list of past events first and passed to visitors afterwards.
+    // Reference is kept alive by signal<Tag>, since all events are added to the list of past events
+    // first and passed to visitors afterwards.
     const tuple_type& args;
 
 public:
@@ -77,14 +77,13 @@ public:
         const auto target = weak.lock();
 
         if(target) asio.post([=]() {
+            // NOTE: Calling halt() from signal dispatch slot will stop signal delivery immediately.
+            // NOTE: Propagates exceptions to the ASIO thread, even though it'll terminate the Core.
             const auto visitor = async_visitor<Event>(event.tuple);
 
             try {
                 target->process(io::event_traits<Event>::id, visitor);
             } catch(const std::system_error& e) {
-                // Propagate exceptions to the ASIO thread even though it
-                // will terminate the Runtime. It is better than silently
-                // ignoring signal handling exceptions.
                 if(e.code() != error::slot_not_found) throw;
             }
         });
@@ -143,8 +142,8 @@ signal<Tag>::listen(const target_type& target, asio::io_service& asio) {
         boost::apply_visitor(visitor, frozen);
     }
 
-    // Add the new target to the list of targets only when all past events
-    // have been triggered for it - to avoid weird non-synchronized issues.
+    // Add the new target to the target list only when all past events have been triggered for it to
+    // avoid weird non-synchronized signal triggering issues.
     visitors.emplace_back(std::move(visitor));
 }
 

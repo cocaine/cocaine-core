@@ -74,13 +74,9 @@ class locator_t:
     class publish_slot_t;
     class routing_slot_t;
 
-    typedef std::map<std::string, continuum_t> rg_map_t;
-
     typedef std::map<std::string, std::shared_ptr<session<asio::ip::tcp>>> client_map_t;
 
-    typedef std::map<unsigned int, io::graph_root_t,
-        std::greater<unsigned int>
-    > partition_view_t;
+    typedef std::map<std::string, continuum_t> rg_map_t;
 
     typedef std::map<std::string, streamed<results::connect>> remote_map_t;
     typedef std::map<std::string, streamed<results::routing>> router_map_t;
@@ -103,21 +99,22 @@ class locator_t:
     // Used to resolve service names against routing groups, based on weights and other metrics.
     synchronized<rg_map_t> m_rgs;
 
+    // Outgoing router streams indexed by some arbitrary router-provided uuid.
+    synchronized<router_map_t> m_routers;
+
     // Incoming remote locator streams indexed by uuid. Uuid is required to disambiguate between
     // multiple different instances on the same host and port (in case it was restarted).
     synchronized<client_map_t> m_clients;
 
     // Snapshot of the cluster service disposition. Synchronized with incoming streams.
-    std::map<std::string, partition_view_t> m_aggregate;
+    std::map<std::string,
+             std::map<unsigned int, io::graph_root_t, std::greater<unsigned int>>> m_aggregate;
 
     // Outgoing remote locator streams indexed by node uuid.
     synchronized<remote_map_t> m_remotes;
 
     // Snapshots of the local service states. Synchronized with outgoing remote streams.
     std::map<std::string, results::resolve> m_snapshots;
-
-    // Outgoing router streams indexed by some arbitrary router-provided uuid.
-    synchronized<router_map_t> m_routers;
 
 public:
     locator_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);

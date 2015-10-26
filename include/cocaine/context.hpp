@@ -50,7 +50,7 @@ class context_t {
 
     typedef std::deque<std::pair<std::string, std::unique_ptr<actor_t>>> service_list_t;
 
-    // The root logger.
+    // The root log.
     std::unique_ptr<logging::log_t> m_log;
 
     // NOTE: This is the first object in the component tree, all the other dynamic components, be it
