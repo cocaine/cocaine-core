@@ -34,7 +34,7 @@
 
 #include "rapidjson/reader.h"
 
-#include <boost/thread.hpp>
+#include <boost/thread/thread.hpp>
 
 using namespace cocaine;
 
