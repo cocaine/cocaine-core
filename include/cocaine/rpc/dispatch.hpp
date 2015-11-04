@@ -140,8 +140,8 @@ class dispatch:
 
     // Slot construction
 
-    typedef mpl::lambda
-        <std::shared_ptr<io::basic_slot<mpl::_1>>> slot_ptr;
+    typedef mpl::lambda<
+        std::shared_ptr<io::basic_slot<mpl::_1>>> slot_ptr;
 
     typedef typename mpl::transform<
         typename io::messages<Tag>::type,

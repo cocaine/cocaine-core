@@ -87,7 +87,7 @@ private:
     cleanup();
 
     void
-    on_announce(const std::string& node, std::map<std::string, results::resolve>&& update);
+    on_announce(const std::string& node, std::map<std::string, results::resolve> update);
 
     void
     on_shutdown();
@@ -144,7 +144,7 @@ locator_t::connect_sink_t::cleanup() {
 }
 
 void
-locator_t::connect_sink_t::on_announce(const std::string& node, std::map<std::string, results::resolve>&& update) {
+locator_t::connect_sink_t::on_announce(const std::string& node, std::map<std::string, results::resolve> update) {
     if(node != uuid) {
         COCAINE_LOG_ERROR(parent->m_log, "remote client id mismatch: '%s' vs. '%s'", uuid, node);
         return parent->drop_node(uuid);
@@ -157,7 +157,7 @@ locator_t::connect_sink_t::on_announce(const std::string& node, std::map<std::st
 
     for(auto it = update.begin(); it != update.end(); ++it) tuple::invoke(
         std::move(it->second),
-        [&](std::vector<tcp::endpoint>&& location, unsigned int versions, graph_root_t&& protocol)
+        [&](std::vector<tcp::endpoint> location, unsigned int versions, graph_root_t protocol)
     {
         int copies = 0;
         api::gateway_t::partition_t partition(it->first, versions);
@@ -166,7 +166,7 @@ locator_t::connect_sink_t::on_announce(const std::string& node, std::map<std::st
             copies = parent->m_gateway->cleanup(uuid, partition);
             active.erase (partition);
         } else {
-            copies = parent->m_gateway->consume(uuid, partition, location);
+            copies = parent->m_gateway->consume(uuid, partition, std::move(location));
             active.insert(partition);
         }
 
@@ -233,15 +233,15 @@ private:
 auto
 locator_t::publish_slot_t::operator()(tuple_type&& args, upstream_type&& upstream) -> result_type {
     const auto dispatch = cocaine::tuple::invoke(std::move(args),
-        [this](std::string&& handle, std::vector<tcp::endpoint>&& location,
-               std::tuple<unsigned int, graph_root_t>&& metadata) -> result_type::value_type
+        [this](std::string handle, std::vector<tcp::endpoint> location,
+               std::tuple<unsigned int, graph_root_t> metadata) -> result_type::value_type
     {
         scoped_attributes_t attributes(*parent->m_log, { attribute::make("service", handle) });
 
         unsigned int versions;
         graph_root_t protocol;
 
-        std::tie(versions, protocol) = metadata;
+        std::tie(versions, protocol) = std::move(metadata);
 
         if(!protocol.empty() && versions == 0) {
             throw std::system_error(error::missing_version_error);
@@ -251,7 +251,10 @@ locator_t::publish_slot_t::operator()(tuple_type&& args, upstream_type&& upstrea
             protocol.empty() ? "non-native" : "native",
             location.size());
 
-        parent->on_service(handle, results::resolve{location, versions, protocol}, modes::exposed);
+        parent->on_service(handle, results::resolve{
+            std::move(location),
+            versions,
+            std::move(protocol)}, modes::exposed);
 
         return std::make_shared<publish_sink_t>(this, handle);
     });
@@ -310,7 +313,7 @@ private:
 auto
 locator_t::routing_slot_t::operator()(tuple_type&& args, upstream_type&& upstream) -> result_type {
     const auto dispatch = tuple::invoke(std::move(args),
-        [&](std::string&& ruid) -> result_type::value_type
+        [&](const std::string& ruid) -> result_type::value_type
     {
         auto rv = parent->on_routing(ruid, true);
 
