@@ -31,6 +31,8 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
+#include <boost/range/algorithm/transform.hpp>
+
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -152,19 +154,36 @@ context_t::locate(const std::string& name) const {
     return m_services.apply([&](const service_list_t& list) -> boost::optional<quote_t> {
         auto it = std::find_if(list.begin(), list.end(), match{name});
 
-        if (it != list.end()) {
-            auto  endpoints = it->second->endpoints();
-            auto& prototype = it->second->prototype();
-
-            // TODO(@kobolog): Figure out if there should always be some endpoints for a
-            // service. Useless is_active() check was dropped, so adding this assert JIC.
-            BOOST_ASSERT(!endpoints.empty());
-
-            return quote_t{std::move(endpoints), prototype.version(), prototype.root()};
-        } else {
+        if(it == list.end()) {
             return boost::none;
         }
+
+        auto  endpoints = it->second->endpoints();
+        auto& prototype = it->second->prototype();
+
+        // TODO(@kobolog): Figure out if there should always be some endpoints for a
+        // service. Useless is_active() check was dropped, so adding this assert JIC.
+        BOOST_ASSERT(!endpoints.empty());
+
+        return quote_t{std::move(endpoints), prototype.version(), prototype.root()};
     });
+}
+
+std::map<std::string, quote_t>
+context_t::snapshot() const {
+    auto results = std::map<std::string, quote_t>{};
+    auto builder = std::inserter(results, results.end());
+
+    boost::transform(*m_services.synchronize(), builder,
+        [](const service_list_t::value_type& kv) -> std::pair<std::string, quote_t>
+    {
+        auto  endpoints = kv.second->endpoints();
+        auto& prototype = kv.second->prototype();
+
+        return {kv.first, {std::move(endpoints), prototype.version(), prototype.root()}};
+    });
+
+    return results;
 }
 
 execution_unit_t&

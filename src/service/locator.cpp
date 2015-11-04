@@ -49,7 +49,6 @@
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/algorithm/transform.hpp>
-
 #include <boost/range/numeric.hpp>
 
 using namespace cocaine;
@@ -234,14 +233,14 @@ auto
 locator_t::publish_slot_t::operator()(tuple_type&& args, upstream_type&& upstream) -> result_type {
     const auto dispatch = cocaine::tuple::invoke(std::move(args),
         [this](std::string handle, std::vector<tcp::endpoint> location,
-               std::tuple<unsigned int, graph_root_t> metadata) -> result_type::value_type
+               std::tuple<unsigned int, graph_root_t> info) -> result_type::value_type
     {
         scoped_attributes_t attributes(*parent->m_log, { attribute::make("service", handle) });
 
         unsigned int versions;
         graph_root_t protocol;
 
-        std::tie(versions, protocol) = std::move(metadata);
+        std::tie(versions, protocol) = std::move(info);
 
         if(!protocol.empty() && versions == 0) {
             throw std::system_error(error::missing_version_error);
@@ -254,7 +253,7 @@ locator_t::publish_slot_t::operator()(tuple_type&& args, upstream_type&& upstrea
         parent->on_service(handle, results::resolve{
             std::move(location),
             versions,
-            std::move(protocol)}, modes::exposed);
+            std::move(protocol)});
 
         return std::make_shared<publish_sink_t>(this, handle);
     });
@@ -272,7 +271,7 @@ locator_t::publish_slot_t::on_discard(const std::error_code& ec, const std::stri
     COCAINE_LOG_INFO(parent->m_log, "external service disconnected, unpublishing: [%d] %s",
         ec.value(), ec.message());
 
-    return parent->on_service(handle, results::resolve{}, modes::removed);
+    return parent->on_service(handle, results::resolve{});
 }
 
 class locator_t::routing_slot_t: public basic_slot<locator::routing> {
@@ -376,9 +375,9 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         COCAINE_LOG_INFO(m_log, "using '%s' as a cluster manager, enabling synchronization", type);
 
         m_signals->on<context::service::exposed>(std::bind(&locator_t::on_service, this,
-            ph::_1, ph::_2, modes::exposed));
+            ph::_1, ph::_2));
         m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this,
-            ph::_1, ph::_2, modes::removed));
+            ph::_1, ph::_2));
 
         m_cluster = m_context.get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
     }
@@ -551,9 +550,21 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
 
 auto
 locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
-    scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
+    auto results = std::map<std::string, results::resolve>{};
+    auto builder = std::inserter(results, results.end());
 
-    return m_remotes.apply([&](remote_map_t& mapping) -> streamed<results::connect> {
+    boost::transform(m_context.snapshot(), builder,
+        [](std::pair<std::string, quote_t>&& kv) -> std::pair<std::string, results::resolve>
+    {
+        results::resolve result = std::forward_as_tuple(
+            std::move(kv.second.location), kv.second.version, std::move(kv.second.protocol));
+
+        return {std::move(kv.first), std::move(result)};
+    });
+
+    auto stream = m_remotes.apply([&](remote_map_t& mapping) -> streamed<results::connect> {
+        scoped_attributes_t attributes(*m_log, { attribute::make("uuid", uuid) });
+
         remote_map_t::iterator lb, ub;
 
         std::tie(lb, ub) = mapping.equal_range(uuid);
@@ -569,11 +580,11 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
 
         // Store the stream to synchronize future service updates with the remote node. Updates are
         // sent out on context service signals, and propagate to all nodes in the cluster.
-        mapping.insert(ub, std::make_pair(uuid, stream));
-
-        // NOTE: Even if there's nothing to return, still send out an empty update.
-        return stream.write(m_cfg.uuid, m_snapshots);
+        return mapping.insert(ub, std::make_pair(uuid, stream))->second;
     });
+
+    // NOTE: Even if there's nothing to return, still send out an empty update.
+    return stream.write(m_cfg.uuid, std::move(results));
 }
 
 void
@@ -629,7 +640,8 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
     } catch(const std::system_error& e) {
         COCAINE_LOG_WARNING(m_log, "unable to enqueue routing update for router '%s': %s",
             *it,
-            error::to_string(e));
+            error::to_string(e)
+        );
 
         // No close() required before stream destruction since it was already disconnected.
         m_routers->erase(*it);
@@ -682,40 +694,30 @@ locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results
 }
 
 void
-locator_t::on_service(const std::string& name, const results::resolve& meta, modes mode) {
+locator_t::on_service(const std::string& name, const results::resolve& info) {
     scoped_attributes_t attributes(*m_log, { attribute::make("service", name) });
 
     if(m_cfg.restricted.count(name)) {
-        COCAINE_LOG_DEBUG(m_log, "ignoring service update due to restrictions");
+        COCAINE_LOG_DEBUG(m_log, "not sending out service update due to service restrictions");
         return;
     }
 
     // TODO(@kobolog):
-    //   - Separate snapshotting and remote stream synchronization, like in RGs vs. Routers.
-    //   - Send updates out from outside the critical section.
     //   - Batch updates into reasonable-sized announces and flush every few seconds.
 
+    // Removed services will have undefined location - remote nodes are supposed to use this to
+    // detect service removal and act accordingly: clean up aggreagations and so on.
+    const auto update = results::connect{m_cfg.uuid, {{name, info}}};
+
     m_remotes.apply([&](remote_map_t& mapping) {
-        const auto update = results::connect{m_cfg.uuid, {{name, meta}}};
-
-        if(mode == modes::exposed) {
-            if(m_snapshots.count(name) != 0) {
-                COCAINE_LOG_ERROR(m_log, "duplicate service detected");
-                return;
-            }
-
-            m_snapshots[name] = meta;
-        } else {
-            m_snapshots.erase(name);
-        }
-
         for(auto it = mapping.begin(); it != mapping.end(); /***/) try {
             it->second.write(update);
             it++;
         } catch(const std::system_error& e) {
             COCAINE_LOG_WARNING(m_log, "unable to enqueue service update for locator '%s': %s",
                 it->first,
-                error::to_string(e));
+                error::to_string(e)
+            );
 
             // No close() required before stream destruction since it was already disconnected.
             it = mapping.erase(it);

@@ -259,14 +259,17 @@ session_t::handle(const decoder_t::message_type& message) {
 
     auto transition = channel->dispatch->process(message.type(), rpc_t {
         message.args(),
-        channel->upstream});
+        channel->upstream
+#if BOOST_VERSION < 105600
+    }).get_value_or(channel->dispatch);
+#else
+    }).value_or(std::move(channel->dispatch));
+#endif
 
-    if((channel->dispatch = transition.get_value_or(channel->dispatch)) == nullptr) {
-        // NOTE: If the client has sent us the last message according to our dispatch graph, revoke
-        // the channel. No-op if the channel is no longer in the mapping, e.g., was discarded during
-        // session::detach(), which was called during the dispatch::process().
-        if(!channel.unique()) revoke(channel_id);
-    }
+    // NOTE: If the client has sent us the last message according to our dispatch graph, revoke the
+    // channel. No-op if the channel is no longer in the mapping, e.g. was discarded during session
+    // detaching, which was called during the dispatch::process().
+    if((channel->dispatch = std::move(transition)) == nullptr) revoke(channel_id);
 }
 
 void

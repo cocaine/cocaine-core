@@ -136,7 +136,7 @@ struct publish {
         std::string,
      /* External service endpoints. */
         std::vector<asio::ip::tcp::endpoint>,
-     /* Service metadata, if the external service is using native protocol. */
+     /* Service info, if the external service is using native protocol. */
         optional<std::tuple<unsigned int, graph_root_t>>
     >::type argument_type;
 };

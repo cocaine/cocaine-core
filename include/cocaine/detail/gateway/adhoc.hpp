@@ -42,7 +42,7 @@ class adhoc_t:
 
     typedef std::multimap<partition_t, remote_t> remote_map_t;
 
-    // TODO(@kobolog): Make sure that remote service metadata is consistent across the cluster.
+    // TODO(@kobolog): Make sure that remote service info is consistent across the cluster.
     synchronized<remote_map_t> m_remotes;
 
 public:

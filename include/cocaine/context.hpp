@@ -95,6 +95,9 @@ public:
     auto
     locate(const std::string& name) const -> boost::optional<quote_t>;
 
+    auto
+    snapshot() const -> std::map<std::string, quote_t>;
+
     // Signals API
 
     void
