@@ -34,6 +34,8 @@
 
 #include "rapidjson/reader.h"
 
+#include <boost/thread/thread.hpp>
+
 using namespace cocaine;
 
 namespace fs = boost::filesystem;
