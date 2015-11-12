@@ -27,15 +27,15 @@ namespace cocaine { namespace aux {
 
 static inline
 std::string
-substitute(boost::format&& message) {
-    return message.str();
+substitute(boost::format&& formatter) {
+    return formatter.str();
 }
 
-template<typename T, class... Args>
+template<class T, class... Args>
 static inline
 std::string
-substitute(boost::format&& message, const T& argument, const Args&... args) {
-    return substitute(std::move(message % argument), args...);
+substitute(boost::format&& formatter, const T& argument, const Args&... args) {
+    return substitute(std::move(formatter % argument), args...);
 }
 
 } // namespace aux
@@ -47,7 +47,7 @@ format(const std::string& format, const Args&... args) {
     try {
         return aux::substitute(std::move(boost::format(format)), args...);
     } catch(const boost::io::format_error& e) {
-        return aux::substitute(std::move(boost::format("<unable to format message - %s>")), e.what());
+        return aux::substitute(std::move(boost::format("<format error - %s>")), e.what());
     }
 }
 

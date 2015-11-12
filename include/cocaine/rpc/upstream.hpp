@@ -34,25 +34,26 @@ class basic_upstream_t {
     const uint64_t channel_id;
 
 public:
-    /* We only pass trace to client-side upstream, because we want to group all client-side sends under one trace_id */
-    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_, boost::optional<trace_t> client_trace_):
+    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_):
         session(session_),
-        channel_id(channel_id_),
-        client_trace(client_trace_)
+        channel_id(channel_id_)
     { }
 
     template<class Event, class... Args>
     void
     send(Args&&... args);
 
-    /* none_t if upstream belongs to server side */
-    boost::optional<trace_t> client_trace;
+    // We only pass trace to client-side upstream, because we want to group all client-side sends
+    // under one trace_id. Server-side upstream will have boost::none here.
+    boost::optional<trace_t> trace;
 };
 
 template<class Event, class... Args>
 void
 basic_upstream_t::send(Args&&... args) {
-    trace_t::restore_scope_t scope(client_trace);
+    trace_t::restore_scope_t scope(trace);
+
+    // TRACE: this will send cs/ss Zipkin messages if the scope was restored successfully.
     session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
 }
 

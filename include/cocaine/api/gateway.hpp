@@ -33,12 +33,14 @@ namespace cocaine { namespace api {
 struct gateway_t {
     typedef gateway_t category_type;
 
+    // Partition is a (service name, version) tuple. It is used to partition same service across
+    // cluster by version, i.e. keeping different versions of the same service protocol separate.
+    typedef std::tuple<std::string, unsigned int> partition_t;
+
     virtual
    ~gateway_t() {
         // Empty.
     }
-
-    typedef std::tuple<std::string, unsigned int> partition_t;
 
     virtual
     auto

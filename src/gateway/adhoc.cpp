@@ -43,7 +43,7 @@ adhoc_t::resolve(const partition_t& name) const -> std::vector<asio::ip::tcp::en
     auto ptr = m_remotes.synchronize();
 
     if(!ptr->count(name)) {
-        throw std::system_error(error::service_not_available);
+        throw cocaine::error_t(error::service_not_available, std::get<0>(name));
     }
 
     std::tie(lb, ub) = ptr->equal_range(name);
@@ -64,10 +64,7 @@ adhoc_t::consume(const std::string& uuid,
 {
     auto ptr = m_remotes.synchronize();
 
-    ptr->insert({
-        name,
-        remote_t{uuid, endpoints}
-    });
+    ptr->insert({name, remote_t{uuid, endpoints}});
 
     COCAINE_LOG_DEBUG(m_log, "registering destination with %d endpoints", endpoints.size())(
         "service", std::get<0>(name),

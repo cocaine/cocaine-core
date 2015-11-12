@@ -28,12 +28,9 @@
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/vector.hpp"
 
-#include <boost/spirit/include/karma_generate.hpp>
-#include <boost/spirit/include/karma_list.hpp>
-#include <boost/spirit/include/karma_stream.hpp>
-#include <boost/spirit/include/karma_string.hpp>
-
 #include <asio/io_service.hpp>
+
+#include <boost/range/adaptor/transformed.hpp>
 
 using namespace cocaine::io;
 using namespace cocaine::cluster;
@@ -56,9 +53,7 @@ struct dynamic_converter<predefine_cfg_t> {
 
         const dynamic_t& nodes = source.as_object().at("nodes", dynamic_t::empty_object);
 
-        if(nodes.as_object().empty()) {
-            throw cocaine::error_t("no nodes have been specified");
-        }
+        if(nodes.as_object().empty()) throw cocaine::error_t("no nodes have been specified");
 
         io_service service;
 
@@ -70,11 +65,11 @@ struct dynamic_converter<predefine_cfg_t> {
 
             try {
                 it = resolver.resolve(tcp::resolver::query(
-                    // TODO: A better way to parse this.
+                    // TODO(@kobolog): A better way to parse this.
                     addr.substr(0, addr.rfind(":")), addr.substr(addr.rfind(":") + 1)
                 ));
             } catch(const std::system_error& e) {
-                throw std::system_error(e.code(), "unable to determine predefined node endpoints");
+                throw std::system_error(e.code(), "unable to resolve static node endpoints");
             }
 
             result.endpoints[node->first] = std::vector<tcp::endpoint>(it, end);
@@ -98,12 +93,11 @@ predefine_t::predefine_t(context_t& context, interface& locator, const std::stri
     m_timer(locator.asio())
 {
     for(auto it = m_cfg.endpoints.begin(); it != m_cfg.endpoints.end(); ++it) {
-        std::ostringstream stream;
-        std::ostream_iterator<char> builder(stream);
+        const auto joined = boost::algorithm::join(
+            it->second | boost::adaptors::transformed(boost::lexical_cast<std::string, tcp::endpoint>),
+            ", ");
 
-        boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", it->second);
-
-        COCAINE_LOG_INFO(m_log, "resolved node endpoints: %s", stream.str())(
+        COCAINE_LOG_INFO(m_log, "resolved %d static node endpoint(s): %s", it->second.size(), joined)(
             "uuid", it->first
         );
     }

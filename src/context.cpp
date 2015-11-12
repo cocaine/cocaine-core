@@ -31,10 +31,7 @@
 
 #include <blackhole/scoped_attributes.hpp>
 
-#include <boost/spirit/include/karma_char.hpp>
-#include <boost/spirit/include/karma_generate.hpp>
-#include <boost/spirit/include/karma_list.hpp>
-#include <boost/spirit/include/karma_string.hpp>
+#include <boost/range/algorithm/transform.hpp>
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -47,17 +44,14 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::log_t> log_):
 {
     m_log = std::move(log_);
 
+    // Load up all the plugins, builtin and external.
+    m_repository = std::make_unique<api::repository_t>(log("repository"));
+    essentials::initialize(*m_repository);
+    m_repository->load(config.path.plugins);
+
     scoped_attributes_t guard(*m_log, attribute::set_t({logging::keyword::source() = "core"}));
 
     COCAINE_LOG_INFO(m_log, "initializing the core");
-
-    m_repository = std::make_unique<api::repository_t>(log("repository"));
-
-    // Load the builtin plugins.
-    essentials::initialize(*m_repository);
-
-    // Load the rest of plugins.
-    m_repository->load(config.path.plugins);
 
     // Spin up all the configured services, launch execution units.
     bootstrap();
@@ -74,7 +68,7 @@ std::unique_ptr<logging::log_t>
 context_t::log(const std::string& source, attribute::set_t attributes) {
     attributes.emplace_back(logging::keyword::source() = source);
 
-    // TODO: Make it possible to use in-place operator+= to fill in more attributes?
+    // TODO(@kobolog): Make it possible to use in-place operator+= to fill in more attributes?
     return std::make_unique<logging::log_t>(*m_log, std::move(attributes));
 }
 
@@ -113,7 +107,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
     });
 
     // Fire off the signal to alert concerned subscribers about the service removal event.
-    m_signals.invoke<context::service::exposed>(actor.prototype().name(), std::forward_as_tuple(
+    m_signals->invoke<context::service::exposed>(actor.prototype().name(), std::forward_as_tuple(
         actor.endpoints(),
         actor.prototype().version(),
         actor.prototype().root()
@@ -146,7 +140,7 @@ context_t::remove(const std::string& name) {
     std::vector<asio::ip::tcp::endpoint> nothing;
 
     // Fire off the signal to alert concerned subscribers about the service termination event.
-    m_signals.invoke<context::service::removed>(service->prototype().name(), std::forward_as_tuple(
+    m_signals->invoke<context::service::removed>(service->prototype().name(), std::forward_as_tuple(
         nothing,
         service->prototype().version(),
         service->prototype().root()
@@ -155,34 +149,52 @@ context_t::remove(const std::string& name) {
     return service;
 }
 
-boost::optional<const actor_t&>
+boost::optional<quote_t>
 context_t::locate(const std::string& name) const {
-    auto ptr = m_services.synchronize();
-    auto it  = std::find_if(ptr->begin(), ptr->end(), match{name});
+    return m_services.apply([&](const service_list_t& list) -> boost::optional<quote_t> {
+        auto it = std::find_if(list.begin(), list.end(), match{name});
 
-    if(it == ptr->end()) {
-        return boost::none;
-    }
+        if(it == list.end()) {
+            return boost::none;
+        }
 
-    return boost::optional<const actor_t&>(it->second->is_active(), *it->second);
+        auto  endpoints = it->second->endpoints();
+        auto& prototype = it->second->prototype();
+
+        // TODO(@kobolog): Figure out if there should always be some endpoints for a
+        // service. Useless is_active() check was dropped, so adding this assert JIC.
+        BOOST_ASSERT(!endpoints.empty());
+
+        return quote_t{std::move(endpoints), prototype.version(), prototype.root()};
+    });
 }
 
-namespace {
+std::map<std::string, quote_t>
+context_t::snapshot() const {
+    auto results = std::map<std::string, quote_t>{};
+    auto builder = std::inserter(results, results.end());
 
-struct utilization_t {
-    typedef std::unique_ptr<execution_unit_t> value_type;
+    boost::transform(*m_services.synchronize(), builder,
+        [](const service_list_t::value_type& kv) -> std::pair<std::string, quote_t>
+    {
+        auto  endpoints = kv.second->endpoints();
+        auto& prototype = kv.second->prototype();
 
-    bool
-    operator()(const value_type& lhs, const value_type& rhs) const {
-        return lhs->utilization() < rhs->utilization();
-    }
-};
+        return {kv.first, {std::move(endpoints), prototype.version(), prototype.root()}};
+    });
 
-} // namespace
+    return results;
+}
 
 execution_unit_t&
 context_t::engine() {
-    return **std::min_element(m_pool.begin(), m_pool.end(), utilization_t());
+    typedef std::unique_ptr<execution_unit_t> value_type;
+
+    return **std::min_element(m_pool.begin(), m_pool.end(),
+        [](const value_type& lhs, const value_type& rhs) -> bool
+    {
+        return lhs->utilization() < rhs->utilization();
+    });
 }
 
 void
@@ -222,21 +234,13 @@ context_t::bootstrap() {
     }
 
     if(!errored.empty()) {
-        COCAINE_LOG_ERROR(m_log, "emergency core shutdown");
-
         // Signal and stop all the services, shut down execution units.
         terminate();
 
-        std::ostringstream stream;
-        std::ostream_iterator<char> builder(stream);
-
-        boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
-
-        throw cocaine::error_t("couldn't start core because of %d service(s): %s",
-            errored.size(), stream.str()
-        );
+        // Force runtime to terminate.
+        throw cocaine::error_t(std::errc::operation_canceled, boost::algorithm::join(errored, ", "));
     } else {
-        m_signals.invoke<io::context::prepared>();
+        m_signals->invoke<io::context::prepared>();
     }
 }
 
@@ -246,7 +250,7 @@ context_t::terminate() {
 
     // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
     // the outstanding connections are closed, so services have a chance to send their last wishes.
-    m_signals.invoke<context::shutdown>();
+    m_signals->invoke<context::shutdown>();
 
     // Stop the service from accepting new clients or doing any processing. Pop them from the active
     // service list into this temporary storage, and then destroy them all at once. This is needed

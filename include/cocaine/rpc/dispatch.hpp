@@ -45,6 +45,8 @@ template<class Tag> class dispatch;
 
 namespace io {
 
+class rpc_t;
+
 class basic_dispatch_t {
     // The name of the service which this protocol implementation belongs to. Mostly used for logs,
     // and for synchronization stuff in the Locator Service.
@@ -62,8 +64,21 @@ public:
     // an empty optional - recurrent transition (i.e. no transition at all).
 
     virtual
-    boost::optional<dispatch_ptr_t>
-    process(const decoder_t::message_type& message, const upstream_ptr_t& upstream) const = 0;
+    auto
+    process(int id, const rpc_t& rpc) const -> boost::optional<dispatch_ptr_t> = 0;
+
+    // Observers
+
+    auto
+    name() const -> std::string;
+
+    virtual
+    auto
+    root() const -> const graph_root_t& = 0;
+
+    virtual
+    auto
+    version() const -> unsigned int = 0;
 
     // Called on abnormal transport destruction. The idea's if the client disconnects unexpectedly,
     // i.e. not reaching the end of the dispatch graph, then some special handling might be needed.
@@ -72,20 +87,46 @@ public:
     virtual
     void
     discard(const std::error_code& ec) const;
-
-    // Observers
-
-    virtual
-    auto
-    root() const -> const graph_root_t& = 0;
-
-    auto
-    name() const -> std::string;
-
-    virtual
-    int
-    version() const = 0;
 };
+
+// Slot invocation with arguments provided as a MessagePack object
+
+class rpc_t:
+    public boost::static_visitor<boost::optional<dispatch_ptr_t>>
+{
+    const msgpack::object& unpacked;
+    const upstream_ptr_t&  upstream;
+
+public:
+    rpc_t(const msgpack::object& unpacked_, const upstream_ptr_t& upstream_):
+        unpacked(unpacked_),
+        upstream(upstream_)
+    { }
+
+    template<class Event>
+    result_type
+    operator()(const std::shared_ptr<basic_slot<Event>>& slot) const;
+};
+
+template<class Event>
+rpc_t::result_type
+rpc_t::operator()(const std::shared_ptr<basic_slot<Event>>& slot) const {
+    typedef basic_slot<Event> slot_type;
+
+    // Unpacked arguments storage.
+    typename slot_type::tuple_type args;
+
+    try {
+        // NOTE: Unpacks the object into a tuple using the argument typelist unlike using plain
+        // tuple type traits, in order to support parameter tags, like optional<T>.
+        type_traits<typename event_traits<Event>::argument_type>::unpack(unpacked, args);
+    } catch(const msgpack::type_error& e) {
+        throw std::system_error(error::invalid_argument, e.what());
+    }
+
+    // Call the slot with the upstream constrained with the event's upstream protocol type tag.
+    return result_type((*slot)(std::move(args), typename slot_type::upstream_type(upstream)));
+}
 
 } // namespace io
 
@@ -99,11 +140,12 @@ class dispatch:
 
     // Slot construction
 
+    typedef mpl::lambda<
+        std::shared_ptr<io::basic_slot<mpl::_1>>> slot_ptr;
+
     typedef typename mpl::transform<
         typename io::messages<Tag>::type,
-        typename mpl::lambda<
-            std::shared_ptr<io::basic_slot<mpl::_1>>
-        >::type
+        slot_ptr
     >::type slot_types;
 
     typedef std::map<
@@ -141,12 +183,15 @@ public:
 
     template<class Event>
     void
-    forget();
+    drop();
+
+    void
+    halt() { m_slots->clear(); }
 
 public:
     virtual
-    boost::optional<io::dispatch_ptr_t>
-    process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const;
+    auto
+    process(int id, const io::rpc_t& rpc) const -> boost::optional<io::dispatch_ptr_t>;
 
     virtual
     auto
@@ -155,16 +200,16 @@ public:
     }
 
     virtual
-    int
-    version() const {
+    auto
+    version() const -> unsigned int {
         return io::protocol<Tag>::version::value;
     }
 
     // Generic API
 
     template<class Visitor>
-    typename Visitor::result_type
-    process(int id, const Visitor& visitor) const;
+    auto
+    process(int id, const Visitor& visitor) const -> typename Visitor::result_type;
 };
 
 template<class Tag>
@@ -189,45 +234,9 @@ struct select<streamed<R>, Event> {
     typedef io::deferred_slot<streamed, Event> type;
 };
 
-// Slot invocation with arguments provided as a MessagePack object
-
-struct calling_visitor_t:
-    public boost::static_visitor<boost::optional<io::dispatch_ptr_t>>
-{
-    calling_visitor_t(const msgpack::object& unpacked_, const io::upstream_ptr_t& upstream_):
-        unpacked(unpacked_),
-        upstream(upstream_)
-    { }
-
-    template<class Event>
-    result_type
-    operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
-        typedef io::basic_slot<Event> slot_type;
-
-        // Unpacked arguments storage.
-        typename slot_type::tuple_type args;
-
-        try {
-            // NOTE: Unpacks the object into a tuple using the argument typelist unlike using plain
-            // tuple type traits, in order to support parameter tags, like optional<T>.
-            io::type_traits<typename io::event_traits<Event>::argument_type>::unpack(unpacked, args);
-        } catch(const msgpack::type_error& e) {
-            throw std::system_error(error::invalid_argument, e.what());
-        }
-
-        // Call the slot with the upstream constrained with the event's upstream protocol type tag.
-        return result_type((*slot)(std::move(args), typename slot_type::upstream_type(upstream)));
-    }
-
-private:
-    const msgpack::object&    unpacked;
-    const io::upstream_ptr_t& upstream;
-};
-
 } // namespace aux
 
-template<class Tag>
-template<class Event, class F>
+template<class Tag> template<class Event, class F>
 dispatch<Tag>&
 dispatch<Tag>::on(const F& callable, typename boost::disable_if<is_slot<F, Event>>::type*) {
     typedef typename aux::select<
@@ -238,8 +247,7 @@ dispatch<Tag>::on(const F& callable, typename boost::disable_if<is_slot<F, Event
     return on<Event>(std::make_shared<slot_type>(callable));
 }
 
-template<class Tag>
-template<class Event>
+template<class Tag> template<class Event>
 dispatch<Tag>&
 dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
     typedef io::event_traits<Event> traits;
@@ -251,23 +259,21 @@ dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
     return *this;
 }
 
-template<class Tag>
-template<class Event>
+template<class Tag> template<class Event>
 void
-dispatch<Tag>::forget() {
+dispatch<Tag>::drop() {
     if(!m_slots->erase(io::event_traits<Event>::id)) {
-        throw std::system_error(error::slot_not_found);
+        throw std::system_error(error::slot_not_found, Event::alias());
     }
 }
 
 template<class Tag>
 boost::optional<io::dispatch_ptr_t>
-dispatch<Tag>::process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const {
-    return process(message.type(), aux::calling_visitor_t(message.args(), upstream));
+dispatch<Tag>::process(int id, const io::rpc_t& rpc) const {
+    return process<io::rpc_t>(id, rpc);
 }
 
-template<class Tag>
-template<class Visitor>
+template<class Tag> template<class Visitor>
 typename Visitor::result_type
 dispatch<Tag>::process(int id, const Visitor& visitor) const {
     typedef typename slot_map_t::mapped_type slot_ptr_type;

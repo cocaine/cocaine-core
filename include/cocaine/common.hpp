@@ -45,6 +45,9 @@
     type&                                   \
     operator=(const type& other) = delete;
 
+#define COCAINE_UNREACHABLE                 \
+    __builtin_unreachable
+
 #define COCAINE_UNUSED_(parameter)          \
     parameter __attribute__((unused))
 

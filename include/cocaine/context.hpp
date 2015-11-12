@@ -38,18 +38,19 @@
 
 namespace cocaine {
 
-// Context
-
+class quote_t;
 class actor_t;
+
 class execution_unit_t;
+
+// Context
 
 class context_t {
     COCAINE_DECLARE_NONCOPYABLE(context_t)
 
     typedef std::deque<std::pair<std::string, std::unique_ptr<actor_t>>> service_list_t;
 
-    // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
-    // for the Blackhole, when all the common stuff is extracted to a separate library.
+    // The root log.
     std::unique_ptr<logging::log_t> m_log;
 
     // NOTE: This is the first object in the component tree, all the other dynamic components, be it
@@ -64,7 +65,7 @@ class context_t {
     synchronized<service_list_t> m_services;
 
     // Context signalling hub.
-    retroactive_signal<io::context_tag> m_signals;
+    synchronized<signal<io::context_tag>> m_signals;
 
 public:
     const config_t config;
@@ -92,13 +93,16 @@ public:
     remove(const std::string& name) -> std::unique_ptr<actor_t>;
 
     auto
-    locate(const std::string& name) const -> boost::optional<const actor_t&>;
+    locate(const std::string& name) const -> boost::optional<quote_t>;
+
+    auto
+    snapshot() const -> std::map<std::string, quote_t>;
 
     // Signals API
 
     void
     listen(const std::shared_ptr<dispatch<io::context_tag>>& slot, asio::io_service& asio) {
-        m_signals.listen(slot, asio);
+        m_signals->listen(slot, asio);
     }
 
     // Network I/O

@@ -74,18 +74,9 @@ class locator_t:
     class publish_slot_t;
     class routing_slot_t;
 
+    typedef std::map<std::string, std::shared_ptr<session<asio::ip::tcp>>> client_map_t;
+
     typedef std::map<std::string, continuum_t> rg_map_t;
-
-    class uplink_t
-    {
-    public:
-        std::vector<asio::ip::tcp::endpoint> endpoints;
-        std::shared_ptr<session<asio::ip::tcp>> ptr;
-    };
-
-    typedef std::map<std::string, uplink_t> client_map_t;
-
-    typedef std::map<unsigned int, io::graph_root_t, std::greater<unsigned int>> partition_view_t;
 
     typedef std::map<std::string, streamed<results::connect>> remote_map_t;
     typedef std::map<std::string, streamed<results::routing>> router_map_t;
@@ -113,13 +104,11 @@ class locator_t:
     synchronized<client_map_t> m_clients;
 
     // Snapshot of the cluster service disposition. Synchronized with incoming streams.
-    std::map<std::string, partition_view_t> m_aggregate;
+    std::map<std::string,
+             std::map<unsigned int, io::graph_root_t, std::greater<unsigned int>>> m_aggregate;
 
     // Outgoing remote locator streams indexed by node uuid.
     synchronized<remote_map_t> m_remotes;
-
-    // Snapshots of the local service states. Synchronized with outgoing remote streams.
-    std::map<std::string, results::resolve> m_snapshots;
 
     // Outgoing router streams indexed by some arbitrary router-provided uuid.
     synchronized<router_map_t> m_routers;
@@ -172,22 +161,13 @@ private:
 
     // Context signals
 
-    enum class modes { exposed, removed };
-
     void
-    on_service(const std::string& name, const results::resolve& meta, modes mode);
+    on_service(const std::string& name, const results::resolve& info);
 
     void
     on_context_shutdown();
 };
 
 }} // namespace cocaine::service
-
-namespace cocaine { namespace error {
-
-auto
-locator_category() -> const std::error_category&;
-
-}} // namespace cocaine::error
 
 #endif

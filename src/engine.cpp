@@ -88,6 +88,7 @@ execution_unit_t::gc_action_t::finalize(const std::error_code& ec) {
         if(!it->second->memory_pressure()) {
             recycled++;
             it = parent->m_sessions.erase(it);
+
             continue;
         }
 

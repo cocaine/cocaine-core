@@ -48,7 +48,7 @@ private:
         auto ptr = std::make_unique<protocol_type::socket>(std::move(socket));
 
         switch(ec.value()) {
-        case 0:
+          case 0:
             COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd %d", ptr->native_handle());
 
             try {
@@ -63,17 +63,18 @@ private:
 
             break;
 
-        case asio::error::operation_aborted:
+          case asio::error::operation_aborted:
             return;
 
-        default:
+          default:
             COCAINE_LOG_ERROR(parent->m_log, "unable to accept connection: [%d] %s", ec.value(),
                 ec.message());
             break;
         }
 
-        // TODO: Find out if it's always a good idea to continue accepting connections no matter what.
-        // For example, destroying a socket from outside this thread will trigger weird stuff on Linux.
+        // TODO(@kobolog): Find out if it's always a good idea to continue accepting connections no
+        // matter what. E.g., destroying a socket from outside this thread will trigger weird stuff
+        // on Linux.
         operator()();
     }
 };

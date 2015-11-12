@@ -39,13 +39,11 @@ struct unique_id_t {
     bool
     operator==(const unique_id_t& other) const;
 
+    // Friends
+
     friend
     std::ostream&
     operator<<(std::ostream& stream, const unique_id_t& id);
-
-    static
-    bool
-    ensure(const std::string& uuid);
 
 public:
     // NOTE: Store 128-bit UUIDs as two 64-bit unsigned integers.

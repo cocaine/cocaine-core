@@ -38,6 +38,11 @@ class chamber_t {
     class named_runnable_t;
     class stats_periodic_action_t;
 
+    typedef boost::accumulators::accumulator_set<
+        double,
+        boost::accumulators::features<boost::accumulators::tag::rolling_mean>
+    > load_average_t;
+
     static const unsigned int kCollectionInterval = 2;
 
     const std::string name;
@@ -48,11 +53,6 @@ class chamber_t {
 
     // This thread will run the reactor's event loop until terminated.
     std::unique_ptr<boost::thread> thread;
-
-    typedef boost::accumulators::accumulator_set<
-        double,
-        boost::accumulators::features<boost::accumulators::tag::rolling_mean>
-    > load_average_t;
 
     // Rolling resource usage mean over last minute.
     synchronized<load_average_t> load_acc1;

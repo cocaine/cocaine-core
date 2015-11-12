@@ -118,12 +118,6 @@ struct deferred {
         return *this;
     }
 
-    deferred&
-    abort(const std::error_code& ec, const std::string& reason) {
-        outbox->synchronize()->template append<typename protocol::error>(ec, reason);
-        return *this;
-    }
-
 #if defined(__clang__)
     deferred&
     abort(const std::error_code& ec) {
@@ -131,6 +125,12 @@ struct deferred {
         return *this;
     }
 #endif
+
+    deferred&
+    abort(const std::error_code& ec, const std::string& reason) {
+        outbox->synchronize()->template append<typename protocol::error>(ec, reason);
+        return *this;
+    }
 
     template<class UpstreamType>
     void
@@ -155,12 +155,6 @@ struct deferred<void> {
         outbox(new synchronized<queue_type>())
     { }
 
-    deferred&
-    abort(const std::error_code& ec, const std::string& reason) {
-        outbox->synchronize()->append<protocol::error>(ec, reason);
-        return *this;
-    }
-
 #if defined(__clang__)
     deferred&
     abort(const std::error_code& ec) {
@@ -168,6 +162,12 @@ struct deferred<void> {
         return *this;
     }
 #endif
+
+    deferred&
+    abort(const std::error_code& ec, const std::string& reason) {
+        outbox->synchronize()->append<protocol::error>(ec, reason);
+        return *this;
+    }
 
     deferred&
     close() {
