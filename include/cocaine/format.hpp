@@ -45,9 +45,9 @@ static inline
 std::string
 format(const std::string& format, const Args&... args) {
     try {
-        return aux::substitute(boost::format(format), args...);
+        return aux::substitute(std::move(boost::format(format)), args...);
     } catch(const boost::io::format_error& e) {
-        return aux::substitute(boost::format("<format error - %s>"), e.what());
+        return aux::substitute(std::move(boost::format("<format error - %s>")), e.what());
     }
 }
 
