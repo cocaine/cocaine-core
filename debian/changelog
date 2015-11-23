@@ -1,3 +1,13 @@
+cocaine-core (0.12.4.7+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * feat(engine): enable TCP keep alive option
+    Enabling keep alive for TCP socket is required to avoid weird IPVS behavior
+    on erasing a table record, which lead to infinite socket consuming and
+    making us suffer from fd leakage.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 23 Nov 2015 14:13:50 +0300
+
 cocaine-core (0.12.4.6+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
