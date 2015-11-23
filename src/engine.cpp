@@ -162,6 +162,13 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
             // Disable Nagle's algorithm, since most of the service clients do not send or receive
             // more than a couple of kilobytes of data.
             transport->socket->set_option(ip::tcp::no_delay(true));
+
+            // Enabling keepalive for TCP socket is required to avoid weird IPVS behavior on erasing
+            // a table record, which lead to infinite socket consuming and making us suffer from fd
+            // leakage.
+            // NOTE: There is another solution: with reading `null_buffers` every N seconds we can
+            // check an error code received.
+            transport->socket->set_option(asio::socket_base::keep_alive(true));
             remote_endpoint = boost::lexical_cast<std::string>(ptr->remote_endpoint());
         } else if(std::is_same<protocol_type, local::stream_protocol>::value) {
             remote_endpoint = boost::lexical_cast<std::string>(endpoint);
