@@ -92,7 +92,7 @@ class locator_t:
 
     context_t& m_context;
 
-    const std::unique_ptr<logging::log_t> m_log;
+    const std::unique_ptr<logging::logger_t> m_log;
     const locator_cfg_t m_cfg;
 
     // Cluster interconnections.

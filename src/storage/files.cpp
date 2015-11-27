@@ -29,9 +29,13 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/convenience.hpp>
 
+#include <blackhole/logger.hpp>
+
 using namespace cocaine::storage;
 
 namespace fs = boost::filesystem;
+
+using blackhole::attribute_list;
 
 files_t::files_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
@@ -55,10 +59,10 @@ files_t::read(const std::string& collection, const std::string& key) {
         );
     }
 
-    COCAINE_LOG_DEBUG(m_log, "reading object '%s'", key)(
-        "collection", collection,
-        "path", file_path
-    );
+    COCAINE_LOG_DEBUG(m_log, "reading object '{}'", key, attribute_list({
+        {"collection", collection}
+        // {"path", file_path}
+    }));
 
     fs::ifstream stream(file_path, fs::ifstream::in | fs::ifstream::binary);
 
@@ -84,10 +88,10 @@ files_t::write(const std::string& collection, const std::string& key, const std:
     const auto store_status = fs::status(store_path);
 
     if(!fs::exists(store_status)) {
-        COCAINE_LOG_INFO(m_log, "creating collection")(
-            "collection", collection,
-            "path", store_path
-        );
+        COCAINE_LOG_INFO(m_log, "creating collection", {
+            {"collection", collection}
+            // {"path", store_path}
+        });
 
         fs::create_directories(store_path);
     } else if(!fs::is_directory(store_status)) {
@@ -98,10 +102,10 @@ files_t::write(const std::string& collection, const std::string& key, const std:
 
     const fs::path file_path(store_path / key);
 
-    COCAINE_LOG_DEBUG(m_log, "writing object '%s'", key)(
-        "collection", collection,
-        "path", file_path
-    );
+    COCAINE_LOG_DEBUG(m_log, "writing object '{}'", key, attribute_list({
+        {"collection", collection}
+        // {"path", file_path}
+    }));
 
     fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc | fs::ofstream::binary);
 
@@ -144,10 +148,10 @@ files_t::remove(const std::string& collection, const std::string& key) {
         return;
     }
 
-    COCAINE_LOG_DEBUG(m_log, "removing object '%s'", key)(
-        "collection", collection,
-        "path", file_path
-    );
+    COCAINE_LOG_DEBUG(m_log, "removing object '{}'", key, attribute_list({
+        {"collection", collection}
+        // {"path", file_path}
+    }));
 
     fs::remove(file_path);
 }
@@ -201,7 +205,7 @@ files_t::find(const std::string& collection, const std::vector<std::string>& tag
 #endif
 
             if(!fs::exists(*it)) {
-                COCAINE_LOG_DEBUG(m_log, "purging object '%s' from tag '%s'", object, *tag);
+                COCAINE_LOG_DEBUG(m_log, "purging object '{}' from tag '{}'", object, *tag);
 
                 // Remove the symlink if the object was removed.
                 fs::remove(*it++);

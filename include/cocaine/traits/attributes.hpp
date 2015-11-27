@@ -18,24 +18,45 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_LOG_PROPERTY_SERIALIZATION_TRAITS_HPP
-#define COCAINE_LOG_PROPERTY_SERIALIZATION_TRAITS_HPP
+#ifndef COCAINE_LOG_ATTRIBUTE_SERIALIZATION_TRAITS_HPP
+#define COCAINE_LOG_ATTRIBUTE_SERIALIZATION_TRAITS_HPP
 
 #include "cocaine/traits.hpp"
 
-#include <blackhole/attribute.hpp>
-#include <blackhole/formatter/msgpack.hpp>
+// NOTE: You should manually include the <blackhole/attribute.hpp> header file BEFORE this include.
+// Such restrictment is required to avoid exporting Blackhole API.
 
 namespace cocaine { namespace io {
 
 template<>
 struct type_traits<blackhole::attribute::value_t> {
+
+    template<class Stream>
+    class visitor : public blackhole::attribute::value_t::visitor_t {
+        typedef blackhole::attribute::value_t value_t;
+
+        Stream& stream;
+
+    public:
+        visitor(Stream& stream) : stream(stream) {}
+
+        template<class T>
+        auto operator()(const T& value) -> void {
+            stream << value;
+        }
+
+        auto operator()(const value_t::function_type& value) -> void {
+            blackhole::writer_t wr;
+            value(wr);
+            stream << wr.result();
+        }
+    };
+
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& packer, const blackhole::attribute::value_t& source) {
-        blackhole::formatter::msgpack_visitor<Stream> visitor(&packer);
-        boost::apply_visitor(visitor, source);
+    pack(msgpack::packer<Stream>& target, const blackhole::attribute::value_t& source) {
+        source.apply(visitor<Stream>(target));
     }
 
     static inline
@@ -65,22 +86,6 @@ struct type_traits<blackhole::attribute::value_t> {
           default:
             throw msgpack::type_error();
         }
-    }
-};
-
-template<>
-struct type_traits<blackhole::attribute_t> {
-    template<class Stream>
-    static inline
-    void
-    pack(msgpack::packer<Stream>& packer, const blackhole::attribute_t& source) {
-        type_traits<blackhole::attribute::value_t>::pack(packer, source.value);
-    }
-
-    static inline
-    void
-    unpack(const msgpack::object& source, blackhole::attribute_t& target) {
-        type_traits<blackhole::attribute::value_t>::unpack(source, target.value);
     }
 };
 

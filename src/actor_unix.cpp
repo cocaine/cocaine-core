@@ -8,9 +8,10 @@
 #include "cocaine/detail/chamber.hpp"
 #include "cocaine/detail/engine.hpp"
 
-using namespace cocaine;
+#include <blackhole/attribute.hpp>
+#include <blackhole/logger.hpp>
 
-using namespace blackhole;
+using namespace cocaine;
 
 namespace ph = std::placeholders;
 
@@ -49,14 +50,14 @@ private:
 
         switch(ec.value()) {
         case 0:
-            COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd %d", ptr->native_handle());
+            COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd {}", ptr->native_handle());
 
             try {
                 auto base = parent->fact();
                 auto session = parent->m_context.engine().attach(std::move(ptr), base);
                 parent->bind(base, std::move(session));
             } catch(const std::system_error& e) {
-                COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: %s",
+                COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: {}",
                     error::to_string(e));
                 ptr = nullptr;
             }
@@ -67,7 +68,7 @@ private:
             return;
 
         default:
-            COCAINE_LOG_ERROR(parent->m_log, "unable to accept connection: [%d] %s", ec.value(),
+            COCAINE_LOG_ERROR(parent->m_log, "unable to accept connection: [{}] {}", ec.value(),
                 ec.message());
             break;
         }
@@ -101,7 +102,7 @@ unix_actor_t::run() {
         try {
             ptr = std::make_unique<protocol_type::acceptor>(*m_asio, this->endpoint);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: %s",
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: {}",
                 error::to_string(e));
             throw;
         }
@@ -109,7 +110,7 @@ unix_actor_t::run() {
         std::error_code ec;
         const auto endpoint = ptr->local_endpoint(ec);
 
-        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint %s", endpoint);
+        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint {}", endpoint);
     });
 
     m_asio->post(std::bind(&accept_action_t::operator(),
@@ -133,7 +134,7 @@ unix_actor_t::terminate() {
         std::error_code ec;
         const auto endpoint = ptr->local_endpoint(ec);
 
-        COCAINE_LOG_INFO(m_log, "removing service from local endpoint %s", endpoint);
+        COCAINE_LOG_INFO(m_log, "removing service from local endpoint {}", endpoint);
 
         ptr = nullptr;
     });
@@ -144,9 +145,9 @@ unix_actor_t::terminate() {
     const auto endpoint = boost::lexical_cast<std::string>(this->endpoint);
 
     try {
-        COCAINE_LOG_DEBUG(m_log, "removing local endpoint '%s'", endpoint);
+        COCAINE_LOG_DEBUG(m_log, "removing local endpoint '{}'", endpoint);
         boost::filesystem::remove(endpoint);
     } catch (const std::exception& err) {
-        COCAINE_LOG_WARNING(m_log, "unable to clean local endpoint '%s': %s", endpoint, err.what());
+        COCAINE_LOG_WARNING(m_log, "unable to clean local endpoint '{}': {}", endpoint, err.what());
     }
 }

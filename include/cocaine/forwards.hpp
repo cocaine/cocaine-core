@@ -21,7 +21,21 @@
 #ifndef COCAINE_FORWARDS_HPP
 #define COCAINE_FORWARDS_HPP
 
-#include <blackhole/forwards.hpp>
+// Third-party forwards
+
+namespace asio {
+
+class io_service;
+
+} // namespace asio
+
+namespace blackhole {
+inline namespace v1 {
+
+class logger_t;
+
+}  // namespace v1
+}  // namespace blackhole
 
 namespace cocaine {
 
@@ -90,22 +104,9 @@ enum priorities: int {
     error   =  3
 };
 
-template<class Wrapped, class AttributeFetcher>
-class dynamic_wrapper;
-
-struct trace_attribute_fetcher_t;
-
-typedef blackhole::verbose_logger_t<logging::priorities> logger_t;
-typedef dynamic_wrapper<logger_t, trace_attribute_fetcher_t> log_t;
+// Import the logger in our namespace.
+using blackhole::logger_t;
 
 }} // namespace cocaine::logging
-
-// Third-party forwards
-
-namespace asio {
-
-class io_service;
-
-} // namespace asio
 
 #endif

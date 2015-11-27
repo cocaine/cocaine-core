@@ -28,7 +28,8 @@
 #include "cocaine/rpc/asio/transport.hpp"
 #include "cocaine/rpc/session.hpp"
 
-#include <blackhole/scoped_attributes.hpp>
+#include <blackhole/logger.hpp>
+#include <blackhole/wrapper.hpp>
 
 #include <asio/io_service.hpp>
 #include <asio/ip/tcp.hpp>
@@ -38,8 +39,6 @@ using namespace cocaine;
 using namespace cocaine::io;
 
 using namespace asio;
-
-using namespace blackhole;
 
 class execution_unit_t::gc_action_t:
     public std::enable_shared_from_this<gc_action_t>
@@ -95,7 +94,7 @@ execution_unit_t::gc_action_t::finalize(const std::error_code& ec) {
     }
 
     if(recycled) {
-        COCAINE_LOG_DEBUG(parent->m_log, "recycled %d session(s)", recycled);
+        COCAINE_LOG_DEBUG(parent->m_log, "recycled {:d} session(s)", recycled);
     }
 
     operator()();
@@ -176,12 +175,12 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
             remote_endpoint = "<unknown>";
         }
 
-        std::unique_ptr<logging::log_t> log(new logging::log_t(*m_log, {
-            { "endpoint", remote_endpoint },
-            { "service",  dispatch ? dispatch->name() : "<none>" }
+        std::unique_ptr<logging::logger_t> log(new blackhole::wrapper_t(*m_log, {
+            {"endpoint", remote_endpoint                       },
+            {"service",  dispatch ? dispatch->name() : "<none>"}
         }));
 
-        COCAINE_LOG_DEBUG(log, "attached connection to engine, load: %.2f%%", utilization() * 100);
+        COCAINE_LOG_DEBUG(log, "attached connection to engine, load: {:.2f}%", utilization() * 100);
 
         // Create a new inactive session.
         session_ = std::make_shared<session_type>(std::move(log), std::move(transport), dispatch);

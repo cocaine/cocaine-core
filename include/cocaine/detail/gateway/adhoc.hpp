@@ -30,7 +30,7 @@ namespace cocaine { namespace gateway {
 class adhoc_t:
     public api::gateway_t
 {
-    const std::unique_ptr<logging::log_t> m_log;
+    const std::unique_ptr<logging::logger_t> m_log;
 
     // Used in resolve() method, which is const.
     std::default_random_engine mutable m_random_generator;

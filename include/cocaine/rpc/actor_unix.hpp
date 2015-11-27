@@ -17,7 +17,7 @@ class unix_actor_t {
 
     protocol_type::endpoint endpoint;
 
-    const std::unique_ptr<logging::log_t> m_log;
+    const std::unique_ptr<logging::logger_t> m_log;
     const std::shared_ptr<asio::io_service> m_asio;
 
     // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new

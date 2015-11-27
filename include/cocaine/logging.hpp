@@ -23,69 +23,52 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/trace/logger/blackhole.hpp"
+// TODO: Hide all blackhole includes from the public API.
+#include <blackhole/attribute.hpp>
+#include <blackhole/extensions/facade.hpp>
 
-#include <blackhole/blackhole.hpp>
-#include <blackhole/keyword.hpp>
-#include <blackhole/logger/wrapper.hpp>
+// TODO: Do not include this file from public API.
+// TODO: logging/macro.hpp
 
-#define COCAINE_LOG(_log_, _level_, ...) \
-    if(auto _record_ = ::cocaine::logging::detail::logger_ptr(_log_)->open_record(_level_)) \
-        ::blackhole::aux::logger::make_pusher(*(::cocaine::logging::detail::logger_ptr(_log_)), _record_, __VA_ARGS__)
+#define COCAINE_LOG(__log__, __severity__, ...) \
+    ::cocaine::detail::logging::make_facade(__log__).log(__severity__, __VA_ARGS__)
 
-#define COCAINE_LOG_DEBUG(_log_, ...) \
-    COCAINE_LOG(_log_, ::cocaine::logging::debug, __VA_ARGS__)
+#define COCAINE_LOG_DEBUG(__log__, ...) \
+    COCAINE_LOG(__log__, ::cocaine::logging::debug, __VA_ARGS__)
 
-#define COCAINE_LOG_INFO(_log_, ...) \
-    COCAINE_LOG(_log_, ::cocaine::logging::info, __VA_ARGS__)
+#define COCAINE_LOG_INFO(__log__, ...) \
+    COCAINE_LOG(__log__, ::cocaine::logging::info, __VA_ARGS__)
 
-#define COCAINE_LOG_WARNING(_log_, ...) \
-    COCAINE_LOG(_log_, ::cocaine::logging::warning, __VA_ARGS__)
+#define COCAINE_LOG_WARNING(__log__, ...) \
+    COCAINE_LOG(__log__, ::cocaine::logging::warning, __VA_ARGS__)
 
-#define COCAINE_LOG_ERROR(_log_, ...) \
-    COCAINE_LOG(_log_, ::cocaine::logging::error, __VA_ARGS__)
+#define COCAINE_LOG_ERROR(__log__, ...) \
+    COCAINE_LOG(__log__, ::cocaine::logging::error, __VA_ARGS__)
 
-#define COCAINE_LOG_ZIPKIN(_log_, ...) \
-    if(!trace_t::current().empty()) COCAINE_LOG_INFO(_log_, __VA_ARGS__)
+// TODO: Replace with something nasty.
+#define COCAINE_LOG_ZIPKIN(__log__, ...) \
+    if(!trace_t::current().empty()) COCAINE_LOG_INFO(__log__, __VA_ARGS__)
+
+namespace cocaine { namespace detail { namespace logging {
+
+template<class T> inline auto logger_ref(const T& log) -> T& { return log; }
+template<class T> inline auto logger_ref(T* const log) -> T& { return *log; }
+template<class T> inline auto logger_ref(const std::unique_ptr<T>& log) -> T& { return *log; }
+template<class T> inline auto logger_ref(const std::shared_ptr<T>& log) -> T& { return *log; }
+
+template<class T>
+inline
+auto make_facade(T&& log) -> blackhole::logger_facade<cocaine::logging::logger_t> {
+    return blackhole::logger_facade<cocaine::logging::logger_t>(logger_ref(log));
+}
+
+}}}  // namespace cocaine::detail::logging
 
 namespace cocaine { namespace logging {
 
-DECLARE_KEYWORD(source, std::string)
-
-namespace detail {
-
-template<class T>
-inline
-const T*
-logger_ptr(const T& log) {
-    return &log;
-}
-
-template<class T>
-inline
-const T*
-logger_ptr(const T* log) {
-    return log;
-}
-
-template<class T>
-inline
-const T*
-logger_ptr(const std::unique_ptr<T>& log) {
-    return log.get();
-}
-
-template<class T>
-inline
-const T*
-logger_ptr(const std::shared_ptr<T>& log) {
-    return log.get();
-}
-
-} // namespace detail
-
 // C++ typename demangling
 
+// TODO: Hide from the public API.
 auto
 demangle(const std::string& mangled) -> std::string;
 

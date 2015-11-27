@@ -23,7 +23,7 @@
 
 #include "cocaine/rpc/protocol.hpp"
 
-#include <blackhole/attribute.hpp>
+#include <blackhole/attributes.hpp>
 
 namespace cocaine { namespace io {
 
@@ -51,7 +51,7 @@ struct emit {
         underlying loggers might silently truncate it. */
         std::string,
      /* Log event attached attributes. */
-        optional<blackhole::attribute::set_t>
+        optional<blackhole::attributes_t>
     >::type argument_type;
 
     typedef void upstream_type;

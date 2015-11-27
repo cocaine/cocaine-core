@@ -35,7 +35,7 @@ template<hashid HashID>
 class crypto {
     COCAINE_DECLARE_NONCOPYABLE(crypto)
 
-    const std::unique_ptr<logging::log_t> m_log;
+    const std::unique_ptr<logging::logger_t> m_log;
     const std::string m_service;
 
     typename api::category_traits<api::storage_t>::ptr_type m_store;

@@ -26,8 +26,6 @@
 
 #include <asio/ip/address.hpp>
 
-#include <blackhole/blackhole.hpp>
-
 namespace cocaine {
 
 // Configuration
@@ -67,19 +65,8 @@ public:
     } network;
 
     struct logging_t {
-        struct logger_t {
-            logging::priorities verbosity;
-
-            std::string timestamp;
-
-            blackhole::log_config_t config;
-
-            // Set of optional attributes with special meanings.
-            std::set<std::string> attributes;
-        };
-
-        std::map<std::string, logger_t> loggers;
-    } logging;
+        dynamic_t args;
+    };
 
     struct component_t {
         std::string type;
@@ -91,6 +78,7 @@ public:
     component_map_t services;
     component_map_t storages;
     component_map_t unicorns;
+    logging_t       logging;
 
 #ifdef COCAINE_ALLOW_RAFT
     bool create_raft_cluster;

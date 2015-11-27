@@ -26,8 +26,6 @@
 #include <asio/ip/host_name.hpp>
 #include <asio/ip/tcp.hpp>
 
-#include <blackhole/repository/config/parser.hpp>
-
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -185,53 +183,6 @@ private:
 
 } // namespace
 
-BLACKHOLE_BEG_NS
-
-namespace repository { namespace config {
-
-template<>
-struct transformer_t<cocaine::dynamic_t> {
-    typedef cocaine::dynamic_t value_type;
-
-    static
-    dynamic_t
-    transform(const value_type& value) {
-        if(value.is_null()) {
-            throw blackhole::error_t("null values are not supported");
-        } else if(value.is_bool()) {
-            return value.as_bool();
-        } else if(value.is_int()) {
-            return value.as_int();
-        } else if(value.is_uint()) {
-            return value.as_uint();
-        } else if(value.is_double()) {
-            return value.as_double();
-        } else if(value.is_string()) {
-            return value.as_string();
-        } else if(value.is_array()) {
-            dynamic_t::array_t array;
-            for(auto it = value.as_array().begin(); it != value.as_array().end(); ++it) {
-                array.push_back(transformer_t<value_type>::transform(*it));
-            }
-            return array;
-        } else if(value.is_object()) {
-            dynamic_t::object_t object;
-            for(auto it = value.as_object().begin(); it != value.as_object().end(); ++it) {
-                object[it->first] = transformer_t<value_type>::transform(it->second);
-            }
-            return object;
-        } else {
-            BOOST_ASSERT(false);
-        }
-
-        return dynamic_t();
-    }
-};
-
-}} // namespace repository::config
-
-BLACKHOLE_END_NS
-
 namespace cocaine {
 
 template<>
@@ -255,43 +206,7 @@ struct dynamic_converter<config_t::logging_t> {
     static
     result_type
     convert(const dynamic_t& from) {
-        result_type component;
-        const auto& logging = from.as_object();
-
-        for(auto it = logging.begin(); it != logging.end(); ++it) {
-            using namespace blackhole::repository;
-
-            const auto name    = it->first;
-            const auto backend = it->second.as_object();
-            const auto loggers = backend.at("loggers", dynamic_t::empty_array);
-
-            const auto verbosity = logmask(
-                backend.at("verbosity", defaults::log_verbosity).as_string()
-            );
-
-            const auto timestamp = backend.at("timestamp", defaults::log_timestamp).as_string();
-
-            const auto config = config::parser::adapter_t<
-                dynamic_t,
-                blackhole::log_config_t
-            >::parse(name, loggers);
-
-            // Parse optional attributes set.
-            std::set<std::string> attributes;
-            const auto attributes_ = backend.at("attributes", dynamic_t::empty_array).as_array();
-            for (auto it = attributes_.begin(); it != attributes_.end(); ++it) {
-                attributes.insert(it->as_string());
-            }
-
-            component.loggers[name] = {
-                verbosity,
-                timestamp,
-                config,
-                attributes
-            };
-        }
-
-        return component;
+        return {from};
     }
 
     static inline

@@ -47,7 +47,7 @@ class session_t:
     typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
 
     // Log of last resort.
-    const std::unique_ptr<logging::log_t> log;
+    const std::unique_ptr<logging::logger_t> log;
 
     // The underlying connection.
 #if defined(__clang__)
@@ -69,7 +69,7 @@ class session_t:
     uint64_t max_channel_id;
 
 public:
-    session_t(std::unique_ptr<logging::log_t> log,
+    session_t(std::unique_ptr<logging::logger_t> log,
               std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
 
     // Observers
@@ -129,7 +129,7 @@ public:
     typedef io::transport<protocol_type> transport_type;
 
 public:
-    session(std::unique_ptr<logging::log_t> log,
+    session(std::unique_ptr<logging::logger_t> log,
             std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
 
     auto

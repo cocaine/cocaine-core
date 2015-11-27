@@ -43,7 +43,7 @@ public:
 class predefine_t:
     public api::cluster_t
 {
-    const std::unique_ptr<logging::log_t> m_log;
+    const std::unique_ptr<logging::logger_t> m_log;
 
     // Interoperability with the locator service.
     interface& m_locator;

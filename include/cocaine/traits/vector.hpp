@@ -25,35 +25,58 @@
 
 #include <vector>
 
+#ifdef __has_include
+    #if __has_include(<boost/container/small_vector.hpp>)
+        #include <boost/container/small_vector.hpp>
+    #endif
+#endif
+
 namespace cocaine { namespace io {
 
 template<class T>
-struct type_traits<std::vector<T>> {
+struct vector_traits {
+    typedef T vector_type;
+    typedef typename T::value_type value_type;
+
     template<class Stream>
     static inline
     void
-    pack(msgpack::packer<Stream>& target, const std::vector<T>& source) {
+    pack(msgpack::packer<Stream>& target, const vector_type& source) {
         target.pack_array(source.size());
 
         for(auto it = source.begin(); it != source.end(); ++it) {
-            type_traits<T>::pack(target, *it);
+            type_traits<value_type>::pack(target, *it);
         }
     }
 
     static inline
     void
-    unpack(const msgpack::object& source, std::vector<T>& target) {
+    unpack(const msgpack::object& source, vector_type& target) {
         if(source.type != msgpack::type::ARRAY) {
             throw msgpack::type_error();
         }
 
-        target.assign(source.via.array.size, T());
+        target.assign(source.via.array.size, value_type());
 
         for(size_t i = 0; i < source.via.array.size; ++i) {
-            type_traits<T>::unpack(source.via.array.ptr[i], target[i]);
+            type_traits<value_type>::unpack(source.via.array.ptr[i], target[i]);
         }
     }
 };
+
+template<class T>
+struct type_traits<std::vector<T>> :
+    public vector_traits<std::vector<T>> {};
+
+#ifdef __has_include
+#if __has_include(<boost/container/small_vector.hpp>)
+
+template<class T, std::size_t N>
+struct type_traits<boost::container::small_vector<T, N>> :
+    public vector_traits<boost::container::small_vector<T, N>> {};
+
+#endif
+#endif
 
 }} // namespace cocaine::io
 

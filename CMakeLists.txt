@@ -55,7 +55,6 @@ INCLUDE_DIRECTORIES(SYSTEM
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include)
 
 INCLUDE_DIRECTORIES(BEFORE
-    ${PROJECT_SOURCE_DIR}/foreign/blackhole/src
     ${PROJECT_SOURCE_DIR}/include)
 
 LINK_DIRECTORIES(
@@ -99,6 +98,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     ltdl
     mhash
     msgpack
+    blackhole
     ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
@@ -113,6 +113,7 @@ TARGET_LINK_LIBRARIES(cocaine-runtime
     stdc++
     ${LIBBFD_LIBRARY}
     ${Boost_LIBRARIES}
+    blackhole
     cocaine-core)
 
 # Try and enable C++11.

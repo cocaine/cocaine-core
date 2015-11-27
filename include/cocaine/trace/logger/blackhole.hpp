@@ -23,65 +23,63 @@
 
 #include "cocaine/trace/trace.hpp"
 
-#include <blackhole/logger/wrapper.hpp>
-
 namespace cocaine { namespace logging {
 
-struct trace_attribute_fetcher_t {
-    blackhole::attribute::set_t
-    operator()() const {
-        if(!trace_t::current().empty()) {
-            return trace_t::current().formatted_attributes<blackhole::attribute::set_t>();
-        }
-
-        return blackhole::attribute::set_t();
-    }
-};
-
-template<class Wrapped, class AttributeFetcher>
-class dynamic_wrapper:
-    public blackhole::wrapper_base_t<Wrapped>
-{
-    static_assert(
-        std::is_same<
-            typename blackhole::unwrap<Wrapped>::logger_type,
-            blackhole::verbose_logger_t<typename blackhole::unwrap<Wrapped>::logger_type::level_type>
-        >::value, "invalid logger type for dynamic wrapper");
-
-    typedef blackhole::wrapper_base_t<Wrapped> base_type;
-
-public:
-    typedef typename base_type::underlying_type underlying_type;
-
-public:
-    dynamic_wrapper(underlying_type& wrapped, blackhole::attribute::set_t attributes):
-        base_type(wrapped, std::move(attributes))
-    {}
-
-    dynamic_wrapper(const dynamic_wrapper& wrapper, const blackhole::attribute::set_t& attributes):
-        base_type(wrapper, attributes)
-    {}
-
-    dynamic_wrapper(dynamic_wrapper&& other):
-        base_type(std::move(other))
-    {}
-
-    dynamic_wrapper& operator=(dynamic_wrapper&& other) {
-        base_type::operator=(std::move(other));
-        return *this;
-    }
-
-    template<typename Level>
-    blackhole::record_t
-    open_record(Level level, blackhole::attribute::set_t attributes = blackhole::attribute::set_t()) const {
-        // TODO: Do this under lock or drop assignment.
-        AttributeFetcher fetcher;
-        const auto& dynamic_attributes = fetcher();
-        std::copy(this->attributes.begin(), this->attributes.end(), std::back_inserter(attributes));
-        std::copy(dynamic_attributes.begin(), dynamic_attributes.end(), std::back_inserter(attributes));
-        return this->wrapped->open_record(level, std::move(attributes));
-    }
-};
+// struct trace_attribute_fetcher_t {
+//     blackhole::attribute::set_t
+//     operator()() const {
+//         if(!trace_t::current().empty()) {
+//             return trace_t::current().formatted_attributes<blackhole::attribute::set_t>();
+//         }
+//
+//         return blackhole::attribute::set_t();
+//     }
+// };
+//
+// template<class Wrapped, class AttributeFetcher>
+// class dynamic_wrapper:
+//     public blackhole::wrapper_base_t<Wrapped>
+// {
+//     static_assert(
+//         std::is_same<
+//             typename blackhole::unwrap<Wrapped>::logger_type,
+//             blackhole::verbose_logger_t<typename blackhole::unwrap<Wrapped>::logger_type::level_type>
+//         >::value, "invalid logger type for dynamic wrapper");
+//
+//     typedef blackhole::wrapper_base_t<Wrapped> base_type;
+//
+// public:
+//     typedef typename base_type::underlying_type underlying_type;
+//
+// public:
+//     dynamic_wrapper(underlying_type& wrapped, blackhole::attribute::set_t attributes):
+//         base_type(wrapped, std::move(attributes))
+//     {}
+//
+//     dynamic_wrapper(const dynamic_wrapper& wrapper, const blackhole::attribute::set_t& attributes):
+//         base_type(wrapper, attributes)
+//     {}
+//
+//     dynamic_wrapper(dynamic_wrapper&& other):
+//         base_type(std::move(other))
+//     {}
+//
+//     dynamic_wrapper& operator=(dynamic_wrapper&& other) {
+//         base_type::operator=(std::move(other));
+//         return *this;
+//     }
+//
+//     template<typename Level>
+//     blackhole::record_t
+//     open_record(Level level, blackhole::attribute::set_t attributes = blackhole::attribute::set_t()) const {
+//         // TODO: Do this under lock or drop assignment.
+//         AttributeFetcher fetcher;
+//         const auto& dynamic_attributes = fetcher();
+//         std::copy(this->attributes.begin(), this->attributes.end(), std::back_inserter(attributes));
+//         std::copy(dynamic_attributes.begin(), dynamic_attributes.end(), std::back_inserter(attributes));
+//         return this->wrapped->open_record(level, std::move(attributes));
+//     }
+// };
 
 }} // namespace logging // namespace cocaine
 

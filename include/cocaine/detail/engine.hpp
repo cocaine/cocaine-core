@@ -47,7 +47,7 @@ class execution_unit_t {
     std::unique_ptr<io::chamber_t> m_chamber;
 
     // Initialized here because of the dependency on the io::chamber_t's thread ID.
-    const std::unique_ptr<logging::log_t> m_log;
+    const std::unique_ptr<logging::logger_t> m_log;
 
     static const unsigned int kCollectionInterval = 60;
 

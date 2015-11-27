@@ -27,33 +27,26 @@
 #include "cocaine/traits/enum.hpp"
 #include "cocaine/traits/vector.hpp"
 
+#include <blackhole/logger.hpp>
+#include <blackhole/attributes.hpp>
+
 using namespace cocaine;
 using namespace cocaine::logging;
 using namespace cocaine::service;
-
-using namespace blackhole;
 
 namespace ph = std::placeholders;
 
 logging_t::logging_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),
-    dispatch<io::log_tag>(name)
+    dispatch<io::log_tag>(name),
+    verbosity(static_cast<priorities>(args.as_object().at("verbosity", priorities::debug).as_int()))
 {
     const auto backend = args.as_object().at("backend", "core").as_string();
 
-    if(backend != "core") {
-        try {
-            logger = std::make_unique<logger_t>(repository_t::instance().create<logger_t>(
-                backend,
-                context.config.logging.loggers.at(backend).verbosity
-            ));
-        } catch(const std::out_of_range& e) {
-            throw cocaine::error_t("logger '%s' is not configured", backend);
-        }
-
-        wrapper.reset(new log_t(*logger, {{"source", cocaine::format("%s/%s", name, backend)}}));
+    if (backend == "core") {
+        logger = context.log(format("%s[core]", name));
     } else {
-        wrapper = context.log(cocaine::format("%s/core", name));
+        throw std::runtime_error("not implemented");
     }
 
     on<io::log::emit>(std::bind(&logging_t::on_emit, this, ph::_1, ph::_2, ph::_3, ph::_4));
@@ -67,19 +60,23 @@ logging_t::prototype() const -> const io::basic_dispatch_t& {
 
 void
 logging_t::on_emit(logging::priorities level, std::string source, std::string message,
-                   attribute::set_t attributes)
+    blackhole::attributes_t attributes)
 {
-    auto record = wrapper->open_record(level, std::move(attributes));
+    if (level < on_verbosity()) {
+        return;
+    }
 
-    if(!record) return;
+    blackhole::attribute_list list{{"source", source}};
+    for (auto attribute : attributes) {
+        list.emplace_back(attribute);
+    }
+    
+    blackhole::attribute_pack pack{list};
 
-    record.insert(cocaine::logging::keyword::source() = std::move(source));
-    record.message(std::move(message));
-
-    wrapper->push(std::move(record));
+    logger->log(static_cast<int>(level), message, pack);
 }
 
 logging::priorities
 logging_t::on_verbosity() const {
-    return wrapper->log().verbosity();
+    return verbosity;
 }

@@ -36,7 +36,22 @@
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
-#include <blackhole/blackhole.hpp>
+#include <blackhole/attribute.hpp>
+#include <blackhole/attributes.hpp>
+#include <blackhole/builder.hpp>
+#include <blackhole/config/json.hpp>
+#include <blackhole/extensions/facade.hpp>
+#include <blackhole/extensions/writer.hpp>
+#include <blackhole/formatter/string.hpp>
+#include <blackhole/handler/blocking.hpp>
+#include <blackhole/logger.hpp>
+#include <blackhole/record.hpp>
+#include <blackhole/registry.hpp>
+#include <blackhole/root.hpp>
+#include <blackhole/sink/console.hpp>
+#include <blackhole/wrapper.hpp>
+
+#include "cocaine/logging.hpp"
 
 #if defined(__linux__)
     #define BACKWARD_HAS_BFD 1
@@ -250,32 +265,32 @@ main(int argc, char* argv[]) {
               << std::endl;
 
     std::unique_ptr<logging::logger_t> logger;
-    std::unique_ptr<logging::log_t>    wrapper;
+
+    auto registry = blackhole::registry_t::configured();
+    registry.add<logging::console_t>();
 
     try {
-        blackhole::attribute::set_t attributes;
+        std::stringstream stream;
+        stream << boost::lexical_cast<std::string>(config->logging.args);
 
-        cocaine::logging::init_t logging(config->logging.loggers);
-        logger = logging.logger(backend);
+        auto log = registry.builder<blackhole::config::json_t>(stream)
+            .build("core");
 
-        if(logging.config(backend).attributes.count("source_host")) {
-            attributes.emplace_back("source_host", config->network.hostname);
-        }
-
-        wrapper.reset(new logging::log_t(*logger, attributes));
-    } catch(const std::out_of_range& e) {
-        std::cerr << "ERROR: unable to initialize the logging - backend does not exist." << std::endl;
+        logger.reset(new blackhole::root_logger_t(std::move(log)));
+    } catch(const std::exception& e) {
+        std::cerr << "ERROR: unable to initialize the logging: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 
-    COCAINE_LOG_INFO(wrapper, "initializing the server");
+    COCAINE_LOG_INFO(logger, "initializing the server");
 
     std::unique_ptr<context_t> context;
 
     try {
-        context.reset(new context_t(*config, std::move(wrapper)));
+        context.reset(new context_t(*config, std::move(logger)));
     } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(logger, "unable to initialize the context - %s.", e.what());
+        std::cout << cocaine::format("[Runtime] unable to initialize the context - %s.", e.what())
+                  << std::endl;
         return EXIT_FAILURE;
     }
 

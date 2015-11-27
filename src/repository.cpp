@@ -20,7 +20,10 @@
 
 #include "cocaine/repository.hpp"
 
-#include <blackhole/scoped_attributes.hpp>
+#include "cocaine/logging.hpp"
+
+#include <blackhole/logger.hpp>
+#include <blackhole/scope/holder.hpp>
 
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/path.hpp>
@@ -32,6 +35,8 @@ using namespace cocaine::api;
 
 namespace bh = blackhole;
 namespace fs = boost::filesystem;
+
+using blackhole::scope::holder_t;
 
 namespace {
 
@@ -64,7 +69,7 @@ typedef void (*initialize_fn_t)(repository_t&);
 
 } // namespace
 
-repository_t::repository_t(std::unique_ptr<logging::log_t> log):
+repository_t::repository_t(std::unique_ptr<logging::logger_t> log):
     m_log(std::move(log))
 {
     if(lt_dlinit() != 0) throw std::system_error(error::ltdl_error);
@@ -86,7 +91,7 @@ repository_t::load(const std::string& path) {
     const auto status = fs::status(path);
 
     if(!fs::exists(status) || !fs::is_directory(status)) {
-        COCAINE_LOG_ERROR(m_log, "unable to load plugins: path '%s' is not valid", path);
+        COCAINE_LOG_ERROR(m_log, "unable to load plugins: path '{}' is not valid", path);
         return;
     }
 
@@ -112,7 +117,7 @@ repository_t::load(const std::string& path) {
 
 void
 repository_t::open(const std::string& target) {
-    bh::scoped_attributes_t attributes(*m_log, { bh::attribute::make("plugin", target)});
+    const holder_t scoped(*m_log, {{"plugin", target}});
 
     COCAINE_LOG_INFO(m_log, "loading plugin");
 
@@ -153,10 +158,10 @@ repository_t::open(const std::string& target) {
         try {
             initialize.call(*this);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: %s", error::to_string(e));
+            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: {}", error::to_string(e));
             throw std::system_error(error::initialization_error);
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: %s", e.what());
+            COCAINE_LOG_ERROR(m_log, "unable to initialize plugin: {}", e.what());
             throw std::system_error(error::initialization_error);
         }
     } else {

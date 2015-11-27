@@ -29,25 +29,29 @@
 
 #include "cocaine/rpc/actor.hpp"
 
-#include <blackhole/scoped_attributes.hpp>
-
 #include <boost/spirit/include/karma_char.hpp>
 #include <boost/spirit/include/karma_generate.hpp>
 #include <boost/spirit/include/karma_list.hpp>
 #include <boost/spirit/include/karma_string.hpp>
 
+#include <blackhole/logger.hpp>
+#include <blackhole/scope/holder.hpp>
+#include <blackhole/wrapper.hpp>
+
+#include "cocaine/logging.hpp"
+
 using namespace cocaine;
 using namespace cocaine::io;
 
-using namespace blackhole;
+using blackhole::scope::holder_t;
 
-context_t::context_t(config_t config_, std::unique_ptr<logging::log_t> log_):
+context_t::context_t(config_t config_, std::unique_ptr<logging::logger_t> log_):
     config(config_),
     mapper(config_)
 {
     m_log = std::move(log_);
 
-    scoped_attributes_t guard(*m_log, attribute::set_t({logging::keyword::source() = "core"}));
+    const holder_t scoped(*m_log, {{"source", "core"}});
 
     COCAINE_LOG_INFO(m_log, "initializing the core");
 
@@ -64,18 +68,23 @@ context_t::context_t(config_t config_, std::unique_ptr<logging::log_t> log_):
 }
 
 context_t::~context_t() {
-    scoped_attributes_t guard(*m_log, attribute::set_t({logging::keyword::source() = "core"}));
+    const holder_t scoped(*m_log, {{"source", "core"}});
 
     // Signal and stop all the services, shut down execution units.
     terminate();
 }
 
-std::unique_ptr<logging::log_t>
-context_t::log(const std::string& source, attribute::set_t attributes) {
-    attributes.emplace_back(logging::keyword::source() = source);
+std::unique_ptr<logging::logger_t>
+context_t::log(const std::string& source) {
+    return log(source, {});
+}
+
+std::unique_ptr<logging::logger_t>
+context_t::log(const std::string& source, blackhole::attributes_t attributes) {
+    attributes.push_back({"source", {source}});
 
     // TODO: Make it possible to use in-place operator+= to fill in more attributes?
-    return std::make_unique<logging::log_t>(*m_log, std::move(attributes));
+    return std::make_unique<blackhole::wrapper_t>(*m_log, std::move(attributes));
 }
 
 namespace {
@@ -94,7 +103,7 @@ struct match {
 
 void
 context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
-    scoped_attributes_t guard(*m_log, attribute::set_t({logging::keyword::source() = "core"}));
+    const holder_t scoped(*m_log, {{"source", "core"}});
 
     const actor_t& actor = *service;
 
@@ -105,9 +114,9 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
         service->run();
 
-        COCAINE_LOG_DEBUG(m_log, "service has been started")(
-            "service", name
-        );
+        COCAINE_LOG_DEBUG(m_log, "service has been started", {
+            {"service", {name}}
+        });
 
         list.emplace_back(name, std::move(service));
     });
@@ -122,7 +131,7 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
 std::unique_ptr<actor_t>
 context_t::remove(const std::string& name) {
-    scoped_attributes_t guard(*m_log, attribute::set_t({logging::keyword::source() = "core"}));
+    const holder_t scoped(*m_log, {{"source", "core"}});
 
     std::unique_ptr<actor_t> service;
 
@@ -138,9 +147,9 @@ context_t::remove(const std::string& name) {
 
     service->terminate();
 
-    COCAINE_LOG_DEBUG(m_log, "service has been stopped")(
-        "service", name
-    );
+    COCAINE_LOG_DEBUG(m_log, "service has been stopped", {
+        {"service", name}
+    });
 
     // Service is already terminated, so there's no reason to try to get its endpoints.
     std::vector<asio::ip::tcp::endpoint> nothing;
@@ -187,18 +196,18 @@ context_t::engine() {
 
 void
 context_t::bootstrap() {
-    COCAINE_LOG_INFO(m_log, "starting %d execution unit(s)", config.network.pool);
+    COCAINE_LOG_INFO(m_log, "starting {:d} execution unit(s)", config.network.pool);
 
     while(m_pool.size() != config.network.pool) {
         m_pool.emplace_back(std::make_unique<execution_unit_t>(*this));
     }
 
-    COCAINE_LOG_INFO(m_log, "starting %d service(s)", config.services.size());
+    COCAINE_LOG_INFO(m_log, "starting {:d} service(s)", config.services.size());
 
     std::vector<std::string> errored;
 
     for(auto it = config.services.begin(); it != config.services.end(); ++it) {
-        scoped_attributes_t attributes(*m_log, {attribute::make("service", it->first)});
+        const holder_t scoped(*m_log, {{"service", it->first}});
 
         const auto asio = std::make_shared<asio::io_service>();
 
@@ -213,10 +222,10 @@ context_t::bootstrap() {
                 it->second.args
             )));
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize service: %s", error::to_string(e));
+            COCAINE_LOG_ERROR(m_log, "unable to initialize service: {}", error::to_string(e));
             errored.push_back(it->first);
         } catch(const std::exception& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to initialize service: %s", e.what());
+            COCAINE_LOG_ERROR(m_log, "unable to initialize service: {}", e.what());
             errored.push_back(it->first);
         }
     }
@@ -242,7 +251,7 @@ context_t::bootstrap() {
 
 void
 context_t::terminate() {
-    COCAINE_LOG_INFO(m_log, "stopping %d service(s)", m_services->size());
+    COCAINE_LOG_INFO(m_log, "stopping {:d} service(s)", m_services->size());
 
     // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
     // the outstanding connections are closed, so services have a chance to send their last wishes.
@@ -267,7 +276,7 @@ context_t::terminate() {
     // app invocation services from the node service, should be dead by now.
     BOOST_ASSERT(m_services->empty());
 
-    COCAINE_LOG_INFO(m_log, "stopping %d execution unit(s)", m_pool.size());
+    COCAINE_LOG_INFO(m_log, "stopping {:d} execution unit(s)", m_pool.size());
 
     m_pool.clear();
 

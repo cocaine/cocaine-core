@@ -32,9 +32,9 @@
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
-#include <blackhole/blackhole.hpp>
-
 #include <boost/optional.hpp>
+
+#include <blackhole/attributes.hpp>
 
 namespace cocaine {
 
@@ -50,7 +50,7 @@ class context_t {
 
     // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
     // for the Blackhole, when all the common stuff is extracted to a separate library.
-    std::unique_ptr<logging::log_t> m_log;
+    std::unique_ptr<logging::logger_t> m_log;
 
     // NOTE: This is the first object in the component tree, all the other dynamic components, be it
     // storages or isolates, have to be declared after this one.
@@ -73,11 +73,14 @@ public:
     port_mapping_t mapper;
 
 public:
-    context_t(config_t config, std::unique_ptr<logging::log_t> log);
+    context_t(config_t config, std::unique_ptr<logging::logger_t> log);
    ~context_t();
 
-    std::unique_ptr<logging::log_t>
-    log(const std::string& source, blackhole::attribute::set_t = blackhole::attribute::set_t());
+    std::unique_ptr<logging::logger_t>
+    log(const std::string& source);
+
+    std::unique_ptr<logging::logger_t>
+    log(const std::string& source, blackhole::attributes_t attributes);
 
     template<class Category, class... Args>
     typename api::category_traits<Category>::ptr_type

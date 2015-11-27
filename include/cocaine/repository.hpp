@@ -22,12 +22,14 @@
 #define COCAINE_REPOSITORY_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/logging.hpp"
+// #include "cocaine/logging.hpp"
 
 #include <typeinfo>
 #include <type_traits>
 
 #include <ltdl.h>
+
+#include <blackhole/logger.hpp>
 
 namespace cocaine { namespace api {
 
@@ -72,7 +74,7 @@ struct plugin_traits {
 class repository_t {
     COCAINE_DECLARE_NONCOPYABLE(repository_t)
 
-    const std::unique_ptr<logging::log_t> m_log;
+    const std::unique_ptr<logging::logger_t> m_log;
 
     // NOTE: Used to unload all the plugins on shutdown. Cannot use a forward declaration here due
     // to the implementation details.
@@ -85,7 +87,7 @@ class repository_t {
 
 public:
     explicit
-    repository_t(std::unique_ptr<logging::log_t> log);
+    repository_t(std::unique_ptr<logging::logger_t> log);
 
    ~repository_t();
 
@@ -146,10 +148,10 @@ repository_t::insert(const std::string& name) {
         throw std::system_error(error::duplicate_component);
     }
 
-    COCAINE_LOG_DEBUG(m_log, "registering component '%s' in category '%s'",
-        name,
-        logging::demangle<category_type>()
-    );
+    // COCAINE_LOG_DEBUG(m_log, "registering component '{}' in category '{}'",
+    //     name,
+    //     logging::demangle<category_type>()
+    // );
 
     m_categories[id][name] = std::make_unique<factory_type>();
 }

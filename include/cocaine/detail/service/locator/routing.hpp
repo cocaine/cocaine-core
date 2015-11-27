@@ -58,7 +58,7 @@ struct continuum_t {
     typedef std::map<std::string, unsigned int> stored_type;
 
 public:
-    continuum_t(std::unique_ptr<logging::log_t> log, const stored_type& group);
+    continuum_t(std::unique_ptr<logging::logger_t> log, const stored_type& group);
 
     // Observers
 
@@ -73,7 +73,7 @@ public:
 
 private:
     // Shared to allow cloning of rg_map_t for routing group updates.
-    const std::shared_ptr<logging::log_t> m_log;
+    const std::shared_ptr<logging::logger_t> m_log;
 
     // The hashring.
     std::vector<element_t> m_elements;

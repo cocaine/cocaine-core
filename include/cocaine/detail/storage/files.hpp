@@ -30,7 +30,7 @@ namespace cocaine { namespace storage {
 class files_t:
     public api::storage_t
 {
-    const std::unique_ptr<logging::log_t> m_log;
+    const std::unique_ptr<logging::logger_t> m_log;
 
     // Underlying storage access synchronization. Note that two or more runtime instances probably
     // will trash the file storage if pointed to the same location.

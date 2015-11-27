@@ -21,26 +21,43 @@
 #ifndef COCAINE_BOOTSTRAP_LOGGING_HPP
 #define COCAINE_BOOTSTRAP_LOGGING_HPP
 
-#include "cocaine/common.hpp"
-
-#include "cocaine/context/config.hpp"
+#include <blackhole/sink/console.hpp>
 
 namespace cocaine { namespace logging {
 
-class init_t {
-    std::map<std::string, config_t::logging_t::logger_t> config_;
-
+class console_t : public blackhole::sink::console_t {
 public:
-    explicit
-    init_t(const std::map<std::string, config_t::logging_t::logger_t>& config);
+    console_t();
 
-    std::unique_ptr<logger_t>
-    logger(const std::string& backend) const;
-
-    config_t::logging_t::logger_t
-    config(const std::string& backend) const;
+protected:
+    auto color(const blackhole::record_t& record) const -> blackhole::sink::color_t;
 };
 
 }} // namespace cocaine::logging
+
+namespace blackhole {
+inline namespace v1 {
+namespace config {
+
+class node_t;
+
+}  // namespace config
+}  // namespace v1
+}  // namespace blackhole
+
+namespace blackhole {
+inline namespace v1 {
+
+template<typename>
+struct factory;
+
+template<>
+struct factory<cocaine::logging::console_t> {
+    static auto type() -> const char*;
+    static auto from(const config::node_t& config) -> cocaine::logging::console_t;
+};
+
+}  // namespace v1
+}  // namespace blackhole
 
 #endif

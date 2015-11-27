@@ -34,11 +34,15 @@
 #include <asio/io_service.hpp>
 #include <asio/ip/multicast.hpp>
 
+#include <blackhole/logger.hpp>
+
 using namespace cocaine::io;
 using namespace cocaine::cluster;
 
 using namespace asio;
 using namespace asio::ip;
+
+using blackhole::attribute_list;
 
 namespace cocaine {
 
@@ -123,9 +127,9 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
     m_socket.set_option(multicast::enable_loopback(args.as_object().at("loopback", false).as_bool()));
     m_socket.set_option(multicast::hops(args.as_object().at("hops", 1u).as_uint()));
 
-    COCAINE_LOG_INFO(m_log, "joining multicast group '%s'", m_cfg.endpoint)(
-        "uuid", m_locator.uuid()
-    );
+    COCAINE_LOG_INFO(m_log, "joining multicast group '{}'", m_cfg.endpoint, attribute_list({
+        {"uuid", m_locator.uuid()}
+    }));
 
     m_socket.set_option(multicast::join_group(m_cfg.endpoint.address()));
 
@@ -169,9 +173,9 @@ multicast_t::on_publish(const std::error_code& ec) {
     const auto endpoints = actor.get().endpoints();
 
     if(!endpoints.empty()) {
-        COCAINE_LOG_DEBUG(m_log, "announcing %d local endpoint(s)", endpoints.size())(
-            "uuid", m_locator.uuid()
-        );
+        COCAINE_LOG_DEBUG(m_log, "announcing {:d} local endpoint(s)", endpoints.size(), attribute_list({
+            {"uuid", m_locator.uuid()}
+        }));
 
         msgpack::sbuffer target;
         msgpack::packer<msgpack::sbuffer> packer(target);
@@ -184,7 +188,7 @@ multicast_t::on_publish(const std::error_code& ec) {
         try {
             m_socket.send_to(buffer(target.data(), target.size()), m_cfg.endpoint);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: %s", error::to_string(e));
+            COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: {}", error::to_string(e));
         }
     } else {
         COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: node is not reachable");
@@ -200,9 +204,8 @@ multicast_t::on_receive(const std::error_code& ec, size_t bytes_received,
 {
     if(ec) {
         if(ec != asio::error::operation_aborted) {
-            COCAINE_LOG_ERROR(m_log, "unexpected error in multicast_t::on_receive(): [%d] %s",
-                ec.value(), ec.message()
-            );
+            COCAINE_LOG_ERROR(m_log, "unexpected error in multicast_t::on_receive(): [{:d}] {}",
+                ec.value(), ec.message());
         }
 
         return;
@@ -213,7 +216,7 @@ multicast_t::on_receive(const std::error_code& ec, size_t bytes_received,
     try {
         msgpack::unpack(&unpacked, ptr->buffer.data(), bytes_received);
     } catch(const msgpack::unpack_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to unpack announce: %s", e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to unpack announce: {}", e.what());
         return;
     }
 
@@ -223,14 +226,14 @@ multicast_t::on_receive(const std::error_code& ec, size_t bytes_received,
     try {
         type_traits<announce_t::tuple_type>::unpack(unpacked.get(), std::tie(uuid, endpoints));
     } catch(const msgpack::type_error& e) {
-        COCAINE_LOG_ERROR(m_log, "unable to decode announce: %s", e.what());
+        COCAINE_LOG_ERROR(m_log, "unable to decode announce: {}", e.what());
         return;
     }
 
     if(uuid != m_locator.uuid()) {
-        COCAINE_LOG_DEBUG(m_log, "received %d endpoint(s) from %s", endpoints.size(), ptr->endpoint)(
-            "uuid", uuid
-        );
+        COCAINE_LOG_DEBUG(m_log, "received {:d} endpoint(s) from {}", endpoints.size(), ptr->endpoint, attribute_list({
+            {"uuid", uuid}
+        }));
 
         auto& expiration = m_expirations[uuid];
 
@@ -259,9 +262,9 @@ multicast_t::on_expired(const std::error_code& ec, const std::string& uuid) {
         return;
     }
 
-    COCAINE_LOG_ERROR(m_log, "remote endpoints have expired")(
-        "uuid", uuid
-    );
+    COCAINE_LOG_ERROR(m_log, "remote endpoints have expired", {
+        {"uuid", uuid}
+    });
 
     m_locator.drop_node(uuid);
     m_expirations.erase(uuid);

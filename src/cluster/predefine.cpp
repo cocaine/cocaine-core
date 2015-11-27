@@ -35,11 +35,15 @@
 
 #include <asio/io_service.hpp>
 
+#include <blackhole/logger.hpp>
+
 using namespace cocaine::io;
 using namespace cocaine::cluster;
 
 using namespace asio;
 using namespace asio::ip;
+
+using blackhole::attribute_list;
 
 namespace cocaine {
 
@@ -103,9 +107,9 @@ predefine_t::predefine_t(context_t& context, interface& locator, const std::stri
 
         boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", it->second);
 
-        COCAINE_LOG_INFO(m_log, "resolved node endpoints: %s", stream.str())(
-            "uuid", it->first
-        );
+        COCAINE_LOG_INFO(m_log, "resolved node endpoints: {}", stream.str(), attribute_list({
+            {"uuid", it->first}
+        }));
     }
 
     m_signals = std::make_shared<dispatch<context_tag>>(name);
