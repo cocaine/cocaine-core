@@ -402,6 +402,7 @@ config_t::config_t(const std::string& source) {
     // Component configuration
     services = root.as_object().at("services", dynamic_t::empty_object).to<config_t::component_map_t>();
     storages = root.as_object().at("storages", dynamic_t::empty_object).to<config_t::component_map_t>();
+    unicorns = root.as_object().at("unicorns", dynamic_t::empty_object).to<config_t::component_map_t>();
 
 #ifdef COCAINE_ALLOW_RAFT
     create_raft_cluster = false;
