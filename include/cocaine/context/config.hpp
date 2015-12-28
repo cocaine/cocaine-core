@@ -90,6 +90,7 @@ public:
 
     component_map_t services;
     component_map_t storages;
+    component_map_t unicorns;
 
 #ifdef COCAINE_ALLOW_RAFT
     bool create_raft_cluster;
