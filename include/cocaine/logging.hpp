@@ -51,9 +51,11 @@
 
 namespace cocaine { namespace detail { namespace logging {
 
-template<class T> inline auto logger_ref(const T& log) -> T& { return log; }
+template<class T> inline auto logger_ref(T& log) -> T& { return log; }
 template<class T> inline auto logger_ref(T* const log) -> T& { return *log; }
+template<class T> inline auto logger_ref(std::unique_ptr<T>& log) -> T& { return *log; }
 template<class T> inline auto logger_ref(const std::unique_ptr<T>& log) -> T& { return *log; }
+template<class T> inline auto logger_ref(std::shared_ptr<T>& log) -> T& { return *log; }
 template<class T> inline auto logger_ref(const std::shared_ptr<T>& log) -> T& { return *log; }
 
 template<class T>
