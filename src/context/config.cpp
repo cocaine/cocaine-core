@@ -257,7 +257,7 @@ config_t::config_t(const std::string& source) {
 
     // Version validation
 
-    if(root.as_object().at("version", 0).to<unsigned int>() != 3) {
+    if(root.as_object().at("version", 0).to<unsigned int>() != 4) {
         throw cocaine::error_t("configuration file version is invalid");
     }
 
