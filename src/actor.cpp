@@ -207,7 +207,7 @@ actor_t::run() {
         try {
             ptr = std::make_unique<tcp::acceptor>(*m_asio, endpoint);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint %s for service: {}", endpoint, error::to_string(e));
+            COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint {} for service: {}", endpoint, error::to_string(e));
             throw;
         }
 
