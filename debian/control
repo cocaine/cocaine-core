@@ -7,7 +7,8 @@ Build-Depends: cmake, cdbs, debhelper (>= 7.0.13), libltdl-dev, libmsgpack-dev,
  libboost-dev,
  libboost-filesystem-dev,
  libboost-thread-dev,
- libboost-program-options-dev
+ libboost-program-options-dev,
+ blackhole-dev
 Standards-Version: 3.9.3
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
 Vcs-Browser: https://github.com/cocaine/cocaine-core
@@ -22,7 +23,8 @@ Package: libcocaine-dev
 Architecture: any
 Section: libdevel
 Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core3 (= ${binary:Version}),
- libltdl-dev, libmsgpack-dev, libboost1.48-dev | libboost-dev
+ libltdl-dev, libmsgpack-dev, libboost1.48-dev | libboost-dev,
+ blackhole-dev
 Description: Cocaine - Development Headers
  Cocaine development headers package.
 
