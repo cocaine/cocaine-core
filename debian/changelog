@@ -1,3 +1,13 @@
+cocaine-core (0.12.5.0+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Add Unicorn category.
+  * The logging system has been completely rewritten for the sake of runtime
+    and compile-time performance.
+  * Bump configuration file version up to 4.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 19 Jan 2016 15:35:30 +0300
+
 cocaine-core (0.12.4.7+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
