@@ -23,6 +23,8 @@
 
 #include "cocaine/detail/runtime/logging.hpp"
 
+#include "cocaine/detail/trace/logger.hpp"
+
 #if !defined(__APPLE__)
     #include "cocaine/detail/runtime/pid_file.hpp"
 #endif
@@ -264,6 +266,7 @@ main(int argc, char* argv[]) {
     std::cout << cocaine::format("[Runtime] Initializing the logging system, backend: %s.", backend)
               << std::endl;
 
+    std::unique_ptr<logging::logger_t> core_logger;
     std::unique_ptr<logging::logger_t> logger;
 
     auto registry = blackhole::registry_t::configured();
@@ -276,7 +279,8 @@ main(int argc, char* argv[]) {
         auto log = registry.builder<blackhole::config::json_t>(stream)
             .build("core");
 
-        logger.reset(new blackhole::root_logger_t(std::move(log)));
+        core_logger.reset(new blackhole::root_logger_t(std::move(log)));
+        logger.reset(new logging::trace_wrapper_t(*core_logger));
     } catch(const std::exception& e) {
         std::cerr << "ERROR: unable to initialize the logging: " << e.what() << std::endl;
         return EXIT_FAILURE;

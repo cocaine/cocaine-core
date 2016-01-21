@@ -91,6 +91,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/session.cpp
     src/storage/files.cpp
     src/trace.cpp
+    src/trace/logger.cpp
     src/unique_id.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-core
