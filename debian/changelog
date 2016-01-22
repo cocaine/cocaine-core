@@ -1,4 +1,4 @@
-cocaine-core (0.12.5.0+nmu1) unstable; urgency=low
+cocaine-core (0.12.5.0-rc1+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
   * Add Unicorn category.
@@ -222,7 +222,7 @@ cocaine-core (0.12.3.5) unstable; urgency=low
   * Bug fix: fixed string literals binding
   * Zipkin: fixes.
 
- -- Anton Matveenko <antmat@me.com> Mon, 10 Aug 2015 17:22:30 +0300
+ -- Anton Matveenko <antmat@me.com>  Mon, 10 Aug 2015 17:22:30 +0300
 
 cocaine-core (0.12.3.1) unstable; urgency=low
 
