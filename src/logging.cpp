@@ -18,20 +18,27 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/logging.hpp"
+#include "cocaine/detail/logging.hpp"
 
 #include <cxxabi.h>
 
-namespace cocaine { namespace logging {
+#include <functional>
+#include <map>
+
+#include <boost/assert.hpp>
+
+#include "cocaine/format.hpp"
+
+namespace cocaine { namespace detail { namespace logging {
 
 std::string
 demangle(const std::string& mangled) {
-    auto custom_deleter = std::bind(&::free, std::placeholders::_1);
+    auto deleter = std::bind(&::free, std::placeholders::_1);
     auto status = 0;
 
-    std::unique_ptr<char[], decltype(custom_deleter)> buffer(
+    std::unique_ptr<char[], decltype(deleter)> buffer(
         abi::__cxa_demangle(mangled.c_str(), nullptr, nullptr, &status),
-        custom_deleter
+        deleter
     );
 
     static const std::map<int, std::string> errors = {
@@ -50,4 +57,4 @@ demangle(const std::string& mangled) {
     return buffer.get();
 }
 
-}} // namespace cocaine::logging
+}}} // namespace cocaine::detail::logging

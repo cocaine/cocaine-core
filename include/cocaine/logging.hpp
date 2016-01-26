@@ -28,7 +28,6 @@
 #include <blackhole/extensions/facade.hpp>
 
 // TODO: Do not include this file from public API.
-// TODO: logging/macro.hpp
 
 #define COCAINE_LOG(__log__, __severity__, ...) \
     ::cocaine::detail::logging::make_facade(__log__).log(__severity__, __VA_ARGS__)
@@ -65,21 +64,5 @@ auto make_facade(T&& log) -> blackhole::logger_facade<cocaine::logging::logger_t
 }
 
 }}}  // namespace cocaine::detail::logging
-
-namespace cocaine { namespace logging {
-
-// C++ typename demangling
-
-// TODO: Hide from the public API.
-auto
-demangle(const std::string& mangled) -> std::string;
-
-template<class T>
-auto
-demangle() -> std::string {
-    return demangle(typeid(T).name());
-}
-
-}} // namespace cocaine::logging
 
 #endif

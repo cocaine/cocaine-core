@@ -22,6 +22,8 @@
 
 #include "cocaine/logging.hpp"
 
+#include "cocaine/detail/logging.hpp"
+
 #include <blackhole/logger.hpp>
 #include <blackhole/scope/holder.hpp>
 
@@ -169,4 +171,20 @@ repository_t::open(const std::string& target) {
     }
 
     m_plugins.emplace_back(plugin.release());
+}
+
+void
+repository_t::insert(const std::string& id, const std::string& name,
+    std::unique_ptr<factory_concept_t> factory)
+{
+    if(m_categories.count(id) && m_categories.at(id).count(name)) {
+        throw std::system_error(error::duplicate_component);
+    }
+
+    COCAINE_LOG_DEBUG(m_log, "registering component '{}' in category '{}'",
+        name,
+        detail::logging::demangle(id)
+    );
+
+    m_categories[id][name] = std::move(factory);
 }

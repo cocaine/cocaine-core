@@ -22,7 +22,6 @@
 #define COCAINE_REPOSITORY_HPP
 
 #include "cocaine/common.hpp"
-// #include "cocaine/logging.hpp"
 
 #include <typeinfo>
 #include <type_traits>
@@ -105,6 +104,9 @@ public:
 private:
     void
     open(const std::string& target);
+
+    void
+    insert(const std::string& id, const std::string& name, std::unique_ptr<factory_concept_t> factory);
 };
 
 template<class Category, class... Args>
@@ -142,18 +144,7 @@ repository_t::insert(const std::string& name) {
         "component factory is not derived from its category"
     );
 
-    const auto id = typeid(category_type).name();
-
-    if(m_categories.count(id) && m_categories.at(id).count(name)) {
-        throw std::system_error(error::duplicate_component);
-    }
-
-    // COCAINE_LOG_DEBUG(m_log, "registering component '{}' in category '{}'",
-    //     name,
-    //     logging::demangle<category_type>()
-    // );
-
-    m_categories[id][name] = std::make_unique<factory_type>();
+    insert(typeid(category_type).name(), name, std::make_unique<factory_type>());
 }
 
 struct preconditions_t {
