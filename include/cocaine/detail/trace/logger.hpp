@@ -26,13 +26,13 @@
 #include <blackhole/attribute.hpp>
 #include <blackhole/logger.hpp>
 
-
 namespace cocaine { namespace logging {
 
 class trace_wrapper_t :
-public blackhole::logger_t
+    public blackhole::logger_t
 {
     blackhole::logger_t& inner;
+
 public:
     trace_wrapper_t(logger_t& log);
 
@@ -40,6 +40,7 @@ public:
         if(!trace_t::current().empty()) {
             return trace_t::current().formatted_attributes<blackhole::attributes_t>();
         }
+
         return blackhole::attributes_t();
     }
 
@@ -50,6 +51,6 @@ public:
     auto manager() -> blackhole::scope::manager_t&;
 };
 
-}} // namespace logging // namespace cocaine
+}} // namespace cocaine::logging
 
-#endif // COCAINE_TRACE_LOGGER_BLACKHOLE
+#endif // COCAINE_TRACE_LOGGER
