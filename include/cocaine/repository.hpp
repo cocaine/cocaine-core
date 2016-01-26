@@ -28,8 +28,6 @@
 
 #include <ltdl.h>
 
-#include <blackhole/logger.hpp>
-
 namespace cocaine { namespace api {
 
 template<class Category>
