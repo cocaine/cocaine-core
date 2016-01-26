@@ -47,7 +47,7 @@ format(const std::string& format, const Args&... args) {
     try {
         return aux::substitute(std::move(boost::format(format)), args...);
     } catch(const boost::io::format_error& e) {
-        return aux::substitute(std::move(boost::format("<unable to format message - %s>")), e.what());
+        return aux::substitute(boost::format("<unable to format message - %s>"), e.what());
     }
 }
 
