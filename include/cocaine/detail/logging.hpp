@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <typeinfo>
 
 namespace cocaine { namespace detail { namespace logging {
 
