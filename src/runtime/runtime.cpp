@@ -51,6 +51,7 @@
 #include <blackhole/registry.hpp>
 #include <blackhole/root.hpp>
 #include <blackhole/sink/console.hpp>
+#include <blackhole/sink/file.hpp>
 #include <blackhole/wrapper.hpp>
 
 #include "cocaine/logging.hpp"
@@ -271,6 +272,7 @@ main(int argc, char* argv[]) {
 
     auto registry = blackhole::registry_t::configured();
     registry.add<logging::console_t>();
+    registry.add<blackhole::sink::file_t>();
 
     try {
         std::stringstream stream;
