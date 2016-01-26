@@ -2,6 +2,7 @@ cocaine-core (0.12.5.0-rc2+nmu1) UNRELEASED; urgency=low
 
   * Non-maintainer upload.
   * Hide C++ ABI demangle function into details.
+  * Return back severity based logging events filtering.
 
  -- Evgeny Safronov <division494@gmail.com>  Tue, 26 Jan 2016 12:27:39 +0300
 
