@@ -206,20 +206,28 @@ struct dynamic_converter<config_t::logging_t> {
     static
     result_type
     convert(const dynamic_t& from) {
-        return {from};
+        result_type result{
+            from.as_object().at("loggers"),
+            logmask(from.as_object().at("severity", "info").as_string())
+        };
+
+        return result;
     }
 
     static inline
     logging::priorities
-    logmask(const std::string& verbosity) {
-        if(verbosity == "debug") {
-            return logging::debug;
-        } else if(verbosity == "warning") {
-            return logging::warning;
-        } else if(verbosity == "error") {
-            return logging::error;
-        } else {
-            return logging::info;
+    logmask(const std::string& severity) {
+        static std::map<std::string, logging::priorities> priorities{
+            {"debug",   logging::debug  },
+            {"info",    logging::info   },
+            {"warning", logging::warning},
+            {"error",   logging::error  }
+        };
+
+        try {
+            return priorities.at(severity);
+        } catch (const std::out_of_range&) {
+            throw cocaine::error_t("severity \"%s\" not found", severity);
         }
     }
 };

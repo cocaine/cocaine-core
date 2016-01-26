@@ -65,7 +65,8 @@ public:
     } network;
 
     struct logging_t {
-        dynamic_t args;
+        dynamic_t loggers;
+        logging::priorities severity;
     };
 
     struct component_t {

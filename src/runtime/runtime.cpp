@@ -266,7 +266,7 @@ main(int argc, char* argv[]) {
     std::cout << cocaine::format("[Runtime] Initializing the logging system, backend: %s.", backend)
               << std::endl;
 
-    std::unique_ptr<logging::logger_t> core_logger;
+    std::unique_ptr<logging::logger_t> root;
     std::unique_ptr<logging::logger_t> logger;
 
     auto registry = blackhole::registry_t::configured();
@@ -274,13 +274,17 @@ main(int argc, char* argv[]) {
 
     try {
         std::stringstream stream;
-        stream << boost::lexical_cast<std::string>(config->logging.args);
+        stream << boost::lexical_cast<std::string>(config->logging.loggers);
 
         auto log = registry.builder<blackhole::config::json_t>(stream)
             .build("core");
 
-        core_logger.reset(new blackhole::root_logger_t(std::move(log)));
-        logger.reset(new logging::trace_wrapper_t(*core_logger));
+        log.filter([&](const blackhole::record_t& record) -> bool {
+            return record.severity() >= config->logging.severity;
+        });
+
+        root.reset(new blackhole::root_logger_t(std::move(log)));
+        logger.reset(new logging::trace_wrapper_t(*root));
     } catch(const std::exception& e) {
         std::cerr << "ERROR: unable to initialize the logging: " << e.what() << std::endl;
         return EXIT_FAILURE;
