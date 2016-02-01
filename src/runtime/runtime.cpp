@@ -44,6 +44,7 @@
 #include <blackhole/config/json.hpp>
 #include <blackhole/extensions/facade.hpp>
 #include <blackhole/extensions/writer.hpp>
+#include <blackhole/formatter/json.hpp>
 #include <blackhole/formatter/string.hpp>
 #include <blackhole/handler/blocking.hpp>
 #include <blackhole/logger.hpp>
@@ -52,6 +53,7 @@
 #include <blackhole/root.hpp>
 #include <blackhole/sink/console.hpp>
 #include <blackhole/sink/file.hpp>
+#include <blackhole/sink/socket/udp.hpp>
 #include <blackhole/wrapper.hpp>
 
 #include "cocaine/logging.hpp"
@@ -271,8 +273,10 @@ main(int argc, char* argv[]) {
     std::unique_ptr<logging::logger_t> logger;
 
     auto registry = blackhole::registry_t::configured();
+    registry.add<blackhole::formatter::json_t>();
     registry.add<logging::console_t>();
     registry.add<blackhole::sink::file_t>();
+    registry.add<blackhole::sink::socket::udp_t>();
 
     try {
         std::stringstream stream;
