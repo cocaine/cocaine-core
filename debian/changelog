@@ -1,3 +1,10 @@
+cocaine-core (0.12.5.0-rc4+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Enable JSON formatter and UDP sink in logging configuration.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 01 Feb 2016 14:11:55 +0300
+
 cocaine-core (0.12.5.0-rc3+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
