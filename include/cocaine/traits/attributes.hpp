@@ -40,15 +40,35 @@ struct type_traits<blackhole::attribute::value_t> {
     public:
         visitor(Stream& stream) : stream(stream) {}
 
-        template<class T>
-        auto operator()(const T& value) -> void {
+        virtual auto operator()(const value_t::null_type&) -> void {
+            stream.pack_nil();
+        }
+
+        virtual auto operator()(const value_t::bool_type& value) -> void {
             stream << value;
         }
 
-        auto operator()(const value_t::function_type& value) -> void {
+        virtual auto operator()(const value_t::sint64_type& value) -> void {
+            stream << value;
+        }
+
+        virtual auto operator()(const value_t::uint64_type& value) -> void {
+            stream << value;
+        }
+
+        virtual auto operator()(const value_t::double_type& value) -> void {
+            stream << value;
+        }
+
+        virtual auto operator()(const value_t::string_type& value) -> void {
+            stream << value;
+        }
+
+        virtual auto operator()(const value_t::function_type& value) -> void {
             blackhole::writer_t wr;
             value(wr);
-            stream << wr.result();
+            stream.pack_raw(wr.inner.size());
+            stream.pack_raw_body(wr.inner.data(), wr.inner.size());
         }
     };
 
@@ -56,7 +76,8 @@ struct type_traits<blackhole::attribute::value_t> {
     static inline
     void
     pack(msgpack::packer<Stream>& target, const blackhole::attribute::value_t& source) {
-        source.apply(visitor<Stream>(target));
+        visitor<msgpack::packer<Stream>> visitor(target);
+        source.apply(visitor);
     }
 
     static inline
