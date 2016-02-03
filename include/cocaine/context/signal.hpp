@@ -40,9 +40,10 @@ struct async_visitor:
 {
     typedef typename io::basic_slot<Event>::tuple_type tuple_type;
 
-    async_visitor(const tuple_type& args_, asio::io_service& asio_):
+    async_visitor(const tuple_type& args_, asio::io_service& asio_, std::weak_ptr<const dispatch<typename Event::tag>> dispatch_):
         args(args_),
-        asio(asio_)
+        asio(asio_),
+        slot_dispatch(std::move(dispatch_))
     { }
 
     template<class Other>
@@ -55,13 +56,17 @@ struct async_visitor:
     operator()(const std::shared_ptr<io::basic_slot<Event>>& slot) const {
         auto args = this->args;
 
+        auto dispatch_copy = slot_dispatch;
         asio.post([=]() mutable {
-            (*slot)(std::move(args), upstream<void>());
+            if(dispatch_copy.lock()) {
+                (*slot)(std::move(args), upstream<void>());
+            }
         });
     }
 
     const tuple_type& args;
     asio::io_service& asio;
+    const std::weak_ptr<const dispatch<typename Event::tag>> slot_dispatch;
 };
 
 template<class Tag>
@@ -77,7 +82,7 @@ struct event_visitor:
     result_type
     operator()(const io::frozen<Event>& event) const {
         try {
-            slot->process(io::event_traits<Event>::id, async_visitor<Event>(event.tuple, asio));
+            slot->process(io::event_traits<Event>::id, async_visitor<Event>(event.tuple, asio, slot));
         } catch(const std::system_error& e) {
             if(e.code() != error::slot_not_found) throw;
         }
@@ -86,6 +91,15 @@ struct event_visitor:
 private:
     const std::shared_ptr<const dispatch<Tag>>& slot;
     asio::io_service& asio;
+};
+
+template<class Event>
+struct history_traits {
+    template<class HistoryType, class VariantType>
+    static void
+    apply(HistoryType& history, VariantType&& variant) {
+        history.emplace_back(std::move(variant));
+    }
 };
 
 } // namespace aux
@@ -136,9 +150,9 @@ public:
 
             ++it;
         }
-
-        history.emplace_back(std::move(variant));
+        aux::history_traits<Event>::apply(history, std::move(variant));
     }
+private:
 };
 
 } // namespace cocaine

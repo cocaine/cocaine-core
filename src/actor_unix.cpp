@@ -47,7 +47,7 @@ private:
         // Prepare the internal socket object for consequential operations by moving its contents to a
         // heap-allocated object, which in turn might be attached to an engine.
         auto ptr = std::make_unique<protocol_type::socket>(std::move(socket));
-
+            
         switch(ec.value()) {
         case 0:
             COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd {}", ptr->native_handle());

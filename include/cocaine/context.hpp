@@ -40,6 +40,10 @@ namespace cocaine {
 
 // Context
 
+namespace signal {
+class handler_base_t;
+}
+
 class actor_t;
 class execution_unit_t;
 
@@ -104,17 +108,24 @@ public:
         m_signals.listen(slot, asio);
     }
 
+    template<class Event, class... Args>
+    void
+    invoke(Args&&... args) {
+        m_signals.invoke<Event>(std::forward<Args>(args)...);
+    }
+
     // Network I/O
 
     auto
     engine() -> execution_unit_t&;
 
+    void
+    terminate();
+
 private:
     void
     bootstrap();
 
-    void
-    terminate();
 };
 
 template<class Category, class... Args>

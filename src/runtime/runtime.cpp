@@ -20,6 +20,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/signal.hpp"
 
 #include "cocaine/detail/runtime/logging.hpp"
 
@@ -28,9 +29,6 @@
 #if !defined(__APPLE__)
     #include "cocaine/detail/runtime/pid_file.hpp"
 #endif
-
-#include <csignal>
-#include <iostream>
 
 #include <asio/io_service.hpp>
 #include <asio/signal_set.hpp>
@@ -60,7 +58,12 @@
     #define BACKWARD_HAS_BFD 1
 #endif
 
-#include "backward.hpp"
+#include <backward.hpp>
+
+#include <condition_variable>
+#include <csignal>
+#include <iostream>
+#include <thread>
 
 using namespace cocaine;
 
@@ -70,112 +73,81 @@ namespace po = boost::program_options;
 
 namespace {
 
-void
-stacktrace(int signum, siginfo_t* COCAINE_UNUSED_(info), void* context) {
-    ucontext_t* uctx = static_cast<ucontext_t*>(context);
+std::mutex finalizer_mutex;
+std::condition_variable finalizer_cv;
+bool finalize = false;
 
-    backward::StackTrace trace;
-    backward::Printer printer;
+struct sighup_handler_t {
+    logging::logger_t& logger;
+    blackhole::registry_t& registry;
+    cocaine::signal::handler_base_t& sig_handler;
+    cocaine::context_t& context;
+    void
+    operator()(const std::error_code& ec, int signum, const siginfo_t& info) {
+        if(ec == std::errc::operation_canceled) {
+            return;
+        }
+        // We do not suspect any other error codes except oeration cancellation.
+        assert(!ec);
+        COCAINE_LOG_INFO(logger, "resetting logger");
+        std::stringstream stream;
+        stream << boost::lexical_cast<std::string>(context.config.logging.loggers);
+        logger = registry.builder<blackhole::config::json_t>(stream).build("core");
 
-#if defined(REG_RIP)
-    void* error_address = reinterpret_cast<void*>(uctx->uc_mcontext.gregs[REG_RIP]);
-#elif defined(REG_EIP)
-    void* error_address = reinterpret_cast<void*>(uctx->uc_mcontext.gregs[REG_EIP]);
-#else
-    void* error_address = uctx = nullptr;
-#endif
-
-    if(error_address) {
-        trace.load_from(error_address, 32);
-    } else {
-        trace.load_here(32);
+        context.invoke<cocaine::io::context::os_signal>(signum, info);
+        sig_handler.async_wait(SIGHUP, *this);
     }
+};
 
-    printer.address = true;
-    printer.print(trace);
+struct sigchild_handler_t {
+    cocaine::context_t& context;
+    cocaine::signal::handler_base_t& handler;
+    void
+    operator()(const std::error_code& ec, int signum, const siginfo_t& info) {
+        if(ec == std::errc::operation_canceled) {
+            return;
+        }
+        assert(!ec);
+        context.invoke<cocaine::io::context::os_signal>(signum, info);
+        handler.async_wait(signum, *this);
+    }
+};
 
-    // Re-raise so that a core dump is generated.
-    std::raise(signum);
-
-    // Just in case, if the default handler returns for some weird reason.
-    std::_Exit(EXIT_FAILURE);
+void terminate() {
+    std::unique_lock<std::mutex> lock(finalizer_mutex);
+    finalize = true;
+    finalizer_cv.notify_one();
 }
 
-struct runtime_t {
-    runtime_t() {
-        // Establish an alternative signal stack
-        const size_t alt_stack_size = 8 * 1024 * 1024;
-
-        m_alt_stack.ss_sp = new char[alt_stack_size];
-        m_alt_stack.ss_size = alt_stack_size;
-        m_alt_stack.ss_flags = 0;
-
-        if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
-            std::cerr << "ERROR: Unable to activate an alternative signal stack" << std::endl;
+struct terminate_handler_t {
+    void
+    operator()(const std::error_code& ec, int) {
+        if(ec != std::errc::operation_canceled) {
+            assert(!ec);
+            terminate();
         }
-
-        // Reroute the core-generating signals.
-
-        struct sigaction action;
-
-        std::memset(&action, 0, sizeof(action));
-
-        action.sa_sigaction = &stacktrace;
-        action.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND | SA_SIGINFO;
-
-        ::sigaction(SIGABRT, &action, nullptr);
-        ::sigaction(SIGBUS,  &action, nullptr);
-        ::sigaction(SIGSEGV, &action, nullptr);
-
-        // Block the deprecated signals.
-
-        sigset_t sigset;
-
-        sigemptyset(&sigset);
-        sigaddset(&sigset, SIGPIPE);
-
-        ::sigprocmask(SIG_BLOCK, &sigset, nullptr);
     }
-
-   ~runtime_t() {
-        m_alt_stack.ss_flags = SS_DISABLE;
-
-        if(::sigaltstack(&m_alt_stack, nullptr) != 0) {
-            std::cerr << "ERROR: Unable to deactivate an alternative signal stack" << std::endl;
-        }
-
-        delete[] static_cast<char*>(m_alt_stack.ss_sp);
-    }
-
-    int
-    run() {
-        sigset_t sigset;
-
-        sigemptyset(&sigset);
-        sigaddset(&sigset, SIGINT);
-        sigaddset(&sigset, SIGTERM);
-        sigaddset(&sigset, SIGQUIT);
-
-        int signum = -1;
-
-        ::sigwait(&sigset, &signum);
-
-        static const std::map<int, std::string> descriptions = {
-            { SIGINT,  "SIGINT"  },
-            { SIGQUIT, "SIGQUIT" },
-            { SIGTERM, "SIGTERM" }
-        };
-
-        std::cout << "[Runtime] Caught " << descriptions.at(signum) << ", exiting." << std::endl;
-
-        // There's no way it can actually go wrong.
-        return EXIT_SUCCESS;
-    }
-
-private:
-    // An alternative signal stack for SIGSEGV handling.
-    stack_t m_alt_stack;
 };
+
+struct sigpipe_handler_t {
+    cocaine::signal::handler_base_t& handler;
+
+    void
+    operator()(const std::error_code& ec, int signum) {
+        if(ec != std::errc::operation_canceled) {
+            handler.async_wait(signum, *this);
+        }
+    }
+};
+
+void
+run_signal_handler(cocaine::signal::handler_t& signal_handler, logging::logger_t& logger){
+    try {
+        signal_handler.run();
+    } catch (const std::system_error& e) {
+        COCAINE_LOG_ERROR(logger, "exception in signal handler - %s", error::to_string(e));
+    }
+}
 
 } // namespace
 
@@ -293,16 +265,46 @@ main(int argc, char* argv[]) {
     }
 
     COCAINE_LOG_INFO(logger, "initializing the server");
+    std::unique_ptr<cocaine::logging::logger_t> wrapper(new blackhole::wrapper_t(*logger, {{"source", "signal_handler"}}));
+    std::set<int> signals = { SIGPIPE, SIGINT, SIGQUIT, SIGTERM, SIGCHLD, SIGHUP };
+    signal::handler_t signal_handler(std::move(wrapper), signals);
 
+    // Set handlers for signals
+    signal_handler.async_wait(SIGPIPE, sigpipe_handler_t{signal_handler});
+    signal_handler.async_wait(SIGINT, terminate_handler_t());
+    signal_handler.async_wait(SIGQUIT, terminate_handler_t());
+    signal_handler.async_wait(SIGTERM, terminate_handler_t());
+
+    // Start signal handling thread
+    std::thread sig_thread(&run_signal_handler, std::ref(signal_handler), std::ref(*logger));
+
+    // Run context
     std::unique_ptr<context_t> context;
-
     try {
         context.reset(new context_t(*config, std::move(logger)));
     } catch(const std::system_error& e) {
         std::cout << cocaine::format("[Runtime] unable to initialize the context - %s.", e.what())
                   << std::endl;
-        return EXIT_FAILURE;
+        COCAINE_LOG_ERROR(logger, "unable to initialize the context - %s.", error::to_string(e));
+        terminate();
     }
 
-    return runtime_t().run();
+    // Handlers for context os_signal slot
+    auto hup_handler_cancellation = signal_handler.async_wait(SIGHUP, sighup_handler_t{*core_logger, registry, signal_handler, *context});
+    auto child_handler_cancellation = signal_handler.async_wait(SIGCHLD, sigchild_handler_t{*context, signal_handler});
+
+    // Wait until signaling termination
+    std::unique_lock<std::mutex> lock(finalizer_mutex);
+    finalizer_cv.wait(lock, [&]{return finalize;});
+
+    // Termination
+    if(context) {
+        context->terminate();
+    }
+    hup_handler_cancellation.cancel();
+    child_handler_cancellation.cancel();
+    context.reset(nullptr);
+    signal_handler.stop();
+    sig_thread.join();
+    return 0;
 }
