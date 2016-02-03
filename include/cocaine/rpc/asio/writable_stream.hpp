@@ -22,6 +22,7 @@
 #define COCAINE_IO_BUFFERED_WRITABLE_STREAM_HPP
 
 #include "cocaine/errors.hpp"
+#include "cocaine/trace/trace.hpp"
 
 #include <functional>
 
