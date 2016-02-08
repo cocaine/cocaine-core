@@ -294,7 +294,7 @@ main(int argc, char* argv[]) {
     }
 
     // Handlers for context os_signal slot
-    auto hup_handler_cancellation = signal_handler.async_wait(SIGHUP, sighup_handler_t{*core_logger, registry, signal_handler, *context});
+    auto hup_handler_cancellation = signal_handler.async_wait(SIGHUP, sighup_handler_t{*root, registry, signal_handler, *context});
     auto child_handler_cancellation = signal_handler.async_wait(SIGCHLD, sigchild_handler_t{*context, signal_handler});
 
     // Wait until signaling termination
