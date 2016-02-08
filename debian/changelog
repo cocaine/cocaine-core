@@ -1,3 +1,10 @@
+cocaine-core (0.12.5.0-rc6+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Logging: allow to use logging services with non-core backends.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 09 Feb 2016 00:08:25 +0300
+
 cocaine-core (0.12.5.0-rc5+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
