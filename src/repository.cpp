@@ -119,10 +119,9 @@ repository_t::load(const std::string& path) {
 
 void
 repository_t::open(const std::string& target) {
+    COCAINE_LOG_INFO(m_log, "loading \"{}\" plugin", target);
+
     const holder_t scoped(*m_log, {{"plugin", target}});
-
-    COCAINE_LOG_INFO(m_log, "loading plugin");
-
     lt_dladvise advice;
     lt_dladvise_init(&advice);
     lt_dladvise_global(&advice);
