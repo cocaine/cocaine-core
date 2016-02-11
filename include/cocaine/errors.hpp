@@ -58,6 +58,16 @@ enum security_errors {
     token_not_found = 1
 };
 
+enum unicorn_errors {
+    child_not_allowed = 1,
+    invalid_type,
+    invalid_value,
+    unknown_error,
+    invalid_node_name,
+    invalid_path,
+    version_not_allowed
+};
+
 auto
 make_error_code(transport_errors code) -> std::error_code;
 
@@ -69,6 +79,9 @@ make_error_code(repository_errors code) -> std::error_code;
 
 auto
 make_error_code(security_errors code) -> std::error_code;
+
+auto
+make_error_code(unicorn_errors code) -> std::error_code;
 
 // Error categories registrar
 
@@ -143,6 +156,11 @@ struct is_error_code_enum<cocaine::error::repository_errors>:
 
 template<>
 struct is_error_code_enum<cocaine::error::security_errors>:
+    public true_type
+{ };
+
+template<>
+struct is_error_code_enum<cocaine::error::unicorn_errors>:
     public true_type
 { };
 

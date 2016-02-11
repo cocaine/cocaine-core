@@ -83,6 +83,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/gateway/adhoc.cpp
     src/header.cpp
     src/logging.cpp
+    src/unicorn/value.cpp
     src/repository.cpp
     src/service/locator.cpp
     src/service/locator/routing.cpp

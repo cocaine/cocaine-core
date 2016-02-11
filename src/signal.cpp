@@ -164,7 +164,8 @@ handler_t::handler_t(std::unique_ptr<cocaine::logging::logger_t> logger_, std::s
     sigset_t sigset = get_signal_set(signals);
     ::sigprocmask(SIG_BLOCK, &sigset, nullptr);
 
-    struct sigaction sa;
+    typedef struct sigaction sigaction_t;
+    sigaction_t sa = sigaction_t();
     sa.sa_handler = stub_handler;
     for(int sig : signals) {
         sigaction(sig, &sa, nullptr);

@@ -154,6 +154,39 @@ class security_category_t:
     }
 };
 
+class unicorn_category_t:
+    public std::error_category
+{
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.plugins.unicorn";
+    }
+
+    virtual
+    auto
+    message(int code) const -> std::string {
+        switch (code) {
+            case child_not_allowed :
+                return "can not get value of a node with childs";
+            case invalid_type :
+                return "invalid type of value stored for requested operation";
+            case invalid_value :
+                return "could not unserialize value stored in zookeeper";
+            case unknown_error:
+                return "unknown zookeeper error";
+            case invalid_node_name:
+                return "inavlid node name specified";
+            case invalid_path:
+                return "inavlid path specified";
+            case version_not_allowed:
+                return "specified version is not allowed for command";
+            default:
+                return std::string("Unknown unicorn error - ") + std::to_string(code);
+        }
+    }
+};
+
 auto
 unknown_category() -> const std::error_category& {
     static unknown_category_t instance;
@@ -184,6 +217,12 @@ security_category() -> const std::error_category& {
     return instance;
 }
 
+auto
+unicorn_category() -> const std::error_category& {
+    static unicorn_category_t instance;
+    return instance;
+}
+
 } // namespace
 
 namespace cocaine { namespace error {
@@ -206,6 +245,11 @@ make_error_code(repository_errors code) -> std::error_code {
 auto
 make_error_code(security_errors code) -> std::error_code {
     return std::error_code(static_cast<int>(code), security_category());
+}
+
+auto
+make_error_code(unicorn_errors code) -> std::error_code {
+    return std::error_code(static_cast<int>(code), unicorn_category());
 }
 
 std::string
@@ -250,6 +294,7 @@ registrar::impl_type::impl_type() {
         (0x08, &repository_category()               )
         (0x09, &security_category()                 )
         (0x0A, &locator_category()                  )
+        (0x0B, &unicorn_category()                  )
         (0xFF, &unknown_category()                  );
 }
 

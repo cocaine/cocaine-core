@@ -18,6 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "cocaine/api/unicorn.hpp"
 #include "cocaine/api/storage.hpp"
 
 #include "cocaine/context.hpp"
@@ -33,8 +34,28 @@ storage(context_t& context, const std::string& name) {
     if(it == context.config.storages.end()) {
         throw std::system_error(std::make_error_code(std::errc::argument_out_of_domain), name);
     }
-
     return context.get<storage_t>(it->second.type, context, name, it->second.args);
+}
+
+// Unicorn
+
+unicorn_t::unicorn_t(context_t& /*context*/, const std::string& /*name*/, const dynamic_t& /*args*/) {
+    // empty
+}
+
+/**
+ * Unicorn trait for service creation.
+ * Trait to create unicorn service by name. All instances are cached by name as it is done in storage.
+ */
+category_traits<unicorn_t>::ptr_type
+unicorn(context_t& context, const std::string& name) {
+    auto it = context.config.unicorns.find(name);
+
+    if(it == context.config.unicorns.end()) {
+        throw std::system_error(std::make_error_code(std::errc::argument_out_of_domain), name);
+    }
+
+    return context.get<unicorn_t>(it->second.type, context, name, it->second.args);
 }
 
 }} // namespace cocaine::api
