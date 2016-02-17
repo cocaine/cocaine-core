@@ -63,6 +63,14 @@ LINK_DIRECTORIES(
     ${LIBMSGPACK_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
 
+ADD_LIBRARY(cocaine-util STATIC
+    src/trace.cpp
+    src/header.cpp
+    src/errors.cpp)
+
+SET_TARGET_PROPERTIES(cocaine-util PROPERTIES
+        COMPILE_FLAGS -fPIC)
+
 ADD_LIBRARY(cocaine-core SHARED
     src/actor.cpp
     src/actor_unix.cpp
@@ -78,10 +86,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/dispatch.cpp
     src/dynamic.cpp
     src/engine.cpp
-    src/errors.cpp
     src/essentials.cpp
     src/gateway/adhoc.cpp
-    src/header.cpp
     src/logging.cpp
     src/unicorn/value.cpp
     src/repository.cpp
@@ -92,11 +98,11 @@ ADD_LIBRARY(cocaine-core SHARED
     src/session.cpp
     src/signal.cpp
     src/storage/files.cpp
-    src/trace.cpp
     src/trace/logger.cpp
     src/unique_id.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-core
+    cocaine-util
     ${Boost_LIBRARIES}
     ltdl
     mhash
@@ -148,6 +154,7 @@ ENDIF()
 
 INSTALL(
     TARGETS
+        cocaine-util
         cocaine-core
         cocaine-runtime
     RUNTIME DESTINATION bin COMPONENT runtime
