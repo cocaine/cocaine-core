@@ -154,6 +154,33 @@ class security_category_t:
     }
 };
 
+// Locator errors
+
+struct locator_category_t:
+public std::error_category
+{
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.service.locator";
+    }
+
+    virtual
+    auto
+    message(int code) const -> std::string {
+        switch(code) {
+            case cocaine::error::locator_errors::service_not_available:
+                return "service is not available";
+            case cocaine::error::locator_errors::routing_storage_error:
+                return "routing storage is unavailable";
+            case cocaine::error::locator_errors::missing_version_error:
+                return "missing protocol version";
+        }
+
+        return "cocaine.service.locator error";
+    }
+};
+
 class unicorn_category_t:
     public std::error_category
 {
@@ -223,6 +250,12 @@ unicorn_category() -> const std::error_category& {
     return instance;
 }
 
+auto
+locator_category() -> const std::error_category& {
+    static locator_category_t instance;
+    return instance;
+}
+
 } // namespace
 
 namespace cocaine { namespace error {
@@ -245,6 +278,11 @@ make_error_code(repository_errors code) -> std::error_code {
 auto
 make_error_code(security_errors code) -> std::error_code {
     return std::error_code(static_cast<int>(code), security_category());
+}
+
+auto
+make_error_code(locator_errors code) -> std::error_code {
+    return std::error_code(static_cast<int>(code), locator_category());
 }
 
 auto

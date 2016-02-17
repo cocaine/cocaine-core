@@ -183,11 +183,4 @@ private:
 
 }} // namespace cocaine::service
 
-namespace cocaine { namespace error {
-
-auto
-locator_category() -> const std::error_category&;
-
-}} // namespace cocaine::error
-
 #endif

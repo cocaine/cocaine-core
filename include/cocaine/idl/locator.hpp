@@ -216,26 +216,4 @@ struct protocol<locator::routing_tag> {
 
 }} // namespace cocaine::io
 
-namespace cocaine { namespace error {
-
-enum locator_errors {
-    service_not_available = 1,
-    routing_storage_error,
-    missing_version_error
-};
-
-auto
-make_error_code(locator_errors code) -> std::error_code;
-
-}} // namespace cocaine::error
-
-namespace std {
-
-template<>
-struct is_error_code_enum<cocaine::error::locator_errors>:
-    public true_type
-{ };
-
-} // namespace std
-
 #endif
