@@ -36,6 +36,7 @@
 #include <blackhole/root.hpp>
 #include <blackhole/sink/console.hpp>
 #include <blackhole/sink/file.hpp>
+#include <blackhole/sink/socket/tcp.hpp>
 #include <blackhole/sink/socket/udp.hpp>
 #include <blackhole/wrapper.hpp>
 
@@ -72,6 +73,7 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
         auto registry = blackhole::registry_t::configured();
         registry.add<blackhole::formatter::json_t>();
         registry.add<blackhole::sink::file_t>();
+        registry.add<blackhole::sink::socket::tcp_t>();
         registry.add<blackhole::sink::socket::udp_t>();
 
         std::stringstream stream;
