@@ -1,3 +1,10 @@
+cocaine-core (0.12.5.0-rc7+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Logging: enable TCP sink.
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 18 Feb 2016 14:18:31 +0300
+
 cocaine-core (0.12.5.0-rc6+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
