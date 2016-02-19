@@ -269,7 +269,7 @@ main(int argc, char* argv[]) {
     }
 
     COCAINE_LOG_INFO(logger, "initializing the server");
-    std::unique_ptr<cocaine::logging::logger_t> wrapper(new blackhole::wrapper_t(*logger, {{"source", "signal_handler"}}));
+    std::unique_ptr<cocaine::logging::logger_t> wrapper(new blackhole::wrapper_t(*root, {{"source", "signal_handler"}}));
     std::set<int> signals = { SIGPIPE, SIGINT, SIGQUIT, SIGTERM, SIGCHLD, SIGHUP };
     signal::handler_t signal_handler(std::move(wrapper), signals);
 
@@ -287,9 +287,7 @@ main(int argc, char* argv[]) {
     try {
         context.reset(new context_t(*config, std::move(logger)));
     } catch(const std::system_error& e) {
-        std::cout << cocaine::format("[Runtime] unable to initialize the context - %s.", e.what())
-                  << std::endl;
-        COCAINE_LOG_ERROR(logger, "unable to initialize the context - %s.", error::to_string(e));
+        COCAINE_LOG_ERROR(root, "unable to initialize the context - %s.", error::to_string(e));
         terminate();
     }
 
