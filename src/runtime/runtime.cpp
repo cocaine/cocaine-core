@@ -287,9 +287,7 @@ main(int argc, char* argv[]) {
     try {
         context.reset(new context_t(*config, std::move(logger)));
     } catch(const std::system_error& e) {
-        std::cout << cocaine::format("[Runtime] unable to initialize the context - %s.", e.what())
-                  << std::endl;
-        COCAINE_LOG_ERROR(logger, "unable to initialize the context - %s.", error::to_string(e));
+        COCAINE_LOG_ERROR(root, "unable to initialize the context - %s.", error::to_string(e));
         terminate();
     }
 
