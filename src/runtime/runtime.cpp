@@ -269,7 +269,7 @@ main(int argc, char* argv[]) {
     }
 
     COCAINE_LOG_INFO(logger, "initializing the server");
-    std::unique_ptr<cocaine::logging::logger_t> wrapper(new blackhole::wrapper_t(*logger, {{"source", "signal_handler"}}));
+    std::unique_ptr<cocaine::logging::logger_t> wrapper(new blackhole::wrapper_t(*root, {{"source", "signal_handler"}}));
     std::set<int> signals = { SIGPIPE, SIGINT, SIGQUIT, SIGTERM, SIGCHLD, SIGHUP };
     signal::handler_t signal_handler(std::move(wrapper), signals);
 
