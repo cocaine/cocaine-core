@@ -1,8 +1,16 @@
+cocaine-core (0.12.6.0-alpha1+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Restrict Blackhole version.
+  * Bug fix: fix missing includes.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 26 Feb 2016 22:49:38 +0300
+
 cocaine-core (0.12.6.0-alpha0+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
 
- -- Evgeny Safronov <division494@gmail.com>  Mon, 08 Feb 2016 15:05:02 +0300
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 26 Feb 2016 15:05:02 +0300
 
 cocaine-core (0.12.5.1+nmu1) unstable; urgency=low
 
