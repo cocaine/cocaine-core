@@ -31,6 +31,8 @@
 #include <boost/mpl/insert_range.hpp>
 #include <boost/mpl/list.hpp>
 
+#include <cstdint>
+
 namespace cocaine { namespace io {
 
 namespace mpl = boost::mpl;
