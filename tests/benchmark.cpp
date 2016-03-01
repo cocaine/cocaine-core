@@ -8,7 +8,7 @@
 
 #include "cocaine/detail/actor.hpp"
 #include "cocaine/detail/chamber.hpp"
-#include "cocaine/detail/engine.hpp"
+#include "cocaine/engine.hpp"
 
 #include "cocaine/logging.hpp"
 

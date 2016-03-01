@@ -6,7 +6,7 @@
 #include "cocaine/logging.hpp"
 
 #include "cocaine/detail/chamber.hpp"
-#include "cocaine/detail/engine.hpp"
+#include "cocaine/engine.hpp"
 
 #include <blackhole/attribute.hpp>
 #include <blackhole/logger.hpp>

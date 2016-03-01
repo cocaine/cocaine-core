@@ -26,7 +26,7 @@
 
 #include "cocaine/context.hpp"
 
-#include "cocaine/detail/engine.hpp"
+#include "cocaine/engine.hpp"
 
 #include "cocaine/idl/primitive.hpp"
 #include "cocaine/idl/streaming.hpp"
