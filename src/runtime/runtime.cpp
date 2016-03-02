@@ -118,7 +118,7 @@ struct sigchild_handler_t {
 
 void terminate() {
     {
-        std::unique_lock<std::mutex> lock(finalizer_mutex);
+        std::lock_guard<std::mutex> lock(finalizer_mutex);
         finalize = true;
     }
     finalizer_cv.notify_one();
@@ -302,10 +302,8 @@ main(int argc, char* argv[]) {
 
     // Wait until signaling termination
     std::unique_lock<std::mutex> lock(finalizer_mutex);
+    finalizer_cv.wait(lock, [&] { return finalize; });
 
-    if(!finalize) {
-        finalizer_cv.wait(lock, [&] { return finalize; });
-    }
     // unlock the mutex, as we don't need it anymore to prevent deadlock with several terminate calls
     lock.unlock();
 

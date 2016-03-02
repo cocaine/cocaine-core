@@ -48,7 +48,7 @@ int wait_wrapper(sigset_t* set, siginfo_t* info) {
 }
 
 bool pending() {
-    sigset_t set = sigset_t();
+    sigset_t set = {};
     int rc = sigpending(&set);
     // sigpending according to docs only produces E_FAULT which should never happen.
     BOOST_ASSERT(rc == 0);
@@ -188,9 +188,10 @@ handler_t::run() {
     while(should_run || pending()) {
         const int signal_num = wait_wrapper(&sig_set, &info);
         if(signal_num == -1) {
-            COCAINE_LOG_WARNING(logger, "error in sigwaitinfo: {} - {}", signal_num, errno);
+            std::error_code ec(errno, std::system_category());
+            COCAINE_LOG_WARNING(logger, "error in sigwaitinfo: return code - {}, error code {} - {}", signal_num, ec.value(), ec.message());
             if(errno != EINTR) {
-                throw std::system_error(std::error_code(errno, std::system_category()), "sigwaitinfo failed");
+                throw std::system_error(ec, "sigwaitinfo failed");
             } else {
                 continue;
             }
@@ -201,7 +202,7 @@ handler_t::run() {
             COCAINE_LOG_INFO(logger, "skipping sighandler internal interrupt signal - {}", signal_num);
             continue;
         }
-        COCAINE_LOG_INFO(logger, "caught signal: {}", signal_num);
+        COCAINE_LOG_INFO(logger, "caught signal {} - {}", signal_num, strsignal(signal_num));
         // We need a storage to move all callbacks at one hop to prevent deadlock while executing handlers which reset themselves.
         detailed_callback_storage tmp_storage;
         std::lock_guard<std::mutex> guard(process_lock);
