@@ -29,6 +29,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <fcntl.h>
+#include <string.h>
 
 namespace {
 int wait_wrapper(sigset_t* set, siginfo_t* info) {
@@ -276,4 +277,3 @@ handler_t::async_wait_simple(int signum, simple_callback_type handler) {
 }
 
 }} //namespace cocaine::signal
-
