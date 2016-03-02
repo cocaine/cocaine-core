@@ -48,7 +48,7 @@ int wait_wrapper(sigset_t* set, siginfo_t* info) {
 }
 
 bool pending() {
-    sigset_t set;
+    sigset_t set = sigset_t();
     int rc = sigpending(&set);
     // sigpending according to docs only produces E_FAULT which should never happen.
     BOOST_ASSERT(rc == 0);
@@ -80,11 +80,6 @@ get_signal_set(const std::set<int>& signals) {
         sigaddset(&sigset, sig);
     }
     return sigset;
-}
-
-void
-default_action(int) {
-    BOOST_ASSERT_MSG(false, "default actions are not supported");
 }
 
 }
@@ -180,6 +175,7 @@ handler_t::~handler_t() {
 
 void
 handler_t::stop() {
+    COCAINE_LOG_INFO(logger, "stopping signal handler");
     should_run = false;
     raise(interrupt_signal);
 }
@@ -191,15 +187,21 @@ handler_t::run() {
     sigset_t sig_set = get_signal_set(signals);
     while(should_run || pending()) {
         const int signal_num = wait_wrapper(&sig_set, &info);
-        COCAINE_LOG_DEBUG(logger, "caught signal: {}", signal_num);
         if(signal_num == -1) {
-            throw std::system_error(std::error_code(errno, std::system_category()), "sigwaitinfo failed");
+            COCAINE_LOG_WARNING(logger, "error in sigwaitinfo: {} - {}", signal_num, errno);
+            if(errno != EINTR) {
+                throw std::system_error(std::error_code(errno, std::system_category()), "sigwaitinfo failed");
+            } else {
+                continue;
+            }
         }
         // Do not process interruption signal in case stop() was received.
         // As we use SIGCONT there is no harm of doing this
         if(signal_num == interrupt_signal && !should_run) {
+            COCAINE_LOG_INFO(logger, "skipping sighandler internal interrupt signal - {}", signal_num);
             continue;
         }
+        COCAINE_LOG_INFO(logger, "caught signal: {}", signal_num);
         // We need a storage to move all callbacks at one hop to prevent deadlock while executing handlers which reset themselves.
         detailed_callback_storage tmp_storage;
         std::lock_guard<std::mutex> guard(process_lock);
@@ -211,8 +213,9 @@ handler_t::run() {
 
         });
         if(tmp_storage.empty()) {
-            COCAINE_LOG_DEBUG(logger, "running default action for signal: {}", signal_num);
-            default_action(signal_num);
+            // TODO: Maybe we should mimic default signal behaviour here, as it was before.
+            // For now we just skip signals which do not have active handlers
+            COCAINE_LOG_WARNING(logger, "skipping action for signal: {}, no handlers", signal_num);
         }
         for(auto& cb_pair : tmp_storage) {
             COCAINE_LOG_DEBUG(logger, "running handler with index {} for signal: {}", cb_pair.first, signal_num);
