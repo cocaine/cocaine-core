@@ -56,7 +56,7 @@ bool pending() {
     ((void)rc);
 #endif
 #ifdef  __GLIBC__
-    return sigisemptyset(&set);
+    return !sigisemptyset(&set);
 #else
     sigset_t empty_set;
     sigemptyset(&empty_set);
@@ -177,7 +177,7 @@ void
 handler_t::stop() {
     COCAINE_LOG_INFO(logger, "stopping signal handler");
     should_run = false;
-    raise(interrupt_signal);
+    kill(::getpid(), interrupt_signal);
 }
 
 void

@@ -81,7 +81,7 @@ std::condition_variable finalizer_cv;
 bool finalize = false;
 
 struct sighup_handler_t {
-    logging::logger_t& logger;
+    blackhole::root_logger_t& logger;
     blackhole::registry_t& registry;
     cocaine::signal::handler_base_t& sig_handler;
     cocaine::context_t& context;
@@ -244,7 +244,7 @@ main(int argc, char* argv[]) {
     std::cout << cocaine::format("[Runtime] Initializing the logging system, backend: %s.", backend)
               << std::endl;
 
-    std::unique_ptr<logging::logger_t> root;
+    std::unique_ptr<blackhole::root_logger_t> root;
     std::unique_ptr<logging::logger_t> logger;
 
     auto registry = blackhole::registry_t::configured();
@@ -293,8 +293,11 @@ main(int argc, char* argv[]) {
         context.reset(new context_t(*config, std::move(logger)));
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(root, "unable to initialize the context - %s.", error::to_string(e));
-        terminate();
+        signal_handler.stop();
+        sig_thread.join();
+        return 1;
     }
+
 
     // Handlers for context os_signal slot
     auto hup_handler_cancellation = signal_handler.async_wait(SIGHUP, sighup_handler_t{*root, registry, signal_handler, *context});
