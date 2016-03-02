@@ -1,3 +1,18 @@
+cocaine-core (0.12.6.0-alpha2+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Sighandler: remove assertion on default action, now default action does nothing on all
+  * Sighandler: signals
+  * Sighandler: fix deadlock on multiple terminate calls
+  * Sighandler: do not throw exception during sigwaitinfo on EINTR
+  * Sighandler: use wrapper with source attribute to log in signal handler thread
+  * Sighandler: initialize sigset with zero value, do not rely on sigpending call
+  * Sighandler: more verbose logging
+  * Sighandler: reduce contention - free lock before cv.notify_one
+
+ -- Anton Matveenko <antmat@me.com>  Wed, 2 Mar 2016 10:41:38 +0300
+
+
 cocaine-core (0.12.6.0-alpha1+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.

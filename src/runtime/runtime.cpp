@@ -117,8 +117,10 @@ struct sigchild_handler_t {
 };
 
 void terminate() {
-    std::unique_lock<std::mutex> lock(finalizer_mutex);
-    finalize = true;
+    {
+        std::lock_guard<std::mutex> lock(finalizer_mutex);
+        finalize = true;
+    }
     finalizer_cv.notify_one();
 }
 
@@ -272,6 +274,7 @@ main(int argc, char* argv[]) {
 
     COCAINE_LOG_INFO(logger, "initializing the server");
     std::unique_ptr<cocaine::logging::logger_t> wrapper(new blackhole::wrapper_t(*root, {{"source", "signal_handler"}}));
+    auto wrapper_ref = std::ref(*wrapper);
     std::set<int> signals = { SIGPIPE, SIGINT, SIGQUIT, SIGTERM, SIGCHLD, SIGHUP };
     signal::handler_t signal_handler(std::move(wrapper), signals);
 
@@ -282,7 +285,7 @@ main(int argc, char* argv[]) {
     signal_handler.async_wait(SIGTERM, terminate_handler_t());
 
     // Start signal handling thread
-    std::thread sig_thread(&run_signal_handler, std::ref(signal_handler), std::ref(*logger));
+    std::thread sig_thread(&run_signal_handler, std::ref(signal_handler), wrapper_ref);
 
     // Run context
     std::unique_ptr<context_t> context;
@@ -299,7 +302,10 @@ main(int argc, char* argv[]) {
 
     // Wait until signaling termination
     std::unique_lock<std::mutex> lock(finalizer_mutex);
-    finalizer_cv.wait(lock, [&]{return finalize;});
+    finalizer_cv.wait(lock, [&] { return finalize; });
+
+    // unlock the mutex, as we don't need it anymore to prevent deadlock with several terminate calls
+    lock.unlock();
 
     // Termination
     if(context) {
