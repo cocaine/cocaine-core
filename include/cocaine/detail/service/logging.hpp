@@ -23,6 +23,7 @@
 
 #include "cocaine/api/service.hpp"
 
+#include "cocaine/idl/context.hpp"
 #include "cocaine/idl/logging.hpp"
 #include "cocaine/rpc/dispatch.hpp"
 
@@ -34,6 +35,7 @@ class logging_t:
 {
     logging::priorities verbosity;
     std::unique_ptr<logging::logger_t> logger;
+    std::shared_ptr<dispatch<io::context_tag>> signals;
 
 public:
     logging_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);

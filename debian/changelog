@@ -1,3 +1,10 @@
+cocaine-core (0.12.6.0-alpha4+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Sighandler: rotate loggers in services
+
+ -- Anton Matveenko <antmat@me.com>  Wed, 3 Mar 2016 14:16:38 +0300
+
 cocaine-core (0.12.6.0-alpha3+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.

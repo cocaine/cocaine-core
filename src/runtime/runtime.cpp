@@ -82,6 +82,7 @@ bool finalize = false;
 
 struct sighup_handler_t {
     blackhole::root_logger_t& logger;
+    logging::logger_t& wrapper;
     blackhole::registry_t& registry;
     cocaine::signal::handler_base_t& sig_handler;
     cocaine::context_t& context;
@@ -92,7 +93,7 @@ struct sighup_handler_t {
         }
         // We do not suspect any other error codes except oeration cancellation.
         assert(!ec);
-        COCAINE_LOG_INFO(logger, "resetting logger");
+        COCAINE_LOG_INFO(wrapper, "resetting logger");
         std::stringstream stream;
         stream << boost::lexical_cast<std::string>(context.config.logging.loggers);
         logger = registry.builder<blackhole::config::json_t>(stream).build("core");
@@ -300,7 +301,7 @@ main(int argc, char* argv[]) {
 
 
     // Handlers for context os_signal slot
-    auto hup_handler_cancellation = signal_handler.async_wait(SIGHUP, sighup_handler_t{*root, registry, signal_handler, *context});
+    auto hup_handler_cancellation = signal_handler.async_wait(SIGHUP, sighup_handler_t{*root, wrapper_ref.get(), registry, signal_handler, *context});
     auto child_handler_cancellation = signal_handler.async_wait(SIGCHLD, sigchild_handler_t{*context, signal_handler});
 
     // Wait until signaling termination
