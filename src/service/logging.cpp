@@ -100,7 +100,6 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
         context.listen(signals, asio);
     }
 
-
     on<io::log::emit>(std::bind(&logging_t::on_emit, this, ph::_1, ph::_2, ph::_3, ph::_4));
     on<io::log::verbosity>(std::bind(&logging_t::on_verbosity, this));
 }
