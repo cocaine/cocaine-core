@@ -48,23 +48,49 @@ struct streamed {
         return *this;
     }
 
+    template<class... Args>
+    typename std::enable_if<
+        std::is_constructible<T, Args...>::value,
+        streamed&
+    >::type
+    write(Args&&... args) {
+        outbox->synchronize()->template append<typename protocol::chunk>(std::forward<Args>(args)...);
+        return *this;
+    }
+
     streamed&
     abort(hpack::header_storage_t headers, const std::error_code& ec, const std::string& reason) {
         outbox->synchronize()->template append<typename protocol::error>(std::move(headers), ec, reason);
         return *this;
     }
 
-#if defined(__clang__)
+    streamed&
+    abort(const std::error_code& ec, const std::string& reason) {
+        outbox->synchronize()->template append<typename protocol::error>(ec, reason);
+        return *this;
+    }
+
     streamed&
     abort(hpack::header_storage_t headers, const std::error_code& ec) {
         outbox->synchronize()->template append<typename protocol::error>(std::move(headers), ec);
         return *this;
     }
-#endif
+
+    streamed&
+    abort(const std::error_code& ec) {
+        outbox->synchronize()->template append<typename protocol::error>(ec);
+        return *this;
+    }
 
     streamed&
     close(hpack::header_storage_t headers) {
         outbox->synchronize()->template append<typename protocol::choke>(std::move(headers));
+        return *this;
+    }
+
+    streamed&
+    close() {
+        outbox->synchronize()->template append<typename protocol::choke>();
         return *this;
     }
 
