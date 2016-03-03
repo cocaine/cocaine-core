@@ -111,11 +111,6 @@ public:
     class zone_t {
     public:
         zone_t() = default;
-        zone_t(zone_t&&) = default;
-        zone_t& operator=(zone_t&&) = default;
-        zone_t(const zone_t&) = delete;
-        zone_t& operator=(const zone_t&) = delete;
-
 
         /**
          * @brief construct zone_t by copying header data to header_zone and point header to that data.
@@ -128,10 +123,6 @@ public:
          * @param headers
          */
         zone_t(std::vector<header_t>& headers);
-
-    private:
-        void
-        reserve(size_t size);
 
         /**
          * @brief copy header data to header_zone and point header to that data.
@@ -146,6 +137,10 @@ public:
          */
         void
         rebind_headers(std::vector<header_t>& headers);
+
+    private:
+        void
+        reserve(size_t size);
 
         std::vector<char> storage;
     };
@@ -193,6 +188,17 @@ private:
 
     header::data_t name;
     header::data_t value;
+};
+
+class header_storage_t {
+public:
+    const std::vector<header_t>&
+    get_headers() const;
+
+    void push_back(const header_t&);
+private:
+    std::vector<header_t> headers;
+    header_t::zone_t zone;
 };
 
 #include "header_definitions.ipp"

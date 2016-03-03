@@ -54,6 +54,11 @@ struct decoded_message_t {
         return object.via.array.ptr[2];
     }
 
+    auto
+    meta() const -> const std::vector<hpack::header_t>& {
+        return metadata;
+    }
+
     template<class Header>
     auto
     meta() const -> boost::optional<hpack::header_t> {

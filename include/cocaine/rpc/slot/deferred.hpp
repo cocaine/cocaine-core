@@ -118,19 +118,27 @@ struct deferred {
         return *this;
     }
 
+    template<class... Args>
+    typename std::enable_if<
+        std::is_constructible<T, Args...>::value,
+        deferred&
+    >::type
+    write(hpack::header_storage_t headers, Args&&... args) {
+        outbox->synchronize()->template append<typename protocol::value>(std::move(headers), std::forward<Args>(args)...);
+        return *this;
+    }
+
     deferred&
     abort(const std::error_code& ec, const std::string& reason) {
         outbox->synchronize()->template append<typename protocol::error>(ec, reason);
         return *this;
     }
 
-#if defined(__clang__)
     deferred&
-    abort(const std::error_code& ec) {
-        outbox->synchronize()->template append<typename protocol::error>(ec);
+    abort(hpack::header_storage_t headers, const std::error_code& ec, const std::string& reason) {
+        outbox->synchronize()->template append<typename protocol::error>(std::move(headers), ec, reason);
         return *this;
     }
-#endif
 
     template<class UpstreamType>
     void
@@ -161,13 +169,18 @@ struct deferred<void> {
         return *this;
     }
 
-#if defined(__clang__)
     deferred&
-    abort(const std::error_code& ec) {
-        outbox->synchronize()->append<protocol::error>(ec);
+    abort(hpack::header_storage_t headers, const std::error_code& ec, const std::string& reason) {
+        outbox->synchronize()->append<protocol::error>(std::move(headers), ec, reason);
         return *this;
     }
-#endif
+
+
+    deferred&
+    close(hpack::header_storage_t headers) {
+        outbox->synchronize()->append<protocol::value>(std::move(headers));
+        return *this;
+    }
 
     deferred&
     close() {
