@@ -151,6 +151,7 @@ struct encoder_t {
         hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, encoder.hpack_context, hpack::header::create_data(parent_id));
 
         for (const auto& header: headers.get_headers()) {
+            // TODO: maybe we need a runtime check not to pack headers twice
             hpack::msgpack_traits::pack(packer, encoder.hpack_context, header);
         }
 

@@ -71,18 +71,6 @@ struct streamed {
     }
 
     streamed&
-    abort(hpack::header_storage_t headers, const std::error_code& ec) {
-        outbox->synchronize()->template append<typename protocol::error>(std::move(headers), ec);
-        return *this;
-    }
-
-    streamed&
-    abort(const std::error_code& ec) {
-        outbox->synchronize()->template append<typename protocol::error>(ec);
-        return *this;
-    }
-
-    streamed&
     close(hpack::header_storage_t headers) {
         outbox->synchronize()->template append<typename protocol::choke>(std::move(headers));
         return *this;

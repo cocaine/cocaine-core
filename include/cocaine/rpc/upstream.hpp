@@ -95,8 +95,8 @@ public:
     upstream<typename io::event_traits<Event>::dispatch_type>
     send(hpack::header_storage_t headers, Args&&... args) {
         static_assert(
-        std::is_same<typename Event::tag, Tag>::value,
-        "message protocol is not compatible with this upstream"
+            std::is_same<typename Event::tag, Tag>::value,
+            "message protocol is not compatible with this upstream"
         );
 
         ptr->send<Event>(std::move(headers), std::forward<Args>(args)...);
