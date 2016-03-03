@@ -46,6 +46,8 @@
 #include "cocaine/traits/enum.hpp"
 #include "cocaine/traits/vector.hpp"
 
+#include <signal.h>
+
 using namespace cocaine;
 using namespace cocaine::logging;
 using namespace cocaine::service;
@@ -61,33 +63,43 @@ const std::string DEFAULT_BACKEND("core");
 logging_t::logging_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args) :
     category_type(context, asio, name, args),
     dispatch<io::log_tag>(name),
-    verbosity(static_cast<priorities>(args.as_object().at("verbosity", priorities::debug).as_int()))
+    verbosity(static_cast<priorities>(args.as_object().at("verbosity", priorities::debug).as_int())),
+    signals(std::make_shared<dispatch<io::context_tag>>(name))
 {
     const auto backend = args.as_object().at("backend", DEFAULT_BACKEND).as_string();
-
     // TODO (@esafronov v12.6): Using cache to allow resources reuse.
     // logger = context.log(logging::name_t(backend), format("%s[core]", name), {});
     if (backend == "core") {
         logger = context.log(format("%s[core]", name));
     } else {
-        auto registry = blackhole::registry_t::configured();
-        registry.add<blackhole::formatter::json_t>();
-        registry.add<blackhole::sink::file_t>();
-        registry.add<blackhole::sink::socket::tcp_t>();
-        registry.add<blackhole::sink::socket::udp_t>();
+        auto reset_logger_fn = [=, &context]() {
+            auto registry = blackhole::registry_t::configured();
+            registry.add<blackhole::formatter::json_t>();
+            registry.add<blackhole::sink::file_t>();
+            registry.add<blackhole::sink::socket::tcp_t>();
+            registry.add<blackhole::sink::socket::udp_t>();
 
-        std::stringstream stream;
-        stream << boost::lexical_cast<std::string>(context.config.logging.loggers);
+            std::stringstream stream;
+            stream << boost::lexical_cast<std::string>(context.config.logging.loggers);
 
-        auto log = registry.builder<blackhole::config::json_t>(stream)
-            .build(backend);
+            auto log = registry.builder<blackhole::config::json_t>(stream)
+                .build(backend);
 
-        log.filter([&](const blackhole::record_t& record) -> bool {
-            return record.severity() >= context.config.logging.severity;
+            log.filter([&](const blackhole::record_t& record) -> bool {
+                return record.severity() >= context.config.logging.severity;
+            });
+
+            logger.reset(new blackhole::root_logger_t(std::move(log)));
+        };
+        reset_logger_fn();
+        signals->on<io::context::os_signal>([=](int signum, siginfo_t){
+            if(signum == SIGHUP) {
+                reset_logger_fn();
+            }
         });
-
-        logger.reset(new blackhole::root_logger_t(std::move(log)));
+        context.listen(signals, asio);
     }
+
 
     on<io::log::emit>(std::bind(&logging_t::on_emit, this, ph::_1, ph::_2, ph::_3, ph::_4));
     on<io::log::verbosity>(std::bind(&logging_t::on_verbosity, this));
