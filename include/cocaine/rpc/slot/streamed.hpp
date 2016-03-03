@@ -43,28 +43,28 @@ struct streamed {
         std::is_constructible<T, Args...>::value,
         streamed&
     >::type
-    write(Args&&... args) {
-        outbox->synchronize()->template append<typename protocol::chunk>(std::forward<Args>(args)...);
+    write(hpack::header_storage_t headers, Args&&... args) {
+        outbox->synchronize()->template append<typename protocol::chunk>(std::move(headers), std::forward<Args>(args)...);
         return *this;
     }
 
     streamed&
-    abort(const std::error_code& ec, const std::string& reason) {
-        outbox->synchronize()->template append<typename protocol::error>(ec, reason);
+    abort(hpack::header_storage_t headers, const std::error_code& ec, const std::string& reason) {
+        outbox->synchronize()->template append<typename protocol::error>(std::move(headers), ec, reason);
         return *this;
     }
 
 #if defined(__clang__)
     streamed&
-    abort(const std::error_code& ec) {
-        outbox->synchronize()->template append<typename protocol::error>(ec);
+    abort(hpack::header_storage_t headers, const std::error_code& ec) {
+        outbox->synchronize()->template append<typename protocol::error>(std::move(headers), ec);
         return *this;
     }
 #endif
 
     streamed&
-    close() {
-        outbox->synchronize()->template append<typename protocol::choke>();
+    close(hpack::header_storage_t headers) {
+        outbox->synchronize()->template append<typename protocol::choke>(std::move(headers));
         return *this;
     }
 

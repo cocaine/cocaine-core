@@ -68,7 +68,7 @@ class message_queue {
 public:
     template<class Event, class... Args>
     void
-    append(Args&&... args) {
+    append(hpack::header_storage_t headers, Args&&... args) {
         static_assert(
             std::is_same<typename Event::tag, Tag>::value,
             "message protocol is not compatible with this message queue"
@@ -78,7 +78,7 @@ public:
             return m_operations.emplace_back(make_frozen<Event>(std::forward<Args>(args)...));
         }
 
-        m_upstream->template send<Event>(std::forward<Args>(args)...);
+        m_upstream->template send<Event>(std::move(headers), std::forward<Args>(args)...);
     }
 
     template<class OtherTag>

@@ -558,7 +558,7 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
 
     if(!m_cluster) {
         // No cluster means there are no streams.
-        return stream.close();
+        return stream.close({});
     }
 
     if(mapping->erase(uuid) == 0) {
@@ -570,7 +570,7 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
     mapping->insert({uuid, stream});
 
     // NOTE: Even if there's nothing to return, still send out an empty update.
-    return stream.write(m_cfg.uuid, m_snapshots);
+    return stream.write({}, m_cfg.uuid, m_snapshots);
 }
 
 void
@@ -667,7 +667,7 @@ locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results
     });
 
     // NOTE: Even if there's nothing to return, still send out an empty update.
-    return stream.write(results);
+    return stream.write({}, results);
 }
 
 void
@@ -694,7 +694,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
     const auto response = results::connect{m_cfg.uuid, {{name, meta}}};
 
     for(auto it = mapping->begin(); it != mapping->end(); /***/) try {
-        it->second.write(response);
+        it->second.write({}, response);
         it++;
     } catch(const std::system_error& e) {
         COCAINE_LOG_WARNING(m_log, "unable to enqueue service updates for locator '{}': {}",
@@ -730,7 +730,7 @@ locator_t::on_context_shutdown() {
         }
 
         boost::for_each(mapping | boost::adaptors::map_values, [](streamed<results::connect>& s) {
-            try { s.close(); } catch(...) { /* None */ }
+            try { s.close({}); } catch(...) { /* None */ }
         });
     });
 
@@ -742,7 +742,7 @@ locator_t::on_context_shutdown() {
         }
 
         boost::for_each(mapping | boost::adaptors::map_values, [](streamed<results::routing>& s) {
-            try { s.close(); } catch(...) { /* None */ }
+            try { s.close({}); } catch(...) { /* None */ }
         });
     });
 
