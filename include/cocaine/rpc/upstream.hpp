@@ -45,9 +45,20 @@ public:
     void
     send(Args&&... args);
 
+    template<class Event, class... Args>
+    void
+    send(hpack::header_storage_t headers, Args&&... args);
+
     /* none_t if upstream belongs to server side */
     boost::optional<trace_t> client_trace;
 };
+
+template<class Event, class... Args>
+void
+basic_upstream_t::send(hpack::header_storage_t headers, Args&&... args) {
+    trace_t::restore_scope_t scope(client_trace);
+    session->push(encoded<Event>(channel_id, std::move(headers), std::forward<Args>(args)...));
+}
 
 template<class Event, class... Args>
 void
@@ -79,6 +90,20 @@ public:
     upstream(Stream&& ptr,
              typename allowing<Tag, Stream>::type* = nullptr): ptr(std::forward<Stream>(ptr))
     { }
+
+    template<class Event, class... Args>
+    upstream<typename io::event_traits<Event>::dispatch_type>
+    send(hpack::header_storage_t headers, Args&&... args) {
+        static_assert(
+        std::is_same<typename Event::tag, Tag>::value,
+        "message protocol is not compatible with this upstream"
+        );
+
+        ptr->send<Event>(std::move(headers), std::forward<Args>(args)...);
+
+        // Move the actual upstream pointer down the graph.
+        return std::move(ptr);
+    }
 
     template<class Event, class... Args>
     upstream<typename io::event_traits<Event>::dispatch_type>

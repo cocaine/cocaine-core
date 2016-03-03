@@ -117,10 +117,11 @@ struct encoder_t {
     typedef aux::unbound_message_t message_type;
     typedef aux::encoded_message_t encoded_message_type;
 
+    // TODO: Do we really need owning header storage?
     template<class Event, class... Args>
     static inline
     aux::encoded_message_t
-    tether(encoder_t& encoder, uint64_t channel_id, Args&... args) {
+    tether(encoder_t& encoder, uint64_t channel_id, const hpack::header_storage_t& headers, Args&... args) {
         aux::encoded_message_t message;
 
         msgpack::packer<aux::encoded_buffers_t> packer(message.buffer);
@@ -149,6 +150,10 @@ struct encoder_t {
         hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer, encoder.hpack_context, hpack::header::create_data(span_id));
         hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, encoder.hpack_context, hpack::header::create_data(parent_id));
 
+        for (const auto& header: headers.get_headers()) {
+            hpack::msgpack_traits::pack(packer, encoder.hpack_context, header);
+        }
+
         return message;
     }
 
@@ -168,9 +173,19 @@ struct encoded:
 {
     template<class... Args>
     encoded(uint64_t channel_id, Args&&... args): unbound_message_t(
+    std::bind(&encoder_t::tether<Event, typename std::decay<Args>::type...>,
+              std::placeholders::_1,
+              channel_id,
+              hpack::header_storage_t(),
+              std::forward<Args>(args)...))
+    { }
+
+    template<class... Args>
+    encoded(uint64_t channel_id, hpack::header_storage_t headers, Args&&... args): unbound_message_t(
         std::bind(&encoder_t::tether<Event, typename std::decay<Args>::type...>,
             std::placeholders::_1,
             channel_id,
+            std::move(headers),
             std::forward<Args>(args)...))
     { }
 };

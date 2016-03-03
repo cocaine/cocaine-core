@@ -62,7 +62,7 @@ struct msgpack_traits {
     template<class Stream>
     static
     void
-    pack(msgpack::packer<Stream>& packer, header_table_t& table, header_t& source) {
+    pack(msgpack::packer<Stream>& packer, header_table_t& table, const header_t& source) {
         size_t pos = table.find_by_full_match(source);
         if(pos) {
             packer.pack_fix_uint64(pos);
