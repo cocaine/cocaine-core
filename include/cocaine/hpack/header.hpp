@@ -191,14 +191,18 @@ private:
 };
 
 class header_storage_t {
-public:
-    const std::vector<header_t>&
-    get_headers() const;
-
-    void push_back(const header_t&);
-private:
-    std::vector<header_t> headers;
     header_t::zone_t zone;
+    std::vector<header_t> headers;
+
+public:
+    header_storage_t() = default;
+    explicit header_storage_t(std::vector<header_t> headers);
+
+    const std::vector<header_t>&
+    get_headers() const noexcept;
+
+    void
+    push_back(const header_t& header);
 };
 
 #include "header_definitions.ipp"
