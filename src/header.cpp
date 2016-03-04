@@ -137,14 +137,16 @@ header_t::zone_t::rebind_header(header_t& header) {
 
 void
 header_t::zone_t::rebind_headers(std::vector<header_t>& headers) {
-    size_t zone_size = 0;
+    auto zone_size = storage.size();
+
     for(const auto& h: headers) {
         zone_size += h.get_name().size;
         zone_size += h.get_value().size;
     }
+
     reserve(zone_size);
-    for(auto& h: headers) {
-        rebind_header(h);
+    for(auto& header: headers) {
+        rebind_header(header);
     }
 }
 
