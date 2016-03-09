@@ -1,4 +1,4 @@
-cocaine-core (0.12.7.9-alpha0+nmu1) UNRELEASED; urgency=low
+cocaine-core (0.12.7.0-alpha0+nmu1) UNRELEASED; urgency=low
 
   * Non-maintainer upload.
   * Cocaine now provides an additional meta information (also known as headers)
@@ -6,6 +6,14 @@ cocaine-core (0.12.7.9-alpha0+nmu1) UNRELEASED; urgency=low
     information to each part of the response.
 
  -- Evgeny Safronov <division494@gmail.com>  Wed, 09 Mar 2016 13:40:25 +0300
+
+cocaine-core (0.12.6.2+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Loggers should now properly reset their filters after reloading due to HUP
+    signal received.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 09 Mar 2016 14:24:56 +0300
 
 cocaine-core (0.12.6.1+nmu1) unstable; urgency=low
 

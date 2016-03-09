@@ -91,12 +91,19 @@ struct sighup_handler_t {
         if(ec == std::errc::operation_canceled) {
             return;
         }
+
         // We do not suspect any other error codes except oeration cancellation.
-        assert(!ec);
+        BOOST_ASSERT(!ec);
+
         COCAINE_LOG_INFO(wrapper, "resetting logger");
         std::stringstream stream;
         stream << boost::lexical_cast<std::string>(context.config.logging.loggers);
-        logger = registry.builder<blackhole::config::json_t>(stream).build("core");
+        logger = registry.builder<blackhole::config::json_t>(stream)
+            .build("core");
+
+        logger.filter([&](const blackhole::record_t& record) -> bool {
+            return record.severity() >= context.config.logging.severity;
+        });
 
         context.invoke<cocaine::io::context::os_signal>(signum, info);
         sig_handler.async_wait(SIGHUP, *this);
