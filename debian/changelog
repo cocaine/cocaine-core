@@ -7,6 +7,14 @@ cocaine-core (0.12.7.0-alpha0+nmu1) UNRELEASED; urgency=low
 
  -- Evgeny Safronov <division494@gmail.com>  Wed, 09 Mar 2016 13:40:25 +0300
 
+cocaine-core (0.12.6.3+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Runtime should no longer crash after receiving HUP signal due to using of
+    already destroyed stack variable.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 09 Mar 2016 16:20:01 +0300
+
 cocaine-core (0.12.6.2+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
