@@ -1,3 +1,11 @@
+cocaine-core (0.12.6.2+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Loggers should now properly reset their filters after reloading due to HUP
+    signal received.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 09 Mar 2016 14:24:56 +0300
+
 cocaine-core (0.12.6.1+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
