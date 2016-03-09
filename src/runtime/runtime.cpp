@@ -86,6 +86,7 @@ struct sighup_handler_t {
     blackhole::registry_t& registry;
     cocaine::signal::handler_base_t& sig_handler;
     cocaine::context_t& context;
+
     void
     operator()(const std::error_code& ec, int signum, const siginfo_t& info) {
         if(ec == std::errc::operation_canceled) {
@@ -98,12 +99,17 @@ struct sighup_handler_t {
         COCAINE_LOG_INFO(wrapper, "resetting logger");
         std::stringstream stream;
         stream << boost::lexical_cast<std::string>(context.config.logging.loggers);
-        logger = registry.builder<blackhole::config::json_t>(stream)
+
+        // Create a new logger and set the filter before swap to be sure that no events are missed.
+        auto log = registry.builder<blackhole::config::json_t>(stream)
             .build("core");
 
-        logger.filter([&](const blackhole::record_t& record) -> bool {
-            return record.severity() >= context.config.logging.severity;
+        const auto severity = context.config.logging.severity;
+        log.filter([=](const blackhole::record_t& record) -> bool {
+            return record.severity() >= severity;
         });
+
+        logger = std::move(log);
 
         context.invoke<cocaine::io::context::os_signal>(signum, info);
         sig_handler.async_wait(SIGHUP, *this);
