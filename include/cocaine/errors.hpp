@@ -132,7 +132,7 @@ struct error_t:
              class = typename std::enable_if<std::is_error_code_enum<E>::value ||
                                              std::is_error_condition_enum<E>::value>::type>
     error_t(const E err, const std::string& e, const Args&... args):
-        std::system_error(std::make_error_code(err), cocaine::format(e, args...))
+        std::system_error(make_error_code(err), cocaine::format(e, args...))
     { }
 };
 
