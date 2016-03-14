@@ -1,4 +1,11 @@
-cocaine-core (0.12.7.0-alpha0+nmu1) UNRELEASED; urgency=low
+cocaine-core (0.12.7.1+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Release version.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 14 Mar 2016 11:45:29 +0300
+
+cocaine-core (0.12.7.0-alpha0+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
   * Cocaine now provides an additional meta information (also known as headers)
