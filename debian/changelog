@@ -1,3 +1,11 @@
+cocaine-core (0.12.7.2+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Multiple plugin paths can now be specified in the configuration. The old
+    behavior for a single path as a string left unchanged.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 14 Mar 2016 16:03:35 +0300
+
 cocaine-core (0.12.7.1+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
