@@ -39,7 +39,8 @@ struct config_t {
 
 public:
     struct {
-        std::string plugins;
+        // Paths to load plugins from
+        std::vector<std::string> plugins;
         std::string runtime;
     } path;
 

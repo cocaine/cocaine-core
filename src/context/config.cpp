@@ -274,7 +274,18 @@ config_t::config_t(const std::string& source) {
 
     // Path configuration
 
-    path.plugins = path_config.at("plugins", defaults::plugins_path).as_string();
+    // string argument for plugin folders is left for backward compatibility
+    // TODO: drop string argument as possible value on next config version change
+    const auto& plugins = path_config.at("plugins", defaults::plugins_path);
+    if(plugins.is_array()) {
+        for(const auto& plugin_entry: plugins.as_array()) {
+            path.plugins.push_back(plugin_entry.as_string());
+        }
+    } else if (plugins.is_string()) {
+        path.plugins.push_back(plugins.as_string());
+    } else {
+        throw cocaine::error_t("\"plugins\" value should be either string or array of strings", path.runtime);
+    }
     path.runtime = path_config.at("runtime", defaults::runtime_path).as_string();
 
     const auto runtime_path_status = fs::status(path.runtime);
