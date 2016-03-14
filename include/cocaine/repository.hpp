@@ -89,7 +89,7 @@ public:
    ~repository_t();
 
     void
-    load(const std::string& path);
+    load(const std::vector<std::string>& plugin_dirs);
 
     template<class Category, class... Args>
     typename category_traits<Category>::ptr_type

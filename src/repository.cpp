@@ -89,24 +89,27 @@ repository_t::~repository_t() {
 }
 
 void
-repository_t::load(const std::string& path) {
-    const auto status = fs::status(path);
-
-    if(!fs::exists(status) || !fs::is_directory(status)) {
-        COCAINE_LOG_ERROR(m_log, "unable to load plugins: path '{}' is not valid", path);
-        return;
-    }
-
-    boost::filter_iterator<is_cocaine_plugin_t, fs::directory_iterator>
-        begin((is_cocaine_plugin_t()), fs::directory_iterator(path)),
-        end;
-
+repository_t::load(const std::vector<std::string>& plugin_dirs) {
+    COCAINE_LOG_INFO(m_log, "loading plugins");
     std::vector<std::string> paths;
-    std::back_insert_iterator<std::vector<std::string>> builder(paths);
+    for (const auto& dir : plugin_dirs) {
+        const auto status = fs::status(dir);
 
-    std::transform(begin, end, builder, [](const fs::directory_entry& entry) -> std::string {
-        return entry.path().string();
-    });
+        if(!fs::exists(status) || !fs::is_directory(status)) {
+            COCAINE_LOG_WARNING(m_log, "loading plugins: path '{}' is not valid", dir);
+            continue;
+        }
+        COCAINE_LOG_INFO(m_log, "loading plugins from {}", dir);
+
+        typedef boost::filter_iterator<is_cocaine_plugin_t, fs::directory_iterator> dir_iterator_t;
+
+        dir_iterator_t begin((is_cocaine_plugin_t()), fs::directory_iterator(dir));
+        dir_iterator_t end;
+
+        std::for_each(begin, end, [&](const fs::directory_entry& entry){
+            paths.push_back(entry.path().string());
+        });
+    }
 
     // Make sure that we always load plugins in the same order, to keep their error categories in a
     // proper order as well, if they add any to the error registrar.
@@ -115,6 +118,7 @@ repository_t::load(const std::string& path) {
     std::for_each(paths.begin(), paths.end(), [this](const std::string& plugin) {
         open(plugin);
     });
+    COCAINE_LOG_INFO(m_log, "successefully loaded {} plugins", paths.size());
 }
 
 void
