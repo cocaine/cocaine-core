@@ -1,3 +1,10 @@
+cocaine-core (0.12.7.3+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Add missing dependency include in forwards.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 15 Mar 2016 19:06:00 +0300
+
 cocaine-core (0.12.7.2+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
