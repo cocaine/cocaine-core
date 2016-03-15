@@ -21,6 +21,8 @@
 #ifndef COCAINE_FORWARDS_HPP
 #define COCAINE_FORWARDS_HPP
 
+#include <memory>
+
 // Third-party forwards
 
 namespace asio {
