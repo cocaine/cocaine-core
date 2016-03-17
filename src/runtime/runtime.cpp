@@ -106,7 +106,7 @@ struct sighup_handler_t {
 
         const auto severity = context.config.logging.severity;
         log.filter([=](const blackhole::record_t& record) -> bool {
-            return record.severity() >= severity;
+            return record.severity() >= severity || !trace_t::current().empty();
         });
 
         logger = std::move(log);

@@ -131,9 +131,9 @@ void
 session_t::push_action_t::operator()(const std::shared_ptr<transport_type> ptr) {
     if(!trace_t::current().empty()) {
         if(trace_t::current().pushed()) {
-            COCAINE_LOG_INFO(session->log, "cs");
+            COCAINE_LOG_DEBUG(session->log, "cs");
         } else {
-            COCAINE_LOG_INFO(session->log, "ss");
+            COCAINE_LOG_DEBUG(session->log, "ss");
         }
     }
 
@@ -145,7 +145,7 @@ session_t::push_action_t::operator()(const std::shared_ptr<transport_type> ptr) 
 
 void
 session_t::push_action_t::finalize(const std::error_code& ec) {
-    COCAINE_LOG_ZIPKIN(session->log, "after send");
+    COCAINE_LOG_DEBUG(session->log, "after send");
     if(ec.value() == 0) return;
 
     if(ec != asio::error::eof) {
@@ -242,10 +242,10 @@ session_t::handle(const decoder_t::message_type& message) {
 
     if(!trace_t::current().empty()) {
         if(trace_t::current().pushed()) {
-            COCAINE_LOG_INFO(log, "cr");
+            COCAINE_LOG_DEBUG(log, "cr");
             trace_t::current().pop();
         } else {
-            COCAINE_LOG_INFO(log, "sr");
+            COCAINE_LOG_DEBUG(log, "sr");
         }
     }
 

@@ -44,10 +44,6 @@
 #define COCAINE_LOG_ERROR(__log__, ...) \
     COCAINE_LOG(__log__, ::cocaine::logging::error, __VA_ARGS__)
 
-// TODO: Replace with something nasty.
-#define COCAINE_LOG_ZIPKIN(__log__, ...) \
-    if(!trace_t::current().empty()) COCAINE_LOG_INFO(__log__, __VA_ARGS__)
-
 namespace cocaine { namespace detail { namespace logging {
 
 template<class T> inline auto logger_ref(T& log) -> T& { return log; }
