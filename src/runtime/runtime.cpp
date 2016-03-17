@@ -276,7 +276,7 @@ main(int argc, char* argv[]) {
             .build("core");
 
         log.filter([&](const blackhole::record_t& record) -> bool {
-            return record.severity() >= config->logging.severity;
+            return record.severity() >= config->logging.severity || !trace_t::current().empty();
         });
 
         root.reset(new blackhole::root_logger_t(std::move(log)));
