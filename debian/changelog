@@ -2,6 +2,8 @@ cocaine-core (0.12.8.0-alpha0+nmu1) UNRELEASED; urgency=low
 
   * Tracing logs are now treated as DEBUG, but the filter accepts it any time
     where current trace context is set.
+  * Fixed invalid logging formatting appeared when unable to initialize the
+    context.
 
  -- Evgeny Safronov <division494@gmail.com>  Thu, 17 Mar 2016 16:41:29 +0300
 
