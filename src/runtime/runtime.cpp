@@ -164,7 +164,7 @@ run_signal_handler(cocaine::signal::handler_t& signal_handler, logging::logger_t
     try {
         signal_handler.run();
     } catch (const std::system_error& e) {
-        COCAINE_LOG_ERROR(logger, "exception in signal handler - %s", error::to_string(e));
+        COCAINE_LOG_ERROR(logger, "exception in signal handler - {}", error::to_string(e));
     }
 }
 
@@ -306,7 +306,7 @@ main(int argc, char* argv[]) {
     try {
         context.reset(new context_t(*config, std::move(logger)));
     } catch(const std::system_error& e) {
-        COCAINE_LOG_ERROR(root, "unable to initialize the context - %s.", error::to_string(e));
+        COCAINE_LOG_ERROR(root, "unable to initialize the context - {}.", error::to_string(e));
         signal_handler.stop();
         sig_thread.join();
         return 1;
