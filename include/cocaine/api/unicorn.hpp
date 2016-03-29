@@ -20,7 +20,7 @@
 
 #include <cocaine/forwards.hpp>
 
-#include <cocaine/unicorn/writable.hpp>
+#include <future>
 
 namespace cocaine { namespace unicorn {
 
@@ -71,22 +71,15 @@ public:
         typedef bool lock;
     };
 
-    /**
-     * Typedefs for used writable helpers
-     * These provide future-like functionality.
-     * Either value can be written inside via call to write,
-     * or an error can be signaled via call to abort.
-     * @see cocaine::unicorn::writable_adapter_base_t
-     **/
-    struct writable_ptr {
-        typedef unicorn::writable_helper<response::put>::ptr put;
-        typedef unicorn::writable_helper<response::create>::ptr create;
-        typedef unicorn::writable_helper<response::del>::ptr del;
-        typedef unicorn::writable_helper<response::increment>::ptr increment;
-        typedef unicorn::writable_helper<response::get>::ptr get;
-        typedef unicorn::writable_helper<response::subscribe>::ptr subscribe;
-        typedef unicorn::writable_helper<response::children_subscribe>::ptr children_subscribe;
-        typedef unicorn::writable_helper<response::lock>::ptr lock;
+    struct callback {
+        typedef std::function<void(std::future<response::put>)> put;
+        typedef std::function<void(std::future<response::create>)> create;
+        typedef std::function<void(std::future<response::del>)> del;
+        typedef std::function<void(std::future<response::increment>)> increment;
+        typedef std::function<void(std::future<response::get>)> get;
+        typedef std::function<void(std::future<response::subscribe>)> subscribe;
+        typedef std::function<void(std::future<response::children_subscribe>)> children_subscribe;
+        typedef std::function<void(std::future<response::lock>)> lock;
     };
 
     unicorn_t(context_t& context, const std::string& name, const dynamic_t& args);
@@ -100,7 +93,7 @@ public:
      */
     virtual
     unicorn_scope_ptr
-    put(writable_ptr::put result,
+    put(callback::put callback,
         const unicorn::path_t& path,
         const unicorn::value_t& value,
         unicorn::version_t version) = 0;
@@ -112,7 +105,7 @@ public:
      */
     virtual
     unicorn_scope_ptr
-    get(writable_ptr::get result,
+    get(callback::get callback,
         const unicorn::path_t& path) = 0;
 
     /**
@@ -120,45 +113,45 @@ public:
      */
     virtual
     unicorn_scope_ptr
-    create(writable_ptr::create result,
+    create(callback::create callback,
            const unicorn::path_t& path,
            const unicorn::value_t& value,
            bool ephemeral,
            bool sequence) = 0;
 
     unicorn_scope_ptr
-    create_default(writable_ptr::create result,
+    create_default(callback::create callback,
                    const unicorn::path_t& path,
                    const unicorn::value_t& value)
     {
-        return create(std::move(result), path, value, false, false);
+        return create(std::move(callback), path, value, false, false);
     }
 
     virtual
     unicorn_scope_ptr
-    del(writable_ptr::del result,
+    del(callback::del callback,
         const unicorn::path_t& path,
         unicorn::version_t version) = 0;
 
     virtual
     unicorn_scope_ptr
-    subscribe(writable_ptr::subscribe result,
+    subscribe(callback::subscribe callback,
               const unicorn::path_t& path) = 0;
 
     virtual
     unicorn_scope_ptr
-    children_subscribe(writable_ptr::children_subscribe result,
+    children_subscribe(callback::children_subscribe callback,
                        const unicorn::path_t& path) = 0;
 
     virtual
     unicorn_scope_ptr
-    increment(writable_ptr::increment result,
+    increment(callback::increment callback,
               const unicorn::path_t& path,
               const unicorn::value_t& value) = 0;
 
     virtual
     unicorn_scope_ptr
-    lock(writable_ptr::lock result,
+    lock(callback::lock callback,
          const unicorn::path_t& path) = 0;
 
     virtual
