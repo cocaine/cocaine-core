@@ -52,7 +52,7 @@ struct type_traits<asio::ip::basic_endpoint<InternetProtocol>> {
         std::string address;
         unsigned short port;
 
-        type_traits<tuple_type>::unpack(source, std::move(std::tie(address, port)));
+        type_traits<tuple_type>::unpack(source, std::tie(address, port));
 
         target.address(asio::ip::address::from_string(address));
         target.port(port);
