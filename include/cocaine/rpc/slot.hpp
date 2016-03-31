@@ -27,6 +27,7 @@
 
 #include <boost/mpl/lambda.hpp>
 #include <boost/mpl/transform.hpp>
+#include <boost/optional/optional_fwd.hpp>
 
 namespace cocaine { namespace io {
 

@@ -22,8 +22,9 @@
 
 
 #include "cocaine/context.hpp"
+#include "cocaine/dynamic.hpp"
 #include "cocaine/logging.hpp"
-
+#include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/vector.hpp"

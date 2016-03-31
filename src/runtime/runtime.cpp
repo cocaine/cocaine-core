@@ -20,6 +20,9 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/context/config.hpp"
+#include "cocaine/errors.hpp"
+#include "cocaine/idl/context.hpp"
 #include "cocaine/signal.hpp"
 
 #include "cocaine/detail/runtime/logging.hpp"
@@ -98,13 +101,13 @@ struct sighup_handler_t {
 
         COCAINE_LOG_INFO(wrapper, "resetting logger");
         std::stringstream stream;
-        stream << boost::lexical_cast<std::string>(context.config.logging.loggers);
+        stream << boost::lexical_cast<std::string>(context.config().logging.loggers);
 
         // Create a new logger and set the filter before swap to be sure that no events are missed.
         auto log = registry.builder<blackhole::config::json_t>(stream)
             .build("core");
 
-        const auto severity = context.config.logging.severity;
+        const auto severity = context.config().logging.severity;
         log.filter([=](const blackhole::record_t& record) -> bool {
             return record.severity() >= severity || !trace_t::current().empty();
         });

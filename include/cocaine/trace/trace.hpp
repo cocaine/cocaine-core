@@ -25,6 +25,8 @@
 
 #include <boost/optional.hpp>
 
+#include <string>
+
 namespace cocaine {
 
 class trace_t

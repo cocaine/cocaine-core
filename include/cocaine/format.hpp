@@ -25,14 +25,14 @@
 
 namespace cocaine { namespace aux {
 
-static inline
+inline
 std::string
 substitute(boost::format message) {
     return message.str();
 }
 
 template<typename T, class... Args>
-static inline
+inline
 std::string
 substitute(boost::format message, const T& argument, const Args&... args) {
     return substitute(std::move(message % argument), args...);
@@ -41,7 +41,7 @@ substitute(boost::format message, const T& argument, const Args&... args) {
 } // namespace aux
 
 template<class... Args>
-static inline
+inline
 std::string
 format(const std::string& format, const Args&... args) {
     try {

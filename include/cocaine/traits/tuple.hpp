@@ -21,10 +21,10 @@
 #ifndef COCAINE_TYPELIST_SERIALIZATION_TRAITS_HPP
 #define COCAINE_TYPELIST_SERIALIZATION_TRAITS_HPP
 
-#include "cocaine/traits.hpp"
-
-#include "cocaine/platform.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/format.hpp"
 #include "cocaine/rpc/tags.hpp"
+#include "cocaine/traits.hpp"
 
 #include <tuple>
 

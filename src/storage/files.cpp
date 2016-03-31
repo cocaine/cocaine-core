@@ -21,6 +21,7 @@
 #include "cocaine/detail/storage/files.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/dynamic.hpp"
 #include "cocaine/logging.hpp"
 
 #include <numeric>
@@ -198,12 +199,7 @@ files_t::find(const std::string& collection, const std::vector<std::string>& tag
         fs::directory_iterator it(store_path / *tag), end;
 
         while(it != end) {
-#if BOOST_VERSION >= 104600
-            const std::string object = it->path().filename().string();
-#else
-            const std::string object = it->path().filename();
-#endif
-
+            const std::string object = it->path().filename().native();
             if(!fs::exists(*it)) {
                 COCAINE_LOG_DEBUG(m_log, "purging object '{}' from tag '{}'", object, *tag);
 

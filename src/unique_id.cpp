@@ -20,7 +20,11 @@
 
 #include "cocaine/unique_id.hpp"
 
+#include "cocaine/errors.hpp"
+
 #include <uuid/uuid.h>
+
+#include <string>
 
 using namespace cocaine;
 

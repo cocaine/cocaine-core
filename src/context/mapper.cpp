@@ -21,7 +21,9 @@
 #include "cocaine/context/mapper.hpp"
 
 #include "cocaine/context/config.hpp"
+#include "cocaine/errors.hpp"
 
+#include <map>
 #include <numeric>
 #include <random>
 

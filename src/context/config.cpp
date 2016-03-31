@@ -19,8 +19,8 @@
 */
 
 #include "cocaine/context/config.hpp"
-
 #include "cocaine/defaults.hpp"
+#include "cocaine/errors.hpp"
 
 #include <asio/io_service.hpp>
 #include <asio/ip/host_name.hpp>

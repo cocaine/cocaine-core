@@ -19,6 +19,7 @@
 */
 
 #include "cocaine/detail/runtime/pid_file.hpp"
+#include "cocaine/errors.hpp"
 
 #include <csignal>
 

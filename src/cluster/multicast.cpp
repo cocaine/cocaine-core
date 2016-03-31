@@ -21,6 +21,7 @@
 #include "cocaine/detail/cluster/multicast.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/dynamic.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/rpc/dispatch.hpp"

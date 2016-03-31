@@ -1,4 +1,5 @@
 #include "cocaine/rpc/actor_unix.hpp"
+#include "cocaine/rpc/dispatch.hpp"
 
 #include <boost/filesystem/operations.hpp>
 
@@ -10,6 +11,8 @@
 
 #include <blackhole/attribute.hpp>
 #include <blackhole/logger.hpp>
+
+#include <boost/lexical_cast.hpp>
 
 using namespace cocaine;
 

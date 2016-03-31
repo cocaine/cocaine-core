@@ -41,7 +41,12 @@ class logger_t;
 
 namespace cocaine {
 
+class actor_t;
+struct config_t;
 class context_t;
+class execution_unit_t;
+class port_mapping_t;
+
 
 template<class> class dispatch;
 template<class> class upstream;
@@ -57,12 +62,16 @@ namespace cocaine { namespace api {
 struct cluster_t;
 struct gateway_t;
 struct isolate_t;
+class repository_t;
 struct service_t;
 struct storage_t;
 
 }} // namespace cocaine::api
 
 namespace cocaine { namespace io {
+
+// used for context signals
+struct context_tag;
 
 // I/O threads
 

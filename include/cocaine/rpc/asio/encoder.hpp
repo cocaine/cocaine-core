@@ -26,6 +26,8 @@
 #include "cocaine/hpack/header.hpp"
 #include "cocaine/hpack/msgpack_traits.hpp"
 
+#include "cocaine/memory.hpp"
+
 #include "cocaine/rpc/protocol.hpp"
 
 #include "cocaine/trace/trace.hpp"
