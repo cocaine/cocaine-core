@@ -31,7 +31,7 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/rpc/actor.hpp"
 
-#include <boost/optional.hpp>
+#include <boost/optional/optional.hpp>
 
 #include <boost/spirit/include/karma_char.hpp>
 #include <boost/spirit/include/karma_generate.hpp>
@@ -268,9 +268,9 @@ context_t::insert(const std::string& name, std::unique_ptr<actor_t> service) {
 
     // Fire off the signal to alert concerned subscribers about the service removal event.
     impl->signals.invoke<context::service::exposed>(actor.prototype().name(), std::forward_as_tuple(
-    actor.endpoints(),
-    actor.prototype().version(),
-    actor.prototype().root()
+        actor.endpoints(),
+        actor.prototype().version(),
+        actor.prototype().root()
     ));
 }
 
@@ -302,9 +302,9 @@ context_t::remove(const std::string& name) {
 
     // Fire off the signal to alert concerned subscribers about the service termination event.
     impl->signals.invoke<context::service::removed>(service->prototype().name(), std::forward_as_tuple(
-    nothing,
-    service->prototype().version(),
-    service->prototype().root()
+        nothing,
+        service->prototype().version(),
+        service->prototype().root()
     ));
 
     return service;

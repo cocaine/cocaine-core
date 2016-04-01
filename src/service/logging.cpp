@@ -87,8 +87,9 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
             auto log = registry.builder<blackhole::config::json_t>(stream)
                 .build(backend);
 
-            log.filter([&](const blackhole::record_t& record) -> bool {
-                return record.severity() >= context.config().logging.severity || !trace_t::current().empty();
+            auto severity = context.config().logging.severity;
+            log.filter([=](const blackhole::record_t& record) -> bool {
+                return record.severity() >= severity || !trace_t::current().empty();
             });
 
             logger.reset(new blackhole::root_logger_t(std::move(log)));
