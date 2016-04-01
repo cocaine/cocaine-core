@@ -42,6 +42,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/context/config.hpp"
+#include "cocaine/context/signal.hpp"
 #include "cocaine/dynamic.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/traits/attributes.hpp"
@@ -100,7 +101,7 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
                 reset_logger_fn();
             }
         });
-        context.listen(signals, asio);
+        context.signal_hub().listen(signals, asio);
     }
 
     on<io::log::emit>(std::bind(&logging_t::on_emit, this, ph::_1, ph::_2, ph::_3, ph::_4));

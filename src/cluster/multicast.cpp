@@ -21,6 +21,7 @@
 #include "cocaine/detail/cluster/multicast.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/context/signal.hpp"
 #include "cocaine/dynamic.hpp"
 #include "cocaine/logging.hpp"
 
@@ -144,7 +145,7 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
     m_signals = std::make_shared<dispatch<context_tag>>(name);
     m_signals->on<context::prepared>(std::bind(&multicast_t::on_publish, this, std::error_code()));
 
-    context.listen(m_signals, m_locator.asio());
+    context.signal_hub().listen(m_signals, m_locator.asio());
 }
 
 multicast_t::~multicast_t() {

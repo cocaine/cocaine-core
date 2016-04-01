@@ -21,6 +21,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/context/config.hpp"
+#include "cocaine/context/signal.hpp"
 #include "cocaine/errors.hpp"
 #include "cocaine/idl/context.hpp"
 #include "cocaine/signal.hpp"
@@ -114,7 +115,7 @@ struct sighup_handler_t {
 
         logger = std::move(log);
 
-        context.invoke<cocaine::io::context::os_signal>(signum, info);
+        context.signal_hub().invoke<cocaine::io::context::os_signal>(signum, info);
         sig_handler.async_wait(SIGHUP, *this);
     }
 };
@@ -128,7 +129,7 @@ struct sigchild_handler_t {
             return;
         }
         assert(!ec);
-        context.invoke<cocaine::io::context::os_signal>(signum, info);
+        context.signal_hub().invoke<cocaine::io::context::os_signal>(signum, info);
         handler.async_wait(signum, *this);
     }
 };

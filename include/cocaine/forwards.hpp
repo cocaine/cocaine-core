@@ -51,6 +51,7 @@ class trace_t;
 
 template<class> class dispatch;
 template<class> class upstream;
+template<class> class retroactive_signal;
 
 class dynamic_t;
 

@@ -37,7 +37,6 @@ class handler_base_t;
 
 
 class context_t {
-    COCAINE_DECLARE_NONCOPYABLE(context_t)
 
     struct impl_t;
     struct impl_deleter_t {
@@ -55,17 +54,19 @@ public:
     std::unique_ptr<logging::logger_t>
     log(const std::string& source, blackhole::attributes_t attributes);
 
-//    template<class Category, class... Args>
-//    typename api::category_traits<Category>::ptr_type
-//    get(const std::string& type, Args&&... args) const;
+    const api::repository_t&
+    repository() const;
 
-    const api::repository_t& repository() const;
+    retroactive_signal<io::context_tag>&
+    signal_hub();
+
+    const config_t&
+    config() const;
+
+    port_mapping_t&
+    mapper();
+
     // Service API
-
-    const config_t& config() const;
-
-    port_mapping_t& mapper() const;
-
     void
     insert(const std::string& name, std::unique_ptr<actor_t> service);
 
@@ -74,15 +75,6 @@ public:
 
     auto
     locate(const std::string& name) const -> boost::optional<const actor_t&>;
-
-    // Signals API
-
-    void
-    listen(const std::shared_ptr<dispatch<io::context_tag>>& slot, asio::io_service& asio);
-
-    template<class Event, class... Args>
-    void
-    invoke(const Args&... args);
 
     // Network I/O
 

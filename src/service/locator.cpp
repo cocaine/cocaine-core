@@ -25,6 +25,7 @@
 #include "cocaine/api/storage.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/context/signal.hpp"
 #include "cocaine/dynamic.hpp"
 #include "cocaine/engine.hpp"
 
@@ -403,7 +404,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         throw std::system_error(e.code(), "unable to initialize routing groups");
     }
 
-    context.listen(m_signals, asio);
+    context.signal_hub().listen(m_signals, asio);
 }
 
 locator_t::~locator_t() {

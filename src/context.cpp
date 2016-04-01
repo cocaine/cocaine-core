@@ -165,44 +165,44 @@ context_t::~context_t() {
     terminate();
 }
 
-void
-context_t::listen(const std::shared_ptr<dispatch<io::context_tag>>& slot, asio::io_service& asio) {
-    impl->signals.listen(slot, asio);
-}
-
-template<class Event, class... Args>
-void
-context_t::invoke(const Args&... args) {
-    impl->signals.invoke<Event>(args...);
-}
-
-template
-void
-context_t::invoke<io::context::os_signal, int, siginfo_t>(const int&, const siginfo_t&);
-
-template
-void
-context_t::invoke<io::context::prepared>();
-
-template
-void
-context_t::invoke<io::context::shutdown>();
-
-template
-void
-context_t::invoke<io::context::service::exposed,
-                  std::string,
-                  std::tuple<std::vector<asio::ip::tcp::endpoint>, unsigned int, io::graph_root_t>>(
-    const std::string&,
-    const std::tuple<std::vector<asio::ip::tcp::endpoint>, unsigned int, io::graph_root_t>&);
-
-template
-void
-context_t::invoke<io::context::service::removed,
-                  std::string,
-                  std::tuple<std::vector<asio::ip::tcp::endpoint>, unsigned int, io::graph_root_t>>(
-    const std::string&,
-    const std::tuple<std::vector<asio::ip::tcp::endpoint>, unsigned int, io::graph_root_t>&);
+//void
+//context_t::listen(const std::shared_ptr<dispatch<io::context_tag>>& slot, asio::io_service& asio) {
+//    impl->signals.listen(slot, asio);
+//}
+//
+//template<class Event, class... Args>
+//void
+//context_t::invoke(const Args&... args) {
+//    impl->signals.invoke<Event>(args...);
+//}
+//
+//template
+//void
+//context_t::invoke<io::context::os_signal, int, siginfo_t>(const int&, const siginfo_t&);
+//
+//template
+//void
+//context_t::invoke<io::context::prepared>();
+//
+//template
+//void
+//context_t::invoke<io::context::shutdown>();
+//
+//template
+//void
+//context_t::invoke<io::context::service::exposed,
+//                  std::string,
+//                  std::tuple<std::vector<asio::ip::tcp::endpoint>, unsigned int, io::graph_root_t>>(
+//    const std::string&,
+//    const std::tuple<std::vector<asio::ip::tcp::endpoint>, unsigned int, io::graph_root_t>&);
+//
+//template
+//void
+//context_t::invoke<io::context::service::removed,
+//                  std::string,
+//                  std::tuple<std::vector<asio::ip::tcp::endpoint>, unsigned int, io::graph_root_t>>(
+//    const std::string&,
+//    const std::tuple<std::vector<asio::ip::tcp::endpoint>, unsigned int, io::graph_root_t>&);
 
 std::unique_ptr<logging::logger_t>
 context_t::log(const std::string& source) {
@@ -222,13 +222,18 @@ context_t::repository() const {
     return *impl->repository;
 }
 
+retroactive_signal<io::context_tag>&
+context_t::signal_hub() {
+    return impl->signals;
+}
+
 const config_t&
 context_t::config() const {
     return impl->config;
 }
 
 port_mapping_t&
-context_t::mapper() const {
+context_t::mapper(){
     return impl->mapper;
 }
 
