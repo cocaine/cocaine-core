@@ -22,7 +22,10 @@
 #define COCAINE_REPOSITORY_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/errors.hpp"
+#include "cocaine/memory.hpp"
 
+#include <map>
 #include <typeinfo>
 #include <type_traits>
 

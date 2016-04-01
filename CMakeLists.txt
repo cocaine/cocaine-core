@@ -82,9 +82,11 @@ ADD_LIBRARY(cocaine-core SHARED
     src/context/config.cpp
     src/context/mapper.cpp
     src/crypto.cpp
+    src/decoder.cpp
     src/defaults.cpp
     src/dispatch.cpp
     src/dynamic.cpp
+    src/encoder.cpp
     src/engine.cpp
     src/essentials.cpp
     src/gateway/adhoc.cpp

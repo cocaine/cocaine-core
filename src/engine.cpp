@@ -26,10 +26,13 @@
 #include "cocaine/detail/chamber.hpp"
 
 #include "cocaine/rpc/asio/transport.hpp"
+#include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/rpc/session.hpp"
 
 #include <blackhole/logger.hpp>
 #include <blackhole/wrapper.hpp>
+
+#include <boost/lexical_cast.hpp>
 
 #include <asio/io_service.hpp>
 #include <asio/ip/tcp.hpp>

@@ -23,6 +23,7 @@
 
 #include "cocaine/common.hpp"
 
+#include <map>
 #include <random>
 
 namespace cocaine { namespace service {

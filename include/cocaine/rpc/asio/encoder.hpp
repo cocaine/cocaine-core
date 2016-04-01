@@ -21,19 +21,10 @@
 #ifndef COCAINE_IO_ENCODER_HPP
 #define COCAINE_IO_ENCODER_HPP
 
-#include "cocaine/errors.hpp"
-
 #include "cocaine/hpack/header.hpp"
-#include "cocaine/hpack/msgpack_traits.hpp"
-
+#include "cocaine/memory.hpp"
 #include "cocaine/rpc/protocol.hpp"
-
-#include "cocaine/trace/trace.hpp"
-
-#include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
-
-#include <cstring>
 
 namespace cocaine { namespace io {
 
@@ -49,22 +40,10 @@ struct encoded_buffers_t {
 
     static const size_t kInitialBufferSize = 2048;
 
-    encoded_buffers_t():
-        offset(0)
-    {
-        vector.resize(kInitialBufferSize);
-    }
+    encoded_buffers_t();
 
     void
-    write(const char* data, size_t size) {
-        while(size > vector.size() - offset) {
-            vector.resize(vector.size() * 2);
-        }
-
-        std::memcpy(vector.data() + offset, data, size);
-
-        offset += size;
-    }
+    write(const char* data, size_t size);
 
     // Movable
 
@@ -84,14 +63,10 @@ struct encoded_message_t {
     friend struct io::encoder_t;
 
     auto
-    data() const -> const char* {
-        return buffer.vector.data();
-    }
+    data() const -> const char*;
 
     size_t
-    size() const {
-        return buffer.offset;
-    }
+    size() const;
 
 private:
     encoded_buffers_t buffer;
@@ -103,7 +78,7 @@ struct unbound_message_t {
     // Partially applied message encoding function.
     const function_type bind;
 
-    unbound_message_t(function_type&& bind_): bind(std::move(bind_)) { }
+    unbound_message_t(function_type&& bind_);
 };
 
 } // namespace aux
@@ -116,6 +91,7 @@ struct encoder_t {
 
     typedef aux::unbound_message_t message_type;
     typedef aux::encoded_message_t encoded_message_type;
+    typedef msgpack::packer<aux::encoded_buffers_t> packer_type;
 
     // TODO: Do we really need owning header storage?
     template<class Event, class... Args>
@@ -124,7 +100,7 @@ struct encoder_t {
     tether(encoder_t& encoder, uint64_t channel_id, const hpack::header_storage_t& headers, Args&... args) {
         aux::encoded_message_t message;
 
-        msgpack::packer<aux::encoded_buffers_t> packer(message.buffer);
+        packer_type packer(message.buffer);
 
         packer.pack_array(4);
 
@@ -138,32 +114,17 @@ struct encoder_t {
         type_traits<typename event_traits<Event>::argument_type>::pack(packer,
             std::forward<Args>(args)...);
 
-        // Optional message metadata
-
-        packer.pack_array(3);
-
-        uint64_t trace_id  = trace_t::current().get_trace_id();
-        uint64_t span_id   = trace_t::current().get_id();
-        uint64_t parent_id = trace_t::current().get_parent_id();
-
-        hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer, encoder.hpack_context, hpack::header::create_data(trace_id));
-        hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer, encoder.hpack_context, hpack::header::create_data(span_id));
-        hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, encoder.hpack_context, hpack::header::create_data(parent_id));
-
-        for (const auto& header: headers.get_headers()) {
-            // TODO: maybe we need a runtime check not to pack headers twice
-            hpack::msgpack_traits::pack(packer, encoder.hpack_context, header);
-        }
-
+        encoder.pack_headers(packer, headers);
         return message;
     }
 
     aux::encoded_message_t
-    encode(const message_type& message) {
-        return message.bind(*this);
-    }
+    encode(const message_type& message);
 
 private:
+    void
+    pack_headers(packer_type& packer, const hpack::header_storage_t& headers);
+
     // HPACK HTTP/2.0 tables.
     hpack::header_table_t hpack_context;
 };

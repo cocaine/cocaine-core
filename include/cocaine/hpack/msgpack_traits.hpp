@@ -22,6 +22,7 @@
 #pragma once
 
 #include "cocaine/hpack/header.hpp"
+#include "cocaine/hpack/static_table.hpp"
 
 #include <msgpack/pack.hpp>
 #include <msgpack/object.hpp>

@@ -24,20 +24,12 @@
 #include "cocaine/config.hpp"
 #include "cocaine/platform.hpp"
 
-#include <cstdint>
-#include <map>
-#include <string>
-#include <vector>
-
 #define BOOST_FILESYSTEM_VERSION 3
 #define BOOST_FILESYSTEM_NO_DEPRECATED
 
 #if !defined(COCAINE_DEBUG)
     #define BOOST_DISABLE_ASSERTS
 #endif
-
-#include <boost/assert.hpp>
-#include <boost/version.hpp>
 
 #define COCAINE_DECLARE_NONCOPYABLE(type)   \
     type(const type& other) = delete;       \
@@ -48,8 +40,6 @@
 #define COCAINE_UNUSED_(parameter)          \
     parameter __attribute__((unused))
 
-#include "cocaine/errors.hpp"
 #include "cocaine/forwards.hpp"
-#include "cocaine/memory.hpp"
 
 #endif

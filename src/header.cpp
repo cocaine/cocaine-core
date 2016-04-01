@@ -20,6 +20,9 @@
 
 #include "cocaine/hpack/header.h"
 #include "cocaine/hpack/header.hpp"
+#include "cocaine/hpack/static_table.hpp"
+
+#include <cassert>
 
 namespace cocaine { namespace hpack {
 

@@ -22,8 +22,10 @@
 
 
 #include "cocaine/context.hpp"
+#include "cocaine/context/signal.hpp"
+#include "cocaine/dynamic.hpp"
 #include "cocaine/logging.hpp"
-
+#include "cocaine/rpc/dispatch.hpp"
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/vector.hpp"
@@ -115,7 +117,7 @@ predefine_t::predefine_t(context_t& context, interface& locator, const std::stri
     m_signals = std::make_shared<dispatch<context_tag>>(name);
     m_signals->on<context::prepared>(std::bind(&predefine_t::on_announce, this, std::error_code()));
 
-    context.listen(m_signals, m_locator.asio());
+    context.signal_hub().listen(m_signals, m_locator.asio());
 }
 
 predefine_t::~predefine_t() {

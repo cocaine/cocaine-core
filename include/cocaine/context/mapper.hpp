@@ -24,6 +24,7 @@
 #include "cocaine/common.hpp"
 
 #include <deque>
+#include <map>
 #include <mutex>
 
 namespace cocaine {

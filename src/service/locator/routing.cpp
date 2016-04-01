@@ -19,7 +19,7 @@
 */
 
 #include "cocaine/detail/service/locator/routing.hpp"
-
+#include "cocaine/errors.hpp"
 #include "cocaine/logging.hpp"
 
 #include <math.h>

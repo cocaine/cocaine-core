@@ -20,6 +20,7 @@
 
 #include "cocaine/rpc/session.hpp"
 
+#include "cocaine/hpack/static_table.hpp"
 #include "cocaine/logging.hpp"
 
 #include "cocaine/rpc/asio/transport.hpp"

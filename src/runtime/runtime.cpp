@@ -20,6 +20,10 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/context.hpp"
+#include "cocaine/context/config.hpp"
+#include "cocaine/context/signal.hpp"
+#include "cocaine/errors.hpp"
+#include "cocaine/idl/context.hpp"
 #include "cocaine/signal.hpp"
 
 #include "cocaine/detail/runtime/logging.hpp"
@@ -98,20 +102,20 @@ struct sighup_handler_t {
 
         COCAINE_LOG_INFO(wrapper, "resetting logger");
         std::stringstream stream;
-        stream << boost::lexical_cast<std::string>(context.config.logging.loggers);
+        stream << boost::lexical_cast<std::string>(context.config().logging.loggers);
 
         // Create a new logger and set the filter before swap to be sure that no events are missed.
         auto log = registry.builder<blackhole::config::json_t>(stream)
             .build("core");
 
-        const auto severity = context.config.logging.severity;
+        const auto severity = context.config().logging.severity;
         log.filter([=](const blackhole::record_t& record) -> bool {
             return record.severity() >= severity || !trace_t::current().empty();
         });
 
         logger = std::move(log);
 
-        context.invoke<cocaine::io::context::os_signal>(signum, info);
+        context.signal_hub().invoke<cocaine::io::context::os_signal>(signum, info);
         sig_handler.async_wait(SIGHUP, *this);
     }
 };
@@ -125,7 +129,7 @@ struct sigchild_handler_t {
             return;
         }
         assert(!ec);
-        context.invoke<cocaine::io::context::os_signal>(signum, info);
+        context.signal_hub().invoke<cocaine::io::context::os_signal>(signum, info);
         handler.async_wait(signum, *this);
     }
 };
@@ -304,7 +308,7 @@ main(int argc, char* argv[]) {
     // Run context
     std::unique_ptr<context_t> context;
     try {
-        context.reset(new context_t(*config, std::move(logger)));
+        context = get_context(*config, std::move(logger));
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(root, "unable to initialize the context - {}.", error::to_string(e));
         signal_handler.stop();

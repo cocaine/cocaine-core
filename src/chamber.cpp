@@ -20,6 +20,8 @@
 
 #include "cocaine/detail/chamber.hpp"
 
+#include "cocaine/memory.hpp"
+
 #include <iomanip>
 #include <sstream>
 

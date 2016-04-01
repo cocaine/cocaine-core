@@ -23,116 +23,70 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/context/config.hpp"
-#include "cocaine/context/mapper.hpp"
-#include "cocaine/context/signal.hpp"
-
-#include "cocaine/idl/context.hpp"
-
-#include "cocaine/locked_ptr.hpp"
-#include "cocaine/repository.hpp"
-
-#include <boost/optional.hpp>
-
 #include <blackhole/attributes.hpp>
+
+#include <boost/optional/optional_fwd.hpp>
 
 namespace cocaine {
 
 // Context
 
-namespace signal {
-class handler_base_t;
-}
-
-class actor_t;
-class execution_unit_t;
-
 class context_t {
-    COCAINE_DECLARE_NONCOPYABLE(context_t)
-
-    typedef std::deque<std::pair<std::string, std::unique_ptr<actor_t>>> service_list_t;
-
-    // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
-    // for the Blackhole, when all the common stuff is extracted to a separate library.
-    std::unique_ptr<logging::logger_t> m_log;
-
-    // NOTE: This is the first object in the component tree, all the other dynamic components, be it
-    // storages or isolates, have to be declared after this one.
-    std::unique_ptr<api::repository_t> m_repository;
-
-    // A pool of execution units - threads responsible for doing all the service invocations.
-    std::vector<std::unique_ptr<execution_unit_t>> m_pool;
-
-    // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
-    // because services are allowed to start and stop other services during their lifetime.
-    synchronized<service_list_t> m_services;
-
-    // Context signalling hub.
-    retroactive_signal<io::context_tag> m_signals;
-
 public:
-    const config_t config;
+    virtual
+    ~context_t() {}
 
-    // Service port mapping and pinning.
-    port_mapping_t mapper;
-
-public:
-    context_t(config_t config, std::unique_ptr<logging::logger_t> log);
-   ~context_t();
-
+    virtual
     std::unique_ptr<logging::logger_t>
-    log(const std::string& source);
+    log(const std::string& source) = 0;
 
+    virtual
     std::unique_ptr<logging::logger_t>
-    log(const std::string& source, blackhole::attributes_t attributes);
+    log(const std::string& source, blackhole::attributes_t attributes) = 0;
 
-    template<class Category, class... Args>
-    typename api::category_traits<Category>::ptr_type
-    get(const std::string& type, Args&&... args) const;
+    virtual
+    const api::repository_t&
+    repository() const = 0;
+
+    virtual
+    retroactive_signal<io::context_tag>&
+    signal_hub() = 0;
+
+    virtual
+    const config_t&
+    config() const = 0;
+
+    virtual
+    port_mapping_t&
+    mapper() = 0;
 
     // Service API
-
+    virtual
     void
-    insert(const std::string& name, std::unique_ptr<actor_t> service);
+    insert(const std::string& name, std::unique_ptr<actor_t> service) = 0;
 
+    virtual
     auto
-    remove(const std::string& name) -> std::unique_ptr<actor_t>;
+    remove(const std::string& name) -> std::unique_ptr<actor_t> = 0;
 
+    virtual
     auto
-    locate(const std::string& name) const -> boost::optional<const actor_t&>;
-
-    // Signals API
-
-    void
-    listen(const std::shared_ptr<dispatch<io::context_tag>>& slot, asio::io_service& asio) {
-        m_signals.listen(slot, asio);
-    }
-
-    template<class Event, class... Args>
-    void
-    invoke(Args&&... args) {
-        m_signals.invoke<Event>(std::forward<Args>(args)...);
-    }
+    locate(const std::string& name) const -> boost::optional<const actor_t&> = 0;
 
     // Network I/O
 
+    virtual
     auto
-    engine() -> execution_unit_t&;
+    engine() -> execution_unit_t& = 0;
 
+    virtual
     void
-    terminate();
-
-private:
-    void
-    bootstrap();
-
+    terminate() = 0;
 };
 
-template<class Category, class... Args>
-typename api::category_traits<Category>::ptr_type
-context_t::get(const std::string& type, Args&&... args) const {
-    return m_repository->get<Category>(type, std::forward<Args>(args)...);
-}
+std::unique_ptr<context_t>
+get_context(config_t config, std::unique_ptr<logging::logger_t> log);
+
 
 } // namespace cocaine
 

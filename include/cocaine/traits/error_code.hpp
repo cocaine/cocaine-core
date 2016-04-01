@@ -21,6 +21,7 @@
 #ifndef COCAINE_ERROR_CODE_SERIALIZATION_TRAITS_HPP
 #define COCAINE_ERROR_CODE_SERIALIZATION_TRAITS_HPP
 
+#include "cocaine/errors.hpp"
 #include "cocaine/traits.hpp"
 #include "cocaine/traits/tuple.hpp"
 

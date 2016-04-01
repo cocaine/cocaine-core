@@ -23,7 +23,10 @@
 
 #include "cocaine/common.hpp"
 
-#include <boost/optional.hpp>
+#include <boost/optional/optional_fwd.hpp>
+
+#include <functional>
+#include <string>
 
 namespace cocaine {
 

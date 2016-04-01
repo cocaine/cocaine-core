@@ -22,6 +22,7 @@
 #define COCAINE_IO_BUFFERED_READABLE_STREAM_HPP
 
 #include "cocaine/errors.hpp"
+#include "cocaine/memory.hpp"
 
 #include <functional>
 

@@ -20,6 +20,8 @@
 
 #include "cocaine/rpc/dispatch.hpp"
 
+#include "cocaine/errors.hpp"
+
 using namespace cocaine::io;
 
 basic_dispatch_t::basic_dispatch_t(const std::string& name):

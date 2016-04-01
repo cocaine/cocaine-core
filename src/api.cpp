@@ -20,8 +20,8 @@
 
 #include "cocaine/api/unicorn.hpp"
 #include "cocaine/api/storage.hpp"
-
 #include "cocaine/context.hpp"
+#include "cocaine/context/config.hpp"
 
 namespace cocaine { namespace api {
 
@@ -29,12 +29,12 @@ namespace cocaine { namespace api {
 
 category_traits<storage_t>::ptr_type
 storage(context_t& context, const std::string& name) {
-    auto it = context.config.storages.find(name);
+    auto it = context.config().storages.find(name);
 
-    if(it == context.config.storages.end()) {
+    if(it == context.config().storages.end()) {
         throw std::system_error(std::make_error_code(std::errc::argument_out_of_domain), name);
     }
-    return context.get<storage_t>(it->second.type, context, name, it->second.args);
+    return context.repository().get<storage_t>(it->second.type, context, name, it->second.args);
 }
 
 // Unicorn
@@ -49,13 +49,13 @@ unicorn_t::unicorn_t(context_t& /*context*/, const std::string& /*name*/, const 
  */
 category_traits<unicorn_t>::ptr_type
 unicorn(context_t& context, const std::string& name) {
-    auto it = context.config.unicorns.find(name);
+    auto it = context.config().unicorns.find(name);
 
-    if(it == context.config.unicorns.end()) {
+    if(it == context.config().unicorns.end()) {
         throw std::system_error(std::make_error_code(std::errc::argument_out_of_domain), name);
     }
 
-    return context.get<unicorn_t>(it->second.type, context, name, it->second.args);
+    return context.repository().get<unicorn_t>(it->second.type, context, name, it->second.args);
 }
 
 }} // namespace cocaine::api
