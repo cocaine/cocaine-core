@@ -21,14 +21,12 @@
 #ifndef COCAINE_IO_DECODER_HPP
 #define COCAINE_IO_DECODER_HPP
 
-#include "cocaine/errors.hpp"
-
+#include "cocaine/common.hpp"
 #include "cocaine/hpack/header.hpp"
-#include "cocaine/hpack/msgpack_traits.hpp"
 
-#include "cocaine/traits.hpp"
+#include <boost/optional/optional.hpp>
 
-#include <boost/range/algorithm/find_if.hpp>
+#include <msgpack/object.hpp>
 
 namespace cocaine { namespace io {
 
@@ -40,41 +38,30 @@ struct decoded_message_t {
     friend struct io::decoder_t;
 
     auto
-    span() const -> uint64_t {
-        return object.via.array.ptr[0].as<uint64_t>();
-    }
+    span() const -> uint64_t;
 
     auto
-    type() const -> uint64_t {
-        return object.via.array.ptr[1].as<uint64_t>();
-    }
+    type() const -> uint64_t;
 
     auto
-    args() const -> const msgpack::object& {
-        return object.via.array.ptr[2];
-    }
+    args() const -> const msgpack::object&;
 
     auto
-    meta() const -> const std::vector<hpack::header_t>& {
-        return metadata;
-    }
+    meta() const -> const std::vector<hpack::header_t>&;
 
     template<class Header>
     auto
     meta() const -> boost::optional<hpack::header_t> {
-        auto it = boost::find_if(metadata, [](const hpack::header_t& element) -> bool {
-            return element.get_name() == Header::name();
-        });
-
-        return it == metadata.end() ? boost::none : boost::make_optional(*it);
+        return meta(Header::name());
     }
 
     void
-    clear() {
-        metadata.clear();
-    }
+    clear();
 
 private:
+    auto
+    meta(const hpack::header::data_t& name) const -> boost::optional<hpack::header_t>;
+
     // These objects keep references to message buffer in the Decoder.
     msgpack::object object;
     std::vector<hpack::header_t> metadata;
@@ -91,41 +78,7 @@ struct decoder_t {
     typedef aux::decoded_message_t message_type;
 
     size_t
-    decode(const char* data, size_t size, message_type& message, std::error_code& ec) {
-        size_t offset = 0;
-
-        // NOTE: We have to clear msgpack zone every decoding iteration to prevent memory leaking
-        // for objects structure, because they have no way to notify about self-destruction. Hope
-        // someday we migrate to v1.* and everything will be fine automatically.
-        zone.clear();
-
-        msgpack::unpack_return rv = msgpack::unpack(data, size, &offset, &zone, &message.object);
-
-        if(rv == msgpack::UNPACK_SUCCESS || rv == msgpack::UNPACK_EXTRA_BYTES) {
-            if(message.object.type != msgpack::type::ARRAY || message.object.via.array.size < 3) {
-                ec = error::frame_format_error;
-            } else if(message.object.via.array.ptr[0].type != msgpack::type::POSITIVE_INTEGER ||
-                      message.object.via.array.ptr[1].type != msgpack::type::POSITIVE_INTEGER ||
-                      message.object.via.array.ptr[2].type != msgpack::type::ARRAY)
-            {
-                ec = error::frame_format_error;
-            } else if(message.object.via.array.size > 3) {
-                if(message.object.via.array.ptr[3].type != msgpack::type::ARRAY) {
-                    ec = error::frame_format_error;
-                } else if(!hpack::msgpack_traits::unpack_vector(
-                          message.object.via.array.ptr[3], hpack_context, message.metadata))
-                {
-                    ec = error::hpack_error;
-                }
-            }
-        } else if(rv == msgpack::UNPACK_CONTINUE) {
-            ec = error::insufficient_bytes;
-        } else if(rv == msgpack::UNPACK_PARSE_ERROR) {
-            ec = error::parse_error;
-        }
-
-        return offset;
-    }
+    decode(const char* data, size_t size, message_type& message, std::error_code& ec);
 
 private:
     msgpack::zone zone;

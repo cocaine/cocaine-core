@@ -46,6 +46,7 @@ struct config_t;
 class context_t;
 class execution_unit_t;
 class port_mapping_t;
+class trace_t;
 
 
 template<class> class dispatch;
@@ -67,6 +68,13 @@ struct service_t;
 struct storage_t;
 
 }} // namespace cocaine::api
+
+namespace cocaine { namespace hpack {
+
+struct headers;
+struct header_static_table;
+
+}} // namespace cocaine::hpack
 
 namespace cocaine { namespace io {
 

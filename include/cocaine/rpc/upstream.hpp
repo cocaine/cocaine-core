@@ -22,6 +22,7 @@
 #define COCAINE_IO_UPSTREAM_HPP
 
 #include "cocaine/rpc/session.hpp"
+#include "cocaine/trace/trace.hpp"
 
 namespace cocaine {
 
