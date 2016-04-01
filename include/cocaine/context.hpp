@@ -31,64 +31,62 @@ namespace cocaine {
 
 // Context
 
-namespace signal {
-class handler_base_t;
-}
-
-
 class context_t {
-
-    struct impl_t;
-    struct impl_deleter_t {
-        void operator()(impl_t* ptr) const;
-    };
-    std::unique_ptr<impl_t, impl_deleter_t> impl;
-
 public:
-    context_t(config_t config, std::unique_ptr<logging::logger_t> log);
-   ~context_t();
+    virtual
+    ~context_t() {}
 
+    virtual
     std::unique_ptr<logging::logger_t>
-    log(const std::string& source);
+    log(const std::string& source) = 0;
 
+    virtual
     std::unique_ptr<logging::logger_t>
-    log(const std::string& source, blackhole::attributes_t attributes);
+    log(const std::string& source, blackhole::attributes_t attributes) = 0;
 
+    virtual
     const api::repository_t&
-    repository() const;
+    repository() const = 0;
 
+    virtual
     retroactive_signal<io::context_tag>&
-    signal_hub();
+    signal_hub() = 0;
 
+    virtual
     const config_t&
-    config() const;
+    config() const = 0;
 
+    virtual
     port_mapping_t&
-    mapper();
+    mapper() = 0;
 
     // Service API
+    virtual
     void
-    insert(const std::string& name, std::unique_ptr<actor_t> service);
+    insert(const std::string& name, std::unique_ptr<actor_t> service) = 0;
 
+    virtual
     auto
-    remove(const std::string& name) -> std::unique_ptr<actor_t>;
+    remove(const std::string& name) -> std::unique_ptr<actor_t> = 0;
 
+    virtual
     auto
-    locate(const std::string& name) const -> boost::optional<const actor_t&>;
+    locate(const std::string& name) const -> boost::optional<const actor_t&> = 0;
 
     // Network I/O
 
+    virtual
     auto
-    engine() -> execution_unit_t&;
+    engine() -> execution_unit_t& = 0;
 
+    virtual
     void
-    terminate();
-
-private:
-    void
-    bootstrap();
-
+    terminate() = 0;
 };
+
+std::unique_ptr<context_t>
+get_context(config_t config, std::unique_ptr<logging::logger_t> log);
+
 
 } // namespace cocaine
 
