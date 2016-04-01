@@ -24,6 +24,7 @@
 #include "cocaine/common.hpp"
 
 #include <array>
+#include <cstdint>
 
 namespace cocaine {
 
