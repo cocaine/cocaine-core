@@ -71,9 +71,9 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
 {
     const auto backend = args.as_object().at("backend", DEFAULT_BACKEND).as_string();
     // TODO (@esafronov v12.6): Using cache to allow resources reuse.
-    // logger = context.log(logging::name_t(backend), format("%s[core]", name), {});
+    // logger = context.log(logging::name_t(backend), format("{}[core]", name), {});
     if (backend == "core") {
-        logger = context.log(format("%s[core]", name));
+        logger = context.log(format("{}[core]", name));
     } else {
         auto reset_logger_fn = [=, &context]() {
             auto registry = blackhole::registry_t::configured();

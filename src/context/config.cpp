@@ -227,7 +227,7 @@ struct dynamic_converter<config_t::logging_t> {
         try {
             return priorities.at(severity);
         } catch (const std::out_of_range&) {
-            throw cocaine::error_t("severity \"%s\" not found", severity);
+            throw cocaine::error_t("severity \"{}\" not found", severity);
         }
     }
 };
@@ -255,7 +255,7 @@ config_t::config_t(const std::string& source) {
 
     if(!json_reader.Parse<rapidjson::kParseDefaultFlags>(json_stream, configuration_constructor)) {
         if(json_reader.HasParseError()) {
-            throw cocaine::error_t("configuration file is corrupted - %s", json_reader.GetParseError());
+            throw cocaine::error_t("configuration file is corrupted - {}", json_reader.GetParseError());
         } else {
             throw cocaine::error_t("configuration file is corrupted");
         }
@@ -291,9 +291,9 @@ config_t::config_t(const std::string& source) {
     const auto runtime_path_status = fs::status(path.runtime);
 
     if(!fs::exists(runtime_path_status)) {
-        throw cocaine::error_t("directory %s does not exist", path.runtime);
+        throw cocaine::error_t("directory {} does not exist", path.runtime);
     } else if(!fs::is_directory(runtime_path_status)) {
-        throw cocaine::error_t("%s is not a directory", path.runtime);
+        throw cocaine::error_t("{} is not a directory", path.runtime);
     }
 
     // Network configuration

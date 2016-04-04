@@ -131,7 +131,7 @@ struct sequence_size_error:
     public msgpack::type_error
 {
     sequence_size_error(size_t size, size_t minimal):
-        message(cocaine::format("sequence size mismatch - got %d element(s), expected at least %d",
+        message(cocaine::format("sequence size mismatch - got {} element(s), expected at least {}",
             size, minimal
         ))
     { }

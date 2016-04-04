@@ -23,6 +23,8 @@
 
 #include "cocaine/rpc/slot/function.hpp"
 
+#include <boost/optional/optional.hpp>
+
 namespace cocaine { namespace io {
 
 template<

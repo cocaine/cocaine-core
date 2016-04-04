@@ -41,7 +41,7 @@ pid_file_t::pid_file_t(const fs::path& filepath):
         fs::ifstream stream(m_filepath);
 
         if(!stream) {
-            throw cocaine::error_t("unable to read '%s'", m_filepath.string());
+            throw cocaine::error_t("unable to read '{}'", m_filepath.string());
         }
 
         pid_t pid;
@@ -59,7 +59,7 @@ pid_file_t::pid_file_t(const fs::path& filepath):
     fs::ofstream stream(m_filepath);
 
     if(!stream) {
-        throw cocaine::error_t("unable to write '%s'", m_filepath.string());
+        throw cocaine::error_t("unable to write '{}'", m_filepath.string());
     }
 
     stream << ::getpid();
@@ -79,6 +79,6 @@ pid_file_t::remove() {
     try {
         fs::remove(m_filepath);
     } catch(const fs::filesystem_error& e) {
-        throw cocaine::error_t("unable to remove '%s'", m_filepath.string());
+        throw cocaine::error_t("unable to remove '{}'", m_filepath.string());
     }
 }

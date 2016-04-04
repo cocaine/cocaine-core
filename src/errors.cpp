@@ -292,7 +292,7 @@ make_error_code(unicorn_errors code) -> std::error_code {
 
 std::string
 to_string(const std::system_error& e) {
-    return cocaine::format("[%d] %s", e.code().value(), e.what());
+    return cocaine::format("[{}] {}", e.code().value(), e.what());
 }
 
 const std::error_code

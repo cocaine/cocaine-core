@@ -132,7 +132,7 @@ public:
 
             boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
 
-            throw cocaine::error_t("couldn't start core because of %d service(s): %s",
+            throw cocaine::error_t("couldn't start core because of {} service(s): {}",
                                    errored.size(), stream.str()
             );
         } else {
@@ -189,7 +189,7 @@ public:
         m_services.apply([&](service_list_t& list) {
             auto it = std::find_if(list.begin(), list.end(), match{name});
             if(it != list.end()) {
-                throw cocaine::error_t("service '%s' already exists", name);
+                throw cocaine::error_t("service '{}' already exists", name);
             }
 
             service->run();
@@ -221,7 +221,7 @@ public:
                 service = std::move(it->second);
                 list.erase(it);
             } else {
-                throw cocaine::error_t("service '%s' doesn't exist", name);
+                throw cocaine::error_t("service '{}' doesn't exist", name);
             }
         });
 

@@ -21,33 +21,19 @@
 #ifndef COCAINE_FORMAT_HPP
 #define COCAINE_FORMAT_HPP
 
-#include <boost/format.hpp>
+#include <blackhole/extensions/format.hpp>
 
-namespace cocaine { namespace aux {
-
-inline
-std::string
-substitute(boost::format message) {
-    return message.str();
-}
-
-template<typename T, class... Args>
-inline
-std::string
-substitute(boost::format message, const T& argument, const Args&... args) {
-    return substitute(std::move(message % argument), args...);
-}
-
-} // namespace aux
+namespace cocaine {
 
 template<class... Args>
 inline
 std::string
 format(const std::string& format, const Args&... args) {
+    blackhole::fmt::MemoryWriter writer;
     try {
-        return aux::substitute(boost::format(format), args...);
-    } catch(const boost::io::format_error& e) {
-        return aux::substitute(boost::format("<unable to format message - %s>"), e.what());
+        return blackhole::fmt::format(format, args...);
+    } catch(const blackhole::fmt::FormatError& e) {
+        return std::string("<unable to format message - ") + e.what() + ">";
     }
 }
 

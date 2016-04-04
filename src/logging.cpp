@@ -51,7 +51,7 @@ demangle(const std::string& mangled) {
     BOOST_ASSERT(errors.count(status));
 
     if(status != 0) {
-        return cocaine::format("unable to demangle '%s': %s", mangled, errors.at(status));
+        return cocaine::format("unable to demangle '{}': {}", mangled, errors.at(status));
     }
 
     return buffer.get();

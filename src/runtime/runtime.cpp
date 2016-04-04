@@ -193,18 +193,18 @@ main(int argc, char* argv[]) {
         po::store(po::command_line_parser(argc, argv).options(general_options).run(), vm);
         po::notify(vm);
     } catch(const po::error& e) {
-        std::cerr << cocaine::format("ERROR: %s.", e.what()) << std::endl;
+        std::cerr << cocaine::format("ERROR: {}.", e.what()) << std::endl;
         return EXIT_FAILURE;
     }
 
     if(vm.count("help")) {
-        std::cout << cocaine::format("USAGE: %s [options]", argv[0]) << std::endl;
+        std::cout << cocaine::format("USAGE: {} [options]", argv[0]) << std::endl;
         std::cout << general_options;
         return EXIT_SUCCESS;
     }
 
     if(vm.count("version")) {
-        std::cout << cocaine::format("Cocaine %d.%d.%d", COCAINE_VERSION_MAJOR, COCAINE_VERSION_MINOR,
+        std::cout << cocaine::format("Cocaine {}.{}.{}", COCAINE_VERSION_MAJOR, COCAINE_VERSION_MINOR,
             COCAINE_VERSION_RELEASE) << std::endl;
         return EXIT_SUCCESS;
     }
@@ -225,7 +225,7 @@ main(int argc, char* argv[]) {
     try {
         config.reset(new config_t(vm["configuration"].as<std::string>()));
     } catch(const std::system_error& e) {
-        std::cerr << cocaine::format("ERROR: unable to initialize the configuration - %s.", e.what()) << std::endl;
+        std::cerr << cocaine::format("ERROR: unable to initialize the configuration - {}.", error::to_string(e)) << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -243,13 +243,13 @@ main(int argc, char* argv[]) {
         if(!vm["pidfile"].empty()) {
             pid_path = vm["pidfile"].as<std::string>();
         } else {
-            pid_path = cocaine::format("%s/cocained.pid", config->path.runtime);
+            pid_path = cocaine::format("{}/cocained.pid", config->path.runtime);
         }
 
         try {
             pidfile.reset(new pid_file_t(pid_path));
         } catch(const std::system_error& e) {
-            std::cerr << cocaine::format("ERROR: unable to create the pidfile - %s.", e.what()) << std::endl;
+            std::cerr << cocaine::format("ERROR: unable to create the pidfile - {}.", error::to_string(e)) << std::endl;
             return EXIT_FAILURE;
         }
     }
@@ -259,7 +259,7 @@ main(int argc, char* argv[]) {
 
     const auto backend = vm["logging"].as<std::string>();
 
-    std::cout << cocaine::format("[Runtime] Initializing the logging system, backend: %s.", backend)
+    std::cout << cocaine::format("[Runtime] Initializing the logging system, backend: {}.", backend)
               << std::endl;
 
     std::unique_ptr<blackhole::root_logger_t> root;

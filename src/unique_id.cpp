@@ -39,7 +39,7 @@ unique_id_t::unique_id_t(const std::string& other) {
     );
 
     if(rv != 0) {
-        throw cocaine::error_t("unable to parse '%s' as an unique id", other);
+        throw cocaine::error_t("unable to parse '{}' as an unique id", other);
     }
 }
 

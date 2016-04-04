@@ -25,6 +25,7 @@
 #include <random>
 #include <sstream>
 
+#include <boost/optional/optional.hpp>
 #include <boost/thread/tss.hpp>
 
 using namespace cocaine;
@@ -48,12 +49,12 @@ trace_t::trace_t(uint64_t trace_id_,
     if(trace_id == zero_value) {
         // If we create empty trace all values should be zero
         if(state.parent_id != zero_value || state.span_id != zero_value) {
-            throw cocaine::error_t("invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
+            throw cocaine::error_t("invalid trace parameters: {} {} {}", trace_id, state.span_id, state.parent_id);
         }
     } else {
         // If trace_id is not zero - span_id should be present.
         if(state.span_id == zero_value) {
-            throw cocaine::error_t("invalid trace parameters: %llu %llu %llu", trace_id, state.span_id, state.parent_id);
+            throw cocaine::error_t("invalid trace parameters: {} {} {}", trace_id, state.span_id, state.parent_id);
         }
     }
 }
