@@ -22,7 +22,6 @@
 #define COCAINE_EXCEPTIONS_HPP
 
 #include "cocaine/format.hpp"
-#include "cocaine/locked_ptr.hpp"
 
 #include <system_error>
 
@@ -112,8 +111,7 @@ struct registrar {
 private:
     struct impl_type;
 
-    static
-    synchronized<std::unique_ptr<impl_type>> ptr;
+    static std::unique_ptr<impl_type> ptr;
 };
 
 // Generic exception

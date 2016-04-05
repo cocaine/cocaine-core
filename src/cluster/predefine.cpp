@@ -30,11 +30,6 @@
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/vector.hpp"
 
-#include <boost/spirit/include/karma_generate.hpp>
-#include <boost/spirit/include/karma_list.hpp>
-#include <boost/spirit/include/karma_stream.hpp>
-#include <boost/spirit/include/karma_string.hpp>
-
 #include <asio/io_service.hpp>
 
 #include <blackhole/logger.hpp>
@@ -103,17 +98,6 @@ predefine_t::predefine_t(context_t& context, interface& locator, const std::stri
     m_cfg(args.to<predefine_cfg_t>()),
     m_timer(locator.asio())
 {
-    for(auto it = m_cfg.endpoints.begin(); it != m_cfg.endpoints.end(); ++it) {
-        std::ostringstream stream;
-        std::ostream_iterator<char> builder(stream);
-
-        boost::spirit::karma::generate(builder, boost::spirit::karma::stream % ", ", it->second);
-
-        COCAINE_LOG_INFO(m_log, "resolved node endpoints: {}", stream.str(), attribute_list({
-            {"uuid", it->first}
-        }));
-    }
-
     m_signals = std::make_shared<dispatch<context_tag>>(name);
     m_signals->on<context::prepared>(std::bind(&predefine_t::on_announce, this, std::error_code()));
 

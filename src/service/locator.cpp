@@ -34,6 +34,10 @@
 
 #include "cocaine/logging.hpp"
 
+#include "cocaine/repository/cluster.hpp"
+#include "cocaine/repository/gateway.hpp"
+#include "cocaine/repository/storage.hpp"
+
 #include "cocaine/rpc/actor.hpp"
 
 #include "cocaine/traits/endpoint.hpp"
@@ -49,20 +53,16 @@
 #include <blackhole/scope/holder.hpp>
 #include <blackhole/wrapper.hpp>
 
+#include <boost/algorithm/string/join.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/algorithm/transform.hpp>
-
 #include <boost/range/numeric.hpp>
-
-#include <boost/spirit/include/karma_char.hpp>
-#include <boost/spirit/include/karma_generate.hpp>
-#include <boost/spirit/include/karma_list.hpp>
-#include <boost/spirit/include/karma_string.hpp>
 
 using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
+
 
 using namespace asio;
 using namespace asio::ip;
@@ -183,16 +183,9 @@ locator_t::connect_sink_t::on_announce(const std::string& node,
         }
     });
 
-    std::ostringstream stream;
-    std::ostream_iterator<char> builder(stream);
+    const auto joined = boost::algorithm::join(update | boost::adaptors::map_keys, ", ");
 
-    boost::spirit::karma::generate(
-        builder,
-        boost::spirit::karma::string % ", ",
-        update | boost::adaptors::map_keys
-    );
-
-    COCAINE_LOG_INFO(parent->m_log, "remote client updated {:d} service(s): {}", update.size(), stream.str(), attribute_list({
+    COCAINE_LOG_INFO(parent->m_log, "remote client updated {:d} service(s): {}", update.size(), joined, attribute_list({
         {"uuid", uuid}
     }));
 
@@ -354,12 +347,9 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     // Service restrictions
 
     if(!m_cfg.restricted.empty()) {
-        std::ostringstream stream;
-        std::ostream_iterator<char> builder(stream);
+        const auto restricted_str = boost::algorithm::join(m_cfg.restricted, ", ");
 
-        boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", m_cfg.restricted);
-
-        COCAINE_LOG_INFO(m_log, "restricting {:d} service(s): {}", m_cfg.restricted.size(), stream.str());
+        COCAINE_LOG_INFO(m_log, "restricting {:d} service(s): {}", m_cfg.restricted.size(), restricted_str);
     }
 
     // Context signals slot

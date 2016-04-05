@@ -30,19 +30,16 @@
 #include "cocaine/idl/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/rpc/actor.hpp"
+#include "cocaine/repository/service.hpp"
 
 #include <boost/optional/optional.hpp>
-
-#include <boost/spirit/include/karma_char.hpp>
-#include <boost/spirit/include/karma_generate.hpp>
-#include <boost/spirit/include/karma_list.hpp>
-#include <boost/spirit/include/karma_string.hpp>
 
 #include <blackhole/logger.hpp>
 #include <blackhole/scope/holder.hpp>
 #include <blackhole/wrapper.hpp>
 
 #include <deque>
+#include <boost/algorithm/string/join.hpp>
 
 namespace cocaine {
 
@@ -127,13 +124,10 @@ public:
             // Signal and stop all the services, shut down execution units.
             terminate();
 
-            std::ostringstream stream;
-            std::ostream_iterator<char> builder(stream);
-
-            boost::spirit::karma::generate(builder, boost::spirit::karma::string % ", ", errored);
+            const auto errored_str = boost::algorithm::join(errored, ", ");
 
             throw cocaine::error_t("couldn't start core because of {} service(s): {}",
-                                   errored.size(), stream.str()
+                                   errored.size(), errored_str
             );
         } else {
             m_signals.invoke<io::context::prepared>();

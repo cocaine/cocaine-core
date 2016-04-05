@@ -21,6 +21,7 @@
 #include "cocaine/detail/gateway/adhoc.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/errors.hpp"
 #include "cocaine/logging.hpp"
 
 #include <blackhole/logger.hpp>

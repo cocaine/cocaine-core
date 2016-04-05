@@ -19,10 +19,8 @@
 */
 
 #include "cocaine/errors.hpp"
-
-#include "cocaine/detail/service/locator.hpp"
-#include "cocaine/detail/service/logging.hpp"
-#include "cocaine/detail/service/storage.hpp"
+#include "cocaine/locked_ptr.hpp"
+#include "cocaine/memory.hpp"
 
 #include <asio/error.hpp>
 
@@ -312,7 +310,7 @@ registrar::impl_type {
         boost::bimaps::tagged<std::error_category const *, ptr_tag>
     > mapping_t;
 
-    mapping_t mapping;
+    synchronized<mapping_t> mapping;
 
     // Dynamic error category name-based hash.
     std::hash<std::string> hash;
@@ -321,7 +319,7 @@ registrar::impl_type {
 };
 
 registrar::impl_type::impl_type() {
-    mapping = boost::assign::list_of<mapping_t::relation>
+    mapping.unsafe() = boost::assign::list_of<mapping_t::relation>
         (0x01, &std::system_category()              )
         (0x02, &asio::error::get_system_category()  )
         (0x03, &asio::error::get_netdb_category()   )
@@ -336,14 +334,13 @@ registrar::impl_type::impl_type() {
         (0xFF, &unknown_category()                  );
 }
 
-synchronized<std::unique_ptr<registrar::impl_type>> registrar::ptr(std::make_unique<impl_type>());
+std::unique_ptr<registrar::impl_type> registrar::ptr(std::make_unique<impl_type>());
 
 auto
 registrar::add(const std::error_category& ec) -> size_t {
-    return ptr.apply([&](std::unique_ptr<impl_type>& impl) -> size_t {
-        size_t index = impl->hash(ec.name()) | 0xFF;
-
-        if(impl->mapping.insert({index, &ec}).second) {
+    size_t index = ptr->hash(ec.name()) | 0xFF;
+    return ptr->mapping.apply([&](impl_type::mapping_t& mapping){
+        if(mapping.insert({index, &ec}).second) {
             return index;
         } else {
             throw error_t("duplicate error category");
@@ -353,22 +350,22 @@ registrar::add(const std::error_category& ec) -> size_t {
 
 auto
 registrar::map(const std::error_category& ec) -> size_t {
-    return ptr.apply([&](const std::unique_ptr<impl_type>& impl) -> size_t {
-        if(impl->mapping.by<impl_type::ptr_tag>().count(&ec) == 0) {
+    return ptr->mapping.apply([&](impl_type::mapping_t& mapping) ->size_t {
+        if(mapping.by<impl_type::ptr_tag>().count(&ec) == 0) {
             return 0xFF;
         } else {
-            return impl->mapping.by<impl_type::ptr_tag>().at(&ec);
+            return mapping.by<impl_type::ptr_tag>().at(&ec);
         }
     });
 }
 
 auto
 registrar::map(size_t id) -> const std::error_category& {
-    return ptr.apply([&](const std::unique_ptr<impl_type>& impl) -> const std::error_category& {
-        if(impl->mapping.by<impl_type::uid_tag>().count(id) == 0) {
+    return ptr->mapping.apply([&](impl_type::mapping_t& mapping) -> const std::error_category& {
+        if(mapping.by<impl_type::uid_tag>().count(id) == 0) {
             return unknown_category();
         } else {
-            return *impl->mapping.by<impl_type::uid_tag>().at(id);
+            return *mapping.by<impl_type::uid_tag>().at(id);
         }
     });
 }

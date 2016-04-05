@@ -22,6 +22,7 @@
 #define COCAINE_ADHOC_GATEWAY_HPP
 
 #include "cocaine/api/gateway.hpp"
+#include "cocaine/locked_ptr.hpp"
 
 #include <random>
 

@@ -22,12 +22,14 @@
 #include "cocaine/api/storage.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/context/config.hpp"
+#include "cocaine/repository/storage.hpp"
+#include "cocaine/repository/unicorn.hpp"
 
 namespace cocaine { namespace api {
 
 // Storage
 
-category_traits<storage_t>::ptr_type
+storage_ptr
 storage(context_t& context, const std::string& name) {
     auto it = context.config().storages.find(name);
 
@@ -47,7 +49,7 @@ unicorn_t::unicorn_t(context_t& /*context*/, const std::string& /*name*/, const 
  * Unicorn trait for service creation.
  * Trait to create unicorn service by name. All instances are cached by name as it is done in storage.
  */
-category_traits<unicorn_t>::ptr_type
+unicorn_ptr
 unicorn(context_t& context, const std::string& name) {
     auto it = context.config().unicorns.find(name);
 

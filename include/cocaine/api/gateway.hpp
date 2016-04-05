@@ -23,9 +23,6 @@
 
 #include "cocaine/common.hpp"
 
-#include "cocaine/locked_ptr.hpp"
-#include "cocaine/repository.hpp"
-
 #include <asio/ip/tcp.hpp>
 
 namespace cocaine { namespace api {
@@ -59,25 +56,7 @@ protected:
     }
 };
 
-template<>
-struct category_traits<gateway_t> {
-    typedef std::unique_ptr<gateway_t> ptr_type;
-
-    struct factory_type: public basic_factory<gateway_t> {
-        virtual
-        ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) = 0;
-    };
-
-    template<class T>
-    struct default_factory: public factory_type {
-        virtual
-        ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) {
-            return ptr_type(new T(context, name, args));
-        }
-    };
-};
+typedef std::unique_ptr<gateway_t> gateway_ptr;
 
 }} // namespace cocaine::api
 

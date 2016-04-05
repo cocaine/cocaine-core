@@ -21,8 +21,6 @@
 #ifndef COCAINE_LOCKED_PTR_HPP
 #define COCAINE_LOCKED_PTR_HPP
 
-#include "cocaine/utility.hpp"
-
 #include <mutex>
 
 namespace cocaine {

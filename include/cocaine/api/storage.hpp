@@ -24,11 +24,9 @@
 #include "cocaine/common.hpp"
 
 #include "cocaine/locked_ptr.hpp"
-#include "cocaine/repository.hpp"
 
 #include "cocaine/traits.hpp"
 
-#include <mutex>
 #include <sstream>
 
 namespace cocaine { namespace api {
@@ -111,39 +109,9 @@ storage_t::put(const std::string& collection, const std::string& key, const T& o
     write(collection, key, buffer.str(), tags);
 }
 
-template<>
-struct category_traits<storage_t> {
-    typedef std::shared_ptr<storage_t> ptr_type;
+typedef std::shared_ptr<storage_t> storage_ptr;
 
-    struct factory_type: public basic_factory<storage_t> {
-        virtual
-        ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) = 0;
-    };
-
-    template<class T>
-    struct default_factory: public factory_type {
-        virtual
-        ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) {
-            ptr_type instance;
-
-            instances.apply([&](std::map<std::string, std::weak_ptr<storage_t>>& instances) {
-                if((instance = instances[name].lock()) == nullptr) {
-                    instance = std::make_shared<T>(context, name, args);
-                    instances[name] = instance;
-                }
-            });
-
-            return instance;
-        }
-
-    private:
-        synchronized<std::map<std::string, std::weak_ptr<storage_t>>> instances;
-    };
-};
-
-category_traits<storage_t>::ptr_type
+storage_ptr
 storage(context_t& context, const std::string& name);
 
 }} // namespace cocaine::api

@@ -24,6 +24,7 @@
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
+#include "cocaine/rpc/basic_dispatch.hpp"
 #include "cocaine/rpc/slot/blocking.hpp"
 #include "cocaine/rpc/slot/deferred.hpp"
 #include "cocaine/rpc/slot/streamed.hpp"
@@ -40,54 +41,6 @@
 #include <boost/variant/variant.hpp>
 
 namespace cocaine {
-
-template<class Tag> class dispatch;
-
-namespace io {
-
-class basic_dispatch_t {
-    // The name of the service which this protocol implementation belongs to. Mostly used for logs,
-    // and for synchronization stuff in the Locator Service.
-    const std::string m_name;
-
-public:
-    explicit
-    basic_dispatch_t(const std::string& name);
-
-    virtual
-   ~basic_dispatch_t();
-
-    // Concrete protocol transition as opposed to transition description in protocol graphs. It can
-    // either be some new dispatch pointer, an uninitialized pointer - terminal transition, or just
-    // an empty optional - recurrent transition (i.e. no transition at all).
-
-    virtual
-    boost::optional<dispatch_ptr_t>
-    process(const decoder_t::message_type& message, const upstream_ptr_t& upstream) const = 0;
-
-    // Called on abnormal transport destruction. The idea's if the client disconnects unexpectedly,
-    // i.e. not reaching the end of the dispatch graph, then some special handling might be needed.
-    // Think 'zookeeper ephemeral nodes'.
-
-    virtual
-    void
-    discard(const std::error_code& ec) const;
-
-    // Observers
-
-    virtual
-    auto
-    root() const -> const graph_root_t& = 0;
-
-    auto
-    name() const -> std::string;
-
-    virtual
-    int
-    version() const = 0;
-};
-
-} // namespace io
 
 namespace mpl = boost::mpl;
 

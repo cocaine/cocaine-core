@@ -25,7 +25,7 @@
 #include <string>
 #include <tuple>
 
-#include <boost/optional.hpp>
+#include <boost/optional/optional_fwd.hpp>
 
 namespace cocaine { namespace io {
 

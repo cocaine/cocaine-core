@@ -18,7 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/rpc/basic_dispatch.hpp"
 
 #include "cocaine/errors.hpp"
 

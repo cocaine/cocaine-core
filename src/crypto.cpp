@@ -21,6 +21,7 @@
 #include "cocaine/detail/crypto.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/errors.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/logging.hpp"
 

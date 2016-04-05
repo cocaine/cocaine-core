@@ -21,7 +21,6 @@
 #include "cocaine/detail/service/storage.hpp"
 
 #include "cocaine/api/storage.hpp"
-
 #include "cocaine/dynamic/dynamic.hpp"
 
 using namespace cocaine::io;

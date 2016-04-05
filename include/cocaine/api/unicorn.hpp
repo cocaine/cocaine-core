@@ -16,11 +16,10 @@
 #ifndef COCAINE_UNICORN_API_HPP
 #define COCAINE_UNICORN_API_HPP
 
-#include <cocaine/repository.hpp>
-
-#include <cocaine/forwards.hpp>
+#include "cocaine/common.hpp"
 
 #include <future>
+#include <vector>
 
 namespace cocaine { namespace unicorn {
 
@@ -158,39 +157,9 @@ public:
     ~unicorn_t() {}
 };
 
-template<>
-struct category_traits<unicorn_t> {
-    typedef std::shared_ptr<unicorn_t> ptr_type;
+typedef std::shared_ptr<unicorn_t> unicorn_ptr;
 
-    struct factory_type: public basic_factory<unicorn_t> {
-        virtual
-        ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) = 0;
-    };
-
-    template<class T>
-    struct default_factory: public factory_type {
-        virtual
-        ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) {
-            ptr_type instance;
-
-            instances.apply([&](std::map<std::string, std::weak_ptr<unicorn_t>>& instances_) {
-                if((instance = instances_[name].lock()) == nullptr) {
-                    instance = std::make_shared<T>(context, name, args);
-                    instances_[name] = instance;
-                }
-            });
-
-            return instance;
-        }
-
-    private:
-        synchronized<std::map<std::string, std::weak_ptr<unicorn_t>>> instances;
-    };
-};
-
-category_traits<unicorn_t>::ptr_type
+unicorn_ptr
 unicorn(context_t& context, const std::string& name);
 
 }}

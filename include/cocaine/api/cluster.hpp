@@ -22,7 +22,6 @@
 #define COCAINE_CLUSTER_API_HPP
 
 #include "cocaine/common.hpp"
-#include "cocaine/repository.hpp"
 
 #include <asio/ip/tcp.hpp>
 
@@ -60,26 +59,7 @@ protected:
     }
 };
 
-template<>
-struct category_traits<cluster_t> {
-    typedef std::unique_ptr<cluster_t> ptr_type;
-    typedef cluster_t::interface interface;
-
-    struct factory_type: public basic_factory<cluster_t> {
-        virtual
-        ptr_type
-        get(context_t& context, interface& locator, const std::string& name, const dynamic_t& args) = 0;
-    };
-
-    template<class T>
-    struct default_factory: public factory_type {
-        virtual
-        ptr_type
-        get(context_t& context, interface& locator, const std::string& name, const dynamic_t& args) {
-            return ptr_type(new T(context, locator, name, args));
-        }
-    };
-};
+typedef std::unique_ptr<cluster_t> cluster_ptr;
 
 }} // namespace cocaine::api
 

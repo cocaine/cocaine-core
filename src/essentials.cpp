@@ -27,6 +27,10 @@
 #include "cocaine/detail/service/logging.hpp"
 #include "cocaine/detail/service/storage.hpp"
 #include "cocaine/detail/storage/files.hpp"
+#include "cocaine/repository/cluster.hpp"
+#include "cocaine/repository/gateway.hpp"
+#include "cocaine/repository/service.hpp"
+#include "cocaine/repository/storage.hpp"
 
 void
 cocaine::essentials::initialize(api::repository_t& repository) {

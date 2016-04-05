@@ -25,13 +25,14 @@
 #include "cocaine/context.hpp"
 #include "cocaine/context/config.hpp"
 #include "cocaine/context/mapper.hpp"
-#include "cocaine/idl/context.hpp"
+#include "cocaine/errors.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/memory.hpp"
 
 #include "cocaine/detail/chamber.hpp"
 #include "cocaine/engine.hpp"
 
-#include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/rpc/basic_dispatch.hpp"
 
 #include <blackhole/logger.hpp>
 

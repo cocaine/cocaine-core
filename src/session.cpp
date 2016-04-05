@@ -25,7 +25,7 @@
 
 #include "cocaine/rpc/asio/transport.hpp"
 
-#include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/rpc/basic_dispatch.hpp"
 #include "cocaine/rpc/upstream.hpp"
 
 #include <asio/ip/tcp.hpp>
