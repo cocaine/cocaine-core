@@ -165,7 +165,7 @@ actor_t::endpoints() const {
                                                 | tcp::resolver::query::numeric_service;
 
         begin = tcp::resolver(*m_asio).resolve(tcp::resolver::query(
-            m_context.config().network.hostname, std::to_string(local.port()),
+            m_context.config().network().hostname(), std::to_string(local.port()),
             flags
         ));
     } catch(const std::system_error& e) {
@@ -202,7 +202,8 @@ actor_t::run() {
         tcp::endpoint endpoint;
 
         try {
-            endpoint = tcp::endpoint{m_context.config().network.endpoint, m_context.mapper().assign(m_prototype->name())};
+            auto addr = asio::ip::address::from_string(m_context.config().network().endpoint());
+            endpoint = tcp::endpoint{addr, m_context.mapper().assign(m_prototype->name())};
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to assign a local endpoint to service: {}", error::to_string(e));
             throw;

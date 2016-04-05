@@ -25,18 +25,19 @@
 #include "cocaine/repository/storage.hpp"
 #include "cocaine/repository/unicorn.hpp"
 
+#include <boost/optional/optional.hpp>
+
 namespace cocaine { namespace api {
 
 // Storage
 
 storage_ptr
 storage(context_t& context, const std::string& name) {
-    auto it = context.config().storages.find(name);
-
-    if(it == context.config().storages.end()) {
+    auto storage = context.config().storages().get(name);
+    if(!storage) {
         throw std::system_error(std::make_error_code(std::errc::argument_out_of_domain), name);
     }
-    return context.repository().get<storage_t>(it->second.type, context, name, it->second.args);
+    return context.repository().get<storage_t>(storage->type(), context, name, storage->args());
 }
 
 // Unicorn
@@ -51,13 +52,11 @@ unicorn_t::unicorn_t(context_t& /*context*/, const std::string& /*name*/, const 
  */
 unicorn_ptr
 unicorn(context_t& context, const std::string& name) {
-    auto it = context.config().unicorns.find(name);
-
-    if(it == context.config().unicorns.end()) {
+    auto unicorn = context.config().unicorns().get(name);
+    if(!unicorn) {
         throw std::system_error(std::make_error_code(std::errc::argument_out_of_domain), name);
     }
-
-    return context.repository().get<unicorn_t>(it->second.type, context, name, it->second.args);
+    return context.repository().get<unicorn_t>(unicorn->type(), context, name, unicorn->args());
 }
 
 }} // namespace cocaine::api

@@ -66,10 +66,10 @@ public:
     typedef std::pair<std::string, std::unique_ptr<actor_t>> service_desc_t;
     typedef std::deque<service_desc_t> service_list_t;
 
-    context_impl_t(config_t _config, std::unique_ptr<logging::logger_t> _log) :
+    context_impl_t(std::unique_ptr<config_t> _config, std::unique_ptr<logging::logger_t> _log) :
         m_log(std::move(_log)),
-        m_config(_config),
-        m_mapper(m_config)
+        m_config(std::move(_config)),
+        m_mapper(*m_config)
     {
         const holder_t scoped(*m_log, {{"source", "core"}});
 
@@ -81,42 +81,42 @@ public:
         essentials::initialize(*m_repository);
 
         // Load the rest of plugins.
-        m_repository->load(m_config.path.plugins);
+        m_repository->load(m_config->path().plugins());
 
         // Spin up all the configured services, launch execution units.
-        COCAINE_LOG_INFO(m_log, "starting {:d} execution unit(s)", m_config.network.pool);
+        COCAINE_LOG_INFO(m_log, "starting {:d} execution unit(s)", m_config->network().pool());
 
-        while (m_pool.size() != m_config.network.pool) {
+        while (m_pool.size() != m_config->network().pool()) {
             m_pool.emplace_back(std::make_unique<execution_unit_t>(*this));
         }
 
-        COCAINE_LOG_INFO(m_log, "starting {:d} service(s)", m_config.services.size());
+        COCAINE_LOG_INFO(m_log, "starting {:d} service(s)", m_config->services().size());
 
         std::vector<std::string> errored;
 
-        for (auto it = m_config.services.begin(); it != m_config.services.end(); ++it) {
-            const holder_t scoped(*m_log, {{"service", it->first}});
+        m_config->services().each([&](const std::string& name, const config_t::component_t& service) mutable {
+            const holder_t scoped(*m_log, {{"service", name}});
 
             const auto asio = std::make_shared<asio::io_service>();
 
             COCAINE_LOG_DEBUG(m_log, "starting service");
 
             try {
-                insert(it->first, std::make_unique<actor_t>(*this, asio, repository().get<api::service_t>(
-                    it->second.type,
+                insert(name, std::make_unique<actor_t>(*this, asio, repository().get<api::service_t>(
+                    service.type(),
                     *this,
                     *asio,
-                    it->first,
-                    it->second.args
+                    name,
+                    service.args()
                 )));
             } catch (const std::system_error& e) {
                 COCAINE_LOG_ERROR(m_log, "unable to initialize service: {}", error::to_string(e));
-                errored.push_back(it->first);
+                errored.push_back(name);
             } catch (const std::exception& e) {
                 COCAINE_LOG_ERROR(m_log, "unable to initialize service: {}", e.what());
-                errored.push_back(it->first);
+                errored.push_back(name);
             }
-        }
+        });
 
         if (!errored.empty()) {
             COCAINE_LOG_ERROR(m_log, "emergency core shutdown");
@@ -166,7 +166,7 @@ public:
 
     const config_t&
     config() const {
-        return m_config;
+        return *m_config;
     }
 
     port_mapping_t&
@@ -273,14 +273,13 @@ public:
         // lives have to be extended until those sessions are active.
         std::vector<std::unique_ptr<actor_t>> actors;
 
-        for (auto it = m_config.services.rbegin(); it != m_config.services.rend(); ++it) {
+        m_config->services().each([&](const std::string& name, const config_t::component_t&){
             try {
-                actors.push_back(remove(it->first));
+                actors.push_back(remove(name));
             } catch (...) {
                 // A service might be absent because it has failed to start during the bootstrap.
-                continue;
             }
-        }
+        });
 
         // There should be no outstanding services left. All the extra services spawned by others, like
         // app invocation services from the node service, should be dead by now.
@@ -315,7 +314,7 @@ private:
     // Context signalling hub.
     retroactive_signal<io::context_tag> m_signals;
 
-    const config_t m_config;
+    std::unique_ptr<config_t> m_config;
 
     // Service port mapping and pinning.
     port_mapping_t m_mapper;
@@ -323,7 +322,7 @@ private:
 };
 
 std::unique_ptr<context_t>
-get_context(config_t config, std::unique_ptr<logging::logger_t> log) {
+get_context(std::unique_ptr<config_t> config, std::unique_ptr<logging::logger_t> log) {
     return std::unique_ptr<context_t>(new context_impl_t(std::move(config), std::move(log)));
 }
 

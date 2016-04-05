@@ -85,7 +85,7 @@ public:
 };
 
 std::unique_ptr<context_t>
-get_context(config_t config, std::unique_ptr<logging::logger_t> log);
+get_context(std::unique_ptr<config_t> config, std::unique_ptr<logging::logger_t> log);
 
 
 } // namespace cocaine

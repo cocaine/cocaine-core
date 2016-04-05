@@ -83,12 +83,12 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
             registry.add<blackhole::sink::socket::udp_t>();
 
             std::stringstream stream;
-            stream << boost::lexical_cast<std::string>(context.config().logging.loggers);
+            stream << boost::lexical_cast<std::string>(context.config().logging().loggers());
 
             auto log = registry.builder<blackhole::config::json_t>(stream)
                 .build(backend);
 
-            auto severity = context.config().logging.severity;
+            auto severity = context.config().logging().severity();
             log.filter([=](const blackhole::record_t& record) -> bool {
                 return record.severity() >= severity || !trace_t::current().empty();
             });

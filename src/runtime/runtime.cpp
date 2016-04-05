@@ -22,6 +22,7 @@
 #include "cocaine/context.hpp"
 #include "cocaine/context/config.hpp"
 #include "cocaine/context/signal.hpp"
+#include "cocaine/dynamic.hpp"
 #include "cocaine/errors.hpp"
 #include "cocaine/idl/context.hpp"
 #include "cocaine/signal.hpp"
@@ -102,13 +103,13 @@ struct sighup_handler_t {
 
         COCAINE_LOG_INFO(wrapper, "resetting logger");
         std::stringstream stream;
-        stream << boost::lexical_cast<std::string>(context.config().logging.loggers);
+        stream << boost::lexical_cast<std::string>(context.config().logging().loggers());
 
         // Create a new logger and set the filter before swap to be sure that no events are missed.
         auto log = registry.builder<blackhole::config::json_t>(stream)
             .build("core");
 
-        const auto severity = context.config().logging.severity;
+        const auto severity = context.config().logging().severity();
         log.filter([=](const blackhole::record_t& record) -> bool {
             return record.severity() >= severity || !trace_t::current().empty();
         });
@@ -223,7 +224,7 @@ main(int argc, char* argv[]) {
     std::cout << "[Runtime] Parsing the configuration." << std::endl;
 
     try {
-        config.reset(new config_t(vm["configuration"].as<std::string>()));
+        config = make_config(vm["configuration"].as<std::string>());
     } catch(const std::system_error& e) {
         std::cerr << cocaine::format("ERROR: unable to initialize the configuration - {}.", error::to_string(e)) << std::endl;
         return EXIT_FAILURE;
@@ -274,13 +275,14 @@ main(int argc, char* argv[]) {
 
     try {
         std::stringstream stream;
-        stream << boost::lexical_cast<std::string>(config->logging.loggers);
+        stream << boost::lexical_cast<std::string>(config->logging().loggers());
 
         auto log = registry.builder<blackhole::config::json_t>(stream)
             .build("core");
 
-        log.filter([&](const blackhole::record_t& record) -> bool {
-            return record.severity() >= config->logging.severity || !trace_t::current().empty();
+        auto severity = config->logging().severity();
+        log.filter([=](const blackhole::record_t& record) -> bool {
+            return record.severity() >= severity || !trace_t::current().empty();
         });
 
         root.reset(new blackhole::root_logger_t(std::move(log)));
@@ -308,7 +310,7 @@ main(int argc, char* argv[]) {
     // Run context
     std::unique_ptr<context_t> context;
     try {
-        context = get_context(*config, std::move(logger));
+        context = get_context(std::move(config), std::move(logger));
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(root, "unable to initialize the context - {}.", error::to_string(e));
         signal_handler.stop();
