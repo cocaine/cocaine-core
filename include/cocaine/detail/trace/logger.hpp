@@ -21,6 +21,8 @@
 #ifndef COCAINE_TRACE_LOGGER
 #define COCAINE_TRACE_LOGGER
 
+#include "cocaine/context/filter.hpp"
+#include "cocaine/locked_ptr.hpp"
 #include "cocaine/trace/trace.hpp"
 
 #include <blackhole/attribute.hpp>
@@ -31,18 +33,15 @@ namespace cocaine { namespace logging {
 class trace_wrapper_t :
     public blackhole::logger_t
 {
-    blackhole::logger_t& inner;
+    std::unique_ptr<blackhole::logger_t> inner;
+    synchronized<std::shared_ptr<filter_t>> m_filter;
 
 public:
-    trace_wrapper_t(logger_t& log);
+    trace_wrapper_t(std::unique_ptr<blackhole::logger_t> log);
 
-    auto attributes() const noexcept -> blackhole::attributes_t {
-        if(!trace_t::current().empty()) {
-            return trace_t::current().formatted_attributes<blackhole::attributes_t>();
-        }
+    auto attributes() const noexcept -> blackhole::attributes_t;
 
-        return blackhole::attributes_t();
-    }
+    auto filter(filter_t new_filter) -> void;
 
     auto log(blackhole::severity_t severity, const blackhole::message_t& message) -> void;
     auto log(blackhole::severity_t severity, const blackhole::message_t& message, blackhole::attribute_pack& pack) -> void;

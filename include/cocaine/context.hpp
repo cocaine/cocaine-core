@@ -45,6 +45,10 @@ public:
     log(const std::string& source, blackhole::attributes_t attributes) = 0;
 
     virtual
+    void
+    logger_filter(filter_t new_filter) = 0;
+
+    virtual
     const api::repository_t&
     repository() const = 0;
 

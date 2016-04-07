@@ -18,6 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "cocaine/context/filter.hpp"
 #include "cocaine/detail/trace/logger.hpp"
 
 using namespace blackhole;
@@ -36,34 +37,54 @@ namespace {
 }
 
 
-trace_wrapper_t::trace_wrapper_t(logger_t& log):
-    inner(log)
+trace_wrapper_t::trace_wrapper_t(std::unique_ptr<blackhole::logger_t> log):
+    inner(std::move(log)),
+    m_filter(new filter_t([](severity_t, attribute_pack&) { return true; }))
 {
 }
 
+auto trace_wrapper_t::attributes() const noexcept -> blackhole::attributes_t {
+    if(!trace_t::current().empty()) {
+        return trace_t::current().formatted_attributes<blackhole::attributes_t>();
+    }
+
+    return blackhole::attributes_t();
+}
+
+auto trace_wrapper_t::filter(filter_t new_filter) -> void{
+    std::shared_ptr<filter_t> new_filter_ptr(new filter_t(std::move(new_filter)));
+    m_filter.apply([=](std::shared_ptr<filter_t>& filter_ptr){
+        filter_ptr.swap(new_filter_ptr);
+    });
+}
+
 auto trace_wrapper_t::log(severity_t severity, const message_t& message) -> void {
-    auto attr = attributes();
-    auto attr_list = gen_view(attr);
-    attribute_pack pack{attr_list};
-    inner.log(severity, message, pack);
+    attribute_pack pack;
+    log(severity, message, pack);
 }
 
 auto trace_wrapper_t::log(severity_t severity, const message_t& message, attribute_pack& pack) -> void {
     auto attr = attributes();
     auto attr_list = gen_view(attr);
     pack.push_back(attr_list);
-    inner.log(severity, message, pack);
+    auto filter = *(m_filter.synchronize());
+    if(filter->operator()(severity, pack)) {
+        inner->log(severity, message, pack);
+    }
 }
 
 auto trace_wrapper_t::log(severity_t severity, const lazy_message_t& message, attribute_pack& pack) -> void {
     auto attr = attributes();
     auto attr_list = gen_view(attr);
     pack.push_back(attr_list);
-    inner.log(severity, message, pack);
+    auto filter = *(m_filter.synchronize());
+    if(filter->operator()(severity, pack)) {
+        inner->log(severity, message, pack);
+    }
 }
 
 auto trace_wrapper_t::manager() -> scope::manager_t& {
-    return inner.manager();
+    return inner->manager();
 }
 
 }} // namespace cocaine::logging

@@ -29,8 +29,6 @@
 
 #include "cocaine/detail/runtime/logging.hpp"
 
-#include "cocaine/detail/trace/logger.hpp"
-
 #if !defined(__APPLE__)
     #include "cocaine/detail/runtime/pid_file.hpp"
 #endif
@@ -105,14 +103,9 @@ struct sighup_handler_t {
         std::stringstream stream;
         stream << boost::lexical_cast<std::string>(context.config().logging().loggers());
 
-        // Create a new logger and set the filter before swap to be sure that no events are missed.
+        // Create a new logger before swap to be sure that no events are missed.
         auto log = registry.builder<blackhole::config::json_t>(stream)
             .build("core");
-
-        const auto severity = context.config().logging().severity();
-        log.filter([=](const blackhole::record_t& record) -> bool {
-            return record.severity() >= severity || !trace_t::current().empty();
-        });
 
         logger = std::move(log);
 
@@ -280,13 +273,8 @@ main(int argc, char* argv[]) {
         auto log = registry.builder<blackhole::config::json_t>(stream)
             .build("core");
 
-        auto severity = config->logging().severity();
-        log.filter([=](const blackhole::record_t& record) -> bool {
-            return record.severity() >= severity || !trace_t::current().empty();
-        });
-
         root.reset(new blackhole::root_logger_t(std::move(log)));
-        logger.reset(new logging::trace_wrapper_t(*root));
+        logger.reset(new blackhole::wrapper_t(*root, {}));
     } catch(const std::exception& e) {
         std::cerr << "ERROR: unable to initialize the logging: " << e.what() << std::endl;
         return EXIT_FAILURE;

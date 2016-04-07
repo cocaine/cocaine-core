@@ -22,6 +22,7 @@
 
 #include "cocaine/api/service.hpp"
 #include "cocaine/context/config.hpp"
+#include "cocaine/context/filter.hpp"
 #include "cocaine/context/mapper.hpp"
 #include "cocaine/context/signal.hpp"
 #include "cocaine/detail/essentials.hpp"
@@ -40,6 +41,7 @@
 
 #include <deque>
 #include <boost/algorithm/string/join.hpp>
+#include <cocaine/detail/trace/logger.hpp>
 
 namespace cocaine {
 
@@ -67,11 +69,17 @@ public:
     typedef std::deque<service_desc_t> service_list_t;
 
     context_impl_t(std::unique_ptr<config_t> _config, std::unique_ptr<logging::logger_t> _log) :
-        m_log(std::move(_log)),
+        m_log(new logging::trace_wrapper_t(std::move(_log))),
         m_config(std::move(_config)),
         m_mapper(*m_config)
     {
         const holder_t scoped(*m_log, {{"source", "core"}});
+
+        auto config_severity = m_config->logging().severity();
+        auto filter = [=](filter_t::severity_t severity, filter_t::attribute_pack&) -> bool {
+            return severity >= config_severity || !trace_t::current().empty();
+        };
+        logger_filter(filter_t(std::move(filter)));
 
         COCAINE_LOG_INFO(m_log, "initializing the core");
 
@@ -152,6 +160,11 @@ public:
 
         // TODO: Make it possible to use in-place operator+= to fill in more attributes?
         return std::make_unique<blackhole::wrapper_t>(*m_log, std::move(attributes));
+    }
+
+    void
+    logger_filter(filter_t new_filter) {
+        m_log->filter(std::move(new_filter));
     }
 
     const api::repository_t&
@@ -298,7 +311,7 @@ public:
 private:
     // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
     // for the Blackhole, when all the common stuff is extracted to a separate library.
-    std::unique_ptr<logging::logger_t> m_log;
+    std::unique_ptr<logging::trace_wrapper_t> m_log;
 
     // NOTE: This is the first object in the component tree, all the other dynamic components, be it
     // storages or isolates, have to be declared after this one.

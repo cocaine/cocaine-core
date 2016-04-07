@@ -35,6 +35,7 @@ namespace blackhole {
 inline namespace v1 {
 
 class logger_t;
+class severity_t;
 
 }  // namespace v1
 }  // namespace blackhole
@@ -47,6 +48,7 @@ class context_t;
 class execution_unit_t;
 class port_mapping_t;
 class trace_t;
+class filter_t;
 
 
 template<class> class dispatch;
