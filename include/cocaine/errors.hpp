@@ -108,6 +108,10 @@ struct registrar {
     auto
     add(const std::error_category& ec) -> size_t;
 
+    static
+    auto
+    add(const std::error_category& ec, size_t index) -> void;
+
 private:
     struct impl_type;
 

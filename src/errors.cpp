@@ -312,8 +312,6 @@ registrar::impl_type {
 
     synchronized<mapping_t> mapping;
 
-    // Dynamic error category name-based hash.
-    std::hash<std::string> hash;
 
     impl_type();
 };
@@ -337,12 +335,9 @@ registrar::impl_type::impl_type() {
 std::unique_ptr<registrar::impl_type> registrar::ptr(std::make_unique<impl_type>());
 
 auto
-registrar::add(const std::error_category& ec) -> size_t {
-    size_t index = ptr->hash(ec.name()) | 0xFF;
-    return ptr->mapping.apply([&](impl_type::mapping_t& mapping){
-        if(mapping.insert({index, &ec}).second) {
-            return index;
-        } else {
+registrar::add(const std::error_category& ec, size_t index) -> void {
+    ptr->mapping.apply([&](impl_type::mapping_t& mapping){
+        if(!mapping.insert({index, &ec}).second) {
             throw error_t("duplicate error category");
         }
     });
