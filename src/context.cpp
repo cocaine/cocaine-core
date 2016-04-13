@@ -75,11 +75,7 @@ public:
     {
         const holder_t scoped(*m_log, {{"source", "core"}});
 
-        auto config_severity = m_config->logging().severity();
-        auto filter = [=](filter_t::severity_t severity, filter_t::attribute_pack&) -> bool {
-            return severity >= config_severity || !trace_t::current().empty();
-        };
-        logger_filter(filter_t(std::move(filter)));
+        reset_logger_filter();
 
         COCAINE_LOG_INFO(m_log, "initializing the core");
 
@@ -166,6 +162,16 @@ public:
     logger_filter(filter_t new_filter) {
         m_log->filter(std::move(new_filter));
     }
+
+    void
+    reset_logger_filter() {
+        auto config_severity = m_config->logging().severity();
+        auto filter = [=](filter_t::severity_t severity, filter_t::attribute_pack&) -> bool {
+            return severity >= config_severity || !trace_t::current().empty();
+        };
+        logger_filter(filter_t(std::move(filter)));
+    }
+
 
     const api::repository_t&
     repository() const {
@@ -304,6 +310,8 @@ public:
 
         // Destroy the service objects.
         actors.clear();
+
+        reset_logger_filter();
 
         COCAINE_LOG_INFO(m_log, "core has been terminated");
     }

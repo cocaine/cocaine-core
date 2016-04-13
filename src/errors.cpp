@@ -329,6 +329,7 @@ registrar::impl_type::impl_type() {
         (0x09, &security_category()                 )
         (0x0A, &locator_category()                  )
         (0x0B, &unicorn_category()                  )
+        (0x0C, &std::generic_category()             )
         (0xFF, &unknown_category()                  );
 }
 

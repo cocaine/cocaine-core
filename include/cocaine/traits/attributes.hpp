@@ -23,6 +23,9 @@
 
 #include "cocaine/traits.hpp"
 
+#include <blackhole/attribute.hpp>
+#include <blackhole/extensions/writer.hpp>
+
 // NOTE: You should manually include the <blackhole/attribute.hpp> header file BEFORE this include.
 // Such restrictment is required to avoid exporting Blackhole API.
 
