@@ -23,6 +23,7 @@
 
 #include "cocaine/format.hpp"
 
+#include <memory>
 #include <system_error>
 
 namespace cocaine { namespace error {

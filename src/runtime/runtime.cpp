@@ -237,7 +237,7 @@ main(int argc, char* argv[]) {
         if(!vm["pidfile"].empty()) {
             pid_path = vm["pidfile"].as<std::string>();
         } else {
-            pid_path = cocaine::format("{}/cocained.pid", config->path.runtime);
+            pid_path = cocaine::format("{}/cocained.pid", config->path().runtime());
         }
 
         try {

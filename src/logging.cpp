@@ -24,6 +24,7 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 
 #include <boost/assert.hpp>
 
