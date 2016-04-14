@@ -25,6 +25,8 @@
 
 #include <boost/mpl/is_sequence.hpp>
 
+#include <system_error>
+
 namespace cocaine { namespace io {
 
 // Streaming service interface
