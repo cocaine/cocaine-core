@@ -64,9 +64,11 @@ LINK_DIRECTORIES(
     ${LIBLTDL_LIBRARY_DIRS})
 
 ADD_LIBRARY(cocaine-util STATIC
-    src/trace.cpp
+    src/encoder.cpp
+    src/errors.cpp
     src/header.cpp
-    src/errors.cpp)
+    src/trace.cpp
+)
 
 SET_TARGET_PROPERTIES(cocaine-util PROPERTIES
         COMPILE_FLAGS -fPIC)
@@ -86,7 +88,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/defaults.cpp
     src/dispatch.cpp
     src/dynamic.cpp
-    src/encoder.cpp
     src/engine.cpp
     src/essentials.cpp
     src/gateway/adhoc.cpp
