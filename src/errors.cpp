@@ -339,7 +339,11 @@ auto
 registrar::add(const std::error_category& ec, size_t index) -> void {
     ptr->mapping.apply([&](impl_type::mapping_t& mapping){
         if(!mapping.insert({index, &ec}).second) {
-            throw error_t("duplicate error category");
+            throw error_t("duplicate error category '{}', index {} is already reserved for '{}'",
+                          ec.name(),
+                          index,
+                          map(index).name()
+            );
         }
     });
 }
