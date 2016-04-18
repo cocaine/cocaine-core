@@ -1,3 +1,10 @@
+cocaine-core (0.12.8.4+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Ignore adding same category at the same index
+
+ -- Anton Matveenko <antmat@me.com>  Mon, 18 Apr 2016 14:51:29 +0300
+
 cocaine-core (0.12.8.3+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.

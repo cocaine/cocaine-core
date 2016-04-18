@@ -338,12 +338,20 @@ std::unique_ptr<registrar::impl_type> registrar::ptr(std::make_unique<impl_type>
 auto
 registrar::add(const std::error_category& ec, size_t index) -> void {
     ptr->mapping.apply([&](impl_type::mapping_t& mapping){
-        if(!mapping.insert({index, &ec}).second) {
-            throw error_t("duplicate error category '{}', index {} is already reserved for '{}'",
-                          ec.name(),
-                          index,
-                          map(index).name()
-            );
+        auto insert_result = mapping.insert({index, &ec});
+        if(!insert_result.second) {
+            auto map_it = insert_result.first;
+            auto existing_index = map_it->get<impl_type::uid_tag>();
+            auto existing_ptr = map_it->get<impl_type::ptr_tag>();
+            if(existing_index != index || existing_ptr != &ec) {
+                throw error_t("duplicate error category '{}({})' for index {}, already have {}({}) at {}",
+                              ec.name(),
+                              static_cast<const void*>(&ec),
+                              index,
+                              existing_ptr->name(),
+                              static_cast<const void*>(existing_ptr),
+                              existing_index);
+            }
         }
     });
 }
