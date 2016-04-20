@@ -1,2 +1,3 @@
 CONFIG_PATH="/etc/cocaine/cocaine-default.conf"
 RUNTIME_PATH="/var/run/cocaine"
+DISABLE_COCAINE_SERVICE=true
