@@ -241,10 +241,10 @@ multicast_t::on_receive(const std::error_code& ec, size_t bytes_received,
 
         if(!expiration) {
             expiration = std::make_unique<deadline_timer>(m_locator.asio());
-
-            // Link a new node only when seen for the first time.
-            m_locator.link_node(uuid, endpoints);
         }
+
+        // Link node always on announce - delegate decision of establishing connection to locator
+        m_locator.link_node(uuid, endpoints);
 
         expiration->expires_from_now(m_cfg.interval * 3);
         expiration->async_wait(std::bind(&multicast_t::on_expired, this, ph::_1, uuid));
