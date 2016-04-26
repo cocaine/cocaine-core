@@ -1,3 +1,10 @@
+cocaine-core (0.12.8.6+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Prevent race in session pull
+
+ -- Anton Matveenko <antmat@me.com>  Tue, 26 Apr 2016 13:45:29 +0300
+
 cocaine-core (0.12.8.5+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
