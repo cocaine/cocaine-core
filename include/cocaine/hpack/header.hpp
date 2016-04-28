@@ -133,6 +133,9 @@ public:
         void
         rebind_headers(std::vector<header_t>& headers);
 
+        size_t
+        size() const;
+
     private:
         void
         reserve(size_t size);
@@ -191,7 +194,14 @@ class header_storage_t {
 
 public:
     header_storage_t() = default;
+
     explicit header_storage_t(std::vector<header_t> headers);
+
+    header_storage_t(const header_storage_t& other);
+
+    // we can rely on default move constructor, as all references and thus pointers are valid
+    // in a newly constructed vector (no relocation happens).
+    header_storage_t(header_storage_t&& other) = default;
 
     const std::vector<header_t>&
     get_headers() const noexcept;

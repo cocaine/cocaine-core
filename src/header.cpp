@@ -153,6 +153,11 @@ header_t::zone_t::rebind_headers(std::vector<header_t>& headers) {
     }
 }
 
+size_t
+header_t::zone_t::size() const {
+    return storage.size();
+}
+
 bool
 header_t::operator==(const header_t& other) const {
     return name == other.name && value == other.value;
@@ -196,9 +201,20 @@ header_t::http2_size() const {
 }
 
 header_storage_t::header_storage_t(std::vector<header_t> _headers) :
+    zone(),
     headers(std::move(_headers))
 {
     zone.rebind_headers(headers);
+}
+
+header_storage_t::header_storage_t(const header_storage_t& other) :
+    zone(),
+    headers(other.headers)
+{
+    zone.reserve(other.zone.size());
+    for(auto& header: headers) {
+        zone.rebind_header(header);
+    }
 }
 
 const std::vector<header_t>&
