@@ -19,6 +19,7 @@
 */
 
 #include <cocaine/hpack/header.hpp>
+#include <cocaine/hpack/static_table.hpp>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -94,4 +95,17 @@ TEST(header_t, zone) {
     ASSERT_NE(h2.get_value().blob, headers[0].get_value().blob);
     ASSERT_NE(headers[0].get_name().blob, headers[1].get_name().blob);
     ASSERT_NE(headers[0].get_value().blob, headers[1].get_value().blob);
+}
+
+TEST(header_storage_t, copy) {
+    header_t h1 = headers::make_header<headers::method<headers::default_values_t::get_value_t>>();
+    header_t h2 = h1;
+    std::vector<header_t> headers;
+    headers.push_back(h2);
+    headers.push_back(h2);
+    header_storage_t storage(headers);
+    header_storage_t storage2;
+    storage2 = storage;
+    ASSERT_EQ(storage2.get_headers().front(), h1);
+    ASSERT_NE(storage2.get_headers().front().get_name().blob, h1.get_name().blob);
 }

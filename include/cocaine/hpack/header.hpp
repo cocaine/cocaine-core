@@ -136,10 +136,10 @@ public:
         size_t
         size() const;
 
-    private:
         void
         reserve(size_t size);
 
+    private:
         std::vector<char> storage;
     };
 
@@ -198,10 +198,12 @@ public:
     explicit header_storage_t(std::vector<header_t> headers);
 
     header_storage_t(const header_storage_t& other);
+    header_storage_t& operator=(const header_storage_t& other);
 
     // we can rely on default move constructor, as all references and thus pointers are valid
     // in a newly constructed vector (no relocation happens).
     header_storage_t(header_storage_t&& other) = default;
+    header_storage_t& operator=(header_storage_t&& other) = default;
 
     const std::vector<header_t>&
     get_headers() const noexcept;

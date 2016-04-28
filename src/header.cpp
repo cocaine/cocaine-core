@@ -217,6 +217,13 @@ header_storage_t::header_storage_t(const header_storage_t& other) :
     }
 }
 
+header_storage_t&
+header_storage_t::operator=(const header_storage_t& other) {
+    header_storage_t copy(other);
+    *this = std::move(copy);
+    return *this;
+}
+
 const std::vector<header_t>&
 header_storage_t::get_headers() const noexcept {
     return headers;
