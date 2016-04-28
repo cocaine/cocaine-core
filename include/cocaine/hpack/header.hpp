@@ -150,7 +150,7 @@ public:
     static
     header_t
     create(const header::data_t& _value) {
-        return header_t(Header::name, _value);
+        return header_t(Header::name(), _value);
     }
 
     header::data_t
