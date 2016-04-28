@@ -195,8 +195,8 @@ header_t::http2_size() const {
     return name.size + http2_integer_size(name.size, 1) + value.size + http2_integer_size(value.size, 1) + header_table_t::http2_header_overhead;
 }
 
-header_storage_t::header_storage_t(std::vector<header_t> headers) :
-    headers(std::move(headers))
+header_storage_t::header_storage_t(std::vector<header_t> _headers) :
+    headers(std::move(_headers))
 {
     zone.rebind_headers(headers);
 }
