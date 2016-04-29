@@ -70,7 +70,7 @@ cocaine-core (0.12.8.0-alpha0+nmu1) unstable; urgency=low
     context.
   * Use cppformat instead of boost::format
   * Refactor cocaine for faster build
-  * Context and config are interfaces now 
+  * Context and config are interfaces now
 
  -- Anton Matveenko <antmat@me.com>  Wed, 13 Apr 2016 18:47:29 +0300
 

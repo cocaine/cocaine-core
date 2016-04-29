@@ -114,9 +114,8 @@ struct registrar {
     add(const std::error_category& ec, size_t index) -> void;
 
 private:
-    struct impl_type;
-
-    static std::unique_ptr<impl_type> ptr;
+    class storage_type;
+    static auto instance() -> storage_type&;
 };
 
 // Generic exception

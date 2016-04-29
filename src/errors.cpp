@@ -300,8 +300,8 @@ error_t::kInvalidArgumentErrorCode = std::make_error_code(std::errc::invalid_arg
 
 // Error category registrar
 
-struct
-registrar::impl_type {
+class registrar::storage_type {
+public:
     struct uid_tag;
     struct ptr_tag;
 
@@ -312,37 +312,32 @@ registrar::impl_type {
 
     synchronized<mapping_t> mapping;
 
-
-    impl_type();
+    storage_type() {
+        mapping.unsafe() = boost::assign::list_of<mapping_t::relation>
+            (0x01, &std::system_category()              )
+            (0x02, &asio::error::get_system_category()  )
+            (0x03, &asio::error::get_netdb_category()   )
+            (0x04, &asio::error::get_addrinfo_category())
+            (0x05, &asio::error::get_misc_category()    )
+            (0x06, &transport_category()                )
+            (0x07, &dispatch_category()                 )
+            (0x08, &repository_category()               )
+            (0x09, &security_category()                 )
+            (0x0A, &locator_category()                  )
+            (0x0B, &unicorn_category()                  )
+            (0x0C, &std::generic_category()             )
+            (0xFF, &unknown_category()                  );
+    }
 };
-
-registrar::impl_type::impl_type() {
-    mapping.unsafe() = boost::assign::list_of<mapping_t::relation>
-        (0x01, &std::system_category()              )
-        (0x02, &asio::error::get_system_category()  )
-        (0x03, &asio::error::get_netdb_category()   )
-        (0x04, &asio::error::get_addrinfo_category())
-        (0x05, &asio::error::get_misc_category()    )
-        (0x06, &transport_category()                )
-        (0x07, &dispatch_category()                 )
-        (0x08, &repository_category()               )
-        (0x09, &security_category()                 )
-        (0x0A, &locator_category()                  )
-        (0x0B, &unicorn_category()                  )
-        (0x0C, &std::generic_category()             )
-        (0xFF, &unknown_category()                  );
-}
-
-std::unique_ptr<registrar::impl_type> registrar::ptr(std::make_unique<impl_type>());
 
 auto
 registrar::add(const std::error_category& ec, size_t index) -> void {
-    ptr->mapping.apply([&](impl_type::mapping_t& mapping){
+    instance().mapping.apply([&](storage_type::mapping_t& mapping){
         auto insert_result = mapping.insert({index, &ec});
         if(!insert_result.second) {
             auto map_it = insert_result.first;
-            auto existing_index = map_it->get<impl_type::uid_tag>();
-            auto existing_ptr = map_it->get<impl_type::ptr_tag>();
+            auto existing_index = map_it->get<storage_type::uid_tag>();
+            auto existing_ptr = map_it->get<storage_type::ptr_tag>();
             if(existing_index != index || existing_ptr != &ec) {
                 throw error_t("duplicate error category '{}({})' for index {}, already have {}({}) at {}",
                               ec.name(),
@@ -358,22 +353,27 @@ registrar::add(const std::error_category& ec, size_t index) -> void {
 
 auto
 registrar::map(const std::error_category& ec) -> size_t {
-    return ptr->mapping.apply([&](impl_type::mapping_t& mapping) ->size_t {
-        if(mapping.by<impl_type::ptr_tag>().count(&ec) == 0) {
+    return instance().mapping.apply([&](storage_type::mapping_t& mapping) ->size_t {
+        if(mapping.by<storage_type::ptr_tag>().count(&ec) == 0) {
             return 0xFF;
         } else {
-            return mapping.by<impl_type::ptr_tag>().at(&ec);
+            return mapping.by<storage_type::ptr_tag>().at(&ec);
         }
     });
 }
 
 auto
 registrar::map(size_t id) -> const std::error_category& {
-    return ptr->mapping.apply([&](impl_type::mapping_t& mapping) -> const std::error_category& {
-        if(mapping.by<impl_type::uid_tag>().count(id) == 0) {
+    return instance().mapping.apply([&](storage_type::mapping_t& mapping) -> const std::error_category& {
+        if(mapping.by<storage_type::uid_tag>().count(id) == 0) {
             return unknown_category();
         } else {
-            return *mapping.by<impl_type::uid_tag>().at(id);
+            return *mapping.by<storage_type::uid_tag>().at(id);
         }
     });
+}
+
+auto registrar::instance() -> storage_type& {
+    static storage_type self;
+    return self;
 }
