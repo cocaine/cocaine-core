@@ -1,3 +1,10 @@
+cocaine-core (0.12.8.11+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Hpack fix - point headers in dynamic table to proper place.
+
+ -- Anton Matveenko <antmat@me.com>  Thu, 5 May 2016 19:30:06 +0300
+
 cocaine-core (0.12.8.10+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
