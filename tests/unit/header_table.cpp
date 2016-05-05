@@ -71,6 +71,35 @@ struct test_header_t {
     }
 };
 
+struct another_test_header_t {
+    static
+    header::data_t
+    name() {
+        return header::create_data("another_test_name");
+    }
+
+    static
+    header::data_t
+    value() {
+        return header::create_data("another_test_data");
+    }
+};
+
+struct third_test_header_t {
+    static
+    header::data_t
+    name() {
+        return header::create_data("third_test_name");
+    }
+
+    static
+    header::data_t
+    value() {
+        return header::create_data("third_test_data");
+    }
+};
+
+
 TEST(header_static_table_t, general) {
     const auto& headers = header_static_table_t::get_headers();
     ASSERT_EQ(headers.size(), boost::mpl::size<header_static_table_t::headers_storage>::value);
@@ -117,12 +146,42 @@ TEST(header_table_t, push) {
 
 TEST(header_table_t, find_by_full_match) {
     header_table_t table;
+    auto h1 = headers::make_header<test_header_t>();
+    auto h2 = headers::make_header<test_header_t>();
+    ASSERT_EQ(table.find_by_full_match(h1), 0);
+    ASSERT_EQ(table.find_by_full_match(h2), 0);
+
+    std::string data1("so much test wow");
+    std::string data2("so much test wow");
+    h1 = header_t::create<test_header_t>(header::data_t{data1.c_str(), data1.size()});
+    h2 = header_t::create<test_header_t>(header::data_t{data2.c_str(), data2.size()});
+    table.push(h1);
+    data1 = "Y U no copy data?";
+    ASSERT_EQ(table.find_by_full_match(h2), header_static_table_t::get_size());
+    data2 = "Y U no copy data?";
+
+    h1 = header_t::create<another_test_header_t>(header::data_t{data1.c_str(), data1.size()});
+    h2 = header_t::create<another_test_header_t>(header::data_t{data2.c_str(), data2.size()});
+    table.push(h1);
+    data1 = "Problems?";
+    ASSERT_EQ(table.find_by_full_match(h2), header_static_table_t::get_size() + 1);
+    data2 = "Problems?";
+
+    h1 = header_t::create<third_test_header_t>(header::data_t{data1.c_str(), data1.size()});
+    h2 = header_t::create<third_test_header_t>(header::data_t{data2.c_str(), data2.size()});
+    table.push(h1);
+    data1 = "YAY";
+    ASSERT_EQ(table.find_by_full_match(h2), header_static_table_t::get_size() + 2);
+    data2 = "YAY";
+
+    h1 = header_t::create<test_header_t>(header::data_t{data1.c_str(), data1.size()});
+    h2 = header_t::create<test_header_t>(header::data_t{data2.c_str(), data2.size()});
+    table.push(h1);
+    ASSERT_EQ(table.find_by_full_match(h2), header_static_table_t::get_size() + 3);
+
+
     auto h = headers::make_header<headers::span_id<>>();
-    ASSERT_EQ(header_static_table_t::idx<headers::span_id<>>(), table.find_by_full_match(h));
-    h = headers::make_header<headers::span_id<test_value_t>>();
-    ASSERT_EQ(table.find_by_full_match(h), 0);
-    table.push(h);
-    ASSERT_EQ(table.find_by_full_match(h), header_static_table_t::get_size());
+    ASSERT_EQ(table.find_by_full_match(h), header_static_table_t::idx<headers::span_id<>>());
 }
 
 TEST(header_table_t, find_by_name) {
@@ -130,8 +189,26 @@ TEST(header_table_t, find_by_name) {
     auto h = headers::make_header<test_header_t>();
     ASSERT_EQ(table.find_by_name(h), 0);
 
+    std::string data("so much test wow");
+    h = header_t::create<test_header_t>(header::data_t{data.c_str(), data.size()});
+    table.push(h);
+    data = "Y U no copy data?";
+    ASSERT_EQ(table.find_by_name(h), header_static_table_t::get_size());
+
+    h = header_t::create<another_test_header_t>(header::data_t{data.c_str(), data.size()});
+    table.push(h);
+    data = "Problems?";
+    ASSERT_EQ(table.find_by_name(h), header_static_table_t::get_size() + 1);
+
+    h = header_t::create<third_test_header_t>(header::data_t{data.c_str(), data.size()});
+    table.push(h);
+    data = "YAY";
+    ASSERT_EQ(table.find_by_name(h), header_static_table_t::get_size() + 2);
+
+    h = header_t::create<test_header_t>(header::data_t{data.c_str(), data.size()});
     table.push(h);
     ASSERT_EQ(table.find_by_name(h), header_static_table_t::get_size());
+
     h = headers::make_header<headers::span_id<test_value_t>>();
     ASSERT_EQ(table.find_by_name(h), header_static_table_t::idx<headers::span_id<>>());
     table.push(h);

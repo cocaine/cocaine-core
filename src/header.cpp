@@ -279,7 +279,8 @@ header_table_t::empty() const {
 }
 
 void
-header_table_t::push(const header_t& result) {
+header_table_t::push(const header_t& header) {
+    auto result = header;
     size_t header_size = result.http2_size();
 
     // Pop headers from table until there is enough room for new one or table is empty
@@ -314,6 +315,7 @@ header_table_t::push(const header_t& result) {
     dest += http2_integer_encode(reinterpret_cast<unsigned char*>(dest), result.name.size, 1, 0);
     // Encode value of the name of the header (plain copy)
     std::memcpy(dest, result.name.blob, result.name.size);
+    result.name.blob = dest;
 
     // Adjust buffer pointer
     dest += result.name.size;
@@ -323,6 +325,7 @@ header_table_t::push(const header_t& result) {
 
     // Encode value of the value of the header (plain copy)
     std::memcpy(dest, result.value.blob, result.value.size);
+    result.value.blob = dest;
 
     // Adjust buffer pointer
     dest += result.value.size + http2_header_overhead;
