@@ -19,10 +19,16 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Cocaine - Core Libraries
  Cocaine core libraries package.
 
+Package: libcocaine-io-util3
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Cocaine - Util Libraries.
+ Cocaine common utility libraries package(HPACK, cocaine errors, tracing support, cocaine protocol encoder)
+
 Package: libcocaine-dev
 Architecture: any
 Section: libdevel
-Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core3 (= ${binary:Version}),
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core3 (= ${binary:Version}), libcocaine-io-util3 (= ${binary:Version}),
  libltdl-dev, libmsgpack-dev, libboost1.48-dev | libboost-dev,
  blackhole-dev
 Description: Cocaine - Development Headers
