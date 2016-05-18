@@ -24,8 +24,7 @@
 
 #include <asio/error.hpp>
 
-#include <boost/assign/list_of.hpp>
-#include <boost/bimap.hpp>
+#include <vector>
 
 using namespace cocaine;
 using namespace cocaine::error;
@@ -300,54 +299,48 @@ error_t::kInvalidArgumentErrorCode = std::make_error_code(std::errc::invalid_arg
 
 // Error category registrar
 
+namespace {
+struct category_record_t {
+    size_t id;
+    const std::error_category* category;
+};
+}
 class registrar::storage_type {
 public:
-    struct uid_tag;
-    struct ptr_tag;
-
-    typedef boost::bimap<
-        boost::bimaps::tagged<std::size_t,                 uid_tag>,
-        boost::bimaps::tagged<std::error_category const *, ptr_tag>
-    > mapping_t;
+    typedef std::vector<category_record_t> mapping_t;
 
     synchronized<mapping_t> mapping;
 
     storage_type() {
-        mapping.unsafe() = boost::assign::list_of<mapping_t::relation>
-            (0x01, &std::system_category()              )
-            (0x02, &asio::error::get_system_category()  )
-            (0x03, &asio::error::get_netdb_category()   )
-            (0x04, &asio::error::get_addrinfo_category())
-            (0x05, &asio::error::get_misc_category()    )
-            (0x06, &transport_category()                )
-            (0x07, &dispatch_category()                 )
-            (0x08, &repository_category()               )
-            (0x09, &security_category()                 )
-            (0x0A, &locator_category()                  )
-            (0x0B, &unicorn_category()                  )
-            (0x0C, &std::generic_category()             )
-            (0xFF, &unknown_category()                  );
+        mapping.unsafe() = mapping_t({
+            {0x01, &std::system_category()              },
+            {0x02, &asio::error::get_system_category()  },
+            {0x03, &asio::error::get_netdb_category()   },
+            {0x04, &asio::error::get_addrinfo_category()},
+            {0x05, &asio::error::get_misc_category()    },
+            {0x06, &transport_category()                },
+            {0x07, &dispatch_category()                 },
+            {0x08, &repository_category()               },
+            {0x09, &security_category()                 },
+            {0x0A, &locator_category()                  },
+            {0x0B, &unicorn_category()                  },
+            {0x0C, &std::generic_category()             },
+            {0xFF, &unknown_category()                  }
+        });
     }
 };
 
 auto
 registrar::add(const std::error_category& ec, size_t index) -> void {
     instance().mapping.apply([&](storage_type::mapping_t& mapping){
-        auto insert_result = mapping.insert({index, &ec});
-        if(!insert_result.second) {
-            auto map_it = insert_result.first;
-            auto existing_index = map_it->get<storage_type::uid_tag>();
-            auto existing_ptr = map_it->get<storage_type::ptr_tag>();
-            bool has_same_name = (strcmp(ec.name(), existing_ptr->name()) == 0);
-            if(existing_index != index || (existing_ptr != &ec && !has_same_name)) {
-                throw error_t("duplicate error category '{}({})' for index {}, already have {}({}) at {}",
-                              ec.name(),
-                              static_cast<const void*>(&ec),
-                              index,
-                              existing_ptr->name(),
-                              static_cast<const void*>(existing_ptr),
-                              existing_index);
-            }
+        auto comp = [=](const category_record_t& item) {
+            return item.id == index;
+        };
+        auto it = std::find_if(mapping.begin(), mapping.end(), comp);
+        if(it == mapping.end()){
+            mapping.push_back(category_record_t{index, &ec});
+        } else if(it->category->name() != ec.name()) {
+            throw error_t("duplicate error category '{}' for index {}", ec.name(), index);
         }
     });
 }
@@ -355,10 +348,14 @@ registrar::add(const std::error_category& ec, size_t index) -> void {
 auto
 registrar::map(const std::error_category& ec) -> size_t {
     return instance().mapping.apply([&](storage_type::mapping_t& mapping) ->size_t {
-        if(mapping.by<storage_type::ptr_tag>().count(&ec) == 0) {
+        auto comp = [&](const category_record_t& item) {
+            return strcmp(item.category->name(), ec.name()) == 0;
+        };
+        auto it = std::find_if(mapping.begin(), mapping.end(), comp);
+        if(it == mapping.end()) {
             return 0xFF;
         } else {
-            return mapping.by<storage_type::ptr_tag>().at(&ec);
+            return it->id;
         }
     });
 }
@@ -366,10 +363,14 @@ registrar::map(const std::error_category& ec) -> size_t {
 auto
 registrar::map(size_t id) -> const std::error_category& {
     return instance().mapping.apply([&](storage_type::mapping_t& mapping) -> const std::error_category& {
-        if(mapping.by<storage_type::uid_tag>().count(id) == 0) {
+        auto comp = [=](const category_record_t& item) {
+            return item.id == id;
+        };
+        auto it = std::find_if(mapping.begin(), mapping.end(), comp);
+        if(it == mapping.end()) {
             return unknown_category();
         } else {
-            return *mapping.by<storage_type::uid_tag>().at(id);
+            return *it->category;
         }
     });
 }
