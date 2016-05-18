@@ -338,7 +338,8 @@ registrar::add(const std::error_category& ec, size_t index) -> void {
             auto map_it = insert_result.first;
             auto existing_index = map_it->get<storage_type::uid_tag>();
             auto existing_ptr = map_it->get<storage_type::ptr_tag>();
-            if(existing_index != index || existing_ptr != &ec) {
+            bool has_same_name = (strcmp(ec.name(), existing_ptr->name()) == 0);
+            if(existing_index != index || (existing_ptr != &ec && !has_same_name)) {
                 throw error_t("duplicate error category '{}({})' for index {}, already have {}({}) at {}",
                               ec.name(),
                               static_cast<const void*>(&ec),
