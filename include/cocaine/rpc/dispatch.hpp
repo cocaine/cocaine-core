@@ -40,6 +40,9 @@
 #include <boost/variant/static_visitor.hpp>
 #include <boost/variant/variant.hpp>
 
+#include <vector>
+#include "cocaine/hpack/header.hpp"
+
 namespace cocaine {
 
 namespace mpl = boost::mpl;
@@ -85,8 +88,12 @@ public:
     { }
 
     template<class Event, class F>
-    dispatch&
-    on(const F& callable, typename boost::disable_if<is_slot<F, Event>>::type* = nullptr);
+    dispatch<Tag>&
+    on(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type* = 0);
+
+    template<class Event, class F>
+    dispatch<Tag>&
+    on_wip(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type* = 0);
 
     template<class Event>
     dispatch&
@@ -127,19 +134,19 @@ namespace aux {
 
 // Slot selection
 
-template<class R, class Event>
+template<class R, class Event, class ForwardMeta>
 struct select {
-    typedef io::blocking_slot<Event> type;
+    typedef io::blocking_slot<Event, ForwardMeta> type;
 };
 
-template<class R, class Event>
-struct select<deferred<R>, Event> {
-    typedef io::deferred_slot<deferred, Event> type;
+template<class R, class Event, class ForwardMeta>
+struct select<deferred<R>, Event, ForwardMeta> {
+    typedef io::deferred_slot<deferred, Event, ForwardMeta> type;
 };
 
-template<class R, class Event>
-struct select<streamed<R>, Event> {
-    typedef io::deferred_slot<streamed, Event> type;
+template<class R, class Event, class ForwardMeta>
+struct select<streamed<R>, Event, ForwardMeta> {
+    typedef io::deferred_slot<streamed, Event, ForwardMeta> type;
 };
 
 // Slot invocation with arguments provided as a MessagePack object
@@ -147,7 +154,10 @@ struct select<streamed<R>, Event> {
 struct calling_visitor_t:
     public boost::static_visitor<boost::optional<io::dispatch_ptr_t>>
 {
-    calling_visitor_t(const msgpack::object& unpacked_, const io::upstream_ptr_t& upstream_):
+    calling_visitor_t(const std::vector<hpack::header_t>& headers_,
+                      const msgpack::object& unpacked_,
+                      const io::upstream_ptr_t& upstream_):
+        headers(headers_),
         unpacked(unpacked_),
         upstream(upstream_)
     { }
@@ -169,11 +179,12 @@ struct calling_visitor_t:
         }
 
         // Call the slot with the upstream constrained with the event's upstream protocol type tag.
-        return result_type((*slot)(std::move(args), typename slot_type::upstream_type(upstream)));
+        return result_type((*slot)(headers, std::move(args), typename slot_type::upstream_type(upstream)));
     }
 
 private:
-    const msgpack::object&    unpacked;
+    const std::vector<hpack::header_t>& headers;
+    const msgpack::object& unpacked;
     const io::upstream_ptr_t& upstream;
 };
 
@@ -182,13 +193,30 @@ private:
 template<class Tag>
 template<class Event, class F>
 dispatch<Tag>&
-dispatch<Tag>::on(const F& callable, typename boost::disable_if<is_slot<F, Event>>::type*) {
+dispatch<Tag>::on(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type*) {
     typedef typename aux::select<
         typename result_of<F>::type,
-        Event
+        Event,
+        std::false_type
     >::type slot_type;
 
-    return on<Event>(std::make_shared<slot_type>(callable));
+    return on<Event>(std::make_shared<slot_type>(std::forward<F>(fn)));
+}
+
+// TODO: Consider how to dispatch automatically depending on 1st meta argument. It's quite hard
+//       because of std::bind duck nature.
+template<class Tag>
+template<class Event, class F>
+dispatch<Tag>&
+dispatch<Tag>::on_wip(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type*) {
+    typedef typename aux::select<
+        typename result_of<F>::type,
+        Event,
+        std::true_type
+    >::type slot_type;
+
+    return on<Event>(std::make_shared<slot_type>(std::forward<F>(fn)));
+    // return *this;
 }
 
 template<class Tag>
@@ -216,7 +244,7 @@ dispatch<Tag>::forget() {
 template<class Tag>
 boost::optional<io::dispatch_ptr_t>
 dispatch<Tag>::process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const {
-    return process(message.type(), aux::calling_visitor_t(message.args(), upstream));
+    return process(message.type(), aux::calling_visitor_t(message.meta(), message.args(), upstream));
 }
 
 template<class Tag>

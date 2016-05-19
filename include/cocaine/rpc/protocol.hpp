@@ -22,6 +22,7 @@
 #define COCAINE_IO_PROTOCOL_HPP
 
 #include "cocaine/rpc/sanitize.hpp"
+#include "cocaine/tuple.hpp"
 
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/contains.hpp>
@@ -30,6 +31,7 @@
 #include <boost/mpl/find.hpp>
 #include <boost/mpl/insert_range.hpp>
 #include <boost/mpl/list.hpp>
+#include <boost/mpl/transform.hpp>
 
 #include <cstdint>
 
@@ -134,10 +136,29 @@ struct event_traits {
     // By default, all messages have no arguments, the only information they provide is their type.
     typedef typename aux::argument_type<Event>::type argument_type;
 
-    static_assert(
-        sanitize<argument_type>::value,
-        "mixing optional and non-optional message arguments is not allowed"
-    );
+    /// Sequence type is an unwrapped argument type.
+    ///
+    /// For example:
+    ///     boost::mpl::list<>                      -> boost::mpl::list<>.
+    ///     boost::mpl::list<int, string>           -> boost::mpl::list<int, string>.
+    ///     boost::mpl::list<int, optional<string>> -> boost::mpl::list<int, string>.
+    typedef typename boost::mpl::transform<
+        argument_type,
+        typename boost::mpl::lambda<io::details::unwrap_type<boost::mpl::_1>>::type
+    >::type sequence_type;
+
+    /// Packed tuple type of event handler arguments.
+    ///
+    /// All internal tagged wrappers (i.e. optional) are unwrapped during construction of this type.
+    ///
+    /// For example:
+    ///     boost::mpl::list<>                      -> std::tuple<>.
+    ///     boost::mpl::list<int, string>           -> std::tuple<int, string>.
+    ///     boost::mpl::list<int, optional<string>> -> std::tuple<int, string>.
+    typedef typename tuple::fold<sequence_type>::type tuple_type;
+
+    static_assert(sanitize<argument_type>::value,
+        "mixing optional and non-optional message arguments is not allowed");
 
     // Dispatch is a protocol tag type of the service channel dispatch after the given message is
     // successfully processed. The possible transitions types are: void, recursive protocol tag or

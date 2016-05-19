@@ -32,7 +32,7 @@ struct streamed {
     typedef io::message_queue<io::streaming_tag<type>> queue_type;
     typedef io::streaming<type> protocol;
 
-    template<template<class> class, class, class> friend struct io::deferred_slot;
+    template<template<class> class, class, class, class> friend struct io::deferred_slot;
 
     streamed():
         outbox(new synchronized<queue_type>())

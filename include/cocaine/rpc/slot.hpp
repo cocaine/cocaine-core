@@ -29,6 +29,10 @@
 #include <boost/mpl/transform.hpp>
 #include <boost/optional/optional_fwd.hpp>
 
+namespace cocaine { namespace hpack {
+class header_t;
+}}
+
 namespace cocaine { namespace io {
 
 namespace mpl = boost::mpl;
@@ -39,16 +43,10 @@ class basic_slot {
     typedef event_traits<event_type> traits_type;
 
 public:
-    typedef typename mpl::transform<
-        typename traits_type::argument_type,
-        typename mpl::lambda<
-            io::details::unwrap_type<mpl::_1>
-        >::type
-    >::type sequence_type;
-
     // Expected dispatch, parameter and upstream types.
+    typedef typename traits_type::tuple_type tuple_type;
+    typedef typename traits_type::sequence_type sequence_type;
     typedef dispatch<typename traits_type::dispatch_type> dispatch_type;
-    typedef typename tuple::fold<sequence_type>::type     tuple_type;
     typedef upstream<typename traits_type::upstream_type> upstream_type;
 
     virtual
@@ -58,7 +56,14 @@ public:
 
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
-    operator()(tuple_type&& args, upstream_type&& upstream) = 0;
+    operator()(tuple_type&& args,
+               upstream_type&& upstream) = 0;
+
+    virtual
+    boost::optional<std::shared_ptr<const dispatch_type>>
+    operator()(const std::vector<hpack::header_t>& headers,
+               tuple_type&& args,
+               upstream_type&& upstream) = 0;
 };
 
 template<class Event>

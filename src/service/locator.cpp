@@ -227,7 +227,17 @@ public:
     publish_slot_t(locator_t *const parent_): parent(parent_) { }
 
     auto
-    operator()(tuple_type&& args, upstream_type&& upstream) -> boost::optional<result_type> {
+    operator()(tuple_type&& args,
+               upstream_type&& upstream) -> boost::optional<result_type>
+    {
+        return operator()({}, std::move(args), std::move(upstream));
+    }
+
+    auto
+    operator()(const std::vector<hpack::header_t>&,
+               tuple_type&& args,
+               upstream_type&& upstream) -> boost::optional<result_type>
+    {
         const auto dispatch = cocaine::tuple::invoke(std::move(args),
             [this](std::string&& handle, std::vector<tcp::endpoint>&& location,
                    std::tuple<unsigned int, graph_root_t>&& metadata) -> result_type
@@ -295,7 +305,17 @@ public:
     routing_slot_t(locator_t *const parent_): parent(parent_) { }
 
     auto
-    operator()(tuple_type&& args, upstream_type&& upstream) -> boost::optional<result_type> {
+    operator()(tuple_type&& args,
+               upstream_type&& upstream) -> boost::optional<result_type>
+    {
+        return operator()({}, std::move(args), std::move(upstream));
+    }
+
+    auto
+    operator()(const std::vector<hpack::header_t>&,
+               tuple_type&& args,
+               upstream_type&& upstream) -> boost::optional<result_type>
+    {
         const auto ruid = std::get<0>(args);
 
         auto rv = parent->on_routing(ruid, true);

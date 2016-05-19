@@ -30,12 +30,13 @@ namespace cocaine { namespace io {
 template<
     template<class> class T,
     class Event,
+    class ForwardMeta,
     class R = typename result_of<Event>::type
 >
 struct deferred_slot:
-    public function_slot<Event, T<R>>
+    public function_slot<Event, T<R>, ForwardMeta>
 {
-    typedef function_slot<Event, T<R>> parent_type;
+    typedef function_slot<Event, T<R>, ForwardMeta> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::dispatch_type dispatch_type;
@@ -50,9 +51,20 @@ struct deferred_slot:
 
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
-    operator()(tuple_type&& args, upstream_type&& upstream) {
+    operator()(tuple_type&& args,
+               upstream_type&& upstream)
+    {
+        return operator()({}, std::move(args), std::move(upstream));
+    }
+
+    virtual
+    boost::optional<std::shared_ptr<const dispatch_type>>
+    operator()(const std::vector<hpack::header_t>& headers,
+               tuple_type&& args,
+               upstream_type&& upstream)
+    {
         try {
-            this->call(std::move(args)).attach(std::move(upstream));
+            this->call(headers, std::move(args)).attach(std::move(upstream));
         } catch(const std::system_error& e) {
             upstream.template send<typename protocol::error>(e.code(), std::string(e.what()));
         } catch(const std::exception& e) {
@@ -102,7 +114,7 @@ struct deferred {
     typedef io::message_queue<io::primitive_tag<type>> queue_type;
     typedef io::primitive<type> protocol;
 
-    template<template<class> class, class, class> friend struct io::deferred_slot;
+    template<template<class> class, class, class, class> friend struct io::deferred_slot;
 
     deferred():
         outbox(new synchronized<queue_type>())
@@ -157,7 +169,7 @@ struct deferred<void> {
     typedef io::message_queue<io::primitive_tag<type>> queue_type;
     typedef io::primitive<type> protocol;
 
-    template<template<class> class, class, class> friend struct io::deferred_slot;
+    template<template<class> class, class, class, class> friend struct io::deferred_slot;
 
     deferred():
         outbox(new synchronized<queue_type>())
