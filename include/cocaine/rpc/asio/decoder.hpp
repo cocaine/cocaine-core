@@ -47,12 +47,12 @@ struct decoded_message_t {
     args() const -> const msgpack::object&;
 
     auto
-    meta() const -> const std::vector<hpack::header_t>&;
+    headers() const -> const std::vector<hpack::header_t>&;
 
     template<class Header>
     auto
-    meta() const -> boost::optional<hpack::header_t> {
-        return meta(Header::name());
+    headers() const -> boost::optional<hpack::header_t> {
+        return headers(Header::name());
     }
 
     void
@@ -60,7 +60,7 @@ struct decoded_message_t {
 
 private:
     auto
-    meta(const hpack::header::data_t& name) const -> boost::optional<hpack::header_t>;
+    headers(const hpack::header::data_t& name) const -> boost::optional<hpack::header_t>;
 
     // These objects keep references to message buffer in the Decoder.
     msgpack::object object;

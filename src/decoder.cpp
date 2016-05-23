@@ -52,12 +52,12 @@ decoded_message_t::args() const -> const msgpack::object& {
 }
 
 auto
-decoded_message_t::meta() const -> const std::vector<hpack::header_t>& {
+decoded_message_t::headers() const -> const std::vector<hpack::header_t>& {
     return metadata;
 }
 
 auto
-decoded_message_t::meta(const hpack::header::data_t& name) const -> boost::optional<hpack::header_t> {
+decoded_message_t::headers(const hpack::header::data_t& name) const -> boost::optional<hpack::header_t> {
     auto it = boost::find_if(metadata, [&](const hpack::header_t& element) -> bool {
         return element.get_name() == name;
     });

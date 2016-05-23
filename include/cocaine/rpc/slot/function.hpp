@@ -39,7 +39,7 @@
 
 namespace cocaine { namespace io {
 
-template<class Event, class R, class ForwardMeta> struct function_slot;
+template<class Event, class R, class ForwardHeaders> struct function_slot;
 
 namespace aux {
 
@@ -65,7 +65,7 @@ struct protocol_impl<void> {
     typedef struct { } type;
 };
 
-template<class ForwardMeta, class R>
+template<class ForwardHeaders, class R>
 struct call_helper;
 
 template<class R>
@@ -84,7 +84,7 @@ struct call_helper<std::false_type, R> {
     }
 };
 
-template<class ForwardMeta, class R, class... Args>
+template<class ForwardHeaders, class R, class... Args>
 struct reconstruct_function;
 
 template<class R, class... Args>
@@ -105,7 +105,7 @@ struct reconstruct_function<std::false_type, R, std::tuple<Args...>> {
 
 namespace mpl = boost::mpl;
 
-template<class Event, class R, class ForwardMeta>
+template<class Event, class R, class ForwardHeaders>
 struct function_slot:
     public basic_slot<Event>
 {
@@ -116,7 +116,7 @@ struct function_slot:
     typedef typename basic_slot<Event>::tuple_type    tuple_type;
     typedef typename basic_slot<Event>::upstream_type upstream_type;
 
-    typedef typename aux::reconstruct_function<ForwardMeta, R, tuple_type>::type callable_type;
+    typedef typename aux::reconstruct_function<ForwardHeaders, R, tuple_type>::type callable_type;
 
     typedef typename aux::protocol_impl<
         typename event_traits<
@@ -131,7 +131,7 @@ struct function_slot:
 
     R
     call(const std::vector<hpack::header_t>& headers, tuple_type&& args) const {
-        return aux::call_helper<ForwardMeta, R>::apply(callable, headers, std::move(args));
+        return aux::call_helper<ForwardHeaders, R>::apply(callable, headers, std::move(args));
     }
 
 private:

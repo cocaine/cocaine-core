@@ -210,9 +210,9 @@ session_t::handle(const decoder_t::message_type& message) {
         if(lb->second->upstream->client_trace) {
             incoming_trace = lb->second->upstream->client_trace;
         } else {
-            auto trace_header = message.meta<hpack::headers::trace_id<>>();
-            auto span_header = message.meta<hpack::headers::span_id<>>();
-            auto parent_header = message.meta<hpack::headers::parent_id<>>();
+            auto trace_header = message.headers<hpack::headers::trace_id<>>();
+            auto span_header = message.headers<hpack::headers::span_id<>>();
+            auto parent_header = message.headers<hpack::headers::parent_id<>>();
             if(trace_header && span_header && parent_header) {
                 incoming_trace = trace_t(
                     trace_header->get_value().convert<uint64_t>(),

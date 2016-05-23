@@ -134,19 +134,19 @@ namespace aux {
 
 // Slot selection
 
-template<class R, class Event, class ForwardMeta>
+template<class R, class Event, class ForwardHeaders>
 struct select {
-    typedef io::blocking_slot<Event, ForwardMeta> type;
+    typedef io::blocking_slot<Event, ForwardHeaders> type;
 };
 
-template<class R, class Event, class ForwardMeta>
-struct select<deferred<R>, Event, ForwardMeta> {
-    typedef io::deferred_slot<deferred, Event, ForwardMeta> type;
+template<class R, class Event, class ForwardHeaders>
+struct select<deferred<R>, Event, ForwardHeaders> {
+    typedef io::deferred_slot<deferred, Event, ForwardHeaders> type;
 };
 
-template<class R, class Event, class ForwardMeta>
-struct select<streamed<R>, Event, ForwardMeta> {
-    typedef io::deferred_slot<streamed, Event, ForwardMeta> type;
+template<class R, class Event, class ForwardHeaders>
+struct select<streamed<R>, Event, ForwardHeaders> {
+    typedef io::deferred_slot<streamed, Event, ForwardHeaders> type;
 };
 
 // Slot invocation with arguments provided as a MessagePack object
@@ -244,7 +244,7 @@ dispatch<Tag>::forget() {
 template<class Tag>
 boost::optional<io::dispatch_ptr_t>
 dispatch<Tag>::process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const {
-    return process(message.type(), aux::calling_visitor_t(message.meta(), message.args(), upstream));
+    return process(message.type(), aux::calling_visitor_t(message.headers(), message.args(), upstream));
 }
 
 template<class Tag>

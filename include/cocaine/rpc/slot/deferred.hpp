@@ -30,13 +30,13 @@ namespace cocaine { namespace io {
 template<
     template<class> class T,
     class Event,
-    class ForwardMeta,
+    class ForwardHeaders,
     class R = typename result_of<Event>::type
 >
 struct deferred_slot:
-    public function_slot<Event, T<R>, ForwardMeta>
+    public function_slot<Event, T<R>, ForwardHeaders>
 {
-    typedef function_slot<Event, T<R>, ForwardMeta> parent_type;
+    typedef function_slot<Event, T<R>, ForwardHeaders> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::dispatch_type dispatch_type;
