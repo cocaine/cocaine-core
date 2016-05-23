@@ -93,7 +93,7 @@ public:
 
     template<class Event, class F>
     dispatch<Tag>&
-    on_wip(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type* = 0);
+    on_with_headers(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type* = 0);
 
     template<class Event>
     dispatch&
@@ -208,7 +208,7 @@ dispatch<Tag>::on(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type*) 
 template<class Tag>
 template<class Event, class F>
 dispatch<Tag>&
-dispatch<Tag>::on_wip(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type*) {
+dispatch<Tag>::on_with_headers(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type*) {
     typedef typename aux::select<
         typename result_of<F>::type,
         Event,
@@ -216,7 +216,6 @@ dispatch<Tag>::on_wip(F&& fn, typename boost::disable_if<is_slot<F, Event>>::typ
     >::type slot_type;
 
     return on<Event>(std::make_shared<slot_type>(std::forward<F>(fn)));
-    // return *this;
 }
 
 template<class Tag>
