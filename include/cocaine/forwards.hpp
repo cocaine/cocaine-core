@@ -74,6 +74,7 @@ struct storage_t;
 
 namespace cocaine { namespace hpack {
 
+class header_t;
 struct headers;
 struct header_static_table;
 

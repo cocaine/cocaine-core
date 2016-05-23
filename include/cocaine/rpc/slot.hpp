@@ -29,10 +29,6 @@
 #include <boost/mpl/transform.hpp>
 #include <boost/optional/optional_fwd.hpp>
 
-namespace cocaine { namespace hpack {
-class header_t;
-}}
-
 namespace cocaine { namespace io {
 
 namespace mpl = boost::mpl;
