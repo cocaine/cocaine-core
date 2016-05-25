@@ -492,8 +492,6 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
 
 void
 locator_t::drop_node(const std::string& uuid) {
-    m_remotes->erase(uuid);
-
     std::shared_ptr<session<asio::ip::tcp>> session;
 
     m_clients.apply([&](client_map_t& mapping) {
