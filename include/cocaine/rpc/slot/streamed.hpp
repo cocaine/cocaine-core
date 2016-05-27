@@ -22,6 +22,7 @@
 #define COCAINE_IO_STREAMED_SLOT_HPP
 
 #include "cocaine/rpc/slot/deferred.hpp"
+#include "cocaine/utility/exchange.hpp"
 
 namespace cocaine {
 
@@ -32,7 +33,12 @@ struct streamed {
     typedef io::message_queue<io::streaming_tag<type>> queue_type;
     typedef io::streaming<type> protocol;
 
+    typedef typename protocol::chunk chunk_type;
+    typedef typename protocol::error error_type;
+    typedef typename protocol::choke choke_type;
+
     streamed():
+        state(state_t::open),
         outbox(new synchronized<queue_type>())
     { }
 
@@ -42,7 +48,14 @@ struct streamed {
         streamed&
     >::type
     write(hpack::header_storage_t headers, Args&&... args) {
-        outbox->synchronize()->template append<typename protocol::chunk>(std::move(headers), std::forward<Args>(args)...);
+        outbox->apply([&](queue_type& queue) {
+            if (state == state_t::closed) {
+                throw std::invalid_argument("queue is closed");
+            }
+
+            queue.template append<chunk_type>(std::move(headers), std::forward<Args>(args)...);
+        });
+
         return *this;
     }
 
@@ -52,32 +65,43 @@ struct streamed {
         streamed&
     >::type
     write(Args&&... args) {
-        outbox->synchronize()->template append<typename protocol::chunk>(std::forward<Args>(args)...);
-        return *this;
+        return write({}, std::forward<Args>(args)...);
     }
 
     streamed&
     abort(hpack::header_storage_t headers, const std::error_code& ec, const std::string& reason) {
-        outbox->synchronize()->template append<typename protocol::error>(std::move(headers), ec, reason);
+        outbox->apply([&](queue_type& queue) {
+            if (utility::exchange(state, state_t::closed) == state_t::closed) {
+                throw std::invalid_argument("queue is already closed");
+            }
+
+            queue.template append<error_type>(std::move(headers), ec, reason);
+        });
+
         return *this;
     }
 
     streamed&
     abort(const std::error_code& ec, const std::string& reason) {
-        outbox->synchronize()->template append<typename protocol::error>(ec, reason);
-        return *this;
+        return abort({}, ec, reason);
     }
 
     streamed&
     close(hpack::header_storage_t headers) {
-        outbox->synchronize()->template append<typename protocol::choke>(std::move(headers));
+        outbox->apply([&](queue_type& queue) {
+            if (utility::exchange(state, state_t::closed) == state_t::closed) {
+                throw std::invalid_argument("queue is already closed");
+            }
+
+            queue.template append<choke_type>(std::move(headers));
+        });
+
         return *this;
     }
 
     streamed&
     close() {
-        outbox->synchronize()->template append<typename protocol::choke>();
-        return *this;
+        return close({});
     }
 
     template<class UpstreamType>
@@ -87,6 +111,12 @@ struct streamed {
     }
 
 private:
+    enum class state_t {
+        open,
+        closed
+    };
+
+    state_t state;
     const std::shared_ptr<synchronized<queue_type>> outbox;
 };
 
