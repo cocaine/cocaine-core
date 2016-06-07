@@ -64,8 +64,7 @@ using namespace cocaine::io;
 using blackhole::scope::holder_t;
 
 class context_impl_t : public context_t {
-    typedef std::pair<std::string, std::unique_ptr<actor_t>> service_desc_t;
-    typedef std::deque<service_desc_t> service_list_t;
+    typedef std::deque<std::pair<std::string, std::unique_ptr<actor_t>>> service_list_t;
 
     // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
     // for the Blackhole, when all the common stuff is extracted to a separate library.
