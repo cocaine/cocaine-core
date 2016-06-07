@@ -343,9 +343,8 @@ private:
 };
 
 std::unique_ptr<context_t>
-get_context(std::unique_ptr<config_t> config, std::unique_ptr<logging::logger_t> log) {
+make_context(std::unique_ptr<config_t> config, std::unique_ptr<logging::logger_t> log) {
     return std::unique_ptr<context_t>(new context_impl_t(std::move(config), std::move(log)));
 }
-
 
 } //  namespace cocaine

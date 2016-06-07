@@ -298,7 +298,7 @@ main(int argc, char* argv[]) {
     // Run context
     std::unique_ptr<context_t> context;
     try {
-        context = get_context(std::move(config), std::move(logger));
+        context = make_context(std::move(config), std::move(logger));
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(root, "unable to initialize the context - {}.", error::to_string(e));
         signal_handler.stop();
