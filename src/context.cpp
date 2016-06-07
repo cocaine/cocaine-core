@@ -64,10 +64,33 @@ using namespace cocaine::io;
 using blackhole::scope::holder_t;
 
 class context_impl_t : public context_t {
-public:
     typedef std::pair<std::string, std::unique_ptr<actor_t>> service_desc_t;
     typedef std::deque<service_desc_t> service_list_t;
 
+    // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
+    // for the Blackhole, when all the common stuff is extracted to a separate library.
+    std::unique_ptr<logging::trace_wrapper_t> m_log;
+
+    // NOTE: This is the first object in the component tree, all the other dynamic components, be it
+    // storages or isolates, have to be declared after this one.
+    std::unique_ptr<api::repository_t> m_repository;
+
+    // A pool of execution units - threads responsible for doing all the service invocations.
+    std::vector<std::unique_ptr<execution_unit_t>> m_pool;
+
+    // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
+    // because services are allowed to start and stop other services during their lifetime.
+    synchronized<service_list_t> m_services;
+
+    // Context signalling hub.
+    retroactive_signal<io::context_tag> m_signals;
+
+    std::unique_ptr<config_t> m_config;
+
+    // Service port mapping and pinning.
+    port_mapping_t m_mapper;
+
+public:
     context_impl_t(std::unique_ptr<config_t> _config, std::unique_ptr<logging::logger_t> _log) :
         m_log(new logging::trace_wrapper_t(std::move(_log))),
         m_config(std::move(_config)),
@@ -315,31 +338,6 @@ public:
 
         COCAINE_LOG_INFO(m_log, "core has been terminated");
     }
-
-private:
-    // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
-    // for the Blackhole, when all the common stuff is extracted to a separate library.
-    std::unique_ptr<logging::trace_wrapper_t> m_log;
-
-    // NOTE: This is the first object in the component tree, all the other dynamic components, be it
-    // storages or isolates, have to be declared after this one.
-    std::unique_ptr<api::repository_t> m_repository;
-
-    // A pool of execution units - threads responsible for doing all the service invocations.
-    std::vector<std::unique_ptr<execution_unit_t>> m_pool;
-
-    // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
-    // because services are allowed to start and stop other services during their lifetime.
-    synchronized<service_list_t> m_services;
-
-    // Context signalling hub.
-    retroactive_signal<io::context_tag> m_signals;
-
-    std::unique_ptr<config_t> m_config;
-
-    // Service port mapping and pinning.
-    port_mapping_t m_mapper;
-
 };
 
 std::unique_ptr<context_t>
