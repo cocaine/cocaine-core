@@ -29,14 +29,14 @@ ENDIF()
 
 # Unit tests
 IF(COCAINE_ALLOW_TESTS)
-    include(DownloadGoogleTesting)
-    download_google_testing()
+    INCLUDE(DownloadGoogleTesting)
+    FIND_PACKAGE(Threads)
+
+    DOWNLOAD_GOOGLE_TESTING()
 
     INCLUDE_DIRECTORIES(
         SYSTEM ${GTEST_INCLUDE_DIR}
         SYSTEM ${GMOCK_INCLUDE_DIR})
-
-    LINK_DIRECTORIES(${GTEST_BINARY_DIR} ${GMOCK_BINARY_DIR})
 
     INCLUDE_DIRECTORIES(
         ${CMAKE_CURRENT_SOURCE_DIR}/../include)
@@ -48,11 +48,13 @@ IF(COCAINE_ALLOW_TESTS)
     ADD_DEPENDENCIES(cocaine-core-unit googlemock)
 
     TARGET_LINK_LIBRARIES(cocaine-core-unit
+        ${CMAKE_THREAD_LIBS_INIT}
         cocaine-core
+        cocaine-io-util
+        gmock
         gtest
-        gmock_main
-        gmock)
+        gtest_main)
 
     SET_TARGET_PROPERTIES(cocaine-core-unit PROPERTIES
-    COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
+        COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
 ENDIF()

@@ -10,7 +10,3 @@
 
 #define PACKAGE "cocaine-core"
 #define PACKAGE_VERSION COCAINE_VERSION
-
-#cmakedefine COCAINE_DEBUG
-#cmakedefine COCAINE_ALLOW_CGROUPS
-#cmakedefine COCAINE_ALLOW_RAFT

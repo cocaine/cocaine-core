@@ -14,7 +14,6 @@ ENDIF()
 
 OPTION(COCAINE_ALLOW_TESTS "Build Tests" OFF)
 OPTION(COCAINE_ALLOW_BENCHMARKS "Build Benchmarking Tools" OFF)
-OPTION(COCAINE_DEBUG OFF)
 
 # Import our CMake modules.
 INCLUDE(cmake/locate_library.cmake)
@@ -125,7 +124,6 @@ ADD_EXECUTABLE(cocaine-runtime
     src/runtime/runtime.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
-    stdc++
     ${LIBBFD_LIBRARY}
     ${Boost_LIBRARIES}
     blackhole
@@ -147,7 +145,7 @@ ADD_CXX_COMPILER_FLAG(-pedantic)
 ADD_CXX_COMPILER_FLAG(-pedantic-errors)
 
 IF(COCAINE_ALLOW_TESTS OR COCAINE_ALLOW_BENCHMARKS)
-    ADD_CUSTOM_TARGET(test
+    ADD_CUSTOM_TARGET(unittest
         COMMAND ${CMAKE_BINARY_DIR}/tests/cocaine-core-unit
         DEPENDS cocaine-core-unit
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")

@@ -27,10 +27,6 @@
 #define BOOST_FILESYSTEM_VERSION 3
 #define BOOST_FILESYSTEM_NO_DEPRECATED
 
-#if !defined(COCAINE_DEBUG)
-    #define BOOST_DISABLE_ASSERTS
-#endif
-
 #define COCAINE_DECLARE_NONCOPYABLE(type)   \
     type(const type& other) = delete;       \
                                             \

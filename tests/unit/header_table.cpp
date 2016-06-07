@@ -28,6 +28,8 @@
 
 using namespace cocaine::hpack;
 
+namespace {
+
 struct test_value_t {
     static
     constexpr
@@ -99,6 +101,7 @@ struct third_test_header_t {
     }
 };
 
+}  // namespace
 
 TEST(header_static_table_t, general) {
     const auto& headers = header_static_table_t::get_headers();
