@@ -59,7 +59,7 @@ struct async_visitor:
         auto dispatch_copy = slot_dispatch;
         asio.post([=]() mutable {
             if(dispatch_copy.lock()) {
-                (*slot)(std::move(args), upstream<void>());
+                (*slot)({}, std::move(args), upstream<void>());
             }
         });
     }

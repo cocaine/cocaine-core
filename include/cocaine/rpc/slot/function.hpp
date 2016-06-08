@@ -127,7 +127,7 @@ struct function_slot:
     explicit
     function_slot(callable_type callable_):
         callable(std::move(callable_))
-    { }
+    {}
 
     R
     call(const std::vector<hpack::header_t>& headers, tuple_type&& args) const {

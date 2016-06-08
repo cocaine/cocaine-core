@@ -52,11 +52,6 @@ public:
 
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
-    operator()(tuple_type&& args,
-               upstream_type&& upstream) = 0;
-
-    virtual
-    boost::optional<std::shared_ptr<const dispatch_type>>
     operator()(const std::vector<hpack::header_t>& headers,
                tuple_type&& args,
                upstream_type&& upstream) = 0;
