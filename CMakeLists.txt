@@ -4,7 +4,7 @@ PROJECT(COCAINE-CORE)
 
 SET(COCAINE_VERSION_MAJOR   0)
 SET(COCAINE_VERSION_MINOR   12)
-SET(COCAINE_VERSION_RELEASE 8)
+SET(COCAINE_VERSION_RELEASE 9)
 
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -51,6 +51,7 @@ INCLUDE_DIRECTORIES(SYSTEM
     # Bundled third-party libraries.
     ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
     ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
+    ${PROJECT_SOURCE_DIR}/foreign/metrics/include
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include)
 
 INCLUDE_DIRECTORIES(BEFORE
@@ -61,6 +62,9 @@ LINK_DIRECTORIES(
     ${LIBMHASH_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
+
+SET(METRICS_BUILD_STATIC ON CACHE BOOL "Build the Metrics library as static")
+ADD_SUBDIRECTORY(foreign/metrics)
 
 ADD_LIBRARY(cocaine-io-util SHARED
     src/encoder.cpp
@@ -87,16 +91,17 @@ ADD_LIBRARY(cocaine-core SHARED
     src/essentials.cpp
     src/gateway/adhoc.cpp
     src/logging.cpp
-    src/unicorn/value.cpp
     src/repository.cpp
     src/service/locator.cpp
     src/service/locator/routing.cpp
     src/service/logging.cpp
+    src/service/runtime.cpp
     src/service/storage.cpp
     src/session.cpp
     src/signal.cpp
     src/storage/files.cpp
     src/trace/logger.cpp
+    src/unicorn/value.cpp
     src/unique_id.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-io-util
@@ -110,6 +115,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     mhash
     msgpack
     blackhole
+    metric
     ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-io-util PROPERTIES

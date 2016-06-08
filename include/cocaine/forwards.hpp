@@ -40,6 +40,12 @@ class severity_t;
 }  // namespace v1
 }  // namespace blackhole
 
+namespace metrics {
+
+class registry_t;
+
+}  // namespace metrics
+
 namespace cocaine {
 
 class actor_t;

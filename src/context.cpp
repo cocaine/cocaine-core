@@ -39,6 +39,8 @@
 #include <blackhole/scope/holder.hpp>
 #include <blackhole/wrapper.hpp>
 
+#include <metrics/registry.hpp>
+
 #include <deque>
 #include <boost/algorithm/string/join.hpp>
 #include <cocaine/detail/trace/logger.hpp>
@@ -83,6 +85,9 @@ class context_impl_t : public context_t {
 
     // Context signalling hub.
     retroactive_signal<io::context_tag> m_signals;
+
+    // Metrics.
+    metrics::registry_t m_metrics_registry;
 
     std::unique_ptr<config_t> m_config;
 
@@ -203,6 +208,11 @@ public:
     retroactive_signal<io::context_tag>&
     signal_hub() {
         return m_signals;
+    }
+
+    metrics::registry_t&
+    metrics_hub() {
+        return m_metrics_registry;
     }
 
     const config_t&

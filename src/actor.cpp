@@ -36,6 +36,8 @@
 
 #include <blackhole/logger.hpp>
 
+#include <metrics/registry.hpp>
+
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -43,6 +45,11 @@ using namespace asio;
 using ip::tcp;
 
 // Actor internals
+
+struct actor_t::metrics_t {
+    metrics::shared_metric<std::atomic<std::int64_t>> connections_accepted;
+    metrics::shared_metric<std::atomic<std::int64_t>> connections_rejected;
+};
 
 class actor_t::accept_action_t:
     public std::enable_shared_from_this<accept_action_t>
@@ -86,6 +93,7 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
     switch(ec.value()) {
     case 0:
         COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd {:d}", ptr->native_handle());
+        ++(*parent->metrics->connections_accepted.get());
 
         try {
             parent->m_context.engine().attach(std::move(ptr), parent->m_prototype);
@@ -103,6 +111,7 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
     default:
         COCAINE_LOG_ERROR(parent->m_log, "unable to accept connection: [{:d}] {}", ec.value(),
             ec.message());
+        ++(*parent->metrics->connections_rejected.get());
         break;
     }
 
@@ -119,15 +128,23 @@ actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
     m_context(context),
     m_log(context.log("core/asio", {{"service", prototype->name()}})),
     m_asio(asio),
+    metrics(new metrics_t{
+        context.metrics_hub().counter<std::int64_t>(blackhole::fmt::format("{}.connections.accepted", prototype->name())),
+        context.metrics_hub().counter<std::int64_t>(blackhole::fmt::format("{}.connections.rejected", prototype->name()))
+    }),
     m_prototype(std::move(prototype))
-{ }
+{}
 
 actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
                  std::unique_ptr<api::service_t> service)
 :
     m_context(context),
     m_log(context.log("core/asio", {{"service", service->prototype().name()}})),
-    m_asio(asio)
+    m_asio(asio),
+    metrics(new metrics_t{
+        context.metrics_hub().counter<std::int64_t>(blackhole::fmt::format("{}.connections.accepted", service->prototype().name())),
+        context.metrics_hub().counter<std::int64_t>(blackhole::fmt::format("{}.connections.rejected", service->prototype().name()))
+    })
 {
     const basic_dispatch_t* prototype = &service->prototype();
 

@@ -57,6 +57,10 @@ public:
     signal_hub() = 0;
 
     virtual
+    metrics::registry_t&
+    metrics_hub() = 0;
+
+    virtual
     const config_t&
     config() const = 0;
 
