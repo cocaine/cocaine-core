@@ -49,6 +49,9 @@ class session_t:
     // Log of last resort.
     const std::unique_ptr<logging::logger_t> log;
 
+    struct metrics_t;
+    std::unique_ptr<metrics_t> metrics;
+
     // The underlying connection.
 #if defined(__clang__)
     std::shared_ptr<transport_type> transport;
@@ -70,7 +73,11 @@ class session_t:
 
 public:
     session_t(std::unique_ptr<logging::logger_t> log,
-              std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
+              metrics::registry_t& metrics_hub,
+              std::unique_ptr<transport_type> transport,
+              const io::dispatch_ptr_t& prototype);
+
+    ~session_t();
 
     // Observers
 
@@ -130,7 +137,9 @@ public:
 
 public:
     session(std::unique_ptr<logging::logger_t> log,
-            std::unique_ptr<transport_type> transport, const io::dispatch_ptr_t& prototype);
+            metrics::registry_t& metrics_hub,
+            std::unique_ptr<transport_type> transport,
+            const io::dispatch_ptr_t& prototype);
 
     auto
     remote_endpoint() const -> endpoint_type;

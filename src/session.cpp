@@ -33,6 +33,12 @@
 
 #include <blackhole/logger.hpp>
 
+#include <metrics/accumulator/sliding/window.hpp>
+#include <metrics/accumulator/snapshot/uniform.hpp>
+#include <metrics/meter.hpp>
+#include <metrics/registry.hpp>
+#include <metrics/timer.hpp>
+
 using namespace cocaine;
 using namespace cocaine::io;
 
@@ -161,23 +167,58 @@ session_t::push_action_t::finalize(const std::error_code& ec) {
 class session_t::channel_t
 {
 public:
-    channel_t(const dispatch_ptr_t& dispatch_, const upstream_ptr_t& upstream_):
-        dispatch(dispatch_),
-        upstream(upstream_)
-    { }
+    channel_t(const dispatch_ptr_t& dispatch_,
+              const upstream_ptr_t& upstream_,
+              std::unique_ptr<metrics::timer_t::context_t> context_)
+        : dispatch(dispatch_), upstream(upstream_), context(std::move(context_)) {}
 
     dispatch_ptr_t dispatch;
     upstream_ptr_t upstream;
+    std::unique_ptr<metrics::timer_t::context_t> context;
 };
 
 // Session
 
-session_t::session_t(std::unique_ptr<logging::logger_t> log_, std::unique_ptr<transport_type> transport_, const dispatch_ptr_t& prototype_):
-    log(std::move(log_)),
-    transport(std::shared_ptr<transport_type>(std::move(transport_))),
-    prototype(prototype_),
-    max_channel_id(0)
-{ }
+struct session_t::metrics_t {
+    metrics::shared_metric<metrics::meter_t> summary;
+
+    /// Timers per slot.
+    std::map<
+        int,
+        metrics::shared_metric<metrics::timer<metrics::accumulator::sliding::window_t>>
+    > timers;
+};
+
+session_t::session_t(std::unique_ptr<logging::logger_t> log_,
+                     metrics::registry_t& metrics_hub,
+                     std::unique_ptr<transport_type> transport_,
+                     const dispatch_ptr_t& prototype_)
+    : log(std::move(log_)),
+      transport(std::shared_ptr<transport_type>(std::move(transport_))),
+      prototype(prototype_),
+      max_channel_id(0)
+{
+    metrics.reset(
+        new metrics_t{
+            metrics_hub.meter(blackhole::fmt::format("{}.meter.summary", prototype->name())),
+            {}
+        }
+    );
+
+    for (const auto& item : prototype->root()) {
+        const auto id = std::get<0>(item);
+        const auto& name = std::get<0>(std::get<1>(item));
+
+        metrics->timers.insert(
+            std::make_pair(
+                id,
+                metrics_hub.timer(blackhole::fmt::format("{}.timer[{}]", prototype->name(), name))
+            )
+        );
+    }
+}
+
+session_t::~session_t() = default;
 
 // Operations
 
@@ -202,8 +243,10 @@ session_t::handle(const decoder_t::message_type& message) {
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
                 prototype,
                 // Do not store trace if we handling server side.
-                std::make_shared<basic_upstream_t>(shared_from_this(), channel_id, boost::none)
+                std::make_shared<basic_upstream_t>(shared_from_this(), channel_id, boost::none),
+                std::make_unique<metrics::timer_t::context_t>(metrics->timers.at(message.type())->context())
             )});
+            metrics->summary->mark();
 
             max_channel_id = channel_id;
         }
@@ -296,7 +339,11 @@ session_t::fork(const dispatch_ptr_t& dispatch) {
         if(dispatch) {
             // NOTE: For mute slots, creating a new channel will essentially leak memory, since no
             // response will ever be sent back, therefore the channel will never be revoked at all.
-            mapping.insert({channel_id, std::make_shared<channel_t>(dispatch, downstream)});
+            mapping.insert({channel_id, std::make_shared<channel_t>(
+                dispatch,
+                downstream,
+                nullptr
+            )});
         }
 
         return downstream;
@@ -422,12 +469,15 @@ session_t::remote_endpoint() const {
 
 namespace cocaine {
 
-template<class Protocol>
-session<Protocol>::session(std::unique_ptr<logging::logger_t> log, std::unique_ptr<transport_type> transport, const dispatch_ptr_t& prototype):
-    session_t(std::move(log),
-              std::make_unique<io::transport<generic::stream_protocol>>(std::move(*transport)),
-              std::move(prototype))
-{ }
+template <class Protocol>
+session<Protocol>::session(std::unique_ptr<logging::logger_t> log,
+                           metrics::registry_t& metrics_hub,
+                           std::unique_ptr<transport_type> transport,
+                           const dispatch_ptr_t& prototype)
+    : session_t(std::move(log),
+                metrics_hub,
+                std::make_unique<io::transport<generic::stream_protocol>>(std::move(*transport)),
+                std::move(prototype)) {}
 
 template<>
 typename session<ip::tcp>::endpoint_type

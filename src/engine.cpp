@@ -107,6 +107,7 @@ execution_unit_t::execution_unit_t(context_t& context):
     m_asio(new io_service()),
     m_chamber(new chamber_t("core/asio", m_asio)),
     m_log(context.log("core/asio", {{"engine", m_chamber->thread_id()}})),
+    m_metrics(context.metrics_hub()),
     m_cron(new asio::deadline_timer(*m_asio))
 {
     m_asio->post(std::bind(&gc_action_t::operator(),
@@ -186,7 +187,7 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
         COCAINE_LOG_DEBUG(log, "attached connection to engine, load: {:.2f}%", utilization() * 100);
 
         // Create a new inactive session.
-        session_ = std::make_shared<session_type>(std::move(log), std::move(transport), dispatch);
+        session_ = std::make_shared<session_type>(std::move(log), m_metrics, std::move(transport), dispatch);
         // Start pulling right now to prevent race when session is detached before pull
         session_->pull();
     } catch(const std::system_error& e) {
