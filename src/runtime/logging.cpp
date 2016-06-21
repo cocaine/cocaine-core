@@ -20,39 +20,29 @@
 
 #include "cocaine/detail/runtime/logging.hpp"
 
-#include <algorithm>
-#include <array>
+#include "cocaine/common.hpp"
 
 #include <blackhole/record.hpp>
-
-namespace cocaine { namespace logging {
-
-console_t::console_t() :
-    blackhole::sink::console_t()
-{}
-
-auto console_t::color(const blackhole::record_t& record) const -> blackhole::sink::color_t {
-    using blackhole::sink::color_t;
-    static const std::array<color_t, 4> colors{{color_t(), color_t::blue(), color_t::yellow(), color_t::red()}};
-
-    const auto id = std::min<int>(std::max<int>(0, record.severity()), colors.size() - 1);
-
-    return colors[id];
-}
-
-}}  // namespace cocaine::logging
+#include <blackhole/sink.hpp>
+#include <blackhole/sink/console.hpp>
+#include <blackhole/termcolor.hpp>
 
 namespace blackhole {
 
 auto
-factory<cocaine::logging::console_t>::type() -> const char* {
+factory<cocaine::logging::console_t>::type() const noexcept -> const char* {
     return "console";
 }
 
 auto
-factory<cocaine::logging::console_t>::from(const config::node_t&) -> cocaine::logging::console_t {
-    return {};
-
+factory<cocaine::logging::console_t>::from(const config::node_t&) const -> std::unique_ptr<sink_t> {
+    return blackhole::builder<blackhole::sink::console_t>()
+        .colorize(cocaine::logging::debug, termcolor_t())
+        .colorize(cocaine::logging::info, termcolor_t::blue())
+        .colorize(cocaine::logging::warning, termcolor_t::yellow())
+        .colorize(cocaine::logging::error, termcolor_t::red())
+        .stdout()
+        .build();
 }
 
-}// namespace blackhole
+}  // namespace blackhole

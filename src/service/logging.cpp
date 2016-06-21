@@ -28,16 +28,10 @@
 #include <blackhole/extensions/facade.hpp>
 #include <blackhole/extensions/writer.hpp>
 #include <blackhole/formatter/json.hpp>
-#include <blackhole/formatter/string.hpp>
-#include <blackhole/handler/blocking.hpp>
 #include <blackhole/logger.hpp>
 #include <blackhole/record.hpp>
 #include <blackhole/registry.hpp>
 #include <blackhole/root.hpp>
-#include <blackhole/sink/console.hpp>
-#include <blackhole/sink/file.hpp>
-#include <blackhole/sink/socket/tcp.hpp>
-#include <blackhole/sink/socket/udp.hpp>
 #include <blackhole/wrapper.hpp>
 
 #include "cocaine/context.hpp"
@@ -76,16 +70,13 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
         logger = context.log(format("{}[core]", name));
     } else {
         auto reset_logger_fn = [=, &context]() {
-            auto registry = blackhole::registry_t::configured();
-            registry.add<blackhole::formatter::json_t>();
-            registry.add<blackhole::sink::file_t>();
-            registry.add<blackhole::sink::socket::tcp_t>();
-            registry.add<blackhole::sink::socket::udp_t>();
+            auto registry = blackhole::registry::configured();
+            registry->add<blackhole::formatter::json_t>();
 
             std::stringstream stream;
             stream << boost::lexical_cast<std::string>(context.config().logging().loggers());
 
-            auto log = registry.builder<blackhole::config::json_t>(stream)
+            auto log = registry->builder<blackhole::config::json_t>(stream)
                 .build(backend);
 
             auto severity = context.config().logging().severity();

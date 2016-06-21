@@ -46,16 +46,10 @@
 #include <blackhole/extensions/facade.hpp>
 #include <blackhole/extensions/writer.hpp>
 #include <blackhole/formatter/json.hpp>
-#include <blackhole/formatter/string.hpp>
-#include <blackhole/handler/blocking.hpp>
 #include <blackhole/logger.hpp>
 #include <blackhole/record.hpp>
 #include <blackhole/registry.hpp>
 #include <blackhole/root.hpp>
-#include <blackhole/sink/console.hpp>
-#include <blackhole/sink/file.hpp>
-#include <blackhole/sink/socket/tcp.hpp>
-#include <blackhole/sink/socket/udp.hpp>
 #include <blackhole/wrapper.hpp>
 
 #include "cocaine/logging.hpp"
@@ -259,18 +253,15 @@ main(int argc, char* argv[]) {
     std::unique_ptr<blackhole::root_logger_t> root;
     std::unique_ptr<logging::logger_t> logger;
 
-    auto registry = blackhole::registry_t::configured();
-    registry.add<blackhole::formatter::json_t>();
-    registry.add<logging::console_t>();
-    registry.add<blackhole::sink::file_t>();
-    registry.add<blackhole::sink::socket::tcp_t>();
-    registry.add<blackhole::sink::socket::udp_t>();
+    auto registry = blackhole::registry::configured();
+    registry->add<logging::console_t>();
+    registry->add<blackhole::formatter::json_t>();
 
     try {
         std::stringstream stream;
         stream << boost::lexical_cast<std::string>(config->logging().loggers());
 
-        auto log = registry.builder<blackhole::config::json_t>(stream)
+        auto log = registry->builder<blackhole::config::json_t>(stream)
             .build("core");
 
         root.reset(new blackhole::root_logger_t(std::move(log)));
@@ -308,7 +299,7 @@ main(int argc, char* argv[]) {
 
 
     // Handlers for context os_signal slot
-    auto hup_handler_cancellation = signal_handler.async_wait(SIGHUP, sighup_handler_t{*root, wrapper_ref.get(), registry, signal_handler, *context});
+    auto hup_handler_cancellation = signal_handler.async_wait(SIGHUP, sighup_handler_t{*root, wrapper_ref.get(), *registry, signal_handler, *context});
     auto child_handler_cancellation = signal_handler.async_wait(SIGCHLD, sigchild_handler_t{*context, signal_handler});
 
     // Wait until signaling termination
