@@ -39,7 +39,7 @@ namespace aux {
 struct frozen_visitor:
     public boost::static_visitor<void>
 {
-    constexpr explicit
+    explicit
     frozen_visitor(const std::shared_ptr<basic_upstream_t>& upstream_,
                    hpack::header_storage_t& headers_) :
         upstream(upstream_),

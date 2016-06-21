@@ -41,7 +41,6 @@
 
 #include <blackhole/attribute.hpp>
 #include <blackhole/attributes.hpp>
-#include <blackhole/builder.hpp>
 #include <blackhole/config/json.hpp>
 #include <blackhole/extensions/facade.hpp>
 #include <blackhole/extensions/writer.hpp>
