@@ -51,7 +51,6 @@ INCLUDE_DIRECTORIES(SYSTEM
     # Bundled third-party libraries.
     ${PROJECT_SOURCE_DIR}/foreign/asio/asio/include
     ${PROJECT_SOURCE_DIR}/foreign/backward-cpp
-    ${PROJECT_SOURCE_DIR}/foreign/metrics/include
     ${PROJECT_SOURCE_DIR}/foreign/rapidjson/include)
 
 INCLUDE_DIRECTORIES(BEFORE
@@ -62,9 +61,6 @@ LINK_DIRECTORIES(
     ${LIBMHASH_LIBRARY_DIRS}
     ${LIBMSGPACK_LIBRARY_DIRS}
     ${LIBLTDL_LIBRARY_DIRS})
-
-SET(METRICS_BUILD_STATIC ON CACHE BOOL "Build the Metrics library as static")
-ADD_SUBDIRECTORY(foreign/metrics)
 
 ADD_LIBRARY(cocaine-io-util SHARED
     src/encoder.cpp
@@ -115,7 +111,7 @@ TARGET_LINK_LIBRARIES(cocaine-core
     mhash
     msgpack
     blackhole
-    metric
+    metrics
     ${LIBUUID_LIBRARY})
 
 SET_TARGET_PROPERTIES(cocaine-io-util PROPERTIES
