@@ -1,21 +1,44 @@
+cocaine-core (0.12.9.0-alpha0+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Request meta information (aka headers) are passed to services via special
+    dispatch method. Without it, for example, an authorization system seems
+    quite hard to implement.
+  * All services are now collect various runtime metrics: number of connections,
+    requests, EWMA RPS, request time percentiles by method names etc.
+  * Context now provides a metrics hub, which is useful for registering your own
+    metrics.
+  * New internal service - Runtime - responsible for gathering metrics from the
+    hub and providing it to user.
+  * Adaptation with Blackhole Release Candidate. One of the main feature is
+    the asynchronous logging; the second one - is custom configurable via config
+    filters, which makes logging routing easy.
+  * Message queue now correctly saves meta information structs.
+  * Add runtime checks for streamed wrappers to prevent protocol violation and
+    eliminate double channel closing or writing after error.
+  * Rename context factory function to be look like factory function.
+  * Asserts are now always enabled.
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 23 Jun 2016 18:22:37 +0300
+
 cocaine-core (0.12.8.14+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
-  * Compare error categegories by name instead of pointers(really this time)
+  * Compare error categories by name instead of pointers (really this time).
 
  -- Anton Matveenko <antmat@me.com>  Wed, 18 May 2016 19:10:06 +0300
 
 cocaine-core (0.12.8.13+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
-  * Compare error categegories by name instead of pointers
+  * Compare error categories by name instead of pointers.
 
  -- Anton Matveenko <antmat@me.com>  Wed, 18 May 2016 15:45:06 +0300
 
 cocaine-core (0.12.8.12+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
-  * Use shared util library instead of static
+  * Use shared util library instead of static.
 
  -- Anton Matveenko <antmat@me.com>  Thu, 10 May 2016 20:47:06 +0300
 
