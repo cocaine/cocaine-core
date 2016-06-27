@@ -198,23 +198,25 @@ session_t::session_t(std::unique_ptr<logging::logger_t> log_,
       prototype(prototype_),
       max_channel_id(0)
 {
-    metrics.reset(
-        new metrics_t{
-            metrics_hub.meter(blackhole::fmt::format("{}.meter.summary", prototype->name())),
-            {}
-        }
-    );
-
-    for (const auto& item : prototype->root()) {
-        const auto id = std::get<0>(item);
-        const auto& name = std::get<0>(std::get<1>(item));
-
-        metrics->timers.insert(
-            std::make_pair(
-                id,
-                metrics_hub.timer(blackhole::fmt::format("{}.timer[{}]", prototype->name(), name))
-            )
+    if (prototype) {
+        metrics.reset(
+            new metrics_t{
+                metrics_hub.meter(cocaine::format("{}.meter.summary", prototype->name())),
+                {}
+            }
         );
+
+        for (const auto& item : prototype->root()) {
+            const auto id = std::get<0>(item);
+            const auto& name = std::get<0>(std::get<1>(item));
+
+            metrics->timers.insert(
+                std::make_pair(
+                    id,
+                    metrics_hub.timer(cocaine::format("{}.timer[{}]", prototype->name(), name))
+                )
+            );
+        }
     }
 }
 
