@@ -1,3 +1,10 @@
+cocaine-core (0.12.9.0-alpha1+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fixed SIGSEGV when using client-side session API.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 27 Jun 2016 14:57:53 +0300
+
 cocaine-core (0.12.9.0-alpha0+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
