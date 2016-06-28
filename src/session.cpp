@@ -486,7 +486,8 @@ typename session<ip::tcp>::endpoint_type
 session<ip::tcp>::remote_endpoint() const {
     const auto source = session_t::remote_endpoint();
 
-    BOOST_ASSERT(source.protocol() == ip::tcp::v4() || source.protocol() == ip::tcp::v6());
+    // TODO: Uncomment. In our production we receive protocol == 0.
+    // BOOST_ASSERT(source.protocol() == ip::tcp::v4() || source.protocol() == ip::tcp::v6());
 
     auto transformed = ip::tcp::endpoint();
 
