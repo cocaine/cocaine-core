@@ -1,3 +1,10 @@
+cocaine-core (0.12.9.0-alpha2+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Temporary disable assert in session.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 28 Jun 2016 11:58:36 +0300
+
 cocaine-core (0.12.9.0-alpha1+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
