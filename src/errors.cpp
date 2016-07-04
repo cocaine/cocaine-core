@@ -339,8 +339,8 @@ registrar::add(const std::error_category& ec, size_t index) -> void {
         auto it = std::find_if(mapping.begin(), mapping.end(), comp);
         if(it == mapping.end()){
             mapping.push_back(category_record_t{index, &ec});
-        } else if(it->category->name() != ec.name()) {
-            throw error_t("duplicate error category '{}' for index {}, already have {}", ec.name(), index, it->category->name());
+        } else if(std::strcmp(it->category->name(), ec.name()) != 0) {
+            throw error_t("duplicate error category '{}' for index {}, already have '{}'", ec.name(), index, it->category->name());
         }
     });
 }
