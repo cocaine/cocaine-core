@@ -113,7 +113,7 @@ logging_t::on_emit(logging::priorities level, std::string source, std::string me
     }
 
     blackhole::attribute_list list{{"source", source}};
-    for (auto attribute : attributes) {
+    for (const auto& attribute : attributes) {
         list.emplace_back(attribute);
     }
 
