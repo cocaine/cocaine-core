@@ -50,7 +50,7 @@ struct streamed {
     write(hpack::header_storage_t headers, Args&&... args) {
         auto queue = outbox->synchronize();
         if (state == state_t::closed) {
-            throw std::invalid_argument("queue is closed");
+            throw error::error_t("queue is closed");
         }
 
         queue->template append<chunk_type>(std::move(headers), std::forward<Args>(args)...);
@@ -71,7 +71,7 @@ struct streamed {
     abort(hpack::header_storage_t headers, const std::error_code& ec, const std::string& reason) {
         auto queue = outbox->synchronize();
         if (utility::exchange(state, state_t::closed) == state_t::closed) {
-            throw std::invalid_argument("queue is already closed");
+            throw error::error_t("queue is already closed");
         }
 
         queue->template append<error_type>(std::move(headers), ec, reason);
@@ -88,7 +88,7 @@ struct streamed {
     close(hpack::header_storage_t headers) {
         auto queue = outbox->synchronize();
         if (utility::exchange(state, state_t::closed) == state_t::closed) {
-            throw std::invalid_argument("queue is already closed");
+            throw error::error_t("queue is already closed");
         }
 
         queue->template append<choke_type>(std::move(headers));
