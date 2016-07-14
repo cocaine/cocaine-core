@@ -49,7 +49,7 @@ public:
     logger_filter(filter_t new_filter) = 0;
 
     virtual
-    const api::repository_t&
+    api::repository_t&
     repository() const = 0;
 
     virtual
@@ -94,6 +94,11 @@ public:
 
 std::unique_ptr<context_t>
 make_context(std::unique_ptr<config_t> config, std::unique_ptr<logging::logger_t> log);
+
+std::unique_ptr<context_t>
+make_context(std::unique_ptr<config_t> config,
+             std::unique_ptr<logging::logger_t> log,
+             std::unique_ptr<api::repository_t> repository);
 
 } // namespace cocaine
 

@@ -95,8 +95,11 @@ class context_impl_t : public context_t {
     port_mapping_t m_mapper;
 
 public:
-    context_impl_t(std::unique_ptr<config_t> _config, std::unique_ptr<logging::logger_t> _log) :
+    context_impl_t(std::unique_ptr<config_t> _config,
+                   std::unique_ptr<logging::logger_t> _log,
+                   std::unique_ptr<api::repository_t> _repository) :
         m_log(new logging::trace_wrapper_t(std::move(_log))),
+        m_repository(std::move(_repository)),
         m_config(std::move(_config)),
         m_mapper(*m_config)
     {
@@ -105,8 +108,6 @@ public:
         reset_logger_filter();
 
         COCAINE_LOG_INFO(m_log, "initializing the core");
-
-        m_repository = std::make_unique<api::repository_t>(log("repository"));
 
         // Load the builtin plugins.
         essentials::initialize(*m_repository);
@@ -200,7 +201,7 @@ public:
     }
 
 
-    const api::repository_t&
+    api::repository_t&
     repository() const {
         return *m_repository;
     }
@@ -351,7 +352,14 @@ public:
 
 std::unique_ptr<context_t>
 make_context(std::unique_ptr<config_t> config, std::unique_ptr<logging::logger_t> log) {
-    return std::unique_ptr<context_t>(new context_impl_t(std::move(config), std::move(log)));
+    std::unique_ptr<logging::logger_t> repository_logger(new blackhole::wrapper_t(*log, {}));
+    std::unique_ptr<api::repository_t> repository(new api::repository_t(std::move(repository_logger)));
+    return make_context(std::move(config), std::move(log), std::move(repository));
+}
+
+std::unique_ptr<context_t>
+make_context(std::unique_ptr<config_t> config, std::unique_ptr<logging::logger_t> log, std::unique_ptr<api::repository_t> repository) {
+    return std::unique_ptr<context_t>(new context_impl_t(std::move(config), std::move(log), std::move(repository)));
 }
 
 } //  namespace cocaine

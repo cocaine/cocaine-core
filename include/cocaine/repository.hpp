@@ -105,6 +105,10 @@ public:
     void
     insert(const std::string& name);
 
+    template<class T>
+    void
+    insert(const std::string& name, std::unique_ptr<typename plugin_traits<T>::factory_type> factory);
+
 private:
     void
     open(const std::string& target);
@@ -135,6 +139,14 @@ repository_t::get(const std::string& name, Args&&... args) const {
 template<class T>
 void
 repository_t::insert(const std::string& name) {
+    typedef typename plugin_traits<T>::factory_type factory_type;
+
+    insert<T>(name, std::make_unique<factory_type>());
+}
+
+template<class T>
+void
+repository_t::insert(const std::string& name, std::unique_ptr<typename plugin_traits<T>::factory_type> factory) {
     typedef typename T::category_type category_type;
     typedef typename plugin_traits<T>::factory_type factory_type;
 
@@ -148,7 +160,7 @@ repository_t::insert(const std::string& name) {
         "component factory is not derived from its category"
     );
 
-    insert(typeid(category_type).name(), name, std::make_unique<factory_type>());
+    insert(typeid(category_type).name(), name, std::move(factory));
 }
 
 struct preconditions_t {
