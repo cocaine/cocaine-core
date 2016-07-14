@@ -1,3 +1,10 @@
+cocaine-core (0.12.9.0-alpha5+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Repository: allow statefull factories and external component registration.
+
+ -- Anton Matveenko <antmat@me.com>  Thu, 14 Jul 2016 21:41:40 +0300
+
 cocaine-core (0.12.9.0-alpha4+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
