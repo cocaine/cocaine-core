@@ -86,10 +86,6 @@ public:
     virtual
     auto
     engine() -> execution_unit_t& = 0;
-
-    virtual
-    void
-    terminate() = 0;
 };
 
 std::unique_ptr<context_t>

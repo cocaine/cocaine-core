@@ -308,10 +308,6 @@ main(int argc, char* argv[]) {
     // unlock the mutex, as we don't need it anymore to prevent deadlock with several terminate calls
     lock.unlock();
 
-    // Termination
-    if(context) {
-        context->terminate();
-    }
     hup_handler_cancellation.cancel();
     child_handler_cancellation.cancel();
     context.reset(nullptr);
