@@ -23,6 +23,7 @@
 #include "cocaine/hpack/static_table.hpp"
 
 #include <cassert>
+#include <sstream>
 
 namespace cocaine { namespace hpack {
 
@@ -278,6 +279,36 @@ header_table_t::empty() const {
     return data_lower_bound == data_upper_bound;
 }
 
+std::string
+header_table_t::debug_state() const {
+    std::stringstream ss;
+    std::string data;
+    if(data_lower_bound < data_upper_bound) {
+        data = std::string(header_data.data() + data_lower_bound, header_data.data() + data_upper_bound);
+    } else {
+        data = std::string(header_data.data() + data_lower_bound, header_data.data() + data_lower_bound_end);
+        data.append(header_data.data(), header_data.data()+data_upper_bound);
+    }
+    for(auto& c: data) {
+        if(!isprint(c)) {
+            c = '*';
+        }
+    }
+    ss << "data_size:" << data_size()
+        << ", size:" << size()
+        << ", data_capacity:" << data_capacity()
+        << ", header_lower_bound:" << header_lower_bound
+        << ", header_upper_bound:" << header_upper_bound
+        << ", header_data_ptr:" << reinterpret_cast<const void*>(header_data.data())
+        << ", data_lower_bound:" << data_lower_bound
+        << ", data_lower_bound_end:" << data_lower_bound_end
+        << ", data_upper_bound:" << data_upper_bound
+        << ", capacity:" << capacity
+        << ", first header name:" << std::string(headers[header_lower_bound].name.blob, headers[header_lower_bound].name.size)
+        << ", data string:" << data << "\n";
+    return ss.str();
+}
+
 void
 header_table_t::push(const header_t& header) {
     auto result = header;
@@ -368,14 +399,15 @@ header_table_t::find(const std::function<bool(const header_t&)> comp) {
             return header_static_table_t::size + (dyn_it - (headers.data() + header_lower_bound));
         }
     } else {
-        auto dyn_it = std::find_if(headers.data(), headers.data() + header_upper_bound, comp);
-        if(dyn_it != headers.data() + header_upper_bound) {
-            return header_static_table_t::size + (dyn_it - headers.data());
-        }
-        dyn_it = std::find_if(headers.data() + header_lower_bound, headers.end(), comp);
+        auto dyn_it = std::find_if(headers.data() + header_lower_bound, headers.end(), comp);
         if(dyn_it != headers.end()) {
             return header_static_table_t::size + (dyn_it - (headers.data() + header_lower_bound));
         }
+        dyn_it = std::find_if(headers.data(), headers.data() + header_upper_bound, comp);
+        if(dyn_it != headers.data() + header_upper_bound) {
+            return header_static_table_t::size + (dyn_it - headers.data()) + (headers.size() - header_lower_bound);
+        }
+
     }
     return 0;
 }

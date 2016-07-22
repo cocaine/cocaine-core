@@ -119,6 +119,10 @@ public:
          */
         zone_t(std::vector<header_t>& headers);
 
+        zone_t(const zone_t&) = delete;
+        zone_t(zone_t&&) = default;
+        zone_t& operator=(const zone_t&) = delete;
+        zone_t& operator=(zone_t&&) = default;
         /**
          * @brief copy header data to header_zone and point header to that data.
          * @param header - header to rebind.
@@ -248,6 +252,9 @@ public:
 
     bool
     empty() const;
+
+    std::string
+    debug_state() const;
 
     static constexpr size_t max_data_capacity = 4096;
     static constexpr size_t http2_header_overhead = 32;
