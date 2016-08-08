@@ -50,7 +50,7 @@ enum repository_errors {
     duplicate_component,
     initialization_error,
     invalid_interface,
-    ltdl_error,
+    dlopen_error,
     version_mismatch
 };
 

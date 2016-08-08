@@ -123,7 +123,7 @@ class repository_category_t:
             return "component has failed to intialize";
         if(code == cocaine::error::repository_errors::invalid_interface)
             return "component has an invalid interface";
-        if(code == cocaine::error::repository_errors::ltdl_error)
+        if(code == cocaine::error::repository_errors::dlopen_error)
             return "internal libltdl error";
         if(code == cocaine::error::repository_errors::version_mismatch)
             return "component version requirements are not met";

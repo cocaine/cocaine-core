@@ -32,24 +32,17 @@
 
 #include <boost/iterator/filter_iterator.hpp>
 
-using namespace cocaine;
-using namespace cocaine::api;
+#include <dlfcn.h>
 
 namespace bh = blackhole;
 namespace fs = boost::filesystem;
 
+namespace cocaine {
+namespace api {
+
 using blackhole::scope::holder_t;
 
 namespace {
-
-typedef std::remove_pointer<lt_dlhandle>::type handle_type;
-
-struct lt_dlclose_action_t {
-    void
-    operator()(handle_type* plugin) const {
-        lt_dlclose(plugin);
-    }
-};
 
 struct is_cocaine_plugin_t {
     template<typename T>
@@ -71,22 +64,14 @@ typedef void (*initialize_fn_t)(repository_t&);
 
 } // namespace
 
+void
+repository_t::dlclose_action_t::operator()(void* plugin) const {
+    dlclose(plugin);
+}
+
 repository_t::repository_t(std::unique_ptr<logging::logger_t> log):
     m_log(std::move(log))
-{
-    if(lt_dlinit() != 0) throw std::system_error(error::ltdl_error);
-}
-
-repository_t::~repository_t() {
-    // Destroy all the factories.
-    m_categories.clear();
-
-    // Dispose of the plugins.
-    std::for_each(m_plugins.begin(), m_plugins.end(), lt_dlclose_action_t());
-
-    // Terminate the dynamic loader.
-    lt_dlexit();
-}
+{ }
 
 void
 repository_t::load(const std::vector<std::string>& plugin_dirs) {
@@ -126,19 +111,9 @@ repository_t::open(const std::string& target) {
     COCAINE_LOG_INFO(m_log, "loading \"{}\" plugin", target);
 
     const holder_t scoped(*m_log, {{"plugin", target}});
-    lt_dladvise advice;
-    lt_dladvise_init(&advice);
-    lt_dladvise_global(&advice);
-
-    std::unique_ptr<handle_type, lt_dlclose_action_t> plugin(
-        lt_dlopenadvise(target.c_str(), advice),
-        lt_dlclose_action_t()
-    );
-
-    lt_dladvise_destroy(&advice);
-
+    std::unique_ptr<void, dlclose_action_t> plugin(dlopen(target.c_str(), RTLD_GLOBAL|RTLD_NOW), dlclose_action_t());
     if(!plugin) {
-        throw std::system_error(error::ltdl_error, lt_dlerror());
+        throw std::system_error(error::dlopen_error, dlerror());
     }
 
     // According to the standard, it is neither defined nor undefined to access
@@ -148,8 +123,8 @@ repository_t::open(const std::string& target) {
     union { void* ptr; validation_fn_t call; } validation;
     union { void* ptr; initialize_fn_t call; } initialize;
 
-    validation.ptr = lt_dlsym(plugin.get(), "validation");
-    initialize.ptr = lt_dlsym(plugin.get(), "initialize");
+    validation.ptr = dlsym(plugin.get(), "validation");
+    initialize.ptr = dlsym(plugin.get(), "initialize");
 
     if(validation.ptr) {
         const auto preconditions = validation.call();
@@ -173,7 +148,7 @@ repository_t::open(const std::string& target) {
         throw std::system_error(error::invalid_interface);
     }
 
-    m_plugins.emplace_back(plugin.release());
+    m_plugins.emplace_back(std::move(plugin));
 }
 
 void
@@ -191,3 +166,6 @@ repository_t::insert(const std::string& id, const std::string& name,
 
     m_categories[id][name] = std::move(factory);
 }
+
+} // namespace api
+} // namespace cocaine

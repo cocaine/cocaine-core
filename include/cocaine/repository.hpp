@@ -32,8 +32,6 @@
 #include <type_traits>
 #include <vector>
 
-#include <ltdl.h>
-
 namespace cocaine { namespace api {
 
 template<class Category>
@@ -75,13 +73,21 @@ struct plugin_traits {
 // Component repository
 
 class repository_t {
+public:
+    struct
+    dlclose_action_t {
+        void
+        operator()(void* plugin) const;
+    };
+
+private:
+
     COCAINE_DECLARE_NONCOPYABLE(repository_t)
 
     const std::unique_ptr<logging::logger_t> m_log;
 
-    // NOTE: Used to unload all the plugins on shutdown. Cannot use a forward declaration here due
-    // to the implementation details.
-    std::vector<lt_dlhandle> m_plugins;
+    // Pointers returned by dlopen. Used to unload all the plugins on shutdown.
+    std::vector<std::unique_ptr<void, dlclose_action_t>> m_plugins;
 
     typedef std::map<std::string, std::unique_ptr<factory_concept_t>> factory_map_t;
     typedef std::map<std::string, factory_map_t> category_map_t;
@@ -91,8 +97,6 @@ class repository_t {
 public:
     explicit
     repository_t(std::unique_ptr<logging::logger_t> log);
-
-   ~repository_t();
 
     void
     load(const std::vector<std::string>& plugin_dirs);
