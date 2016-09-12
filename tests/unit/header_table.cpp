@@ -260,6 +260,41 @@ TEST(header_table_t, empty) {
     ASSERT_TRUE(table.empty());
 }
 
+TEST(header_table_t, complex_store_load) {
+    header_table_t table;
+    for(size_t i = 0; i < 10000; i++) {
+        auto h = headers::make_header<headers::trace_id<>>();
+        table.push(headers::make_header<headers::trace_id<>>());
+        h = headers::make_header<headers::span_id<>>();
+        table.push(h);
+        h = headers::make_header<headers::parent_id<>>();
+        table.push(h);
+        h = headers::make_header<test_header_t>();
+        table.push(h);
+        auto idx = table.find_by_name(h);
+        ASSERT_EQ(std::string(table[idx].get_name().blob, table[idx].get_name().size), "test_name");
+    }
+
+}
+
+TEST(header_table_t, circular_header_shift) {
+    header_table_t table;
+    auto h = headers::make_header<test_header_t>();
+    table.push(h);
+    auto pos = table.find_by_name(h);
+    ASSERT_EQ(pos, header_static_table_t::get_size());
+    for(size_t i = 0; i < header_table_t::max_header_capacity-1; i++) {
+        h = headers::make_header<headers::trace_id<>>();
+        table.push(h);
+    }
+    h = headers::make_header<test_header_t>();
+    table.push(h);
+    size_t s = table.size();
+    pos = table.find_by_name(h);
+
+    ASSERT_EQ(pos, s - 1);
+}
+
 TEST(http2_integer_size,) {
     unsigned char buffer[10];
     std::random_device rd;
