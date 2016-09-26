@@ -107,6 +107,7 @@ TARGET_LINK_LIBRARIES(cocaine-io-util
 TARGET_LINK_LIBRARIES(cocaine-core
     cocaine-io-util
     ${Boost_LIBRARIES}
+    ${LIBBFD_LIBRARY}
     ltdl
     mhash
     msgpack
@@ -126,7 +127,6 @@ ADD_EXECUTABLE(cocaine-runtime
     src/runtime/runtime.cpp)
 
 TARGET_LINK_LIBRARIES(cocaine-runtime
-    ${LIBBFD_LIBRARY}
     ${Boost_LIBRARIES}
     blackhole
     cocaine-core)
