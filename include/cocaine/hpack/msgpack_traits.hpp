@@ -43,20 +43,20 @@ struct msgpack_traits {
     template<class Header, class Stream>
     static
     void
-    pack(msgpack::packer<Stream>& packer, header_table_t& table, const header::data_t& header_data) {
+    pack(msgpack::packer<Stream>& packer, header_table_t& table, std::string header_data) {
         size_t pos = header_static_table_t::idx<Header>();
-        if(table[pos].get_value() == header_data) {
+        if(table[pos].value() == header_data) {
             packer.pack_fix_uint64(pos);
             return;
         }
         packer.pack_array(3);
-        header_t header(Header::name(), header_data);
-        table.push(header);
+        header_t header(Header::name(), std::move(header_data));
         // true flag means store header in dynamic_table on receiver side
         packer.pack_true();
         packer.pack_fix_uint64(pos);
-        packer.pack_raw(header_data.size);
-        packer.pack_raw_body(header_data.blob, header_data.size);
+        packer.pack_raw(header.value().size());
+        packer.pack_raw_body(header.value().c_str(), header.value().size());
+        table.push(std::move(header));
     }
 
     // Pack any other header
@@ -77,11 +77,11 @@ struct msgpack_traits {
         if(pos) {
             packer.pack_fix_uint64(pos);
         } else {
-            packer.pack_raw(source.get_name().size);
-            packer.pack_raw_body(source.get_name().blob, source.get_name().size);
+            packer.pack_raw(source.name().size());
+            packer.pack_raw_body(source.name().c_str(), source.name().size());
         }
-        packer.pack_raw(source.get_value().size);
-        packer.pack_raw_body(source.get_value().blob, source.get_value().size);
+        packer.pack_raw(source.value().size());
+        packer.pack_raw_body(source.value().c_str(), source.value().size());
     }
 
     static inline
@@ -99,19 +99,16 @@ struct msgpack_traits {
         }
 
         // Encode name to header
-        header::data_t header_name;
+        std::string header_name;
         if(source.via.array.ptr[1].type == msgpack::type::POSITIVE_INTEGER) {
-            header_name = table[source.via.array.ptr[1].via.u64].get_name();
+            header_name = table[source.via.array.ptr[1].via.u64].name();
         } else {
-            header_name.blob = source.via.array.ptr[1].via.raw.ptr;
-            header_name.size = source.via.array.ptr[1].via.raw.size;
+            header_name = std::string(source.via.array.ptr[1].via.raw.ptr, source.via.array.ptr[1].via.raw.size);
         }
 
         // Encode value to header
         auto value = source.via.array.ptr[2];
-        header::data_t header_value;
-        header_value.blob = value.via.raw.ptr;
-        header_value.size = value.via.raw.size;
+        std::string header_value(value.via.raw.ptr, value.via.raw.size);
 
         // We don't need to store header in the table
         header_t result(header_name, header_value);

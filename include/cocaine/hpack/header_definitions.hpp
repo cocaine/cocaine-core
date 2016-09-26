@@ -30,841 +30,846 @@ private:
     struct detail {
         struct empty_placeholder {
             static
-            constexpr
-            header::data_t
+            const std::string&
             name() {
-                return header::create_data("");
+                static std::string data;
+                return data;
             }
 
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("");
-            }
-        };
-        template <class Value>
-        struct value_mixin {
-            static
-            constexpr
-            header::data_t
-            value() {
-                return Value::value();
+                static std::string data;
+                return data;
             }
         };
     };
 
 public:
-    template<class Header>
-    static
-    header_t
-    make_header() {
-        return header_t(Header::name(), Header::value());
-    }
-
     struct default_values_t {
         struct zero_uint_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("\0\0\0\0\0\0\0\0");
+                static std::string data(8, '\0');
+                return data;
+            }
+        };
+
+        struct false_bool_value_t {
+            static
+            const std::string&
+            value() {
+                static std::string data("0");
+                return data;
             }
         };
 
         struct empty_string_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("");
+                static std::string data;
+                return data;
             }
         };
 
         struct get_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("GET");
+                static std::string data("GET");
+                return data;
             }
         };
 
         struct post_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("POST");
+                static std::string data("POST");
+                return data;
             }
         };
 
         struct root_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("/");
+                static std::string data("/");
+                return data;
             }
         };
 
         struct index_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("/index.html");
+                static std::string data("/index.html");
+                return data;
             }
         };
 
         struct http_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("http");
+                static std::string data("http");
+                return data;
             }
         };
 
         struct https_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("https");
+                static std::string data("https");
+                return data;
             }
         };
 
         struct status_200_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("200");
+                static std::string data("200");
+                return data;
             }
         };
 
         struct status_204_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("204");
+                static std::string data("204");
+                return data;
             }
         };
 
         struct status_206_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("206");
+                static std::string data("206");
+                return data;
             }
         };
 
         struct status_304_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("304");
+                static std::string data("304");
+                return data;
             }
         };
 
         struct status_400_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("400");
+                static std::string data("400");
+                return data;
             }
         };
 
         struct status_404_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("404");
+                static std::string data("404");
+                return data;
             }
         };
 
         struct status_500_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("500");
+                static std::string data("500");
+                return data;
             }
         };
 
         struct gzip_value_t {
             static
-            constexpr
-            header::data_t
+            const std::string&
             value() {
-                return header::create_data("gzip, deflate");
+                static std::string data("gzip, deflate");
+                return data;
             }
         };
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct authority:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data(":authority");
+            static std::string data(":authority");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct method:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data(":method");
+            static std::string data(":method");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct path:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data(":path");
+            static std::string data(":path");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct scheme:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data(":scheme");
+            static std::string data(":scheme");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct status:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data(":status");
+            static std::string data(":status");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct accept_charset:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("accept-charset");
+            static std::string data("accept-charset");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct accept_encoding:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("accept-encoding");
+            static std::string data("accept-encoding");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct accept_language:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("accept-language");
+            static std::string data("accept-language");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct accept_ranges:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("accept-ranges");
+            static std::string data("accept-ranges");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct accept:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("accept");
+            static std::string data("accept");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct access_control_allow_origin:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("access-control-allow-origin");
+            static std::string data("access-control-allow-origin");
+                return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct age:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("age");
+            static std::string data("age");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct allow:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("allow");
+            static std::string data("allow");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct authorization:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("authorization");
+            static std::string data("authorization");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct cache_control:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("cache-control");
+            static std::string data("cache-control");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct content_disposition:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("content-disposition");
+            static std::string data("content-disposition");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct content_encoding:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("content-encoding");
+            static std::string data("content-encoding");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct content_language:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("content-language");
+            static std::string data("content-language");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct content_length:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("content-length");
+            static std::string data("content-length");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct content_location:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("content-location");
+            static std::string data("content-location");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct content_range:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("content-range");
+            static std::string data("content-range");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct content_type:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("content-type");
+            static std::string data("content-type");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct cookie:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("cookie");
+            static std::string data("cookie");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct date:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("date");
+            static std::string data("date");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct etag:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("etag");
+            static std::string data("etag");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct expect:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("expect");
+            static std::string data("expect");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct expires:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("expires");
+            static std::string data("expires");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct from:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("from");
+            static std::string data("from");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct host:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("host");
+            static std::string data("host");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct if_match:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("if-match");
+            static std::string data("if-match");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct if_modified_since:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("if-modified-since");
+            static std::string data("if-modified-since");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct if_none_match:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("if-none-match");
+            static std::string data("if-none-match");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct if_range:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("if-range");
+            static std::string data("if-range");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct if_unmodified_since:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("if-unmodified-since");
+            static std::string data("if-unmodified-since");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct last_modified:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("last-modified");
+            static std::string data("last-modified");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct link:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("link");
+            static std::string data("link");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct location:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("location");
+            static std::string data("location");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct max_forwards:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("max-forwards");
+            static std::string data("max-forwards");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct proxy_authenticate:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("proxy-authenticate");
+            static std::string data("proxy-authenticate");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct proxy_authorization:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("proxy-authorization");
+            static std::string data("proxy-authorization");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct range:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("range");
+            static std::string data("range");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct referer:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("referer");
+            static std::string data("referer");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct refresh:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("refresh");
+            static std::string data("refresh");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct retry_after:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("retry-after");
+            static std::string data("retry-after");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct server:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("server");
+            static std::string data("server");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct set_cookie:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("set-cookie");
+            static std::string data("set-cookie");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct strict_transport_security:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("strict-transport-security");
+            static std::string data("strict-transport-security");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct transfer_encoding:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("transfer-encoding");
+            static std::string data("transfer-encoding");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct user_agent:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("user-agent");
+            static std::string data("user-agent");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct vary:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("vary");
+            static std::string data("vary");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct via:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("via");
+            static std::string data("via");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::empty_string_value_t>
     struct www_authenticate:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("www-authenticate");
+            static std::string data("www-authenticate");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::zero_uint_value_t>
     struct span_id:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("span_id");
+            static std::string data("span_id");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::zero_uint_value_t>
     struct trace_id:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("trace_id");
+            static std::string data("trace_id");
+            return data;
         }
     };
 
     template<class DefaultValue = default_values_t::zero_uint_value_t>
     struct parent_id:
-        public detail::value_mixin<DefaultValue>
+        public DefaultValue
     {
         static
-        constexpr
-        header::data_t
+        const std::string&
         name() {
-            return header::create_data("parent_id");
+            static std::string data("parent_id");
+            return data;
+        }
+    };
+
+    template<class DefaultValue = default_values_t::zero_uint_value_t>
+    struct trace_bit:
+        public DefaultValue
+    {
+        static
+        const std::string&
+        name() {
+            static std::string data("trace_bit");
+            return data;
         }
     };
 };

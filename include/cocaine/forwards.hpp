@@ -22,6 +22,7 @@
 #define COCAINE_FORWARDS_HPP
 
 #include <memory>
+#include <vector>
 
 // Third-party forwards
 
@@ -83,6 +84,8 @@ namespace cocaine { namespace hpack {
 class header_t;
 struct headers;
 struct header_static_table;
+
+typedef std::vector<header_t> header_storage_t;
 
 }} // namespace cocaine::hpack
 

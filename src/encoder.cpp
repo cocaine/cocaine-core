@@ -74,19 +74,20 @@ unbound_message_t::unbound_message_t(function_type&& bind_): bind(std::move(bind
 
 void
 encoder_t::pack_headers(packer_type& packer, const hpack::header_storage_t& headers) {
-    packer.pack_array(headers.get_headers().size() + 3);
+
+    packer.pack_array(headers.size() + 3);
 
     uint64_t trace_id  = trace_t::current().get_trace_id();
     uint64_t span_id   = trace_t::current().get_id();
     uint64_t parent_id = trace_t::current().get_parent_id();
 
-    hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer, hpack_context, hpack::header::create_data(trace_id));
-    hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer, hpack_context, hpack::header::create_data(span_id));
-    hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, hpack_context, hpack::header::create_data(parent_id));
+    hpack::msgpack_traits::pack<hpack::headers::trace_id<>>(packer, hpack_context, hpack::header::pack(trace_id));
+    hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer, hpack_context, hpack::header::pack(span_id));
+    hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, hpack_context, hpack::header::pack(parent_id));
 
-    for (const auto& header: headers.get_headers()) {
+    for (const auto& h: headers) {
         // TODO: maybe we need a runtime check not to pack headers twice
-        hpack::msgpack_traits::pack(packer, hpack_context, header);
+        hpack::msgpack_traits::pack(packer, hpack_context, h);
     }
 }
 

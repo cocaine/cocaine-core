@@ -21,150 +21,123 @@
 #pragma once
 
 #include <array>
+#include <deque>
 #include <functional>
+#include <string>
 #include <system_error>
 #include <vector>
+
+#include <boost/optional/optional.hpp>
 
 struct ch_header;
 
 namespace cocaine { namespace hpack {
 
 struct init_header_t;
+class header_t;
 
 size_t
 http2_integer_size(size_t sz, size_t bit_offset);
 
-size_t
-http2_integer_encode(unsigned char* dest, uint64_t source, size_t bit_offset, char prefix);
-
 namespace header {
 
-struct data_t {
-    const char* blob;
-    size_t size;
-    bool operator==(const data_t& other) const;
-
-    template<class To>
-    To
-    convert() const {
-        static_assert(std::is_pod<typename std::remove_reference<To>::type>::value &&
-                      !std::is_pointer<typename std::remove_reference<To>::type>::value &&
-                      !std::is_array<typename std::remove_reference<To>::type>::value,
-                      "only POD non pointer, non array data type is allowed to convert header data"
-                      );
-        if(size != sizeof(typename std::remove_reference<To>::type)) {
-            throw std::system_error(std::make_error_code(std::errc::invalid_argument), "invalid header data size");
-        }
-        return *(reinterpret_cast<const To*>(blob));
-    }
-};
-
 template<size_t N>
-inline
-constexpr
-data_t
-create_data(char const (&source)[N]) {
-    return data_t{source, N-1};
+std::string
+pack(char const (&source)[N]) {
+    return std::string{source, N-1};
 }
 
 template<class From>
-inline
-constexpr
-header::data_t
-create_data(From&& source) {
-    static_assert(std::is_lvalue_reference<From>::value &&
-                  std::is_pod<typename std::remove_reference<From>::type>::value &&
-                  !std::is_same<const char*, typename std::remove_reference<From>::type>::value,
-                  "only lreference to POD is allowed to create header data"
-                  );
-    return data_t {
+std::string
+pack(From&& source) {
+    static_assert(std::is_pod<typename std::remove_reference<From>::type>::value &&
+                  !std::is_pointer<typename std::remove_reference<From>::type>::value,
+                  "only lreference to non-pointer POD is allowed to pack header data");
+
+    return std::string {
         reinterpret_cast<const char*>(&source),
         sizeof(typename std::remove_reference<From>::type)
     };
 }
 
 inline
-constexpr
-data_t
-create_data(const char* source, size_t size) {
-    return data_t{source, size};
+std::string
+pack(const char* source, size_t size) {
+    return std::string(source, size);
 }
+
+template<class To>
+To
+unpack(const std::string& from) {
+    static_assert(std::is_pod<typename std::remove_reference<To>::type>::value &&
+                  !std::is_pointer<typename std::remove_reference<To>::type>::value &&
+                  !std::is_array<typename std::remove_reference<To>::type>::value,
+                  "only POD non pointer, non array data type is allowed to convert header data"
+    );
+    if(from.size() != sizeof(typename std::remove_reference<To>::type)) {
+        throw std::system_error(std::make_error_code(std::errc::invalid_argument), "invalid header data size");
+    }
+    return *(reinterpret_cast<const To*>(from.c_str()));
+}
+
+boost::optional<const header_t&>
+find_first(const std::vector<header_t>& headers, const std::string& name);
+
+boost::optional<const header_t&>
+find_first(const std::vector<header_t>& headers, const char* name, size_t sz);
+
+template<size_t N>
+boost::optional<const header_t&>
+find_first(const std::vector<header_t>& headers, char const (&name)[N]) {
+    return find_first(headers, name, N);
+}
+
+template<class Header>
+boost::optional<const header_t&>
+find_first(const std::vector<header_t>& headers) {
+    return find_first(headers, Header::name());
+}
+
+template <class To, class From>
+boost::optional<To>
+convert_first(const std::vector<header_t>& headers, From&& from) {
+    if(auto v = find_first(headers, from)) {
+        return boost::make_optional(unpack<To>(v->value()));
+    }
+    return boost::none;
+}
+
 } // namespace header
 
 struct headers;
 
 // Header class.
-// Represents non-owning header referring to some external memory.
-// Can be constructed only via header table
 class header_t {
 public:
-    /**
-     * @brief Very simple storage for non-owning headers,
-     * which can be used to extend header_t validity.
-     * Does not provide cleanup capbilities for performance and complexity reasons.
-     */
-    class zone_t {
-    public:
-        zone_t() = default;
+    header_t() = default;
+    header_t(std::string name, std::string value);
 
-        /**
-         * @brief construct zone_t by copying header data to header_zone and point header to that data.
-         * @param header - header to rebind.
-         */
-        zone_t(header_t& header);
-
-        /**
-         * @brief rebind pack of headers at once (single allocation)
-         * @param headers
-         */
-        zone_t(std::vector<header_t>& headers);
-
-        zone_t(const zone_t&) = delete;
-        zone_t(zone_t&&) = default;
-        zone_t& operator=(const zone_t&) = delete;
-        zone_t& operator=(zone_t&&) = default;
-        /**
-         * @brief copy header data to header_zone and point header to that data.
-         * @param header - header to rebind.
-         */
-        void
-        rebind_header(header_t& header);
-
-        /**
-         * @brief rebind pack of headers in a more efficient way (single allocation)
-         * @param headers - vector of headers.
-         */
-        void
-        rebind_headers(std::vector<header_t>& headers);
-
-        size_t
-        size() const;
-
-        void
-        reserve(size_t size);
-
-    private:
-        std::vector<char> storage;
-    };
-
-    header_t(const header_t&) = default;
-    header_t& operator=(const header_t&) = default;
-    header_t(): name(), value() {}
-
-    header_t(const ch_header& c_header);
-    // Create non-owning header on user-provided data
+    // Create predefined header on user-provided data
     template<class Header>
     static
     header_t
-    create(const header::data_t& _value) {
+    create(std::string _value) {
         return header_t(Header::name(), _value);
     }
 
-    header::data_t
-    get_name() const;
+    // Create predefined header on user-provided data
+    template<class Header>
+    static
+    header_t
+    create() {
+        return header_t(Header::name(), Header::value());
+    }
 
-    header::data_t
-    get_value() const;
+    const std::string&
+    name() const;
+
+    const std::string&
+    value() const;
 
     bool
     operator==(const header_t& other) const;
@@ -176,46 +149,14 @@ public:
     size_t
     http2_size() const;
 
-    friend struct msgpack_traits;
-    friend struct headers;
-    friend struct header_static_table_t;
-    friend struct init_header_t;
-
 private:
-    friend class header_table_t;
-
-    header_t(const header::data_t& name, const header::data_t& value) noexcept;
-
-    header_t(const char* name, size_t name_sz, const char* value, size_t value_sz) noexcept;
-
-    header::data_t name;
-    header::data_t value;
+    struct {
+        std::string name;
+        std::string value;
+    } data;
 };
 
-class header_storage_t {
-    header_t::zone_t zone;
-    std::vector<header_t> headers;
-
-public:
-    header_storage_t() = default;
-
-    explicit header_storage_t(std::vector<header_t> headers);
-
-    header_storage_t(const header_storage_t& other);
-    header_storage_t& operator=(const header_storage_t& other);
-
-    // we can rely on default move constructor, as all references and thus pointers are valid
-    // in a newly constructed vector (no relocation happens).
-    header_storage_t(header_storage_t&& other) = default;
-    header_storage_t& operator=(header_storage_t&& other) = default;
-
-    const std::vector<header_t>&
-    get_headers() const noexcept;
-
-    void
-    push_back(const header_t& header);
-};
-
+typedef std::vector<header_t> header_storage_t;
 
 // Header static and dynamic table as described in http2
 // See https://tools.ietf.org/html/draft-ietf-httpbis-header-compression-12#section-2.3
@@ -227,7 +168,7 @@ public:
     operator[](size_t idx);
 
     void
-    push(const header_t& header);
+    push(header_t header);
 
     inline
     size_t
@@ -245,16 +186,15 @@ public:
     data_size() const;
 
     size_t
-    size() const;
+    data_capacity() const;
 
     size_t
-    data_capacity() const;
+    size() const;
 
     bool
     empty() const;
 
-    std::string
-    debug_state() const;
+
 
     static constexpr size_t max_data_capacity = 4096;
     static constexpr size_t http2_header_overhead = 32;
@@ -269,18 +209,7 @@ private:
     find(const std::function<bool(const header_t&)> comp);
 
     // Header storage. Implemented as circular buffer
-    std::array<header_t, max_header_capacity> headers;
-    size_t header_lower_bound;
-    size_t header_upper_bound;
-
-    // Header data storage. Stores all data which headers can reference.
-    // Implemented as a sort of circular buffer.
-    // We multiply by 2 as data can be padded and we don't want to move it in memory.
-    // 2 multiplier guarantee that we can add new value to the end or beginning without data overlap.
-    std::array<char, max_data_capacity*2> header_data;
-    size_t data_lower_bound;
-    size_t data_lower_bound_end;
-    size_t data_upper_bound;
+    std::deque<header_t> headers;
     size_t capacity;
 };
 
