@@ -24,13 +24,14 @@
 #include "cocaine/dynamic.hpp"
 #include "cocaine/logging.hpp"
 
-#include <numeric>
-
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/convenience.hpp>
+#include <boost/optional/optional.hpp>
 
 #include <blackhole/logger.hpp>
+
+#include <numeric>
 
 using namespace cocaine::storage;
 
@@ -41,94 +42,125 @@ using blackhole::attribute_list;
 files_t::files_t(context_t& context, const std::string& name, const dynamic_t& args):
     category_type(context, name, args),
     m_log(context.log(name)),
-    m_parent_path(args.as_object().at("path").as_string())
+    m_parent_path(args.as_object().at("path").as_string()),
+    io_loop(),
+    io_work(asio::io_service::work(io_loop)),
+    thread([&](){
+        io_loop.run();
+    })
 { }
 
 files_t::~files_t() {
-    // Empty.
+    io_work = boost::none;
+    thread.join();
+}
+
+void
+files_t::read(const std::string& collection, const std::string& key, callback<std::string> cb) {
+    io_loop.post([=]() {
+        try {
+            cb(make_ready_future(read_sync(collection, key)));
+        } catch (...) {
+            cb(make_exceptional_future<std::string>());
+        }
+    });
+}
+
+void
+files_t::write(const std::string& collection,
+               const std::string& key,
+               const std::string& blob,
+               const std::vector<std::string>& tags,
+               callback<void> cb)
+{
+    io_loop.post([=]() {
+        try {
+            write_sync(collection, key, blob, tags);
+            cb(make_ready_future());
+        } catch (...) {
+            cb(make_exceptional_future<void>());
+        }
+    });
+}
+
+void
+files_t::remove(const std::string& collection, const std::string& key, callback<void> cb) {
+    io_loop.post([=]() {
+        try {
+            remove_sync(collection, key);
+            cb(make_ready_future());
+        } catch (...) {
+            cb(make_exceptional_future<void>());
+        }
+    });
+}
+
+void
+files_t::find(const std::string& collection, const std::vector<std::string>& tags, callback<std::vector<std::string>> cb) {
+    io_loop.post([=]() {
+        try {
+            cb(make_ready_future(find_sync(collection, tags)));
+        } catch (...) {
+            cb(make_exceptional_future<std::vector<std::string>>());
+        }
+    });
 }
 
 std::string
-files_t::read(const std::string& collection, const std::string& key) {
-    std::lock_guard<std::mutex> guard(m_mutex);
-
+files_t::read_sync(const std::string& collection, const std::string& key) {
     const fs::path file_path(m_parent_path / collection / key);
 
     if(!fs::exists(file_path)) {
-        throw std::system_error(std::make_error_code(std::errc::no_such_file_or_directory),
-            file_path.string()
-        );
+        throw std::system_error(std::make_error_code(std::errc::no_such_file_or_directory), file_path.string());
     }
 
-    COCAINE_LOG_DEBUG(m_log, "reading object '{}'", key, attribute_list({
-        {"collection", collection}
-        // {"path", file_path}
-    }));
+    COCAINE_LOG_DEBUG(m_log, "reading object '{}'", key, attribute_list({{"collection", collection}}));
 
     fs::ifstream stream(file_path, fs::ifstream::in | fs::ifstream::binary);
 
     if(!stream) {
-        throw std::system_error(std::make_error_code(std::errc::permission_denied),
-            file_path.string()
-        );
+        throw std::system_error(std::make_error_code(std::errc::permission_denied), file_path.string());
     }
 
-    return std::string(
-        std::istreambuf_iterator<char>(stream),
-        std::istreambuf_iterator<char>()
-    );
+    return std::string{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
 }
 
 void
-files_t::write(const std::string& collection, const std::string& key, const std::string& blob,
-               const std::vector<std::string>& tags)
-{
-    std::lock_guard<std::mutex> guard(m_mutex);
-
+files_t::write_sync(const std::string& collection,
+                    const std::string& key,
+                    const std::string& blob,
+                    const std::vector<std::string>& tags) {
     const fs::path store_path(m_parent_path / collection);
     const auto store_status = fs::status(store_path);
 
-    if(!fs::exists(store_status)) {
-        COCAINE_LOG_INFO(m_log, "creating collection", {
-            {"collection", collection}
-            // {"path", store_path}
-        });
-
+    if (!fs::exists(store_status)) {
+        COCAINE_LOG_INFO(m_log, "creating collection", {{ "collection", collection }});
         fs::create_directories(store_path);
-    } else if(!fs::is_directory(store_status)) {
-        throw std::system_error(std::make_error_code(std::errc::not_a_directory),
-            store_path.string()
-        );
+    } else if (!fs::is_directory(store_status)) {
+        throw std::system_error(std::make_error_code(std::errc::not_a_directory), store_path.string());
     }
 
     const fs::path file_path(store_path / key);
 
-    COCAINE_LOG_DEBUG(m_log, "writing object '{}'", key, attribute_list({
-        {"collection", collection}
-        // {"path", file_path}
-    }));
+    COCAINE_LOG_DEBUG(m_log, "writing object '{}'", key, attribute_list({{"collection", collection}}));
 
     fs::ofstream stream(file_path, fs::ofstream::out | fs::ofstream::trunc | fs::ofstream::binary);
 
-    if(!stream) {
-        throw std::system_error(std::make_error_code(std::errc::permission_denied),
-            file_path.string()
-        );
+    if (!stream) {
+        throw std::system_error(std::make_error_code(std::errc::permission_denied), file_path.string());
     }
 
-    for(auto it = tags.begin(); it != tags.end(); ++it) {
+    for (auto it = tags.begin(); it != tags.end(); ++it) {
         const auto tag_path = store_path / *it;
         const auto tag_status = fs::status(tag_path);
 
-        if(!fs::exists(tag_status)) {
+        if (!fs::exists(tag_status)) {
             fs::create_directory(tag_path);
-        } else if(!fs::is_directory(tag_status)) {
-            throw std::system_error(std::make_error_code(std::errc::not_a_directory),
-                tag_path.string()
-            );
+        } else if (!fs::is_directory(tag_status)) {
+            throw std::system_error(std::make_error_code(std::errc::not_a_directory), tag_path.string());
         }
 
-        if(fs::is_symlink(tag_path / key)) {
+        if (fs::is_symlink(tag_path / key)) {
             continue;
         }
 
@@ -140,19 +172,14 @@ files_t::write(const std::string& collection, const std::string& key, const std:
 }
 
 void
-files_t::remove(const std::string& collection, const std::string& key) {
-    std::lock_guard<std::mutex> guard(m_mutex);
-
+files_t::remove_sync(const std::string& collection, const std::string& key) {
     const auto file_path(m_parent_path / collection / key);
 
-    if(!fs::exists(file_path)) {
+    if (!fs::exists(file_path)) {
         return;
     }
 
-    COCAINE_LOG_DEBUG(m_log, "removing object '{}'", key, attribute_list({
-        {"collection", collection}
-        // {"path", file_path}
-    }));
+    COCAINE_LOG_DEBUG(m_log, "removing object '{}'", key, attribute_list({{"collection", collection}}));
 
     fs::remove(file_path);
 }
@@ -177,30 +204,28 @@ struct intersect {
 } // namespace
 
 std::vector<std::string>
-files_t::find(const std::string& collection, const std::vector<std::string>& tags) {
-    std::lock_guard<std::mutex> guard(m_mutex);
-
+files_t::find_sync(const std::string& collection, const std::vector<std::string>& tags) {
     const fs::path store_path(m_parent_path / collection);
 
-    if(!fs::exists(store_path) || tags.empty()) {
-        return std::vector<std::string>();
+    if (!fs::exists(store_path) || tags.empty()) {
+        return {};
     }
 
     std::vector<std::vector<std::string>> result;
 
-    for(auto tag = tags.begin(); tag != tags.end(); ++tag) {
+    for (auto tag = tags.begin(); tag != tags.end(); ++tag) {
         auto tagged = result.insert(result.end(), std::vector<std::string>());
 
-        if(!fs::exists(store_path / *tag)) {
+        if (!fs::exists(store_path / *tag)) {
             // If one of the tags doesn't exist, the intersection is evidently empty.
-            return std::vector<std::string>();
+            return {};
         }
 
         fs::directory_iterator it(store_path / *tag), end;
 
-        while(it != end) {
+        while (it != end) {
             const std::string object = it->path().filename().native();
-            if(!fs::exists(*it)) {
+            if (!fs::exists(*it)) {
                 COCAINE_LOG_DEBUG(m_log, "purging object '{}' from tag '{}'", object, *tag);
 
                 // Remove the symlink if the object was removed.

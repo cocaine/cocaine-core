@@ -23,7 +23,10 @@
 
 #include "cocaine/api/storage.hpp"
 
+#include <asio/io_service.hpp>
+
 #include <boost/filesystem/path.hpp>
+#include <boost/optional/optional.hpp>
 
 namespace cocaine { namespace storage {
 
@@ -32,11 +35,11 @@ class files_t:
 {
     const std::unique_ptr<logging::logger_t> m_log;
 
-    // Underlying storage access synchronization. Note that two or more runtime instances probably
-    // will trash the file storage if pointed to the same location.
-    std::mutex m_mutex;
-
     const boost::filesystem::path m_parent_path;
+
+    asio::io_service io_loop;
+    boost::optional<asio::io_service::work> io_work;
+    std::thread thread;
 
 public:
     files_t(context_t& context, const std::string& name, const dynamic_t& args);
@@ -44,22 +47,49 @@ public:
     virtual
    ~files_t();
 
+    using api::storage_t::read;
+
     virtual
+    void
+    read(const std::string& collection, const std::string& key, callback<std::string> cb);
+
+    using api::storage_t::write;
+
+    virtual
+    void
+    write(const std::string& collection,
+          const std::string& key,
+          const std::string& blob,
+          const std::vector<std::string>& tags,
+          callback<void> cb);
+
+    using api::storage_t::remove;
+
+    virtual
+    void
+    remove(const std::string& collection, const std::string& key, callback<void> cb);
+
+    using api::storage_t::find;
+
+    virtual
+    void
+    find(const std::string& collection, const std::vector<std::string>& tags, callback<std::vector<std::string>> cb);
+
+private:
     std::string
-    read(const std::string& collection, const std::string& key);
+    read_sync(const std::string& collection, const std::string& key);
 
-    virtual
     void
-    write(const std::string& collection, const std::string& key, const std::string& blob,
-          const std::vector<std::string>& tags);
+    write_sync(const std::string& collection,
+               const std::string& key,
+               const std::string& blob,
+               const std::vector<std::string>& tags);
 
-    virtual
     void
-    remove(const std::string& collection, const std::string& key);
+    remove_sync(const std::string& collection, const std::string& key);
 
-    virtual
     std::vector<std::string>
-    find(const std::string& collection, const std::vector<std::string>& tags);
+    find_sync(const std::string& collection, const std::vector<std::string>& tags);
 };
 
 }} // namespace cocaine::storage

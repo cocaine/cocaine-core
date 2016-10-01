@@ -408,7 +408,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     const auto storage = api::storage(m_context, "core");
 
     try {
-        const auto groups = storage->find("groups", std::vector<std::string>({"group", "active"}));
+        const auto groups = storage->find("groups", std::vector<std::string>({"group", "active"})).get();
         on_refresh(groups);
     } catch(const std::system_error& e) {
         throw std::system_error(e.code(), "unable to initialize routing groups");
@@ -587,7 +587,7 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
     typedef std::vector<std::string> ruid_vector_t;
 
     const auto storage = api::storage(m_context, "core");
-    const auto updated = storage->find("groups", std::vector<std::string>({"group", "active"}));
+    const auto updated = storage->find("groups", std::vector<std::string>({"group", "active"})).get();
 
     m_rgs.apply([&](rg_map_t& original) {
         // Make a deep copy of the original routing group mapping to use as the accumulator, for
@@ -613,7 +613,7 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
 
                 result.insert(std::make_pair(group, continuum_t(
                     std::make_unique<blackhole::wrapper_t>(*m_log, blackhole::attributes_t()),
-                    storage->get<continuum_t::stored_type>("groups", group))));
+                    storage->get<continuum_t::stored_type>("groups", group).get())));
             } catch(const std::system_error& e) {
                 COCAINE_LOG_ERROR(m_log, "unable to pre-load routing group data for update: {}",
                     error::to_string(e));

@@ -48,7 +48,8 @@ crypto<HashID>::sign(const std::string& message, const std::string& token_id) co
     std::string token;
 
     try {
-        token = m_store->template get<std::string>(m_service, token_id);
+        //TODO: either drop all crypto class or replace with async operation.
+        token = m_store->read(m_service, token_id).get();
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to load security token '{}' for service: {}", token_id,
             error::to_string(e));

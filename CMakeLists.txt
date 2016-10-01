@@ -72,6 +72,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/actor.cpp
     src/actor_unix.cpp
     src/api.cpp
+    src/api/storage.cpp
     src/chamber.cpp
     src/cluster/multicast.cpp
     src/cluster/predefine.cpp

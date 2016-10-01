@@ -32,12 +32,75 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
     category_type(context, asio, name, args),
     dispatch<storage_tag>(name)
 {
+    typedef std::function<deferred<std::string>(const std::string&, const std::string&)> read_fn_t;
+    typedef std::function<deferred<void>(const std::string&,
+                                         const std::string&,
+                                         const std::string&,
+                                         const std::vector<std::string>&)> write_fn_t;
+    typedef std::function<deferred<void>(const std::string&, const std::string&)> remove_fn_t;
+    typedef std::function<deferred<std::vector<std::string>>(const std::string&, const std::vector<std::string>&)> find_fn_t;
+
     const auto storage = api::storage(context, args.as_object().at("backend", "core").as_string());
 
-    on<storage::read>(std::bind(&api::storage_t::read, storage, ph::_1, ph::_2));
-    on<storage::write>(std::bind(&api::storage_t::write, storage, ph::_1, ph::_2, ph::_3, ph::_4));
-    on<storage::remove>(std::bind(&api::storage_t::remove, storage, ph::_1, ph::_2));
-    on<storage::find>(std::bind(&api::storage_t::find, storage, ph::_1, ph::_2));
+    read_fn_t read_fun = [=](const std::string& collection, const std::string& key) {
+        deferred<std::string> result;
+        storage->read(collection, key, [=](std::future<std::string> future) mutable {
+            try {
+                result.write(future.get());
+            } catch (const std::system_error& e) {
+                result.abort(e.code(), e.what());
+            }
+        });
+        return result;
+    };
+
+
+
+    write_fn_t write_fun = [=](const std::string& collection,
+                               const std::string& key,
+                               const std::string& blob,
+                               const std::vector<std::string>& tags) mutable {
+        deferred<void> result;
+        storage->write(collection, key, blob, tags, [=](std::future<void> future) mutable {
+            try {
+                future.get();
+                result.close();
+            } catch (const std::system_error& e) {
+                result.abort(e.code(), e.what());
+            }
+        });
+        return result;
+    };
+
+    remove_fn_t remove_fun = [=](const std::string& collection, const std::string& key) mutable {
+        deferred<void> result;
+        storage->remove(collection, key, [=](std::future<void> future) mutable {
+            try {
+                future.get();
+                result.close();
+            } catch (const std::system_error& e) {
+                result.abort(e.code(), e.what());
+            }
+        });
+        return result;
+    };
+
+    find_fn_t find_fun = [=](const std::string& collection, const std::vector<std::string>& tags) mutable {
+        deferred<std::vector<std::string>> result;
+        storage->find(collection, tags, [=](std::future<std::vector<std::string>> future) mutable {
+            try {
+                result.write(future.get());
+            } catch (const std::system_error& e) {
+                result.abort(e.code(), e.what());
+            }
+        });
+        return result;
+    };
+
+    on<storage::read>(std::move(read_fun));
+    on<storage::write>(std::move(write_fun));
+    on<storage::remove>(std::move(remove_fun));
+    on<storage::find>(std::move(find_fun));
 }
 
 const basic_dispatch_t&
