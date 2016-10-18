@@ -1,3 +1,10 @@
+cocaine-core (0.12.10.2) unstable; urgency=low
+
+  * Bug fix: error by one in HPACK (#107).
+  * Bug fix: define proper release version.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 18 Oct 2016 16:50:05 +0300
+
 cocaine-core (0.12.10.1) unstable; urgency=low
 
   * Non-maintainer upload.
