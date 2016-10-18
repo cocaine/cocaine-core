@@ -89,7 +89,7 @@ find_first(const std::vector<header_t>& headers, const char* name, size_t sz);
 template<size_t N>
 boost::optional<const header_t&>
 find_first(const std::vector<header_t>& headers, char const (&name)[N]) {
-    return find_first(headers, name, N);
+    return find_first(headers, name, N - 1);
 }
 
 template<class Header>
