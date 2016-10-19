@@ -28,6 +28,20 @@ using namespace cocaine::service;
 
 namespace ph = std::placeholders;
 
+namespace {
+
+template<class T>
+void
+abort_deferred(cocaine::deferred<T>& def, const std::error_code& ec, const std::string& reason) {
+    try {
+        def.abort(ec, reason);
+    } catch (const std::system_error&) {
+        // pass, the only reason of exception is detached session
+    }
+}
+
+}
+
 storage_t::storage_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),
     dispatch<storage_tag>(name)
@@ -48,7 +62,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
             try {
                 result.write(future.get());
             } catch (const std::system_error& e) {
-                result.abort(e.code(), e.what());
+                abort_deferred(result, e.code(), e.what());
             }
         });
         return result;
@@ -66,7 +80,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
                 future.get();
                 result.close();
             } catch (const std::system_error& e) {
-                result.abort(e.code(), e.what());
+                abort_deferred(result, e.code(), e.what());
             }
         });
         return result;
@@ -79,7 +93,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
                 future.get();
                 result.close();
             } catch (const std::system_error& e) {
-                result.abort(e.code(), e.what());
+                abort_deferred(result, e.code(), e.what());
             }
         });
         return result;
@@ -91,7 +105,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
             try {
                 result.write(future.get());
             } catch (const std::system_error& e) {
-                result.abort(e.code(), e.what());
+                abort_deferred(result, e.code(), e.what());
             }
         });
         return result;
