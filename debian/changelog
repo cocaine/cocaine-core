@@ -1,3 +1,9 @@
+cocaine-core (0.12.10.3) unstable; urgency=low
+
+  * Bug fix: catch closed session exceptions (#108).
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 19 Oct 2016 16:50:24 +0300
+
 cocaine-core (0.12.10.2) unstable; urgency=low
 
   * Bug fix: error by one in HPACK (#107).
