@@ -44,8 +44,9 @@ struct max_stored_span_id_test_value_t {
     static
     const std::string&
     value() {
-        // 4053 is magic number when span_id header takes 4096 bytes
-        static std::string big_data(4053, 'x');
+        // 4057 is magic number when span_id header takes 4096 bytes
+        // 4057 == 4096 - 32 - len("span_id")
+        static std::string big_data(4057, 'x');
         return big_data;
     }
 };

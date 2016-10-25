@@ -36,9 +36,6 @@ namespace cocaine { namespace hpack {
 struct init_header_t;
 class header_t;
 
-size_t
-http2_integer_size(size_t sz, size_t bit_offset);
-
 namespace header {
 
 template<size_t N>

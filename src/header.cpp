@@ -46,29 +46,6 @@ find_first(const std::vector<header_t>& headers, const std::string& name) {
 
 }
 
-size_t
-http2_integer_size(size_t sz, size_t bit_offset) {
-    if(bit_offset == 0 || bit_offset > 7) {
-        throw std::system_error(
-            std::make_error_code(std::errc::invalid_argument),
-            "Invalid bit_offset for http2_integer_size"
-        );
-    }
-    // See packing here https://httpwg.github.io/specs/rfc7541.html#integer.representation
-    // if integer fits to 8 - bit_offset bits
-    if(sz < static_cast<size_t>(1 << (8 - bit_offset))) {
-        return 1;
-    }
-    // One byte is first and we start to write in second one
-    size_t ret = 2;
-    sz -= (1 << (8 - bit_offset));
-    while(sz > 127) {
-        sz = sz >> 7;
-        ret++;
-    }
-    return ret;
-}
-
 struct init_header_t {
     init_header_t(header_static_table_t::storage_t& _data) :
         data(_data)
@@ -118,8 +95,7 @@ size_t
 header_t::http2_size() const {
     // 1 refer to string literals which has size with 1-bit padding.
     // See https://tools.ietf.org/html/draft-ietf-httpbis-header-compression-12#section-5.2
-    return data.name.size() + http2_integer_size(data.name.size(), 1) +
-        data.value.size() + http2_integer_size(data.value.size(), 1) + header_table_t::http2_header_overhead;
+    return data.name.size() + data.value.size() + header_table_t::http2_header_overhead;
 }
 
 const header_static_table_t::storage_t&
