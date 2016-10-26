@@ -165,6 +165,10 @@ public:
     const component_group_t&
     unicorns() const = 0;
 
+    virtual
+    const component_group_t&
+    component(const std::string& name) const = 0;
+
     static
     int
     versions();

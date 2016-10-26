@@ -467,6 +467,16 @@ public:
         return component_groups.at("unicorns");
     }
 
+    virtual
+    const component_group_t&
+    component(const std::string& name) const {
+        auto it = component_groups.find(name);
+        if(it != component_groups.end()) {
+            return it->second;
+        }
+        throw error_t(error::component_not_found, "component group {} is missing in config", name);
+    }
+
     static
     dynamic_t
     read_source_file(const std::string& source_file) {
@@ -515,6 +525,31 @@ public:
         groups["services"] = component_group_t("services", services_src);
         groups["storages"] = component_group_t("storages", storages_src);
         groups["unicorns"] = component_group_t("unicorns", unicorns_src);
+
+        static const std::set<std::string> reserved_components = {
+            "services",
+            "storages",
+            "unicorns",
+            "paths",
+            "network",
+            "logging",
+            "version"
+        };
+
+        for (const auto& p : source.as_object()) {
+            if (!reserved_components.count(p.first)) {
+                try {
+                    groups[p.first] = component_group_t(p.first, p.second.as_object());
+                } catch (const std::exception& e) {
+                    throw error_t(error::initialization_error,
+                                  "invalid '{}' component configuration(configuration json - '{}') - {}",
+                                  p.first,
+                                  boost::lexical_cast<std::string>(p.second),
+                                  e.what());
+                }
+            }
+        }
+
         return groups;
     };
 
