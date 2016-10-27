@@ -469,7 +469,7 @@ public:
 
     virtual
     const component_group_t&
-    component(const std::string& name) const {
+    component_group(const std::string& name) const {
         auto it = component_groups.find(name);
         if(it != component_groups.end()) {
             return it->second;

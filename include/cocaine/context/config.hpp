@@ -167,7 +167,7 @@ public:
 
     virtual
     const component_group_t&
-    component(const std::string& name) const = 0;
+    component_group(const std::string& name) const = 0;
 
     static
     int
