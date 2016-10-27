@@ -1,3 +1,11 @@
+cocaine-core (0.12.10.4) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Feature: custom component support (#111).
+  * Bug fix: follow the HPACK RFC the way other pals do (#109).
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 27 Oct 2016 13:44:04 +0300
+
 cocaine-core (0.12.10.3) unstable; urgency=low
 
   * Bug fix: catch closed session exceptions (#108).
