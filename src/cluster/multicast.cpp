@@ -22,6 +22,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/context/signal.hpp"
+#include "cocaine/context/quote.hpp"
 #include "cocaine/dynamic.hpp"
 #include "cocaine/logging.hpp"
 
@@ -143,7 +144,7 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
     );
 
     m_signals = std::make_shared<dispatch<context_tag>>(name);
-    m_signals->on<context::prepared>(std::bind(&multicast_t::on_publish, this, std::error_code()));
+    m_signals->on<io::context::prepared>(std::bind(&multicast_t::on_publish, this, std::error_code()));
 
     context.signal_hub().listen(m_signals, m_locator.asio());
 }
@@ -165,17 +166,15 @@ multicast_t::on_publish(const std::error_code& ec) {
         return;
     }
 
-    const auto actor = m_context.locate("locator");
+    const auto quote = m_context.locate("locator");
 
-    if(!actor) {
+    if(!quote) {
         COCAINE_LOG_ERROR(m_log, "unable to announce local endpoints: locator is not available");
         return;
     }
 
-    const auto endpoints = actor.get().endpoints();
-
-    if(!endpoints.empty()) {
-        COCAINE_LOG_DEBUG(m_log, "announcing {:d} local endpoint(s)", endpoints.size(), attribute_list({
+    if(!quote->endpoints.empty()) {
+        COCAINE_LOG_DEBUG(m_log, "announcing {:d} local endpoint(s)", quote->endpoints.size(), attribute_list({
             {"uuid", m_locator.uuid()}
         }));
 
@@ -184,7 +183,7 @@ multicast_t::on_publish(const std::error_code& ec) {
 
         type_traits<announce_t::tuple_type>::pack(packer, std::forward_as_tuple(
             m_locator.uuid(),
-            endpoints
+            std::move(quote->endpoints)
         ));
 
         try {

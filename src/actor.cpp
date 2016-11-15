@@ -207,9 +207,9 @@ actor_t::is_active() const {
     return static_cast<bool>(*m_acceptor.synchronize());
 }
 
-const basic_dispatch_t&
+io::dispatch_ptr_t
 actor_t::prototype() const {
-    return *m_prototype;
+    return m_prototype;
 }
 
 void

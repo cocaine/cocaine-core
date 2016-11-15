@@ -26,6 +26,7 @@
 
 #include "cocaine/context.hpp"
 #include "cocaine/context/signal.hpp"
+#include "cocaine/context/quote.hpp"
 #include "cocaine/dynamic.hpp"
 #include "cocaine/engine.hpp"
 
@@ -375,7 +376,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     // Context signals slot
 
     m_signals = std::make_shared<dispatch<context_tag>>(name);
-    m_signals->on<context::shutdown>(std::bind(&locator_t::on_context_shutdown, this));
+    m_signals->on<io::context::shutdown>(std::bind(&locator_t::on_context_shutdown, this));
 
     // Clustering components
 
@@ -386,9 +387,9 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
         COCAINE_LOG_INFO(m_log, "using '{}' as a cluster manager, enabling synchronization", type);
 
-        m_signals->on<context::service::exposed>(std::bind(&locator_t::on_service, this,
+        m_signals->on<io::context::service::exposed>(std::bind(&locator_t::on_service, this,
             ph::_1, ph::_2, modes::exposed));
-        m_signals->on<context::service::removed>(std::bind(&locator_t::on_service, this,
+        m_signals->on<io::context::service::removed>(std::bind(&locator_t::on_service, this,
             ph::_1, ph::_2, modes::removed));
 
         m_cluster = m_context.repository().get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
@@ -535,9 +536,9 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
         COCAINE_LOG_DEBUG(m_log, "providing service using local actor");
 
         return results::resolve {
-            provided.get().endpoints(),
-            provided.get().prototype().version(),
-            provided.get().prototype().root()
+            provided->endpoints,
+            provided->prototype->version(),
+            provided->prototype->root()
         };
     }
 

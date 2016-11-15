@@ -27,6 +27,8 @@
 
 #include <boost/optional/optional_fwd.hpp>
 
+#include <map>
+
 namespace cocaine {
 
 // Context
@@ -79,10 +81,13 @@ public:
 
     virtual
     auto
-    locate(const std::string& name) const -> boost::optional<const actor_t&> = 0;
+    locate(const std::string& name) const -> boost::optional<context::quote_t> = 0;
+
+    virtual
+    auto
+    snapshot() const -> std::map<std::string, context::quote_t> = 0;
 
     // Network I/O
-
     virtual
     auto
     engine() -> execution_unit_t& = 0;

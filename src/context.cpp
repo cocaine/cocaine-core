@@ -24,6 +24,7 @@
 #include "cocaine/context/config.hpp"
 #include "cocaine/context/filter.hpp"
 #include "cocaine/context/mapper.hpp"
+#include "cocaine/context/quote.hpp"
 #include "cocaine/context/signal.hpp"
 #include "cocaine/detail/essentials.hpp"
 #include "cocaine/engine.hpp"
@@ -60,8 +61,6 @@ struct match {
 };
 
 }
-
-using namespace cocaine::io;
 
 using blackhole::scope::holder_t;
 
@@ -248,10 +247,10 @@ public:
         });
 
         // Fire off the signal to alert concerned subscribers about the service removal event.
-        m_signals.invoke<context::service::exposed>(actor.prototype().name(), std::forward_as_tuple(
+        m_signals.invoke<io::context::service::exposed>(actor.prototype()->name(), std::forward_as_tuple(
             actor.endpoints(),
-            actor.prototype().version(),
-            actor.prototype().root()
+            actor.prototype()->version(),
+            actor.prototype()->root()
         ));
     }
 
@@ -281,24 +280,37 @@ public:
         std::vector<asio::ip::tcp::endpoint> nothing;
 
         // Fire off the signal to alert concerned subscribers about the service termination event.
-        m_signals.invoke<context::service::removed>(service->prototype().name(), std::forward_as_tuple(
+        m_signals.invoke<io::context::service::removed>(service->prototype()->name(), std::forward_as_tuple(
             nothing,
-            service->prototype().version(),
-            service->prototype().root()
+            service->prototype()->version(),
+            service->prototype()->root()
         ));
 
         return service;
     }
 
-    boost::optional<const actor_t&>
+    boost::optional<context::quote_t>
     locate(const std::string& name) const {
-        return m_services.apply([&](const service_list_t& list) -> boost::optional<const actor_t&> {
+        return m_services.apply([&](const service_list_t& list) -> boost::optional<context::quote_t> {
             auto it = std::find_if(list.begin(), list.end(), match{name});
-            if (it == list.end()) {
+            if (it == list.end() || !it->second->is_active()) {
                 return boost::none;
             }
 
-            return boost::optional<const actor_t&>(it->second->is_active(), *it->second);
+            return boost::make_optional(context::quote_t{it->second->endpoints(), it->second->prototype()});
+        });
+    }
+
+    std::map<std::string, context::quote_t>
+    snapshot() const {
+        return m_services.apply([&](const service_list_t& list) {
+            std::map<std::string, context::quote_t> result;
+            for(auto& service_pair: list) {
+                auto name = service_pair.first;
+                const auto& actor = service_pair.second;
+                result.emplace(std::move(name), context::quote_t{actor->endpoints(), actor->prototype()});
+            }
+            return result;
         });
     }
 
@@ -317,7 +329,7 @@ public:
 
         // Fire off to alert concerned subscribers about the shutdown. This signal happens before all
         // the outstanding connections are closed, so services have a chance to send their last wishes.
-        m_signals.invoke<context::shutdown>();
+        m_signals.invoke<io::context::shutdown>();
 
         // Stop the service from accepting new clients or doing any processing. Pop them from the active
         // service list into this temporary storage, and then destroy them all at once. This is needed

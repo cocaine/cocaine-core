@@ -79,6 +79,12 @@ struct storage_t;
 
 }} // namespace cocaine::api
 
+namespace cocaine { namespace context {
+
+struct quote_t;
+
+}} // namespace cocanie::context
+
 namespace cocaine { namespace hpack {
 
 class header_t;

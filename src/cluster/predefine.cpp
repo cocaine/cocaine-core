@@ -99,7 +99,7 @@ predefine_t::predefine_t(context_t& context, interface& locator, const std::stri
     m_timer(locator.asio())
 {
     m_signals = std::make_shared<dispatch<context_tag>>(name);
-    m_signals->on<context::prepared>(std::bind(&predefine_t::on_announce, this, std::error_code()));
+    m_signals->on<io::context::prepared>(std::bind(&predefine_t::on_announce, this, std::error_code()));
 
     context.signal_hub().listen(m_signals, m_locator.asio());
 }
