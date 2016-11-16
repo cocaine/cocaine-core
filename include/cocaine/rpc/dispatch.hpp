@@ -91,13 +91,13 @@ public:
     dispatch<Tag>&
     on(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type* = 0);
 
-    template<class Event, class F>
-    dispatch<Tag>&
-    on_with_headers(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type* = 0);
-
     template<class Event>
     dispatch&
     on(const std::shared_ptr<io::basic_slot<Event>>& ptr);
+
+    template<class Event, class F>
+    dispatch<Tag>&
+    on_with_headers(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type* = 0);
 
     template<class Event>
     void
@@ -203,6 +203,19 @@ dispatch<Tag>::on(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type*) 
     return on<Event>(std::make_shared<slot_type>(std::forward<F>(fn)));
 }
 
+template<class Tag>
+template<class Event>
+dispatch<Tag>&
+dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
+    typedef io::event_traits<Event> traits;
+
+    if(!m_slots->insert(std::make_pair(traits::id, ptr)).second) {
+        throw std::system_error(error::duplicate_slot, Event::alias());
+    }
+
+    return *this;
+}
+
 // TODO: Consider how to dispatch automatically depending on 1st meta argument. It's quite hard
 //       because of std::bind duck nature.
 template<class Tag>
@@ -216,19 +229,6 @@ dispatch<Tag>::on_with_headers(F&& fn, typename boost::disable_if<is_slot<F, Eve
     >::type slot_type;
 
     return on<Event>(std::make_shared<slot_type>(std::forward<F>(fn)));
-}
-
-template<class Tag>
-template<class Event>
-dispatch<Tag>&
-dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
-    typedef io::event_traits<Event> traits;
-
-    if(!m_slots->insert(std::make_pair(traits::id, ptr)).second) {
-        throw std::system_error(error::duplicate_slot, Event::alias());
-    }
-
-    return *this;
 }
 
 template<class Tag>
