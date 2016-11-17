@@ -96,6 +96,11 @@ struct result_of<R(C::*)(Args...) const, void> {
     typedef R type;
 };
 
+template<class C, class R, class... Args>
+struct result_of<R(C::*)(Args...), void> {
+    typedef R type;
+};
+
 // Constant index sequences
 
 template<size_t... N>
