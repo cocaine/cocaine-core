@@ -40,21 +40,18 @@ class basic_slot {
 
 public:
     // Expected dispatch, parameter and upstream types.
+    typedef std::vector<hpack::header_t> meta_type;
     typedef typename traits_type::tuple_type tuple_type;
     typedef typename traits_type::sequence_type sequence_type;
     typedef dispatch<typename traits_type::dispatch_type> dispatch_type;
     typedef upstream<typename traits_type::upstream_type> upstream_type;
 
     virtual
-   ~basic_slot() {
-       // Empty.
-    }
+   ~basic_slot() = default;
 
     virtual
     boost::optional<std::shared_ptr<const dispatch_type>>
-    operator()(const std::vector<hpack::header_t>& headers,
-               tuple_type&& args,
-               upstream_type&& upstream) = 0;
+    operator()(const meta_type& meta, tuple_type&& args, upstream_type&& upstream) = 0;
 };
 
 template<class Event>

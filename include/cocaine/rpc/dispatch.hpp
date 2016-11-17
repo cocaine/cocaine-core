@@ -22,15 +22,13 @@
 #define COCAINE_IO_DISPATCH_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/hpack/header.hpp"
 #include "cocaine/locked_ptr.hpp"
-
 #include "cocaine/rpc/basic_dispatch.hpp"
 #include "cocaine/rpc/slot/blocking.hpp"
 #include "cocaine/rpc/slot/deferred.hpp"
 #include "cocaine/rpc/slot/streamed.hpp"
-
 #include "cocaine/rpc/traversal.hpp"
-
 #include "cocaine/traits/tuple.hpp"
 
 #include <boost/mpl/transform.hpp>
@@ -41,11 +39,17 @@
 #include <boost/variant/variant.hpp>
 
 #include <vector>
-#include "cocaine/hpack/header.hpp"
 
 namespace cocaine {
 
-namespace mpl = boost::mpl;
+template<typename MetaFlag>
+struct initial_state;
+
+template<typename F>
+struct executor_state;
+
+template<typename Event, typename State = initial_state<void>>
+struct slot_builder;
 
 template<class Tag>
 class dispatch:
@@ -55,10 +59,10 @@ class dispatch:
 
     // Slot construction
 
-    typedef typename mpl::transform<
+    typedef typename boost::mpl::transform<
         typename io::messages<Tag>::type,
-        typename mpl::lambda<
-            std::shared_ptr<io::basic_slot<mpl::_1>>
+        typename boost::mpl::lambda<
+            std::shared_ptr<io::basic_slot<boost::mpl::_1>>
         >::type
     >::type slot_types;
 
@@ -72,20 +76,20 @@ class dispatch:
     // Slot traits
 
     template<class T, class Event>
-    struct is_slot:
-        public std::false_type
-    { };
+    struct is_slot: public std::false_type {};
 
     template<class T, class Event>
-    struct is_slot<std::shared_ptr<T>, Event>:
-        public std::is_base_of<io::basic_slot<Event>, T>
-    { };
+    struct is_slot<std::shared_ptr<T>, Event>: public std::is_base_of<io::basic_slot<Event>, T> {};
 
 public:
     explicit
     dispatch(const std::string& name):
         basic_dispatch_t(name)
-    { }
+    {}
+
+    template<class Event>
+    slot_builder<Event>
+    on();
 
     template<class Event, class F>
     dispatch<Tag>&
@@ -95,13 +99,12 @@ public:
     dispatch&
     on(const std::shared_ptr<io::basic_slot<Event>>& ptr);
 
-    template<class Event, class F>
-    dispatch<Tag>&
-    on_with_headers(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type* = 0);
-
     template<class Event>
     void
-    forget();
+    drop();
+
+    void
+    halt();
 
 public:
     virtual
@@ -115,16 +118,16 @@ public:
     }
 
     virtual
-    int
-    version() const {
+    auto
+    version() const -> int {
         return io::protocol<Tag>::version::value;
     }
 
     // Generic API
 
     template<class Visitor>
-    typename Visitor::result_type
-    process(int id, const Visitor& visitor) const;
+    auto
+    process(int id, const Visitor& visitor) const -> typename Visitor::result_type;
 };
 
 template<class Tag>
@@ -134,19 +137,19 @@ namespace aux {
 
 // Slot selection
 
-template<class R, class Event, class ForwardHeaders>
+template<class R, class Event, class ForwardMeta>
 struct select {
-    typedef io::blocking_slot<Event, ForwardHeaders> type;
+    typedef io::blocking_slot<Event, ForwardMeta> type;
 };
 
-template<class R, class Event, class ForwardHeaders>
-struct select<deferred<R>, Event, ForwardHeaders> {
-    typedef io::deferred_slot<deferred, Event, ForwardHeaders> type;
+template<class R, class Event, class ForwardMeta>
+struct select<deferred<R>, Event, ForwardMeta> {
+    typedef io::deferred_slot<deferred, Event, ForwardMeta> type;
 };
 
-template<class R, class Event, class ForwardHeaders>
-struct select<streamed<R>, Event, ForwardHeaders> {
-    typedef io::deferred_slot<streamed, Event, ForwardHeaders> type;
+template<class R, class Event, class ForwardMeta>
+struct select<streamed<R>, Event, ForwardMeta> {
+    typedef io::deferred_slot<streamed, Event, ForwardMeta> type;
 };
 
 // Slot invocation with arguments provided as a MessagePack object
@@ -188,7 +191,141 @@ private:
     const io::upstream_ptr_t& upstream;
 };
 
+struct forward_meta_tag;
+
+/// Wraps the given slot of type `F` eating meta argument depending on `MetaFlag`.
+template<typename F, typename MetaFlag>
+struct slot_wrapper;
+
+template<typename F>
+struct slot_wrapper<F, std::true_type> {
+    F fn;
+
+    explicit
+    slot_wrapper(F fn) :
+        fn(std::move(fn))
+    {}
+
+    template<typename... Args>
+    auto operator()(const std::vector<hpack::header_t>& meta, Args&&... args) ->
+        decltype(fn(meta, std::forward<Args>(args)...))
+    {
+        return fn(meta, std::forward<Args>(args)...);
+    }
+};
+
+template<typename F>
+struct slot_wrapper<F, std::false_type> {
+    F fn;
+
+    explicit
+    slot_wrapper(F fn) :
+        fn(std::move(fn))
+    {}
+
+    template<typename... Args>
+    auto operator()(const std::vector<hpack::header_t>&, Args&&... args) ->
+        decltype(fn(std::forward<Args>(args)...))
+    {
+        return fn(std::forward<Args>(args)...);
+    }
+};
+
 } // namespace aux
+
+template<typename Event, typename MetaFlag>
+struct slot_builder<Event, initial_state<MetaFlag>> {
+    typedef Event event_type;
+    typedef typename event_type::tag tag_type;
+    typedef typename std::is_same<MetaFlag, aux::forward_meta_tag>::type forward_meta;
+
+    dispatch<tag_type>& d;
+
+    explicit
+    slot_builder(dispatch<tag_type>& d) :
+        d(d)
+    {}
+
+    /// Consumes this builder, enabling forwarding frame meta information to the further event
+    /// handler.
+    auto provide_meta() && -> slot_builder<event_type, initial_state<aux::forward_meta_tag>> {
+        return slot_builder<event_type, initial_state<aux::forward_meta_tag>>(std::move(*this).d);
+    }
+
+    /// Consumes this builder, setting the event handler.
+    ///
+    /// \param fn Event handler which will be invoked each time the new event comes. Depending on
+    ///     previously called `provide_meta` method a handler may or may not accept additional
+    ///     argument with meta information (aka headers).
+    template<typename F>
+    auto execute(F fn) && ->
+        slot_builder<event_type, executor_state<aux::slot_wrapper<F, forward_meta>>>
+    {
+        return slot_builder<event_type, executor_state<aux::slot_wrapper<F, forward_meta>>>(
+            aux::slot_wrapper<F, forward_meta>(std::move(fn)),
+            d
+        );
+    }
+};
+
+template<typename Event, typename F>
+struct slot_builder<Event, executor_state<F>> {
+    typedef Event event_type;
+    typedef typename event_type::tag tag_type;
+
+    F fn;
+    dispatch<tag_type>& d;
+
+    slot_builder(F fn, dispatch<tag_type>& d) :
+        fn(std::move(fn)),
+        d(d)
+    {}
+
+    template<typename M, typename C>
+    struct compose {
+        // Middleware callable.
+        M middleware;
+
+        // Either the previous composed middleware or slot.
+        C fn;
+
+        compose(M middleware, C fn) :
+            middleware(std::move(middleware)),
+            fn(std::move(fn))
+        {}
+
+        template<typename... Args>
+        auto operator()(Args&&... args) ->
+            decltype(fn(std::forward<Args>(args)...))
+        {
+            return middleware(fn, std::forward<Args>(args)...);
+        }
+    };
+
+    /// Consumes this builder, adding a new middleware.
+    ///
+    /// \tparam M Must satisfy Middleware concept.
+    template<typename M>
+    auto add_middleware(M&& middleware) && ->
+        slot_builder<event_type, executor_state<compose<M, F>>>
+    {
+        return slot_builder<event_type, executor_state<compose<M, F>>>(
+            compose<M, F>(std::forward<M>(middleware), std::move(fn)),
+            d
+        );
+    }
+
+    /// Consumes this builder, registering iteratively built slot with the dispatch.
+    auto build() && -> void {
+        typedef typename aux::select<
+            typename result_of<F>::type,
+            event_type,
+            std::true_type
+        >::type slot_type;
+
+        d.template on<event_type>(std::make_shared<slot_type>(std::move(fn)));
+    }
+};
 
 template<class Tag>
 template<class Event, class F>
@@ -216,28 +353,26 @@ dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
     return *this;
 }
 
-// TODO: Consider how to dispatch automatically depending on 1st meta argument. It's quite hard
-//       because of std::bind duck nature.
 template<class Tag>
-template<class Event, class F>
-dispatch<Tag>&
-dispatch<Tag>::on_with_headers(F&& fn, typename boost::disable_if<is_slot<F, Event>>::type*) {
-    typedef typename aux::select<
-        typename result_of<F>::type,
-        Event,
-        std::true_type
-    >::type slot_type;
-
-    return on<Event>(std::make_shared<slot_type>(std::forward<F>(fn)));
+template<class Event>
+slot_builder<Event, initial_state<void>>
+dispatch<Tag>::on() {
+    return slot_builder<Event>(*this);
 }
 
 template<class Tag>
 template<class Event>
 void
-dispatch<Tag>::forget() {
+dispatch<Tag>::drop() {
     if(!m_slots->erase(io::event_traits<Event>::id)) {
-        throw std::system_error(error::slot_not_found);
+        throw std::system_error(error::slot_not_found, Event::alias());
     }
+}
+
+template<class Tag>
+void
+dispatch<Tag>::halt() {
+    m_slots->clear();
 }
 
 template<class Tag>

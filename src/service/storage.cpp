@@ -23,6 +23,7 @@
 #include "cocaine/api/storage.hpp"
 #include "cocaine/dynamic/dynamic.hpp"
 
+using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
@@ -40,7 +41,7 @@ abort_deferred(cocaine::deferred<T>& def, const std::error_code& ec, const std::
     }
 }
 
-}
+}  // namespace
 
 storage_t::storage_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args):
     category_type(context, asio, name, args),

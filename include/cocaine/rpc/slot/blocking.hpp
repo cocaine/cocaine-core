@@ -29,13 +29,13 @@ namespace cocaine { namespace io {
 
 template<
     class Event,
-    class ForwardHeaders,
+    class ForwardMeta,
     class R = typename result_of<Event>::type
 >
 struct blocking_slot:
-    public function_slot<Event, typename result_of<Event>::type, ForwardHeaders>
+    public function_slot<Event, typename result_of<Event>::type, ForwardMeta>
 {
-    typedef function_slot<Event, R, ForwardHeaders> parent_type;
+    typedef function_slot<Event, R, ForwardMeta> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::dispatch_type dispatch_type;
@@ -72,11 +72,11 @@ struct blocking_slot:
 
 // Blocking slot specialization for void functions (returning completion status)
 
-template<class Event, class ForwardHeaders>
-struct blocking_slot<Event, ForwardHeaders, void>:
-    public function_slot<Event, void, ForwardHeaders>
+template<class Event, class ForwardMeta>
+struct blocking_slot<Event, ForwardMeta, void>:
+    public function_slot<Event, void, ForwardMeta>
 {
-    typedef function_slot<Event, void, ForwardHeaders> parent_type;
+    typedef function_slot<Event, void, ForwardMeta> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::dispatch_type dispatch_type;
@@ -116,22 +116,22 @@ struct blocking_slot<Event, ForwardHeaders, void>:
 
 // Blocking slot specialization for functions, that returns only additional headers.
 
-// template<class Event, class ForwardHeaders>
-// struct blocking_slot<Event, ForwardHeaders, std::vector<hpack::header_t>>:
+// template<class Event, class ForwardMeta>
+// struct blocking_slot<Event, ForwardMeta, std::vector<hpack::header_t>>:
 
 // Blocking slot specialization for functions, that returns additional headers as like as args.
 
-// template<class Event, class ForwardHeaders, class R>
-// struct blocking_slot<Event, ForwardHeaders, std::tuple<headers_t, R>>;
+// template<class Event, class ForwardMeta, class R>
+// struct blocking_slot<Event, ForwardMeta, std::tuple<headers_t, R>>;
 
 
 // Blocking slot specialization for mute functions (returning nothing at all)
 
-template<class Event, class ForwardHeaders>
-struct blocking_slot<Event, ForwardHeaders, mute_slot_tag>:
-    public function_slot<Event, void, ForwardHeaders>
+template<class Event, class ForwardMeta>
+struct blocking_slot<Event, ForwardMeta, mute_slot_tag>:
+    public function_slot<Event, void, ForwardMeta>
 {
-    typedef function_slot<Event, void, ForwardHeaders> parent_type;
+    typedef function_slot<Event, void, ForwardMeta> parent_type;
 
     typedef typename parent_type::callable_type callable_type;
     typedef typename parent_type::dispatch_type dispatch_type;
