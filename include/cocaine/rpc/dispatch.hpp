@@ -30,6 +30,7 @@
 #include "cocaine/rpc/slot/streamed.hpp"
 #include "cocaine/rpc/traversal.hpp"
 #include "cocaine/traits/tuple.hpp"
+#include "cocaine/utility/exchange.hpp"
 
 #include <boost/mpl/transform.hpp>
 #include <boost/mpl/lambda.hpp>
@@ -45,7 +46,7 @@ namespace cocaine {
 template<typename MetaFlag>
 struct initial_state;
 
-template<typename F>
+template<typename F, typename R>
 struct executor_state;
 
 template<typename Event, typename State = initial_state<void>>
@@ -254,32 +255,44 @@ struct slot_builder<Event, initial_state<MetaFlag>> {
 
     /// Consumes this builder, setting the event handler.
     ///
-    /// \param fn Event handler which will be invoked each time the new event comes. Depending on
-    ///     previously called `provide_meta` method a handler may or may not accept additional
-    ///     argument with meta information (aka headers).
+    /// \param fn Event handler which will be invoked each time the new event comes.
+    ///     Depending on previously called `provide_meta` method a handler may or may not accept
+    ///     additional argument with meta information (aka headers).
     template<typename F>
     auto execute(F fn) && ->
-        slot_builder<event_type, executor_state<aux::slot_wrapper<F, forward_meta>>>
+        slot_builder<event_type, executor_state<aux::slot_wrapper<F, forward_meta>, typename result_of<F>::type>>
     {
-        return slot_builder<event_type, executor_state<aux::slot_wrapper<F, forward_meta>>>(
+        return slot_builder<event_type, executor_state<aux::slot_wrapper<F, forward_meta>, typename result_of<F>::type>>(
             aux::slot_wrapper<F, forward_meta>(std::move(fn)),
-            d
+            &d
         );
     }
 };
 
-template<typename Event, typename F>
-struct slot_builder<Event, executor_state<F>> {
+template<typename Event, typename F, typename R>
+struct slot_builder<Event, executor_state<F, R>> {
     typedef Event event_type;
     typedef typename event_type::tag tag_type;
 
     F fn;
-    dispatch<tag_type>& d;
+    dispatch<tag_type>* d;
 
-    slot_builder(F fn, dispatch<tag_type>& d) :
+    slot_builder(F fn, dispatch<tag_type>* d) :
         fn(std::move(fn)),
         d(d)
     {}
+
+    ~slot_builder() noexcept(false) {
+        typedef typename aux::select<
+            R,
+            event_type,
+            std::true_type
+        >::type slot_type;
+
+        if (d) {
+            d->template on<event_type>(std::make_shared<slot_type>(std::move(fn)));
+        }
+    }
 
     template<typename M, typename C>
     struct compose {
@@ -307,23 +320,12 @@ struct slot_builder<Event, executor_state<F>> {
     /// \tparam M Must satisfy Middleware concept.
     template<typename M>
     auto add_middleware(M&& middleware) && ->
-        slot_builder<event_type, executor_state<compose<M, F>>>
+        slot_builder<event_type, executor_state<compose<M, F>, R>>
     {
-        return slot_builder<event_type, executor_state<compose<M, F>>>(
+        return slot_builder<event_type, executor_state<compose<M, F>, R>>(
             compose<M, F>(std::forward<M>(middleware), std::move(fn)),
-            d
+            utility::exchange(d, nullptr)
         );
-    }
-
-    /// Consumes this builder, registering iteratively built slot with the dispatch.
-    auto build() && -> void {
-        typedef typename aux::select<
-            typename result_of<F>::type,
-            event_type,
-            std::true_type
-        >::type slot_type;
-
-        d.template on<event_type>(std::make_shared<slot_type>(std::move(fn)));
     }
 };
 
