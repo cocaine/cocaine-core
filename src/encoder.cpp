@@ -85,13 +85,14 @@ encoder_t::pack_headers(packer_type& packer, const hpack::header_storage_t& head
     hpack::msgpack_traits::pack<hpack::headers::span_id<>>(packer, hpack_context, hpack::header::pack(span_id));
     hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, hpack_context, hpack::header::pack(parent_id));
 
-    for (const auto& h: headers) {
+    for (const auto& header: headers) {
         // Skip packing outdated tracing headers. We use fresh ones (shifted on the tracing tree) from TLS.
         typedef hpack::headers h;
-        if(h.name() == h::trace_id::name() || h.name() == h::span_id::name() || h.name() == h::parent_id::name()) {
+        const auto& name = header.name();
+        if(name == h::trace_id<>::name() || name == h::span_id<>::name() || name == h::parent_id<>::name()) {
             continue;
         }
-        hpack::msgpack_traits::pack(packer, hpack_context, h);
+        hpack::msgpack_traits::pack(packer, hpack_context, header);
     }
 }
 
