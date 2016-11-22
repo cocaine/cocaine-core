@@ -311,7 +311,7 @@ struct slot_builder<Event, executor_state<F, R>> {
         auto operator()(Args&&... args) ->
             decltype(fn(std::forward<Args>(args)...))
         {
-            return middleware(fn, std::forward<Args>(args)...);
+            return middleware(fn, Event(), std::forward<Args>(args)...);
         }
     };
 
