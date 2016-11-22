@@ -121,10 +121,10 @@ struct encoder_t {
     aux::encoded_message_t
     encode(const message_type& message);
 
-private:
     void
     pack_headers(packer_type& packer, const hpack::header_storage_t& headers);
 
+private:
     // HPACK HTTP/2.0 tables.
     hpack::header_table_t hpack_context;
 };

@@ -86,7 +86,11 @@ encoder_t::pack_headers(packer_type& packer, const hpack::header_storage_t& head
     hpack::msgpack_traits::pack<hpack::headers::parent_id<>>(packer, hpack_context, hpack::header::pack(parent_id));
 
     for (const auto& h: headers) {
-        // TODO: maybe we need a runtime check not to pack headers twice
+        // Skip packing outdated tracing headers. We use fresh ones (shifted on the tracing tree) from TLS.
+        typedef hpack::headers h;
+        if(h.name() == h::trace_id::name() || h.name() == h::span_id::name() || h.name() == h::parent_id::name()) {
+            continue;
+        }
         hpack::msgpack_traits::pack(packer, hpack_context, h);
     }
 }
