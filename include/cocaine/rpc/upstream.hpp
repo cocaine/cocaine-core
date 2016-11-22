@@ -42,6 +42,11 @@ public:
         client_trace(client_trace_)
     { }
 
+    void
+    send(encoder_t::message_type message) {
+        session->push(std::move(message));
+    };
+
     template<class Event, class... Args>
     void
     send(Args&&... args);
