@@ -68,6 +68,11 @@ encoded_message_t::size() const {
     return buffer.offset;
 }
 
+void
+encoded_message_t::write(const char* data, size_t size) {
+    buffer.write(data, size);
+}
+
 unbound_message_t::unbound_message_t(function_type&& bind_): bind(std::move(bind_)) { }
 
 } //  namespace aux
