@@ -70,10 +70,12 @@ typedef unsigned short port_t;
 
 namespace cocaine { namespace api {
 
+class repository_t;
+class unicorn_t;
+class unicorn_scope_t;
 struct cluster_t;
 struct gateway_t;
 struct isolate_t;
-class repository_t;
 struct service_t;
 struct storage_t;
 
