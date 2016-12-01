@@ -326,11 +326,11 @@ struct slot_builder<Event, executor_state<F, R>> {
     ///
     /// \tparam M Must satisfy Middleware concept.
     template<typename M>
-    auto add_middleware(M&& middleware) && ->
+    auto add_middleware(M middleware) && ->
         slot_builder<event_type, executor_state<compose<M, F>, R>>
     {
         return slot_builder<event_type, executor_state<compose<M, F>, R>>(
-            compose<M, F>(std::forward<M>(middleware), std::move(fn)),
+            compose<M, F>(std::move(middleware), std::move(fn)),
             utility::exchange(d, nullptr)
         );
     }
