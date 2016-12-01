@@ -32,6 +32,7 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/rpc/actor.hpp"
 #include "cocaine/repository/service.hpp"
+#include "cocaine/trace/logger.hpp"
 
 #include <boost/optional/optional.hpp>
 
@@ -43,7 +44,6 @@
 
 #include <deque>
 #include <boost/algorithm/string/join.hpp>
-#include <cocaine/detail/trace/logger.hpp>
 
 namespace cocaine {
 

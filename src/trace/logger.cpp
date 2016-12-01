@@ -19,7 +19,7 @@
 */
 
 #include "cocaine/context/filter.hpp"
-#include "cocaine/detail/trace/logger.hpp"
+#include "cocaine/trace/logger.hpp"
 
 using namespace blackhole;
 
