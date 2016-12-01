@@ -27,6 +27,7 @@
 #include "cocaine/rpc/basic_dispatch.hpp"
 #include "cocaine/rpc/slot/blocking.hpp"
 #include "cocaine/rpc/slot/deferred.hpp"
+#include "cocaine/rpc/slot/generic.hpp"
 #include "cocaine/rpc/slot/streamed.hpp"
 #include "cocaine/rpc/traversal.hpp"
 #include "cocaine/traits/tuple.hpp"
@@ -39,6 +40,7 @@
 #include <boost/variant/static_visitor.hpp>
 #include <boost/variant/variant.hpp>
 
+#include <type_traits>
 #include <vector>
 
 namespace cocaine {
@@ -151,6 +153,11 @@ struct select<deferred<R>, Event, ForwardMeta> {
 template<class R, class Event, class ForwardMeta>
 struct select<streamed<R>, Event, ForwardMeta> {
     typedef io::deferred_slot<streamed, Event, ForwardMeta> type;
+};
+
+template<class Event, class ForwardMeta>
+struct select<typename io::basic_slot<Event>::result_type, Event, ForwardMeta> {
+    typedef io::generic_slot<Event> type;
 };
 
 // Slot invocation with arguments provided as a MessagePack object

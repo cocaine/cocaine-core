@@ -45,6 +45,7 @@ public:
     typedef typename traits_type::sequence_type sequence_type;
     typedef dispatch<typename traits_type::dispatch_type> dispatch_type;
     typedef upstream<typename traits_type::upstream_type> upstream_type;
+    typedef boost::optional<std::shared_ptr<const dispatch_type>> result_type;
 
     virtual
    ~basic_slot() = default;

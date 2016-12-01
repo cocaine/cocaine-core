@@ -95,6 +95,9 @@ session_t::pull_action_t::finalize(const std::error_code& ec) {
         try {
             // NOTE: In case the underlying slot has miserably failed to handle its exceptions, the
             // client will be disconnected to prevent any further damage to the service and himself.
+
+            // TODO: it seems that we can move it into and process message everywhere by value
+            // This can help to avoid unnecsesarry headers copy
             session->handle(message);
             message.clear();
         } catch(const std::system_error& e) {

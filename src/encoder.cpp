@@ -80,7 +80,16 @@ unbound_message_t::unbound_message_t(function_type&& bind_): bind(std::move(bind
 void
 encoder_t::pack_headers(packer_type& packer, const hpack::header_storage_t& headers) {
 
-    packer.pack_array(headers.size() + 3);
+    size_t skip = 0;
+    for (const auto& header: headers) {
+        // Skip packing outdated tracing headers. We use fresh ones (shifted on the tracing tree) from TLS.
+        typedef hpack::headers h;
+        const auto& name = header.name();
+        if (name == h::trace_id<>::name() || name == h::span_id<>::name() || name == h::parent_id<>::name()) {
+            skip++;
+        }
+    }
+    packer.pack_array(headers.size() + 3 - skip);
 
     uint64_t trace_id  = trace_t::current().get_trace_id();
     uint64_t span_id   = trace_t::current().get_id();

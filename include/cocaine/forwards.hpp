@@ -52,8 +52,10 @@ namespace cocaine {
 class actor_t;
 struct config_t;
 class context_t;
+class dynamic_t;
 class execution_unit_t;
 class port_mapping_t;
+class session_t;
 class trace_t;
 class filter_t;
 
@@ -61,8 +63,6 @@ class filter_t;
 template<class> class dispatch;
 template<class> class upstream;
 template<class> class retroactive_signal;
-
-class dynamic_t;
 
 typedef unsigned short port_t;
 
@@ -134,6 +134,13 @@ template<class>
 struct protocol;
 
 }} // namespace cocaine::io
+
+namespace cocaine { namespace io { namespace aux {
+
+struct decoded_message_t;
+struct encoded_message_t;
+
+}}} // namespace cocaine::io::aux
 
 namespace cocaine { namespace logging {
 

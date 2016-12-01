@@ -31,21 +31,26 @@ template<class Tag> class upstream;
 namespace io {
 
 class basic_upstream_t {
-    const std::shared_ptr<session_t> session;
-    const uint64_t channel_id;
+    const std::shared_ptr<session_t> m_session;
+    const uint64_t m_channel_id;
 
 public:
     /* We only pass trace to client-side upstream, because we want to group all client-side sends under one trace_id */
-    basic_upstream_t(const std::shared_ptr<session_t>& session_, uint64_t channel_id_, boost::optional<trace_t> client_trace_):
-        session(session_),
-        channel_id(channel_id_),
+    basic_upstream_t(const std::shared_ptr<session_t>& session, uint64_t channel_id, boost::optional<trace_t> client_trace_):
+        m_session(session),
+        m_channel_id(channel_id),
         client_trace(client_trace_)
     { }
 
     void
     send(encoder_t::message_type message) {
-        session->push(std::move(message));
+        m_session->push(std::move(message));
     };
+
+    uint64_t
+    channel_id() const {
+        return m_channel_id;
+    }
 
     template<class Event, class... Args>
     void
@@ -63,14 +68,14 @@ template<class Event, class... Args>
 void
 basic_upstream_t::send(hpack::header_storage_t headers, Args&&... args) {
     trace_t::restore_scope_t scope(client_trace);
-    session->push(encoded<Event>(channel_id, std::move(headers), std::forward<Args>(args)...));
+    m_session->push(encoded<Event>(m_channel_id, std::move(headers), std::forward<Args>(args)...));
 }
 
 template<class Event, class... Args>
 void
 basic_upstream_t::send(Args&&... args) {
     trace_t::restore_scope_t scope(client_trace);
-    session->push(encoded<Event>(channel_id, std::forward<Args>(args)...));
+    m_session->push(encoded<Event>(m_channel_id, std::forward<Args>(args)...));
 }
 
 // Forwards for the upstream<T> class
