@@ -1,3 +1,10 @@
+cocaine-core (0.12.10.6) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * API: make trace wrapper part of public API (#125).
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 02 Dec 2016 17:33:02 +0300
+
 cocaine-core (0.12.10.5) unstable; urgency=low
 
   * Non-maintainer upload.
