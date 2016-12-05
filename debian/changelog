@@ -1,3 +1,10 @@
+cocaine-core (0.12.10.7) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Bug fix: trace wrapper should now correctly forward all the things.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 05 Dec 2016 21:05:05 +0300
+
 cocaine-core (0.12.10.6) unstable; urgency=low
 
   * Non-maintainer upload.
