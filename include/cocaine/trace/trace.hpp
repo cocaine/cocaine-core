@@ -185,7 +185,7 @@ public:
 
     template<class... Args>
     auto
-    operator()(Args&&... args) -> decltype(std::declval<F>()(args...)) {
+    operator()(Args&&... args) -> decltype(std::declval<F>()(std::forward<Args>(args)...)) {
         restore_scope_t scope(stored_trace);
         return f(std::forward<Args>(args)...);
     }
