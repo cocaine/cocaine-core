@@ -99,8 +99,8 @@ multicast_t::announce_t {
     udp::endpoint endpoint;
 };
 
-multicast_t::multicast_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args):
-    category_type(context, locator, name, args),
+multicast_t::multicast_t(context_t& context, interface& locator, mode_t mode, const std::string& name, const dynamic_t& args):
+    category_type(context, locator, mode, name, args),
     m_context(context),
     m_log(context.log(name)),
     m_locator(locator),
@@ -136,12 +136,14 @@ multicast_t::multicast_t(context_t& context, interface& locator, const std::stri
 
     m_socket.set_option(multicast::join_group(m_cfg.endpoint.address()));
 
-    const auto announce = std::make_shared<announce_t>();
+    if(mode == mode_t::full) {
+        const auto announce = std::make_shared<announce_t>();
 
-    m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()),
-        announce->endpoint,
-        std::bind(&multicast_t::on_receive, this, ph::_1, ph::_2, announce)
-    );
+        m_socket.async_receive_from(buffer(announce->buffer.data(), announce->buffer.size()),
+            announce->endpoint,
+            std::bind(&multicast_t::on_receive, this, ph::_1, ph::_2, announce)
+        );
+    }
 
     m_signals = std::make_shared<dispatch<context_tag>>(name);
     m_signals->on<io::context::prepared>(std::bind(&multicast_t::on_publish, this, std::error_code()));

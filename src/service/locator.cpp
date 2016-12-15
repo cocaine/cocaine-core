@@ -79,9 +79,6 @@ class locator_t::connect_sink_t: public dispatch<event_traits<locator::connect>:
     locator_t  *const parent;
     std::string const uuid;
 
-    // Currently announced services.
-    std::set<api::gateway_t::partition_t> active;
-
 public:
     connect_sink_t(locator_t *const parent_, const std::string& uuid_):
         dispatch<event_traits<locator::connect>::upstream_type>(parent_->name() + ":client"),
@@ -96,16 +93,7 @@ public:
 
     virtual
    ~connect_sink_t() {
-        auto lock = parent->m_clients.synchronize();
-
-        for(auto it = active.begin(); it != active.end(); ++it) tuple::invoke(
-            *it,
-            [&](const std::string& name, unsigned int version)
-        {
-            if(!parent->m_gateway->cleanup(uuid, *it)) parent->m_aggregate[name].erase(version);
-        });
-
-        cleanup();
+        parent->m_gateway->cleanup(uuid);
     }
 
     virtual
@@ -113,9 +101,6 @@ public:
     discard(const std::error_code& ec) const;
 
 private:
-    void
-    cleanup();
-
     void
     on_announce(const std::string& node, std::map<std::string, results::resolve>&& update);
 
@@ -132,19 +117,6 @@ locator_t::connect_sink_t::discard(const std::error_code& ec) const {
     }));
 
     parent->drop_node(uuid);
-}
-
-void
-locator_t::connect_sink_t::cleanup() {
-    for(auto it = parent->m_aggregate.begin(), end = parent->m_aggregate.end(); it != end; /***/) {
-        if(!it->second.empty()) {
-            it++; continue;
-        }
-
-        COCAINE_LOG_DEBUG(parent->m_log, "protocol '{}' extinct in the cluster", it->first);
-
-        it = parent->m_aggregate.erase(it);
-    }
 }
 
 void
@@ -166,21 +138,12 @@ locator_t::connect_sink_t::on_announce(const std::string& node,
         std::move(it->second),
         [&](std::vector<tcp::endpoint>&& location, unsigned int versions, graph_root_t&& protocol)
     {
-        int copies = 0;
-        api::gateway_t::partition_t partition(it->first, versions);
+        std::string name(it->first);
 
         if(location.empty()) {
-            copies = parent->m_gateway->cleanup(uuid, partition);
-            active.erase (partition);
+            parent->m_gateway->cleanup(uuid, name);
         } else {
-            copies = parent->m_gateway->consume(uuid, partition, location);
-            active.insert(partition);
-        }
-
-        if(copies == 0) {
-            parent->m_aggregate[it->first].erase(versions);
-        } else {
-            parent->m_aggregate[it->first][versions] = std::move(protocol);
+            parent->m_gateway->consume(uuid, name, versions, location, protocol);
         }
     });
 
@@ -189,8 +152,6 @@ locator_t::connect_sink_t::on_announce(const std::string& node,
     COCAINE_LOG_INFO(parent->m_log, "remote client updated {:d} service(s): {}", update.size(), joined, attribute_list({
         {"uuid", uuid}
     }));
-
-    cleanup();
 }
 
 void
@@ -380,6 +341,21 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
     // Clustering components
 
+    m_signals->on<io::context::service::exposed>(std::bind(&locator_t::on_service, this,
+                                                           ph::_1, ph::_2, modes::exposed));
+    m_signals->on<io::context::service::removed>(std::bind(&locator_t::on_service, this,
+                                                           ph::_1, ph::_2, modes::removed));
+
+    if(root.as_object().count("gateway")) {
+        const auto conf = root.as_object().at("gateway").as_object();
+        const auto type = conf.at("type", "adhoc").as_string();
+        const auto args = conf.at("args", dynamic_t::object_t());
+
+        COCAINE_LOG_INFO(m_log, "using '{}' as a gateway manager, enabling service routing", type);
+
+        m_gateway = m_context.repository().get<api::gateway_t>(type, m_context, uuid(), name + ":gateway", args);
+    }
+
     if(root.as_object().count("cluster")) {
         const auto conf = root.as_object().at("cluster").as_object();
         const auto type = conf.at("type", "unspecified").as_string();
@@ -387,23 +363,10 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
         COCAINE_LOG_INFO(m_log, "using '{}' as a cluster manager, enabling synchronization", type);
 
-        m_signals->on<io::context::service::exposed>(std::bind(&locator_t::on_service, this,
-            ph::_1, ph::_2, modes::exposed));
-        m_signals->on<io::context::service::removed>(std::bind(&locator_t::on_service, this,
-            ph::_1, ph::_2, modes::removed));
-
-        m_cluster = m_context.repository().get<api::cluster_t>(type, m_context, *this, name + ":cluster", args);
+        api::cluster_t::mode_t mode = m_gateway ? api::cluster_t::mode_t::full : api::cluster_t::mode_t::announce_only;
+            m_cluster = m_context.repository().get<api::cluster_t>(type, m_context, *this, mode, name + ":cluster", args);
     }
 
-    if(root.as_object().count("gateway")) {
-        const auto conf = root.as_object().at("gateway").as_object();
-        const auto type = conf.at("type", "unspecified").as_string();
-        const auto args = conf.at("args", dynamic_t::object_t());
-
-        COCAINE_LOG_INFO(m_log, "using '{}' as a gateway manager, enabling service routing", type);
-
-        m_gateway = m_context.repository().get<api::gateway_t>(type, m_context, name + ":gateway", args);
-    }
 
     // It's here to keep the reference alive.
     const auto storage = api::storage(m_context, "core");
@@ -532,30 +495,26 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
 
     const holder_t scoped(*m_log, {{"service", remapped}});
 
-    if(const auto provided = m_context.locate(remapped)) {
-        COCAINE_LOG_DEBUG(m_log, "providing service using local actor");
-
-        return results::resolve {
-            provided->endpoints,
-            provided->prototype->version(),
-            provided->prototype->root()
-        };
+    // if we don't have gateway or it resolves only remote services try to lookup service locally first
+    if(!m_gateway || m_gateway->resolve_policy() == api::gateway_t::resolve_policy_t::remote_only) {
+        const auto provided = m_context.locate(remapped);
+        if(provided) {
+            COCAINE_LOG_DEBUG(m_log, "providing service using local actor");
+            return results::resolve {provided->endpoints, provided->prototype->version(), provided->prototype->root()};
+        }
     }
 
-    auto lock = m_clients.synchronize();
-    auto it   = m_aggregate.end();
-
-    if(m_gateway && (it = m_aggregate.find(remapped)) != m_aggregate.end()) {
-        const auto proto = *it->second.begin();
-
-        return results::resolve {
-            m_gateway->resolve(api::gateway_t::partition_t{remapped, proto.first}),
-            proto.first,
-            proto.second
-        };
-    } else {
+    // service is not found in context and we don't have gateway to lookup at
+    if(!m_gateway) {
         throw std::system_error(error::service_not_available);
     }
+
+    auto resolved = m_gateway->resolve(name);
+    return results::resolve {
+        std::move(resolved.endpoints),
+        std::move(resolved.version),
+        std::move(resolved.protocol)
+    };
 }
 
 auto
@@ -682,7 +641,14 @@ locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results
 
 void
 locator_t::on_service(const std::string& name, const results::resolve& meta, modes mode) {
-    if(m_cfg.restricted.count(name)) {
+    if(m_gateway) {
+        if(mode == modes::exposed) {
+            m_gateway->consume(uuid(), name, std::get<1>(meta), std::get<0>(meta), std::get<2>(meta));
+        } else {
+            m_gateway->cleanup(uuid(), name);
+        }
+    }
+    if(m_cfg.restricted.count(name) || !m_cluster) {
         return;
     }
 

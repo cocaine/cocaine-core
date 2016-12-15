@@ -67,7 +67,7 @@ class multicast_t:
     std::shared_ptr<dispatch<io::context_tag>> m_signals;
 
 public:
-    multicast_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args);
+    multicast_t(context_t& context, interface& locator, mode_t mode, const std::string& name, const dynamic_t& args);
 
     virtual
    ~multicast_t();

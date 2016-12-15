@@ -91,17 +91,19 @@ struct dynamic_converter<predefine_cfg_t> {
 
 } // namespace cocaine
 
-predefine_t::predefine_t(context_t& context, interface& locator, const std::string& name, const dynamic_t& args):
-    category_type(context, locator, name, args),
+predefine_t::predefine_t(context_t& context, interface& locator, mode_t mode, const std::string& name, const dynamic_t& args):
+    category_type(context, locator, mode, name, args),
     m_log(context.log(name)),
     m_locator(locator),
     m_cfg(args.to<predefine_cfg_t>()),
     m_timer(locator.asio())
 {
-    m_signals = std::make_shared<dispatch<context_tag>>(name);
-    m_signals->on<io::context::prepared>(std::bind(&predefine_t::on_announce, this, std::error_code()));
+    if(mode == mode_t::full) {
+        m_signals = std::make_shared<dispatch<context_tag>>(name);
+        m_signals->on<io::context::prepared>(std::bind(&predefine_t::on_announce, this, std::error_code()));
 
-    context.signal_hub().listen(m_signals, m_locator.asio());
+        context.signal_hub().listen(m_signals, m_locator.asio());
+    }
 }
 
 predefine_t::~predefine_t() {

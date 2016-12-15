@@ -30,6 +30,11 @@ namespace cocaine { namespace api {
 struct cluster_t {
     typedef cluster_t category_type;
 
+    enum class mode_t {
+        full,
+        announce_only
+    };
+
     struct interface {
         virtual
         auto
@@ -54,7 +59,7 @@ struct cluster_t {
     }
 
 protected:
-    cluster_t(context_t&, interface&, const std::string& /* name */, const dynamic_t& /* args */) {
+    cluster_t(context_t&, interface&, mode_t /* mode */ , const std::string& /* name */, const dynamic_t& /* args */) {
         // Empty.
     }
 };

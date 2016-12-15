@@ -172,6 +172,10 @@ public std::error_category
                 return "routing storage is unavailable";
             case cocaine::error::locator_errors::missing_version_error:
                 return "missing protocol version";
+            case cocaine::error::locator_errors::gateway_duplicate_service:
+                return "duplicate service provided to gateway";
+            case cocaine::error::locator_errors::gateway_missing_service:
+                return "service is missing in gateway";
         }
 
         return "cocaine.service.locator error";

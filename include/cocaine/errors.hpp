@@ -61,7 +61,9 @@ enum security_errors {
 enum locator_errors {
     service_not_available = 1,
     routing_storage_error,
-    missing_version_error
+    missing_version_error,
+    gateway_duplicate_service,
+    gateway_missing_service
 };
 
 enum unicorn_errors {

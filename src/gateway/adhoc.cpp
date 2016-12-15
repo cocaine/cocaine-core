@@ -25,83 +25,104 @@
 #include "cocaine/logging.hpp"
 
 #include <blackhole/logger.hpp>
+#include <cocaine/rpc/graph.hpp>
 
-using namespace cocaine::gateway;
+#include <boost/optional/optional.hpp>
 
-using blackhole::attribute_list;
+namespace cocaine {
+namespace gateway {
 
-adhoc_t::adhoc_t(context_t& context, const std::string& name, const dynamic_t& args):
-    category_type(context, name, args),
+adhoc_t::adhoc_t(context_t& context, const std::string& _local_uuid, const std::string& name, const dynamic_t& args):
+    category_type(context, _local_uuid, name, args),
     m_log(context.log(name))
 {
-    std::random_device rd; m_random_generator.seed(rd());
-}
-
-adhoc_t::~adhoc_t() {
-    // Empty.
+    std::random_device rd;
+    m_random_generator.seed(rd());
 }
 
 auto
-adhoc_t::resolve(const partition_t& name) const -> std::vector<asio::ip::tcp::endpoint> {
-    remote_map_t::const_iterator lb, ub;
+adhoc_t::resolve(const std::string& name) const -> service_description_t {
+    return m_remotes.apply([&](const remote_map_t& remotes) {
+        auto by_service_it = remotes.find(name);
+        if(by_service_it == remotes.end() || by_service_it->second.empty()) {
+            throw std::system_error(error::service_not_available);
+        }
 
-    auto ptr = m_remotes.synchronize();
+        // roll the dice and choose random one
+        auto& services_by_uuid = by_service_it->second;
+        auto it = services_by_uuid.begin();
+        std::uniform_int_distribution<int> distribution(0, services_by_uuid.size() - 1);
+        std::advance(it, distribution(m_random_generator));
 
-    if(!ptr->count(name)) {
-        throw std::system_error(error::service_not_available);
-    }
+        COCAINE_LOG_DEBUG(m_log, "providing service using remote actor", blackhole::attribute_list({
+            {"uuid", it->second.uuid}
+        }));
 
-    std::tie(lb, ub) = ptr->equal_range(name);
-
-    std::uniform_int_distribution<int> distribution(0, std::distance(lb, ub) - 1);
-    std::advance(lb, distribution(m_random_generator));
-
-    COCAINE_LOG_DEBUG(m_log, "providing service using remote actor", attribute_list({
-        {"uuid", lb->second.uuid}
-    }));
-
-    return lb->second.endpoints;
+        return service_description_t{it->second.endpoints, it->second.protocol, it->second.version};
+    });
 }
 
-size_t
+auto
 adhoc_t::consume(const std::string& uuid,
-                 const partition_t& name, const std::vector<asio::ip::tcp::endpoint>& endpoints)
+                 const std::string& name,
+                 unsigned int version,
+                 const std::vector<asio::ip::tcp::endpoint>& endpoints,
+                 const io::graph_root_t& protocol) -> void
 {
-    auto ptr = m_remotes.synchronize();
+    m_remotes.apply([&](remote_map_t& remotes){
+        bool inserted;
+        std::tie(std::ignore, inserted) = remotes[name].insert({uuid, remote_t{uuid, version, endpoints, protocol}});
 
-    ptr->insert({
-        name,
-        remote_t{uuid, endpoints}
+        if(!inserted) {
+            throw error_t(error::gateway_duplicate_service,
+                          "failed to add remote service {} located on {} to gateway: service already registered",
+                          name, uuid);
+        } else {
+            COCAINE_LOG_DEBUG(m_log, "registered {}/{} destination with {:d} endpoints from {}",
+                              name, version, endpoints.size(), uuid);
+        }
+
     });
-
-    COCAINE_LOG_DEBUG(m_log, "registering destination with {:d} endpoints", endpoints.size(), attribute_list({
-        {"service", std::get<0>(name)},
-        {"uuid"   , uuid             },
-        {"version", (int)std::get<1>(name)}
-    }));
-
-    return ptr->count(name);
 }
 
-size_t
-adhoc_t::cleanup(const std::string& uuid, const partition_t& name) {
-    remote_map_t::const_iterator lb, ub;
-
-    auto ptr = m_remotes.synchronize();
-
-    // Narrow search to the specified service partition.
-    std::tie(lb, ub) = ptr->equal_range(name);
-
-    // Since UUIDs are unique, only one remote will match the specified UUID.
-    auto it = std::find_if(lb, ub, [&](const remote_map_t::value_type& value) -> bool {
-        return value.second.uuid == uuid;
+auto
+adhoc_t::cleanup(const std::string& uuid, const std::string& name) -> void {
+    m_remotes.apply([&](remote_map_t& remotes){
+        if(remotes[name].erase(uuid)) {
+            COCAINE_LOG_DEBUG(m_log, "removed service {} provided by {} from gateway", name, uuid);
+        } else {
+            throw error_t(error::gateway_missing_service,
+                          "failed to remove service {} provided by {} from gateway: not found", name, uuid);
+        }
     });
-
-    COCAINE_LOG_DEBUG(m_log, "removing destination with {:d} endpoints", it->second.endpoints.size(), attribute_list({
-        {"service", std::get<0>(name)},
-        {"uuid", uuid                },
-        {"version", (int)std::get<1>(name)}
-    }));
-
-    ptr->erase(it); return ptr->count(name);
 }
+
+auto
+adhoc_t::cleanup(const std::string& uuid) -> void {
+    m_remotes.apply([&](remote_map_t& remotes){
+        size_t removed = 0;
+        for(auto it = remotes.begin(); it != remotes.end();) {
+            removed += it->second.erase(uuid);
+            if(it->second.empty()) {
+                it = remotes.erase(it);
+            } else {
+                it++;
+            }
+        }
+        COCAINE_LOG_INFO(m_log, "removed {} services from {} remote", removed, uuid);
+    });
+}
+
+auto
+adhoc_t::total_count(const std::string& name) const -> size_t {
+    return m_remotes.apply([&](const remote_map_t& remotes) -> size_t {
+        const auto it = remotes.find(name);
+        if(it == remotes.end()) {
+            return 0ul;
+        }
+        return it->second.size();
+    });
+}
+
+} // namespace gateway
+} // namespace cocaine

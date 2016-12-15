@@ -22,6 +22,7 @@
 #define COCAINE_GATEWAY_API_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/rpc/graph.hpp"
 
 #include <asio/ip/tcp.hpp>
 
@@ -30,28 +31,70 @@ namespace cocaine { namespace api {
 struct gateway_t {
     typedef gateway_t category_type;
 
+    struct service_description_t {
+        std::vector<asio::ip::tcp::endpoint> endpoints;
+        io::graph_root_t protocol;
+        unsigned int version;
+    };
+
+    enum class resolve_policy_t {
+        full,
+        remote_only
+    };
+
     virtual
-   ~gateway_t() {
-        // Empty.
+    ~gateway_t() {
+     // Empty.
     }
 
-    typedef std::tuple<std::string, unsigned int> partition_t;
+    /**
+     * This one tells the locator (or any other direct user of gateway) if the gateway resolves
+     * local services itself("full") or delegates resolving of local services to locator("remote_only").
+     */
+    virtual
+    auto
+    resolve_policy() const -> resolve_policy_t = 0;
 
     virtual
     auto
-    resolve(const partition_t& name) const -> std::vector<asio::ip::tcp::endpoint> = 0;
+    resolve(const std::string& name) const -> service_description_t = 0;
 
+    /**
+     * this is called when locator discovers new service (remote or local)
+     * local services can be distinguished by local_uuid parameter passed to ctor
+     */
     virtual
-    size_t
+    auto
     consume(const std::string& uuid,
-            const partition_t& name, const std::vector<asio::ip::tcp::endpoint>& endpoints) = 0;
+            const std::string& name,
+            unsigned int version,
+            const std::vector<asio::ip::tcp::endpoint>& endpoints,
+            const io::graph_root_t& protocol) -> void = 0;
 
+
+    /**
+     * cleanup only one specific service from concrete uuid
+     */
     virtual
-    size_t
-    cleanup(const std::string& uuid, const partition_t& name) = 0;
+    auto
+    cleanup(const std::string& uuid, const std::string& name) -> void = 0;
+
+    /**
+     * drop all services from uuid, typically it's called on node shutdown or disconnect
+     */
+    virtual
+    auto
+    cleanup(const std::string& uuid) -> void = 0;
+
+    /**
+     * count all services with specified name including local ones
+     */
+    virtual
+    auto
+    total_count(const std::string& name) const -> size_t = 0;
 
 protected:
-    gateway_t(context_t&, const std::string& /* name */, const dynamic_t& /* args */) {
+    gateway_t(context_t&, const std::string& /* local_uuid */, const std::string& /* name */, const dynamic_t& /* args */) {
         // Empty.
     }
 };

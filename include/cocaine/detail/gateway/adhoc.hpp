@@ -38,32 +38,43 @@ class adhoc_t:
 
     struct remote_t {
         std::string uuid;
+        unsigned int version;
         std::vector<asio::ip::tcp::endpoint> endpoints;
+        io::graph_root_t protocol;
     };
 
-    typedef std::multimap<partition_t, remote_t> remote_map_t;
+    typedef std::map<std::string, std::map<std::string, remote_t>> remote_map_t;
 
     // TODO: Make sure that remote service metadata is consistent across the whole cluster.
     synchronized<remote_map_t> m_remotes;
 
 public:
-    adhoc_t(context_t& context, const std::string& name, const dynamic_t& args);
+    adhoc_t(context_t& context, const std::string& _local_uuid, const std::string& name, const dynamic_t& args);
 
-    virtual
-   ~adhoc_t();
-
-    virtual
     auto
-    resolve(const partition_t& name) const -> std::vector<asio::ip::tcp::endpoint>;
+    resolve_policy() const ->resolve_policy_t override {
+        return resolve_policy_t::remote_only;
+    }
 
-    virtual
-    size_t
+    auto
+    resolve(const std::string& name) const -> service_description_t override;
+
+    auto
     consume(const std::string& uuid,
-            const partition_t& name, const std::vector<asio::ip::tcp::endpoint>& endpoints);
+            const std::string& name,
+            unsigned int version,
+            const std::vector<asio::ip::tcp::endpoint>& endpoints,
+            const io::graph_root_t& protocol) -> void override;
 
-    virtual
-    size_t
-    cleanup(const std::string& uuid, const partition_t& name);
+    auto
+    cleanup(const std::string& uuid, const std::string& name) -> void override;
+
+    auto
+    cleanup(const std::string& uuid) -> void override;
+
+    auto
+    total_count(const std::string& name) const -> size_t override;
+
 };
 
 }} // namespace cocaine::gateway

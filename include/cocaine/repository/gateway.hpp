@@ -34,15 +34,15 @@ struct category_traits<gateway_t> {
     struct factory_type: public basic_factory<gateway_t> {
         virtual
         ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) = 0;
+        get(context_t& context, const std::string& uuid, const std::string& name, const dynamic_t& args) = 0;
     };
 
     template<class T>
     struct default_factory: public factory_type {
         virtual
         ptr_type
-        get(context_t& context, const std::string& name, const dynamic_t& args) {
-            return ptr_type(new T(context, name, args));
+        get(context_t& context, const std::string& uuid, const std::string& name, const dynamic_t& args) {
+            return ptr_type(new T(context, uuid, name, args));
         }
     };
 };
