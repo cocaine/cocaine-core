@@ -18,7 +18,12 @@ BuildRequires: gcc44 gcc44-c++
 
 BuildRequires: boost-devel, boost-iostreams, boost-thread, boost-system
 BuildRequires: libev-devel, openssl-devel, libtool-ltdl-devel, libuuid-devel, libcgroup-devel
-BuildRequires: msgpack-devel, libarchive-devel, binutils-devel
+BuildRequires: libarchive-devel, binutils-devel
+%if 0%{?fedora} >= 24
+BuildRequires: compat-msgpack-devel
+%else
+BuildRequires: msgpack-devel
+%endif
 
 %if %{defined rhel} && 0%{?rhel} < 7
 BuildRequires: cmake28
@@ -35,7 +40,12 @@ Cocaine is an open application cloud platform.
 Summary: Development files for %{name}
 Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
-Requires: libtool-ltdl-devel, libev-devel, msgpack-devel
+Requires: libtool-ltdl-devel, libev-devel
+%if 0%{?fedora} >= 24
+Requires: compat-msgpack-devel
+%else
+Requires: msgpack-devel
+%endif
 
 %description devel
 Cocaine development headers package.

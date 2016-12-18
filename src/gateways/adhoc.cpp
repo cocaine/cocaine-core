@@ -54,7 +54,7 @@ adhoc_t::resolve(const std::string& name) const -> metadata_t {
         throw cocaine::error_t("the specified service is not available in the group");
     }
 
-#if defined(__clang__) || defined(HAVE_GCC46)
+#if defined(__clang__) || defined(HAVE_GCC46) || __GNUC__ >= 5
     std::uniform_int_distribution<int> distribution(0, std::distance(it, end) - 1);
 #else
     std::uniform_int<int> distribution(0, std::distance(it, end) - 1);
