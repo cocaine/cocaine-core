@@ -39,6 +39,10 @@ namespace cocaine { namespace io {
 
 template<class T>
 struct uninitialized: public std::allocator<T> {
+    template<class U> struct rebind {
+        typedef uninitialized<U> other;
+    };
+
     void construct(T*) { }
     void destroy  (T*) { }
 };
