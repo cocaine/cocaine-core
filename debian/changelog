@@ -1,3 +1,15 @@
+cocaine-core (0.12.11.0-alpha1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Added: introduce dispatch middlewares (#114).
+  * Changed: more proper `result_of` implementation (#116).
+  * Changed: safe locate method for context (#113).
+  * Changed: allow to pass encoded messages directly to upstreams (#118).
+  * Changed: make header packing public (#119).
+  * Changed: move some resolve logic inside gateways (#128).
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 22 Dec 2016 00:30:14 +0300
+
 cocaine-core (0.12.10.7) unstable; urgency=low
 
   * Non-maintainer upload.
