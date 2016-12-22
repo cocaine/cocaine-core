@@ -32,7 +32,7 @@ RUN cd /build/cocaine-core && \
     debi
 
 # Build and install cocaine-plugins.
-RUN git clone https://github.com/3Hren/cocaine-plugins --recursive -b v0.12.10 /build/cocaine-plugins
+RUN git clone https://github.com/3Hren/cocaine-plugins --recursive -b $BUILD_BRANCH /build/cocaine-plugins
 RUN cd /build/cocaine-plugins && \
     cmake -DELASTICSEARCH=OFF -DMONGO=OFF -DURLFETCH=OFF -DDOCKER=OFF -DELLIPTICS=OFF . && \
     make

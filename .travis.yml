@@ -2,4 +2,4 @@ sudo: required
 services:
   - docker
 script:
-  - docker build .
+  - docker build --build-arg BUILD_BRANCH=$TRAVIS_BRANCH .
