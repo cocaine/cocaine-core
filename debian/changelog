@@ -1,3 +1,10 @@
+cocaine-core (0.12.11.0-alpha2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fixed: Restored ABI in encoder.
+
+ -- Anton Matveenko <antmat@me.com>  Fri, 23 Dec 2016 21:01:14 +0300
+
 cocaine-core (0.12.11.0-alpha1) unstable; urgency=low
 
   * Non-maintainer upload.
