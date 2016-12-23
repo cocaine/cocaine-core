@@ -57,20 +57,29 @@ encoded_buffers_t::write(const char* data, size_t size) {
     offset += size;
 }
 
-
 auto
-encoded_message_t::data() const -> const char* {
-    return buffer.vector.data();
+encoded_buffers_t::data() const -> const char* {
+    return vector.data();
 }
 
 size_t
-encoded_message_t::size() const {
-    return buffer.offset;
+encoded_buffers_t::size() const {
+    return offset;
 }
 
 void
 encoded_message_t::write(const char* data, size_t size) {
-    buffer.write(data, size);
+    return buffer.write(data, size);
+}
+
+auto
+encoded_message_t::data() const -> const char* {
+    return buffer.data();
+}
+
+size_t
+encoded_message_t::size() const {
+    return buffer.size();
 }
 
 unbound_message_t::unbound_message_t(function_type&& bind_): bind(std::move(bind_)) { }

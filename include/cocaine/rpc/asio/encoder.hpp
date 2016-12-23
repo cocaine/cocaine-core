@@ -42,11 +42,7 @@ struct encoded_buffers_t {
 
     encoded_buffers_t();
 
-    void
-    write(const char* data, size_t size);
-
     // Movable
-
     encoded_buffers_t(encoded_buffers_t&&) = default;
 
     encoded_buffers_t&
@@ -54,22 +50,30 @@ struct encoded_buffers_t {
 
     COCAINE_DECLARE_NONCOPYABLE(encoded_buffers_t)
 
-private:
-    std::vector<char, uninitialized<char>> vector;
-    std::vector<char, uninitialized<char>>::size_type offset;
-};
+    void
+    write(const char* data, size_t size);
 
-struct encoded_message_t {
     auto
     data() const -> const char*;
 
     size_t
     size() const;
 
+private:
+    std::vector<char, uninitialized<char>> vector;
+    std::vector<char, uninitialized<char>>::size_type offset;
+};
+
+struct encoded_message_t {
     void
     write(const char* data, size_t size);
 
-private:
+    auto
+    data() const -> const char*;
+
+    size_t
+    size() const;
+
     encoded_buffers_t buffer;
 };
 
@@ -92,7 +96,7 @@ struct encoder_t {
 
     typedef aux::unbound_message_t message_type;
     typedef aux::encoded_message_t encoded_message_type;
-    typedef msgpack::packer<aux::encoded_message_t> packer_type;
+    typedef msgpack::packer<aux::encoded_buffers_t> packer_type;
 
     // TODO: Do we really need owning header storage?
     template<class Event, class... Args>
@@ -101,7 +105,7 @@ struct encoder_t {
     tether(encoder_t& encoder, uint64_t channel_id, const hpack::header_storage_t& headers, Args&... args) {
         aux::encoded_message_t message;
 
-        packer_type packer(message);
+        packer_type packer(message.buffer);
 
         packer.pack_array(4);
 
