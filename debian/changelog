@@ -1,3 +1,11 @@
+cocaine-core (0.12.11.0-alpha3) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fixed: bump version in CMake file.
+  * Fixed: actors should no longer eat a mapped port if it failed to run.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 28 Dec 2016 15:33:46 +0300
+
 cocaine-core (0.12.11.0-alpha2) unstable; urgency=low
 
   * Non-maintainer upload.
