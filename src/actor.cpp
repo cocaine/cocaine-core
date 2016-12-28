@@ -218,11 +218,14 @@ actor_t::run() {
         std::error_code ec;
         tcp::endpoint endpoint;
 
+        const auto port = m_context.mapper().assign(m_prototype->name());
+
         try {
             auto addr = asio::ip::address::from_string(m_context.config().network().endpoint());
-            endpoint = tcp::endpoint{addr, m_context.mapper().assign(m_prototype->name())};
+            endpoint = tcp::endpoint{addr, port};
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to assign a local endpoint to service: {}", error::to_string(e));
+            m_context.mapper().retain(m_prototype->name());
             throw;
         }
 
@@ -230,6 +233,7 @@ actor_t::run() {
             ptr = std::make_unique<tcp::acceptor>(*m_asio, endpoint);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint {} for service: {}", endpoint, error::to_string(e));
+            m_context.mapper().retain(m_prototype->name());
             throw;
         }
 
