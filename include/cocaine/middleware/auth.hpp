@@ -6,11 +6,10 @@
 
 #include <boost/variant/variant.hpp>
 
+#include "cocaine/api/auth.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/hpack/header.hpp"
 #include "cocaine/hpack/header_definitions.hpp"
-
-#include "cocaine/api/auth.hpp"
 
 namespace cocaine {
 namespace middleware {
