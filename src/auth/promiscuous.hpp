@@ -12,7 +12,7 @@ public:
 
     auto
     token(callback_type callback) -> void override {
-        callback({}, {});
+        callback({{}, {}, {}}, {}); // Bayan.
     }
 
     auto
