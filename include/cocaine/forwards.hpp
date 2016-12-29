@@ -70,6 +70,7 @@ typedef unsigned short port_t;
 
 namespace cocaine { namespace api {
 
+class auth_t;
 class repository_t;
 class unicorn_t;
 class unicorn_scope_t;
