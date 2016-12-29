@@ -27,14 +27,18 @@
 #include "cocaine/detail/service/logging.hpp"
 #include "cocaine/detail/service/storage.hpp"
 #include "cocaine/detail/storage/files.hpp"
+#include "cocaine/repository/auth.hpp"
 #include "cocaine/repository/cluster.hpp"
 #include "cocaine/repository/gateway.hpp"
 #include "cocaine/repository/service.hpp"
 #include "cocaine/repository/storage.hpp"
+
+#include "auth/promiscuous.hpp"
 #include "service/runtime.hpp"
 
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
+    repository.insert<auth::promiscuous_t>("promiscuous");
     repository.insert<cluster::multicast_t>("multicast");
     repository.insert<cluster::predefine_t>("predefine");
     repository.insert<gateway::adhoc_t>("adhoc");
