@@ -1,3 +1,10 @@
+cocaine-core (0.12.11.0-alpha4) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Migrate authorization code from plugins.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 30 Dec 2016 12:12:30 +0300
+
 cocaine-core (0.12.11.0-alpha3) unstable; urgency=low
 
   * Non-maintainer upload.
