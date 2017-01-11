@@ -1,3 +1,13 @@
+cocaine-core (0.12.11.0-alpha5) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fixed: resolve remapped name instead of initial one.
+    This change fixes a bug, where the locator resolved initial service
+    name instead of remapped one, which led to incorrect resolving for
+    remote routing groups.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 11 Jan 2017 15:32:57 +0300
+
 cocaine-core (0.12.11.0-alpha4) unstable; urgency=low
 
   * Non-maintainer upload.
