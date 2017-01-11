@@ -495,16 +495,21 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
 
     const holder_t scoped(*m_log, {{"service", remapped}});
 
-    // if we don't have gateway or it resolves only remote services try to lookup service locally first
+    // If we don't have gateway or it resolves only remote services try to lookup service locally
+    // first.
     if(!m_gateway || m_gateway->resolve_policy() == api::gateway_t::resolve_policy_t::remote_only) {
         const auto provided = m_context.locate(remapped);
         if(provided) {
             COCAINE_LOG_DEBUG(m_log, "providing service using local actor");
-            return results::resolve {provided->endpoints, provided->prototype->version(), provided->prototype->root()};
+            return results::resolve {
+                provided->endpoints,
+                provided->prototype->version(),
+                provided->prototype->root()
+            };
         }
     }
 
-    // service is not found in context and we don't have gateway to lookup at
+    // Service is not found in the context and we don't have gateway to lookup at.
     if(!m_gateway) {
         throw std::system_error(error::service_not_available);
     }

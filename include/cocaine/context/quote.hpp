@@ -34,4 +34,5 @@ struct quote_t {
 };
 
 }} // namespace cocaine::context
+
 #endif

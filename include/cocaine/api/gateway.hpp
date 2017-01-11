@@ -31,6 +31,7 @@ namespace cocaine { namespace api {
 struct gateway_t {
     typedef gateway_t category_type;
 
+    // TODO: Possibly drop this structure in favor of `cocaine::quote_t`.
     struct service_description_t {
         std::vector<asio::ip::tcp::endpoint> endpoints;
         io::graph_root_t protocol;
