@@ -509,11 +509,11 @@ locator_t::on_resolve(const std::string& name, const std::string& seed) const {
         throw std::system_error(error::service_not_available);
     }
 
-    auto resolved = m_gateway->resolve(name);
+    auto provided = m_gateway->resolve(remapped);
     return results::resolve {
-        std::move(resolved.endpoints),
-        std::move(resolved.version),
-        std::move(resolved.protocol)
+        std::move(provided.endpoints),
+        std::move(provided.version),
+        std::move(provided.protocol)
     };
 }
 
