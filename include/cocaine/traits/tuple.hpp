@@ -162,12 +162,10 @@ struct type_traits<
 >
 {
     enum constants: unsigned {
-
-    minimal = boost::mpl::count_if<
-        T,
-        boost::mpl::lambda<details::is_required<boost::mpl::_1>>
-    >::value
-
+        minimal = boost::mpl::count_if<
+            T,
+            boost::mpl::lambda<details::is_required<boost::mpl::_1>>
+        >::value
     };
 
 public:

@@ -26,8 +26,6 @@
 
 #include <asio/ip/tcp.hpp>
 
-#include <metrics/metric.hpp>
-
 namespace cocaine {
 
 class actor_t {
