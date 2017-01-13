@@ -1,3 +1,11 @@
+cocaine-core (0.12.11.0-alpha6) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fixed: drop unnecessary public include in actor.
+  * Fixed: proper dev package dependencies.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 13 Jan 2017 16:54:11 +0300
+
 cocaine-core (0.12.11.0-alpha5) unstable; urgency=low
 
   * Non-maintainer upload.
