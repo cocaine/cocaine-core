@@ -87,6 +87,7 @@ ADD_LIBRARY(cocaine-core SHARED
     src/dynamic.cpp
     src/engine.cpp
     src/essentials.cpp
+    src/executor/asio.cpp
     src/gateway/adhoc.cpp
     src/logging.cpp
     src/repository.cpp
