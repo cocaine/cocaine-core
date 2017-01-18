@@ -23,7 +23,8 @@ public:
 
     ~owning_asio_t();
 
-    auto spawn(work_t work) -> void override;
+    auto
+    spawn(work_t work) -> void override;
 
 private:
     asio::io_service io_loop;
@@ -37,7 +38,8 @@ class borrowing_asio_t: public api::executor_t {
 public:
     borrowing_asio_t(asio::io_service& io_loop);
 
-    auto spawn(work_t work) -> void override;
+    auto
+    spawn(work_t work) -> void override;
 
 private:
     asio::io_service& io_loop;

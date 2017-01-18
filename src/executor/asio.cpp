@@ -18,7 +18,8 @@ owning_asio_t::~owning_asio_t() {
     thread.join();
 }
 
-auto owning_asio_t::spawn(work_t work) -> void {
+auto
+owning_asio_t::spawn(work_t work) -> void {
     io_loop.post(std::move(work));
 }
 
@@ -26,7 +27,8 @@ borrowing_asio_t::borrowing_asio_t(asio::io_service& _io_loop) :
     io_loop(_io_loop)
 {}
 
-auto borrowing_asio_t::spawn(work_t work) -> void {
+auto
+borrowing_asio_t::spawn(work_t work) -> void {
     io_loop.post(std::move(work));
 }
 
