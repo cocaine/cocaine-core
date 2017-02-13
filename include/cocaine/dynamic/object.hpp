@@ -70,7 +70,11 @@ public:
         return *this;
     }
 
-    using base_type::at;
+    cocaine::dynamic_t&
+    at(const std::string& key);
+
+    const cocaine::dynamic_t&
+    at(const std::string& key) const;
 
     cocaine::dynamic_t&
     at(const std::string& key, cocaine::dynamic_t& def);

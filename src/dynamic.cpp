@@ -20,12 +20,34 @@
 
 #include <cocaine/dynamic/dynamic.hpp>
 
+#include "cocaine/errors.hpp"
+
 using namespace cocaine;
 
 const dynamic_t dynamic_t::null = dynamic_t::null_t();
 const dynamic_t dynamic_t::empty_string = dynamic_t::string_t();
 const dynamic_t dynamic_t::empty_array = dynamic_t::array_t();
 const dynamic_t dynamic_t::empty_object = dynamic_t::object_t();
+
+cocaine::dynamic_t&
+dynamic_t::object_t::at(const std::string& key) {
+    auto it = find(key);
+
+    if(it == end()) {
+        throw error_t("dynamic_t: key '{}' not found", key);
+    }
+    return it->second;
+}
+
+const cocaine::dynamic_t&
+dynamic_t::object_t::at(const std::string& key) const {
+    auto it = find(key);
+
+    if(it == end()) {
+        throw error_t("dynamic_t: key '{}' not found", key);
+    }
+    return it->second;
+}
 
 cocaine::dynamic_t&
 dynamic_t::object_t::at(const std::string& key, cocaine::dynamic_t& default_) {
