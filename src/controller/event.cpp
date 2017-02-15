@@ -2,8 +2,6 @@
 
 #include <future>
 
-#include <zookeeper/zookeeper.h>
-
 #include <blackhole/logger.hpp>
 
 #include "cocaine/api/auth.hpp"
@@ -133,7 +131,8 @@ private:
                 observers->insert(std::make_pair(user, observer));
             }
         } catch (const std::system_error& err) {
-            if (err.code().value() != ZNONODE) {
+            // TODO: Replace magic value with meaningful Unicorn error code.
+            if (err.code().value() != -101) {
                 COCAINE_LOG_ERROR(log, "failed to update ACL list: {}", error::to_string(err));
             }
         }
