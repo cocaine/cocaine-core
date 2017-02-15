@@ -1,3 +1,15 @@
+cocaine-core (0.12.11.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Added: access-controlled collections for storage service (#137).
+  * Added: audit logs for storage service.
+  * Changed: better error handling for `dynamic_t` with printing missing
+    keys (#138).
+  * Removed: drop `runtime` service, because its functionality was moved to
+    the `metrics` service.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 15 Feb 2017 15:31:19 +0300
+
 cocaine-core (0.12.11.0-beta1) unstable; urgency=low
 
   * Non-maintainer upload.
@@ -8,7 +20,7 @@ cocaine-core (0.12.11.0-beta1) unstable; urgency=low
 cocaine-core (0.12.11.0-alpha7) unstable; urgency=low
 
   * Non-maintainer upload.
-  * Feat: move-only callback support for executor.
+  * Added: move-only callback support for executor.
 
  -- Evgeny Safronov <antmat@me.com>  Wed, 18 Jan 2017 16:28:11 +0300
 
