@@ -25,12 +25,12 @@ public:
 
     template<typename Event, typename F, typename... Args>
     auto
-    operator()(F& fn, Event, const std::vector<hpack::header_t>& meta, Args&&... args) ->
-        decltype(fn(meta, std::forward<Args>(args)...))
+    operator()(F fn, Event, const hpack::headers_t& headers, Args&&... args) ->
+        decltype(fn(headers, std::forward<Args>(args)...))
     {
         // Even if there is no credentials provided some authorization components may allow access.
         std::string credentials;
-        if (auto header = hpack::header::find_first<hpack::headers::authorization<>>(meta)) {
+        if (auto header = hpack::header::find_first<hpack::headers::authorization<>>(headers)) {
             credentials = header->value();
         }
 
@@ -40,7 +40,7 @@ public:
             throw std::system_error(*ec, "permission denied");
         }
 
-        return fn(meta, std::forward<Args>(args)...);
+        return fn(headers, std::forward<Args>(args)..., boost::get<api::auth_t::allow_t>(perm).uids);
     }
 };
 

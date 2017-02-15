@@ -55,7 +55,10 @@ enum repository_errors {
 };
 
 enum security_errors {
-    token_not_found = 1
+    token_not_found = 1,
+    unauthorized,
+    permission_denied,
+    invalid_acl_framing
 };
 
 enum locator_errors {

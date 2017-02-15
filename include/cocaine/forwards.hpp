@@ -74,6 +74,7 @@ class auth_t;
 class repository_t;
 class unicorn_t;
 class unicorn_scope_t;
+
 struct cluster_t;
 struct gateway_t;
 struct isolate_t;

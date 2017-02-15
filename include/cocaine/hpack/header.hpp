@@ -154,6 +154,7 @@ private:
 };
 
 typedef std::vector<header_t> header_storage_t;
+using headers_t = std::vector<header_t>;
 
 // Header static and dynamic table as described in http2
 // See https://tools.ietf.org/html/draft-ietf-httpbis-header-compression-12#section-2.3

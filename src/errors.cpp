@@ -138,16 +138,24 @@ class security_category_t:
     virtual
     auto
     name() const throw() -> const char* {
-        return "cocaine.security";
+        return "cocaine security";
     }
 
     virtual
     auto
     message(int code) const -> std::string {
-        if(code == cocaine::error::security_errors::token_not_found)
+        switch (code) {
+        case security_errors::token_not_found:
             return "specified token is not available";
+        case security_errors::unauthorized:
+            return "unauthorized";
+        case security_errors::permission_denied:
+            return "permission denied";
+        case security_errors::invalid_acl_framing:
+            return "invalid ACL framing";
+        }
 
-        return "cocaine.security error";
+        return cocaine::format("{} - {}", name(), code);
     }
 };
 

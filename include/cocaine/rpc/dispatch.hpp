@@ -45,13 +45,7 @@
 
 namespace cocaine {
 
-template<typename MetaFlag>
-struct initial_state;
-
-template<typename F, typename R>
-struct executor_state;
-
-template<typename Event, typename State = initial_state<void>>
+template<typename Event, typename = std::tuple<>>
 struct slot_builder;
 
 template<class Tag>
@@ -199,14 +193,9 @@ private:
     const io::upstream_ptr_t& upstream;
 };
 
-struct forward_meta_tag;
-
 /// Wraps the given slot of type `F` eating meta argument depending on `MetaFlag`.
-template<typename F, typename MetaFlag>
-struct slot_wrapper;
-
 template<typename F>
-struct slot_wrapper<F, std::true_type> {
+struct slot_wrapper {
     F fn;
 
     explicit
@@ -215,123 +204,107 @@ struct slot_wrapper<F, std::true_type> {
     {}
 
     template<typename... Args>
-    auto operator()(const std::vector<hpack::header_t>& meta, Args&&... args) ->
-        decltype(fn(meta, std::forward<Args>(args)...))
+    auto operator()(const hpack::headers_t& headers, Args&&... args) ->
+        decltype(fn(headers, std::forward<Args>(args)...))
     {
-        return fn(meta, std::forward<Args>(args)...);
+        return fn(headers, std::forward<Args>(args)...);
     }
 };
 
-template<typename F>
-struct slot_wrapper<F, std::false_type> {
-    F fn;
+/// A callable that wraps another callable with the given middleware, making it possible to build
+/// execution chains.
+template<typename M, typename C, typename Event, typename R>
+struct compose {
+    // Middleware callable.
+    M middleware;
 
-    explicit
-    slot_wrapper(F fn) :
-        fn(std::move(fn))
+    // Either the next composed middleware or slot.
+    C next;
+
+    compose(M middleware, C next) :
+        middleware(std::move(middleware)),
+        next(std::move(next))
     {}
 
     template<typename... Args>
-    auto operator()(const std::vector<hpack::header_t>&, Args&&... args) ->
-        decltype(fn(std::forward<Args>(args)...))
-    {
-        return fn(std::forward<Args>(args)...);
+    auto operator()(Args&&... args) -> R {
+        return middleware(std::move(next), Event(), std::forward<Args>(args)...);
+    }
+};
+
+/// Wraps the given callable with the specified middleware, making it possible to build execution
+/// chains.
+template<typename F, typename Event, typename R, typename M>
+auto
+make_composed(M middleware, F fn) -> compose<M, F, Event, R> {
+    return compose<M, F, Event, R>{std::move(middleware), std::move(fn)};
+}
+
+template<typename, typename, typename>
+struct composer;
+
+template<typename Event, typename R>
+struct composer<std::tuple<>, Event, R> {
+    using slot_type = typename aux::select<R, Event, std::true_type>::type;
+
+    template<typename Dispatch, typename F>
+    static
+    auto
+    apply(Dispatch& dispatch, F fn, std::tuple<>) -> void {
+        dispatch.template on<Event>(std::make_shared<slot_type>(std::move(fn)));
+    }
+};
+
+template<typename H, typename... T, typename Event, typename R>
+struct composer<std::tuple<H, T...>, Event, R> {
+    template<typename Dispatch, typename F>
+    static
+    auto
+    apply(Dispatch& dispatch, F fn, std::tuple<H, T...> middlewares) -> void {
+        auto composed = make_composed<F, Event, R>(
+            std::move(std::get<0>(middlewares)),
+            std::move(fn)
+        );
+
+        composer<std::tuple<T...>, Event, R>::apply(
+            dispatch,
+            std::move(composed),
+            tuple::pop_front(std::move(middlewares))
+        );
     }
 };
 
 } // namespace aux
 
-template<typename Event, typename MetaFlag>
-struct slot_builder<Event, initial_state<MetaFlag>> {
+template<typename Event, typename... M>
+struct slot_builder<Event, std::tuple<M...>> {
     typedef Event event_type;
     typedef typename event_type::tag tag_type;
-    typedef typename std::is_same<MetaFlag, aux::forward_meta_tag>::type forward_meta;
 
-    dispatch<tag_type>& d;
+    cocaine::dispatch<tag_type>& dispatch;
+    std::tuple<M...> middlewares;
 
-    explicit
-    slot_builder(dispatch<tag_type>& d) :
-        d(d)
-    {}
-
-    /// Consumes this builder, enabling forwarding frame meta information to the further event
-    /// handler.
-    auto provide_meta() && -> slot_builder<event_type, initial_state<aux::forward_meta_tag>> {
-        return slot_builder<event_type, initial_state<aux::forward_meta_tag>>(std::move(*this).d);
+    /// Specifies a new middleware, that will be called both before any further registered
+    /// middlewares and event handlers.
+    ///
+    /// \param middleware Middleware that accepts a next callable, event and additional parameters
+    ///     that are required to process the event.
+    template<typename T>
+    auto
+    with_middleware(T middleware) && -> slot_builder<Event, std::tuple<T, M...>> {
+        return {dispatch, std::tuple_cat(std::make_tuple(middleware), middlewares)};
     }
 
     /// Consumes this builder, setting the event handler.
     ///
-    /// \param fn Event handler which will be invoked each time the new event comes.
-    ///     Depending on previously called `provide_meta` method a handler may or may not accept
-    ///     additional argument with meta information (aka headers).
+    /// \param fn Event handler which will be invoked each time a new event comes.
     template<typename F>
-    auto execute(F fn) && ->
-        slot_builder<event_type, executor_state<aux::slot_wrapper<F, forward_meta>, typename result_of<F>::type>>
-    {
-        return slot_builder<event_type, executor_state<aux::slot_wrapper<F, forward_meta>, typename result_of<F>::type>>(
-            aux::slot_wrapper<F, forward_meta>(std::move(fn)),
-            &d
-        );
-    }
-};
-
-template<typename Event, typename F, typename R>
-struct slot_builder<Event, executor_state<F, R>> {
-    typedef Event event_type;
-    typedef typename event_type::tag tag_type;
-
-    F fn;
-    dispatch<tag_type>* d;
-
-    slot_builder(F fn, dispatch<tag_type>* d) :
-        fn(std::move(fn)),
-        d(d)
-    {}
-
-    ~slot_builder() noexcept(false) {
-        typedef typename aux::select<
-            R,
-            event_type,
-            std::true_type
-        >::type slot_type;
-
-        if (d) {
-            d->template on<event_type>(std::make_shared<slot_type>(std::move(fn)));
-        }
-    }
-
-    template<typename M, typename C>
-    struct compose {
-        // Middleware callable.
-        M middleware;
-
-        // Either the previous composed middleware or slot.
-        C fn;
-
-        compose(M middleware, C fn) :
-            middleware(std::move(middleware)),
-            fn(std::move(fn))
-        {}
-
-        template<typename... Args>
-        auto operator()(Args&&... args) ->
-            decltype(fn(std::forward<Args>(args)...))
-        {
-            return middleware(fn, Event(), std::forward<Args>(args)...);
-        }
-    };
-
-    /// Consumes this builder, adding a new middleware.
-    ///
-    /// \tparam M Must satisfy Middleware concept.
-    template<typename M>
-    auto add_middleware(M middleware) && ->
-        slot_builder<event_type, executor_state<compose<M, F>, R>>
-    {
-        return slot_builder<event_type, executor_state<compose<M, F>, R>>(
-            compose<M, F>(std::move(middleware), std::move(fn)),
-            utility::exchange(d, nullptr)
+    auto
+    execute(F fn) && -> void {
+        aux::composer<std::tuple<M...>, Event, typename result_of<F>::type>::apply(
+            dispatch,
+            std::move(fn),
+            std::move(middlewares)
         );
     }
 };
@@ -364,9 +337,9 @@ dispatch<Tag>::on(const std::shared_ptr<io::basic_slot<Event>>& ptr) {
 
 template<class Tag>
 template<class Event>
-slot_builder<Event, initial_state<void>>
+slot_builder<Event>
 dispatch<Tag>::on() {
-    return slot_builder<Event>(*this);
+    return slot_builder<Event>{*this, std::make_tuple()};
 }
 
 template<class Tag>

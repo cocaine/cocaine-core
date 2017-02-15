@@ -1,5 +1,9 @@
 #include "cocaine/api/auth.hpp"
 
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/lexical_cast.hpp>
+
 namespace cocaine {
 namespace auth {
 
@@ -16,10 +20,21 @@ public:
     }
 
     auto
-    check_permissions(const std::string&, const std::string&) const ->
+    check_permissions(const std::string&, const std::string& credentials) const ->
         permission_t override
     {
-        return allow_t();
+        try {
+            std::vector<std::string> splitted;
+            boost::split(splitted, credentials, boost::is_any_of(","));
+
+            std::vector<std::uint64_t> uids;
+            for (const auto& uid : splitted) {
+                uids.push_back(boost::lexical_cast<std::uint64_t>(uid));
+            }
+            return allow_t{std::move(uids)};
+        } catch (const std::exception&) {
+            return allow_t{};
+        }
     }
 };
 

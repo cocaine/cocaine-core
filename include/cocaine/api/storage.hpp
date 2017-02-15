@@ -111,6 +111,7 @@ protected:
     storage_t(context_t&, const std::string& /* name */, const dynamic_t& /* args */) {
         // Empty.
     }
+
 private:
     template <class T>
     static

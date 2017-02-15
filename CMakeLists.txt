@@ -69,10 +69,11 @@ ADD_LIBRARY(cocaine-io-util SHARED
     src/trace.cpp)
 
 ADD_LIBRARY(cocaine-core SHARED
-    src/actor.cpp
     src/actor_unix.cpp
+    src/actor.cpp
     src/api.cpp
     src/api/auth.cpp
+    src/api/controller.cpp
     src/api/storage.cpp
     src/chamber.cpp
     src/cluster/multicast.cpp
@@ -80,6 +81,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/context.cpp
     src/context/config.cpp
     src/context/mapper.cpp
+    src/controller/collection.cpp
+    src/controller/event.cpp
     src/crypto.cpp
     src/decoder.cpp
     src/defaults.cpp
@@ -101,7 +104,8 @@ ADD_LIBRARY(cocaine-core SHARED
     src/storage/files.cpp
     src/trace/logger.cpp
     src/unicorn/value.cpp
-    src/unique_id.cpp)
+    src/unique_id.cpp
+)
 
 TARGET_LINK_LIBRARIES(cocaine-io-util
     blackhole

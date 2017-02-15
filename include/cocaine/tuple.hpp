@@ -73,6 +73,19 @@ struct invoke_impl<index_sequence<Indices...>> {
     }
 };
 
+template<class IndexSequence>
+struct pop_front_impl;
+
+template<size_t... Idx>
+struct pop_front_impl<index_sequence<Idx...>> {
+    template<typename T, typename... Args>
+    static
+    auto
+    apply(std::tuple<T, Args...> tuple) -> std::tuple<Args...> {
+        return std::make_tuple(std::move(std::get<1 + Idx>(tuple))...);
+    }
+};
+
 } // namespace aux
 
 template<typename TypeList>
@@ -105,6 +118,23 @@ invoke(std::tuple<Args...>&& args, F&& callable)
     return aux::invoke_impl<
         typename make_index_sequence<sizeof...(Args)>::type
     >::apply(std::move(args), std::forward<F>(callable));
+}
+
+/// Consumes the given non-empty tuple, returning a new tuple without the front element.
+///
+/// # Examples
+///
+/// ```
+/// auto tuple = std::make_tuple(42, 3.1415, "le message");
+///
+/// assert(std::make_tuple(3.1415, "le message") == tuple::pop_front(std::move(tuple)));
+/// ```
+template<typename T, typename... Args>
+auto
+pop_front(std::tuple<T, Args...> tuple) -> std::tuple<Args...> {
+    return aux::pop_front_impl<
+        typename make_index_sequence<sizeof...(Args)>::type
+    >::apply(std::move(tuple));
 }
 
 }} // namespace cocaine::tuple

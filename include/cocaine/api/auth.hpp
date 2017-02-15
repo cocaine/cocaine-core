@@ -12,10 +12,15 @@
 namespace cocaine {
 namespace api {
 
+using uid_t = std::uint64_t;
+
 class auth_t {
 public:
     typedef auth_t category_type;
     typedef std::chrono::system_clock clock_type;
+
+    static constexpr uid_t superuser = std::numeric_limits<uid_t>::min();
+    static constexpr uid_t anonymous = std::numeric_limits<uid_t>::max();
 
     struct token_t {
         /// Token type. Think of the first part of the Authorization HTTP header.
@@ -38,7 +43,9 @@ public:
         }
     };
 
-    struct allow_t {};
+    struct allow_t {
+        std::vector<uid_t> uids;
+    };
 
     /// Result of permissions check for a given message.
     typedef boost::variant<

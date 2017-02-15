@@ -29,11 +29,13 @@
 #include "cocaine/detail/storage/files.hpp"
 #include "cocaine/repository/auth.hpp"
 #include "cocaine/repository/cluster.hpp"
+#include "cocaine/repository/controller.hpp"
 #include "cocaine/repository/gateway.hpp"
 #include "cocaine/repository/service.hpp"
 #include "cocaine/repository/storage.hpp"
 
 #include "auth/promiscuous.hpp"
+#include "controller/collection.hpp"
 #include "service/runtime.hpp"
 
 void
@@ -47,4 +49,7 @@ cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<service::runtime_t>("runtime");
     repository.insert<service::storage_t>("storage");
     repository.insert<storage::files_t>("files");
+
+    repository.insert<controller::collection::null_t>("null");
+    repository.insert<controller::collection::control_t>("collection");
 }
