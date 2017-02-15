@@ -36,7 +36,6 @@
 
 #include "auth/promiscuous.hpp"
 #include "controller/collection.hpp"
-#include "service/runtime.hpp"
 
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
@@ -46,7 +45,6 @@ cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<gateway::adhoc_t>("adhoc");
     repository.insert<service::locator_t>("locator");
     repository.insert<service::logging_t>("logging");
-    repository.insert<service::runtime_t>("runtime");
     repository.insert<service::storage_t>("storage");
     repository.insert<storage::files_t>("files");
 

@@ -97,7 +97,6 @@ ADD_LIBRARY(cocaine-core SHARED
     src/service/locator.cpp
     src/service/locator/routing.cpp
     src/service/logging.cpp
-    src/service/runtime.cpp
     src/service/storage.cpp
     src/session.cpp
     src/signal.cpp
