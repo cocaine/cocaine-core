@@ -54,14 +54,14 @@ struct actor_t::metrics_t {
 class actor_t::accept_action_t:
     public std::enable_shared_from_this<accept_action_t>
 {
-    actor_t *const parent;
-    tcp::socket    socket;
+    actor_t& parent;
+    tcp::socket socket;
 
 public:
-    accept_action_t(actor_t *const parent_):
-        parent(parent_),
-        socket(*parent->m_asio)
-    { }
+    accept_action_t(actor_t& parent):
+        parent(parent),
+        socket(*parent.m_asio)
+    {}
 
     void
     operator()();
@@ -73,9 +73,9 @@ private:
 
 void
 actor_t::accept_action_t::operator()() {
-    parent->m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
+    parent.m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
         if(!ptr) {
-            COCAINE_LOG_ERROR(parent->m_log, "abnormal termination of actor connection pump");
+            COCAINE_LOG_ERROR(parent.m_log, "abnormal termination of actor connection pump");
             return;
         }
 
@@ -92,13 +92,13 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
 
     switch(ec.value()) {
     case 0:
-        COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd {:d}", ptr->native_handle());
-        ++(*parent->metrics->connections_accepted.get());
+        COCAINE_LOG_DEBUG(parent.m_log, "accepted connection on fd {:d}", ptr->native_handle());
+        ++(*parent.metrics->connections_accepted.get());
 
         try {
-            parent->m_context.engine().attach(std::move(ptr), parent->m_prototype);
+            parent.m_context.engine().attach(std::move(ptr), parent.m_prototype);
         } catch(const std::system_error& e) {
-            COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: {}",
+            COCAINE_LOG_ERROR(parent.m_log, "unable to attach connection to engine: {}",
                 error::to_string(e));
             ptr = nullptr;
         }
@@ -109,9 +109,9 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
         return;
 
     default:
-        COCAINE_LOG_ERROR(parent->m_log, "unable to accept connection: [{:d}] {}", ec.value(),
+        COCAINE_LOG_ERROR(parent.m_log, "unable to accept connection: [{:d}] {}", ec.value(),
             ec.message());
-        ++(*parent->metrics->connections_rejected.get());
+        ++(*parent.metrics->connections_rejected.get());
         break;
     }
 
@@ -239,7 +239,7 @@ actor_t::run() {
     });
 
     m_asio->post(std::bind(&accept_action_t::operator(),
-        std::make_shared<accept_action_t>(this)
+        std::make_shared<accept_action_t>(*this)
     ));
 
     // The post() above won't be executed until this thread is started.

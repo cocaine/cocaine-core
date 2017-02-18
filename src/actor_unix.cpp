@@ -21,20 +21,20 @@ namespace ph = std::placeholders;
 class unix_actor_t::accept_action_t:
     public std::enable_shared_from_this<accept_action_t>
 {
-    unix_actor_t *const   parent;
+    unix_actor_t& parent;
     protocol_type::socket socket;
 
 public:
-    accept_action_t(unix_actor_t *const parent):
+    accept_action_t(unix_actor_t& parent):
         parent(parent),
-        socket(*parent->m_asio)
+        socket(*parent.m_asio)
     {}
 
     void
     operator()() {
-        parent->m_acceptor.apply([this](std::unique_ptr<protocol_type::acceptor>& ptr) {
+        parent.m_acceptor.apply([this](std::unique_ptr<protocol_type::acceptor>& ptr) {
             if(!ptr) {
-                COCAINE_LOG_ERROR(parent->m_log, "abnormal termination of actor connection pump");
+                COCAINE_LOG_ERROR(parent.m_log, "abnormal termination of actor connection pump");
                 return;
             }
 
@@ -50,17 +50,17 @@ private:
         // Prepare the internal socket object for consequential operations by moving its contents to a
         // heap-allocated object, which in turn might be attached to an engine.
         auto ptr = std::make_unique<protocol_type::socket>(std::move(socket));
-            
+
         switch(ec.value()) {
         case 0:
-            COCAINE_LOG_DEBUG(parent->m_log, "accepted connection on fd {}", ptr->native_handle());
+            COCAINE_LOG_DEBUG(parent.m_log, "accepted connection on fd {}", ptr->native_handle());
 
             try {
-                auto base = parent->fact();
-                auto session = parent->m_context.engine().attach(std::move(ptr), base);
-                parent->bind(base, std::move(session));
+                auto base = parent.fact();
+                auto session = parent.m_context.engine().attach(std::move(ptr), base);
+                parent.bind(base, std::move(session));
             } catch(const std::system_error& e) {
-                COCAINE_LOG_ERROR(parent->m_log, "unable to attach connection to engine: {}",
+                COCAINE_LOG_ERROR(parent.m_log, "unable to attach connection to engine: {}",
                     error::to_string(e));
                 ptr = nullptr;
             }
@@ -71,7 +71,7 @@ private:
             return;
 
         default:
-            COCAINE_LOG_ERROR(parent->m_log, "unable to accept connection: [{}] {}", ec.value(),
+            COCAINE_LOG_ERROR(parent.m_log, "unable to accept connection: [{}] {}", ec.value(),
                 ec.message());
             break;
         }
@@ -117,7 +117,7 @@ unix_actor_t::run() {
     });
 
     m_asio->post(std::bind(&accept_action_t::operator(),
-        std::make_shared<accept_action_t>(this)
+        std::make_shared<accept_action_t>(*this)
     ));
 
     // The post() above won't be executed until this thread is started.
