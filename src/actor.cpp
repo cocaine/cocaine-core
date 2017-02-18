@@ -129,8 +129,8 @@ actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
     m_log(context.log("core/asio", {{"service", prototype->name()}})),
     m_asio(asio),
     metrics(new metrics_t{
-        context.metrics_hub().counter<std::int64_t>(blackhole::fmt::format("{}.connections.accepted", prototype->name())),
-        context.metrics_hub().counter<std::int64_t>(blackhole::fmt::format("{}.connections.rejected", prototype->name()))
+        context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.accepted", prototype->name())),
+        context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.rejected", prototype->name()))
     }),
     m_prototype(std::move(prototype))
 {}
@@ -142,8 +142,8 @@ actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
     m_log(context.log("core/asio", {{"service", service->prototype().name()}})),
     m_asio(asio),
     metrics(new metrics_t{
-        context.metrics_hub().counter<std::int64_t>(blackhole::fmt::format("{}.connections.accepted", service->prototype().name())),
-        context.metrics_hub().counter<std::int64_t>(blackhole::fmt::format("{}.connections.rejected", service->prototype().name()))
+        context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.accepted", service->prototype().name())),
+        context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.rejected", service->prototype().name()))
     })
 {
     const basic_dispatch_t* prototype = &service->prototype();
@@ -155,9 +155,7 @@ actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
     );
 }
 
-actor_t::~actor_t() {
-    // Empty.
-}
+actor_t::~actor_t() = default;
 
 std::vector<tcp::endpoint>
 actor_t::endpoints() const {
