@@ -412,7 +412,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         const holder_t scoped(*m_log, {{"uuid", uuid}});
 
         auto session = m_clients.apply(
-            [&](client_map_t& mapping) -> std::shared_ptr<cocaine::session<asio::ip::tcp>>
+            [&](client_map_t& mapping) -> std::shared_ptr<cocaine::session<tcp>>
         {
             if(mapping.count(uuid) == 0) {
                 COCAINE_LOG_ERROR(m_log, "remote disappeared while connecting");
@@ -433,7 +433,18 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
             // Uniquify the socket object.
             auto ptr = std::make_unique<tcp::socket>(std::move(*socket));
 
-            return (mapping.at(uuid).ptr = m_context.engine().attach(std::move(ptr), nullptr));
+            std::shared_ptr<cocaine::session<tcp>> session;
+            try {
+                session = m_context.engine().attach(std::move(ptr), nullptr);
+                mapping.at(uuid).ptr = session;
+            } catch (const std::system_error& err) {
+                COCAINE_LOG_ERROR(m_log, "unable to set up remote client: {}", error::to_string(err));
+                mapping.erase(uuid);
+
+                m_asio.post([=] { link_node(uuid, endpoints); });
+            }
+
+            return session;
         });
 
         // Something went wrong in the session creation code above, bail out.
@@ -456,7 +467,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
 
 void
 locator_t::drop_node(const std::string& uuid) {
-    std::shared_ptr<session<asio::ip::tcp>> session;
+    std::shared_ptr<session<tcp>> session;
 
     m_clients.apply([&](client_map_t& mapping) {
         auto it = mapping.find(uuid);
