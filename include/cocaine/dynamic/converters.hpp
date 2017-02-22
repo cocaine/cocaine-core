@@ -370,9 +370,9 @@ struct dynamic_converter<std::map<std::string, T>> {
             if(!it->second.convertible_to<T>()) {
                 return false;
             }
-
-            return true;
         }
+
+        return true;
     }
 };
 
@@ -406,9 +406,9 @@ struct dynamic_converter<std::unordered_map<std::string, T>> {
             if(!it->second.convertible_to<T>()) {
                 return false;
             }
-
-            return true;
         }
+
+        return true;
     }
 };
 
