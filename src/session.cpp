@@ -172,12 +172,14 @@ class session_t::channel_t
 public:
     channel_t(const dispatch_ptr_t& dispatch_,
               const upstream_ptr_t& upstream_,
-              std::unique_ptr<metrics::timer_t::context_t> context_)
-        : dispatch(dispatch_), upstream(upstream_), context(std::move(context_)) {}
+              std::unique_ptr<metrics::timer_t::context_t> context_,
+              boost::optional<trace_t> trace_)
+        : dispatch(dispatch_), upstream(upstream_), context(std::move(context_)), trace(std::move(trace_)) {}
 
     dispatch_ptr_t dispatch;
     upstream_ptr_t upstream;
     std::unique_ptr<metrics::timer_t::context_t> context;
+    boost::optional<trace_t> trace;
 };
 
 // Session
@@ -245,19 +247,6 @@ session_t::handle(const decoder_t::message_type& message) {
                 throw std::system_error(error::revoked_channel, std::to_string(channel_id));
             }
 
-            std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
-                prototype,
-                // Do not store trace if we handling server side.
-                std::make_shared<basic_upstream_t>(shared_from_this(), channel_id, boost::none),
-                std::make_unique<metrics::timer_t::context_t>(metrics->timers.at(message.type())->context())
-            )});
-            metrics->summary->mark();
-
-            max_channel_id = channel_id;
-        }
-        if(lb->second->upstream->client_trace) {
-            incoming_trace = lb->second->upstream->client_trace;
-        } else {
             auto trace_header = hpack::header::find_first<hpack::headers::trace_id<>>(message.headers());
             auto span_header = hpack::header::find_first<hpack::headers::span_id<>>(message.headers());
             auto parent_header = hpack::header::find_first<hpack::headers::parent_id<>>(message.headers());
@@ -266,9 +255,21 @@ session_t::handle(const decoder_t::message_type& message) {
                     hpack::header::unpack<uint64_t>(trace_header->value()),
                     hpack::header::unpack<uint64_t>(span_header->value()),
                     hpack::header::unpack<uint64_t>(parent_header->value()),
-                    std::get<0>(lb->second->dispatch->root().at(message.type()))
+                    std::get<0>(prototype->root().at(message.type()))
                 );
             }
+
+            std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
+                prototype,
+                std::make_shared<basic_upstream_t>(shared_from_this(), channel_id),
+                std::make_unique<metrics::timer_t::context_t>(metrics->timers.at(message.type())->context()),
+                incoming_trace
+            )});
+            metrics->summary->mark();
+
+            max_channel_id = channel_id;
+        } else {
+            incoming_trace = lb->second->trace;
         }
 
         // NOTE: The virtual channel pointer is copied here to avoid data races.
@@ -336,7 +337,7 @@ session_t::fork(const dispatch_ptr_t& dispatch) {
         const auto channel_id = ++max_channel_id;
         auto trace = trace_t::current();
         trace.push(dispatch->name());
-        const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id, trace);
+        const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
         COCAINE_LOG_DEBUG(log, "forking new channel {:d}, dispatch: '{}'", channel_id,
             dispatch ? dispatch->name() : "<none>");
@@ -347,7 +348,8 @@ session_t::fork(const dispatch_ptr_t& dispatch) {
             mapping.insert({channel_id, std::make_shared<channel_t>(
                 dispatch,
                 downstream,
-                nullptr
+                nullptr,
+                trace
             )});
         }
 
