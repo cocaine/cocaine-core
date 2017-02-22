@@ -27,19 +27,24 @@
 #include "cocaine/detail/service/logging.hpp"
 #include "cocaine/detail/service/storage.hpp"
 #include "cocaine/detail/storage/files.hpp"
-#include "cocaine/repository/auth.hpp"
+#include "cocaine/repository/authentication.hpp"
+#include "cocaine/repository/authorization.hpp"
 #include "cocaine/repository/cluster.hpp"
-#include "cocaine/repository/controller.hpp"
 #include "cocaine/repository/gateway.hpp"
 #include "cocaine/repository/service.hpp"
 #include "cocaine/repository/storage.hpp"
 
-#include "auth/promiscuous.hpp"
-#include "controller/collection.hpp"
+#include "authentication/promiscuous.hpp"
+#include "authorization/event.hpp"
+#include "authorization/storage.hpp"
+#include "authorization/unicorn.hpp"
 
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
-    repository.insert<auth::promiscuous_t>("promiscuous");
+    repository.insert<authentication::promiscuous_t>("promiscuous");
+    repository.insert<authorization::storage::disabled_t>("disabled");
+    repository.insert<authorization::storage::enabled_t>("storage");
+    repository.insert<authorization::unicorn::disabled_t>("disabled");
     repository.insert<cluster::multicast_t>("multicast");
     repository.insert<cluster::predefine_t>("predefine");
     repository.insert<gateway::adhoc_t>("adhoc");
@@ -47,7 +52,4 @@ cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<service::logging_t>("logging");
     repository.insert<service::storage_t>("storage");
     repository.insert<storage::files_t>("files");
-
-    repository.insert<controller::collection::null_t>("null");
-    repository.insert<controller::collection::control_t>("collection");
 }

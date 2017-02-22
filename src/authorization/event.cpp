@@ -4,23 +4,24 @@
 
 #include <blackhole/logger.hpp>
 
-#include "cocaine/api/auth.hpp"
 #include "cocaine/api/unicorn.hpp"
+#include "cocaine/auth/uid.hpp"
+#include "cocaine/context.hpp"
 #include "cocaine/dynamic.hpp"
+#include "cocaine/errors.hpp"
 #include "cocaine/locked_ptr.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/unicorn/value.hpp"
 
 namespace cocaine {
-namespace controller {
+namespace authorization {
 namespace event {
 
 namespace ph = std::placeholders;
 
-class event_t::control_t : public std::enable_shared_from_this<event_t::control_t> {
+class enabled_t::control_t : public std::enable_shared_from_this<enabled_t::control_t> {
     using method_t = std::string;
 
-    using uid_t = api::uid_t;
     const std::string path;
     const std::shared_ptr<logging::logger_t> log;
 
@@ -55,7 +56,10 @@ public:
     {}
 
     auto
-    ensure(const method_t& event, const std::vector<uid_t>& uids) -> void {
+    ensure(const method_t& event, const auth::identity_t& identity) -> void {
+        const auto& uids = identity.uids();
+
+        // TODO: Check whether we allow anonymous access.
         if (uids.empty()) {
             throw std::system_error(make_error_code(error::unauthorized));
         }
@@ -141,7 +145,7 @@ private:
     auto
     on_update(uid_t user, std::future<api::unicorn_t::response::get> result) -> void {
         try {
-            const auto events = result.get().get_value();
+            const auto events = result.get().value();
             COCAINE_LOG_INFO(log, "received ACL updates for user {}", user);
 
             acl.apply([&](std::map<uid_t, std::map<method_t, dynamic_t>>& acl) {
@@ -158,13 +162,13 @@ private:
     }
 };
 
-null_t::null_t(context_t&, const std::string&, const dynamic_t&) {}
+disabled_t::disabled_t(context_t&, const std::string&, const dynamic_t&) {}
 
 auto
-null_t::verify(const std::string&, const std::vector<uid_t>&) -> void {}
+disabled_t::verify(const std::string&, const auth::identity_t&) -> void {}
 
-event_t::event_t(context_t& context, const std::string& service, const dynamic_t& args) :
-    log(context.log(format("controller/{}/event", service)))
+enabled_t::enabled_t(context_t& context, const std::string& service, const dynamic_t& args) :
+    log(context.log(format("authorization/{}/event", service)))
 {
     auto unicorn = api::unicorn(context, args.as_object().at("unicorn", "core").as_string());
 
@@ -176,15 +180,15 @@ event_t::event_t(context_t& context, const std::string& service, const dynamic_t
     control->update();
 }
 
-event_t::~event_t() {
+enabled_t::~enabled_t() {
     control->cancel();
 }
 
 auto
-event_t::verify(const std::string& event,  const std::vector<uid_t>& uids) -> void {
-    control->ensure(event, uids);
+enabled_t::verify(const std::string& event,  const auth::identity_t& identity) -> void {
+    control->ensure(event, identity);
 }
 
 } // namespace event
-} // namespace controller
+} // namespace authorization
 } // namespace cocaine

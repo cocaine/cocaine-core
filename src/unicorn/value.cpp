@@ -17,9 +17,8 @@
 
 namespace cocaine { namespace unicorn {
 
-versioned_value_t::versioned_value_t(value_t _value, version_t _version) :
-    value(std::move(_value)),
-    version(std::move(_version))
+versioned_value_t::versioned_value_t(value_t value, version_t version) :
+    data{std::move(value), std::move(version)}
 {}
 
 }}

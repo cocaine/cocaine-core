@@ -59,7 +59,6 @@ class session_t;
 class trace_t;
 class filter_t;
 
-
 template<class> class dispatch;
 template<class> class upstream;
 template<class> class retroactive_signal;
@@ -70,7 +69,7 @@ typedef unsigned short port_t;
 
 namespace cocaine { namespace api {
 
-class auth_t;
+class authentication_t;
 class repository_t;
 class unicorn_t;
 class unicorn_scope_t;
@@ -82,6 +81,20 @@ struct service_t;
 struct storage_t;
 
 }} // namespace cocaine::api
+
+namespace cocaine { namespace auth {
+
+class identity_t;
+
+}} // namespace cocaine::auth
+
+namespace cocaine { namespace authorization {
+
+class event_t;
+class unicorn_t;
+class storage_t;
+
+}} // namespace cocaine::authorization
 
 namespace cocaine { namespace context {
 
@@ -157,5 +170,11 @@ enum priorities: int {
 using blackhole::logger_t;
 
 }} // namespace cocaine::logging
+
+namespace cocaine { namespace unicorn {
+
+class versioned_value_t;
+
+}} // namespace cocaine::unicorn
 
 #endif

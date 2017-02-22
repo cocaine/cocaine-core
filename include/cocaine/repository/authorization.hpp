@@ -1,18 +1,18 @@
 #pragma once
 
-#include "cocaine/api/controller.hpp"
+#include "cocaine/api/authorization/storage.hpp"
+#include "cocaine/api/authorization/unicorn.hpp"
 #include "cocaine/common.hpp"
-#include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
 namespace cocaine {
 namespace api {
 
-template<>
-struct category_traits<controller::collection_t> {
-    typedef std::shared_ptr<controller::collection_t> ptr_type;
+template<typename C>
+struct make_category {
+    typedef std::shared_ptr<C> ptr_type;
 
-    struct factory_type : public basic_factory<controller::collection_t> {
+    struct factory_type : public basic_factory<C> {
         virtual
         auto
         get(context_t& context, const std::string& name, const std::string& service, const dynamic_t& args) -> ptr_type = 0;
@@ -27,5 +27,11 @@ struct category_traits<controller::collection_t> {
     };
 };
 
-}  // namespace api
-}  // namespace cocaine
+template<>
+struct category_traits<authorization::storage_t> : public make_category<authorization::storage_t> {};
+
+template<>
+struct category_traits<authorization::unicorn_t> : public make_category<authorization::unicorn_t> {};
+
+} // namespace api
+} // namespace cocaine

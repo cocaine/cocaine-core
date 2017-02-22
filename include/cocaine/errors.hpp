@@ -58,6 +58,7 @@ enum security_errors {
     token_not_found = 1,
     unauthorized,
     permission_denied,
+    permissions_changed,
     invalid_acl_framing
 };
 

@@ -151,6 +151,8 @@ class security_category_t:
             return "unauthorized";
         case security_errors::permission_denied:
             return "permission denied";
+        case security_errors::permissions_changed:
+            return "permissions changed";
         case security_errors::invalid_acl_framing:
             return "invalid ACL framing";
         }
@@ -203,18 +205,18 @@ class unicorn_category_t:
     auto
     message(int code) const -> std::string {
         switch (code) {
-            case child_not_allowed :
+            case child_not_allowed:
                 return "can not get value of a node with childs";
-            case invalid_type :
+            case invalid_type:
                 return "invalid type of value stored for requested operation";
-            case invalid_value :
+            case invalid_value:
                 return "could not unserialize value stored in zookeeper";
             case unknown_error:
                 return "unknown zookeeper error";
             case invalid_node_name:
-                return "inavlid node name specified";
+                return "invalid node name specified";
             case invalid_path:
-                return "inavlid path specified";
+                return "invalid path specified";
             case version_not_allowed:
                 return "specified version is not allowed for command";
             default:

@@ -6,21 +6,21 @@
 
 #include <boost/variant/variant.hpp>
 
-#include "cocaine/api/auth.hpp"
+#include "cocaine/api/authentication.hpp"
+#include "cocaine/auth/uid.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/hpack/header.hpp"
-#include "cocaine/hpack/header_definitions.hpp"
 
 namespace cocaine {
 namespace middleware {
 
 class auth_t {
-    std::shared_ptr<api::auth_t> auth;
+    std::shared_ptr<api::authentication_t> auth;
 
 public:
     explicit
     auth_t(context_t& context, const std::string& service) :
-        auth(api::auth(context, "core", service))
+        auth(api::authentication(context, "core", service))
     {}
 
     template<typename Event, typename F, typename... Args>
@@ -28,19 +28,13 @@ public:
     operator()(F fn, Event, const hpack::headers_t& headers, Args&&... args) ->
         decltype(fn(headers, std::forward<Args>(args)...))
     {
-        // Even if there is no credentials provided some authorization components may allow access.
-        std::string credentials;
-        if (auto header = hpack::header::find_first<hpack::headers::authorization<>>(headers)) {
-            credentials = header->value();
-        }
+        const auto identity = auth->identify(headers);
 
-        const auto perm = auth->check_permissions<Event>(credentials);
-
-        if (auto ec = boost::get<std::error_code>(&perm)) {
+        if (auto ec = boost::get<std::error_code>(&identity)) {
             throw std::system_error(*ec, "permission denied");
         }
 
-        return fn(headers, std::forward<Args>(args)..., boost::get<api::auth_t::allow_t>(perm).uids);
+        return fn(headers, std::forward<Args>(args)..., boost::get<auth::identity_t>(identity));
     }
 };
 

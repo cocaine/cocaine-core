@@ -29,7 +29,7 @@
 #include <blackhole/wrapper.hpp>
 
 #include "cocaine/api/storage.hpp"
-#include "cocaine/api/controller.hpp"
+#include "cocaine/api/authorization/storage.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/context/config.hpp"
 #include "cocaine/dynamic/dynamic.hpp"
@@ -47,11 +47,11 @@ namespace {
 
 template<class T>
 void
-abort_deferred(cocaine::deferred<T>& def, const std::error_code& ec, const std::string& reason) {
+abort_deferred(cocaine::deferred<T>& d, const std::error_code& ec, const std::string& reason) {
     try {
-        def.abort(ec, reason);
+        d.abort(ec, reason);
     } catch (const std::system_error&) {
-        // pass, the only reason of exception is detached session
+        // Pass, the only reason of exception is detached session.
     }
 }
 
@@ -82,12 +82,13 @@ private:
     make_logger(Event, const std::string& collection, const std::string& key, Args&&... args)
         -> std::shared_ptr<logging::logger_t>
     {
-        const auto uids = extract_uids(args...);
+        auto identity = extract_identity(args...);
+        auto uids = identity.uids();
         return std::make_shared<blackhole::wrapper_t>(*logger, blackhole::attributes_t{
             {"event", std::string(Event::alias())},
             {"collection", collection},
             {"key", key},
-            {"uids", cocaine::format("[{}]", boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(api::uid_t)>(std::to_string)), ";"))},
+            {"uids", cocaine::format("[{}]", boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(auth::uid_t)>(std::to_string)), ";"))},
         });
     }
 
@@ -96,17 +97,18 @@ private:
     make_logger(io::storage::find, const std::string& collection, Args&&... args)
         -> std::shared_ptr<logging::logger_t>
     {
-        const auto uids = extract_uids(args...);
+        auto identity = extract_identity(args...);
+        auto uids = identity.uids();
         return std::make_shared<blackhole::wrapper_t>(*logger, blackhole::attributes_t{
             {"event", std::string(io::storage::find::alias())},
             {"collection", collection},
-            {"uids", cocaine::format("[{}]", boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(api::uid_t)>(std::to_string)), ";"))},
+            {"uids", cocaine::format("[{}]", boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(auth::uid_t)>(std::to_string)), ";"))},
         });
     }
 
     template<typename... Args>
     auto
-    extract_uids(const Args&... args) -> const std::vector<api::uid_t>& {
+    extract_identity(const Args&... args) -> const auth::identity_t& {
         return std::get<sizeof...(Args) - 1>(std::tie(args...));
     }
 };
@@ -121,7 +123,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
 
     auto audit = std::shared_ptr<logging::logger_t>(context.log("audit", {{"service", name}}));
     auto middleware = middleware::auth_t(context, name);
-    auto controller = api::controller::collection(context, name);
+    auto authorization = api::authorization::storage(context, name);
 
     on<storage::read>()
         .with_middleware(middleware)
@@ -130,10 +132,10 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
         .execute([=](
             const std::string& collection,
             const std::string& key,
-            const std::vector<api::uid_t>& uids,
+            const auth::identity_t& identity,
             const std::shared_ptr<logging::logger_t>& log)
         {
-            controller->verify<io::storage::read>(collection, key, uids);
+            authorization->verify<io::storage::read>(collection, key, identity);
 
             cocaine::deferred<std::string> deferred;
 
@@ -166,10 +168,10 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
             const std::string& key,
             const std::string& blob,
             const std::vector<std::string>& tags,
-            const std::vector<api::uid_t>& uids,
+            const auth::identity_t& identity,
             const std::shared_ptr<logging::logger_t>& log)
     {
-        controller->verify<io::storage::write>(collection, key, uids);
+        authorization->verify<io::storage::write>(collection, key, identity);
 
         cocaine::deferred<void> deferred;
 
@@ -201,10 +203,10 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
         .execute([=](
             const std::string& collection,
             const std::string& key,
-            const std::vector<api::uid_t>& uids,
+            const auth::identity_t& identity,
             const std::shared_ptr<logging::logger_t>& log)
     {
-        controller->verify<io::storage::remove>(collection, key, uids);
+        authorization->verify<io::storage::remove>(collection, key, identity);
 
         cocaine::deferred<void> deferred;
 
@@ -233,10 +235,10 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
         .execute([=](
             const std::string& collection,
             const std::vector<std::string>& tags,
-            const std::vector<api::uid_t>& uids,
+            const auth::identity_t& identity,
             const std::shared_ptr<logging::logger_t>& log)
     {
-        controller->verify<io::storage::find>(collection, "", uids);
+        authorization->verify<io::storage::find>(collection, "", identity);
 
         cocaine::deferred<std::vector<std::string>> deferred;
 

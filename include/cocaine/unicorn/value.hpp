@@ -13,44 +13,44 @@
 * GNU General Public License for more details.
 */
 
-#ifndef COCAINE_UNICORN_VALUE
-#define COCAINE_UNICORN_VALUE
+#pragma once
 
 #include "cocaine/common.hpp"
 #include "cocaine/dynamic.hpp"
-#include "cocaine/traits/dynamic.hpp"
 
-namespace cocaine { namespace unicorn {
+namespace cocaine {
+namespace unicorn {
 
-typedef long long version_t;
-typedef cocaine::dynamic_t value_t;
+using value_t = dynamic_t;
+using version_t = long long;
 
 static constexpr version_t min_version = -2;
 static constexpr version_t not_existing_version = -1;
 
-
-
 class versioned_value_t {
+    struct {
+        value_t value;
+        version_t version;
+    } data;
+
 public:
-    versioned_value_t() = default;
-    versioned_value_t(const versioned_value_t&) = default;
-    versioned_value_t(value_t _value, version_t _version);
+    versioned_value_t(value_t value, version_t version);
 
-    const value_t&
-    get_value() const {
-        return value;
+    auto
+    value() const -> const value_t& {
+        return data.value;
     }
 
-    version_t
-    get_version() const {
-        return version;
+    auto
+    version() const -> version_t {
+        return data.version;
     }
 
-private:
-    value_t value;
-    version_t version;
+    auto
+    exists() const noexcept -> bool {
+        return version() != not_existing_version;
+    }
 };
 
-}}
-
-#endif // COCAINE_UNICORN_VALUE
+}  // namespace unicorn
+}  // namespace cocaine

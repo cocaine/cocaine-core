@@ -7,20 +7,18 @@
 
 #include <boost/variant/variant.hpp>
 
+#include "cocaine/auth/uid.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/hpack/header.hpp"
 
 namespace cocaine {
 namespace api {
 
-using uid_t = std::uint64_t;
-
-class auth_t {
+/// Identification and autentification interface.
+class authentication_t {
 public:
-    typedef auth_t category_type;
+    typedef authentication_t category_type;
     typedef std::chrono::system_clock clock_type;
-
-    static constexpr uid_t superuser = std::numeric_limits<uid_t>::min();
-    static constexpr uid_t anonymous = std::numeric_limits<uid_t>::max();
 
     struct token_t {
         /// Token type. Think of the first part of the Authorization HTTP header.
@@ -43,23 +41,19 @@ public:
         }
     };
 
-    struct allow_t {
-        std::vector<uid_t> uids;
-    };
-
-    /// Result of permissions check for a given message.
+    /// Result of identification for a given message.
     typedef boost::variant<
-        /// Successful check.
-        allow_t,
-        /// Forbidden, go away.
+        /// Successful identification.
+        auth::identity_t,
+        /// Failed to identify, go away.
         std::error_code
-    > permission_t;
+    > result_type;
 
     typedef std::function<void(token_t token, const std::error_code& ec)> callback_type;
 
 public:
     virtual
-    ~auth_t() = default;
+    ~authentication_t() = default;
 
     /// Tries to obtain, possibly asynchronously, an authorization token with its type and optional
     /// expiration time point.
@@ -73,31 +67,27 @@ public:
     auto
     token(callback_type callback) -> void = 0;
 
-    /// Checks access rights for a given authorization entity represented with a token, i.e can it
-    /// use the requested event of a given service.
+    /// Extracts an authorization header from the given headers with its further identification
+    /// check.
     ///
-    /// \param token Authorization token.
     /// \tparam Event Requested event.
-    template<typename Event>
-    auto
-    check_permissions(const std::string& credentials) -> permission_t {
-        return check_permissions(Event::alias(), credentials);
-    }
-
-    /// Checks access rights for a given authorization entity represented with a token, i.e can it
-    /// use the requested event of a given service.
-    ///
-    /// \param event Requested event.
-    /// \param token Authorization token.
+    /// \param headers HPACK headers.
     virtual
     auto
-    check_permissions(const std::string& event, const std::string& credentials) const ->
-        permission_t = 0;
+    identify(const hpack::headers_t& headers) const -> result_type;
+
+    /// Performs an identification check for a given entity represented with a token.
+    ///
+    /// \param event Requested event.
+    /// \param token Identification credentials.
+    virtual
+    auto
+    identify(const std::string& credentials) const -> result_type = 0;
 };
 
 auto
-auth(context_t& context, const std::string& name, const std::string& service) ->
-    std::shared_ptr<auth_t>;
+authentication(context_t& context, const std::string& name, const std::string& service) ->
+    std::shared_ptr<authentication_t>;
 
-}  // namespace api
-}  // namespace cocaine
+} // namespace api
+} // namespace cocaine

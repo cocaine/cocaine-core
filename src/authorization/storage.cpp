@@ -1,4 +1,4 @@
-#include "collection.hpp"
+#include "storage.hpp"
 
 #include <system_error>
 
@@ -17,8 +17,8 @@
 #include "cocaine/traits/map.hpp"
 
 namespace cocaine {
-namespace controller {
-namespace collection {
+namespace authorization {
+namespace storage {
 
 namespace {
 
@@ -66,29 +66,30 @@ const std::string collection_acls = ".collection-acls";
 } // namespace defaults
 } // namespace
 
-null_t::null_t(context_t& context, const std::string& name, const dynamic_t& args) {
-    (void)context;
-    (void)name;
-    (void)args;
-}
+disabled_t::disabled_t(context_t&, const std::string&, const dynamic_t&) {}
 
 auto
-null_t::verify(std::size_t event, const std::string& collection, const std::string& key, const std::vector<uid_t>& uids) -> void {
-    (void)event;
-    (void)collection;
-    (void)key;
-    (void)uids;
+disabled_t::verify(std::size_t, const std::string&, const std::string&, const auth::identity_t&) -> void {}
+
+auto
+disabled_t::verify(std::size_t, const std::string&, const std::string&, const auth::identity_t&, callback_type callback)
+    -> void
+{
+    callback({});
 }
 
-control_t::control_t(context_t& context, const std::string& service, const dynamic_t& args) :
-    log(context.log(cocaine::format("controller/{}/collection", service))),
+enabled_t::enabled_t(context_t& context, const std::string& service, const dynamic_t& args) :
+    log(context.log(cocaine::format("authorization/{}/collection", service))),
     backend(api::storage(context, args.as_object().at("backend", "core").as_string()))
 {}
 
 auto
-control_t::verify(std::size_t event, const std::string& collection, const std::string& key, const std::vector<uid_t>& uids) -> void {
+enabled_t::verify(std::size_t event, const std::string& collection, const std::string& key, const auth::identity_t& identity) -> void {
+    auto& uids = identity.uids();
     if (collection == defaults::collection_acls) {
         // Permissions change.
+        // TODO: Do we really want to allow users to change permissions this way? It may lead to
+        // format corruption.
         return verify(event, key, uids);
     } else {
         return verify(event, collection, uids);
@@ -96,7 +97,7 @@ control_t::verify(std::size_t event, const std::string& collection, const std::s
 }
 
 auto
-control_t::verify(std::size_t event, const std::string& collection, const std::vector<uid_t>& uids) -> void {
+enabled_t::verify(std::size_t event, const std::string& collection, const std::vector<auth::uid_t>& uids) -> void {
     if (uids.empty()) {
         throw std::system_error(make_error_code(error::unauthorized));
     }
@@ -141,6 +142,13 @@ control_t::verify(std::size_t event, const std::string& collection, const std::v
     }
 }
 
-} // namespace collection
-} // namespace controller
+auto
+enabled_t::verify(std::size_t, const std::string&, const std::string&, const auth::identity_t&, callback_type)
+    -> void
+{
+    BOOST_ASSERT("unimplemented, sorry");
+}
+
+} // namespace storage
+} // namespace authorization
 } // namespace cocaine

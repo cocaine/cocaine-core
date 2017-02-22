@@ -72,17 +72,19 @@ ADD_LIBRARY(cocaine-core SHARED
     src/actor_unix.cpp
     src/actor.cpp
     src/api.cpp
-    src/api/auth.cpp
-    src/api/controller.cpp
+    src/api/authentication.cpp
+    src/api/authorization.cpp
     src/api/storage.cpp
+    src/auth/uid.cpp
+    src/authorization/event.cpp
+    src/authorization/storage.cpp
+    src/authorization/unicorn.cpp
     src/chamber.cpp
     src/cluster/multicast.cpp
     src/cluster/predefine.cpp
     src/context.cpp
     src/context/config.cpp
     src/context/mapper.cpp
-    src/controller/collection.cpp
-    src/controller/event.cpp
     src/crypto.cpp
     src/decoder.cpp
     src/defaults.cpp
