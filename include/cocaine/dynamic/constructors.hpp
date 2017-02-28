@@ -89,7 +89,11 @@ struct dynamic_constructor<
     static inline
     void
     convert(const From& from, dynamic_t::value_t& to) {
-        to = dynamic_t::int_t(from);
+        if (std::is_signed<typename std::underlying_type<From>::type>::value) {
+            to = dynamic_t::int_t(from);
+        } else {
+            to = dynamic_t::uint_t(from);
+        }
     }
 };
 
