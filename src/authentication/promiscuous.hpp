@@ -21,6 +21,8 @@ public:
         callback({{}, {}, {}}, {}); // Bayan.
     }
 
+    using api::authentication_t::identify;
+
     auto
     identify(const std::string& credentials) const -> result_type override {
         try {
