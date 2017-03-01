@@ -1,3 +1,15 @@
+cocaine-core (0.12.11.3) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Added: preparation for Unicorn authorization.
+  * Changed: renamed "authorizations" component to "authentications".
+  * Changed: renamed "controllers" component to "authorizations".
+  * Changed: renamed "collection" authorization to "storage".
+  * Changed: UID container is now encapsulated.
+  * Fixed: proper dynamic conversions for maps and enums.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 01 Mar 2017 18:44:47 +0300
+
 cocaine-core (0.12.11.2) unstable; urgency=low
 
   * Non-maintainer upload.
