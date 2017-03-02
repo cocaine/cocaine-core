@@ -127,7 +127,7 @@ repository_t::get(const std::string& name, Args&&... args) const {
     const auto id = typeid(Category).name();
 
     if(!m_categories.count(id) || !m_categories.at(id).count(name)) {
-        throw std::system_error(error::component_not_found, format("{}[{}]", name, typeid(Category).name()));
+        throw std::system_error(error::component_not_registered, format("{}[{}]", name, typeid(Category).name()));
     }
 
     auto it = m_categories.at(id).find(name);

@@ -51,7 +51,8 @@ enum repository_errors {
     initialization_error,
     invalid_interface,
     dlopen_error,
-    version_mismatch
+    version_mismatch,
+    component_not_registered
 };
 
 enum security_errors {

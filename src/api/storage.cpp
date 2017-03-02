@@ -1,4 +1,9 @@
 #include "cocaine/api/storage.hpp"
+#include "cocaine/context.hpp"
+#include "cocaine/context/config.hpp"
+#include "cocaine/repository/storage.hpp"
+
+#include <boost/optional/optional.hpp>
 
 #include <cassert>
 
@@ -43,6 +48,15 @@ storage_t::find(const std::string& collection, const std::vector<std::string>& t
         assign_future_result(*promise, std::move(future));
     });
     return promise->get_future();
+}
+
+storage_ptr
+storage(context_t& context, const std::string& name) {
+    auto storage = context.config().storages().get(name);
+    if(!storage) {
+        throw error_t(error::component_not_found, "storage component \"{}\" not found in the config", name);
+    }
+    return context.repository().get<storage_t>(storage->type(), context, name, storage->args());
 }
 
 } // namespace api

@@ -18,6 +18,7 @@
 
 #include "cocaine/api/unicorn.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/locked_ptr.hpp"
 #include "cocaine/repository.hpp"
 
 #include <future>

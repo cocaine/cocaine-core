@@ -133,9 +133,7 @@ trace_t::generate_id() {
 
 std::string
 trace_t::to_hex_string(uint64_t value) {
-    std::ostringstream oss;
-    oss << std::hex << value;
-    return oss.str();
+    return cocaine::format("{:016x}", value);
 }
 
 trace_t::restore_scope_t::restore_scope_t(const boost::optional<trace_t>& new_trace) :

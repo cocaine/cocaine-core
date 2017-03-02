@@ -59,16 +59,18 @@ class transport_category_t:
     virtual
     auto
     message(int code) const -> std::string {
-        if(code == cocaine::error::transport_errors::frame_format_error)
+        switch(code) {
+        case cocaine::error::transport_errors::frame_format_error:
             return "message has an unexpected framing";
-        if(code == cocaine::error::transport_errors::hpack_error)
+        case cocaine::error::transport_errors::hpack_error:
             return "unable to decode message metadata";
-        if(code == cocaine::error::transport_errors::insufficient_bytes)
+        case cocaine::error::transport_errors::insufficient_bytes:
             return "insufficient bytes provided to decode the message";
-        if(code == cocaine::error::transport_errors::parse_error)
+        case cocaine::error::transport_errors::parse_error:
             return "unable to parse the incoming data";
-
-        return "cocaine.rpc.transport error";
+        default:
+            return "cocaine.rpc.transport error";
+        }
     }
 };
 
@@ -84,22 +86,24 @@ class dispatch_category_t:
     virtual
     auto
     message(int code) const -> std::string {
-        if(code == cocaine::error::dispatch_errors::duplicate_slot)
+        switch(code) {
+        case cocaine::error::dispatch_errors::duplicate_slot:
             return "duplicate slot";
-        if(code == cocaine::error::dispatch_errors::invalid_argument)
+        case cocaine::error::dispatch_errors::invalid_argument:
             return "unable to decode message arguments";
-        if(code == cocaine::error::dispatch_errors::not_connected)
+        case cocaine::error::dispatch_errors::not_connected:
             return "session is detached";
-        if(code == cocaine::error::dispatch_errors::revoked_channel)
+        case cocaine::error::dispatch_errors::revoked_channel:
             return "specified channel was revoked";
-        if(code == cocaine::error::dispatch_errors::slot_not_found)
+        case cocaine::error::dispatch_errors::slot_not_found:
             return "specified slot is not bound";
-        if(code == cocaine::error::dispatch_errors::unbound_dispatch)
+        case cocaine::error::dispatch_errors::unbound_dispatch:
             return "no dispatch has been assigned for channel";
-        if(code == cocaine::error::dispatch_errors::uncaught_error)
+        case cocaine::error::dispatch_errors::uncaught_error:
             return "uncaught invocation exception";
-
-        return "cocaine.rpc.dispatch error";
+        default:
+            return "cocaine.rpc.dispatch error";
+        }
     }
 };
 
@@ -115,20 +119,24 @@ class repository_category_t:
     virtual
     auto
     message(int code) const -> std::string {
-        if(code == cocaine::error::repository_errors::component_not_found)
+        switch(code) {
+        case cocaine::error::repository_errors::component_not_found:
             return "component is not available";
-        if(code == cocaine::error::repository_errors::duplicate_component)
+        case cocaine::error::repository_errors::duplicate_component:
             return "duplicate component";
-        if(code == cocaine::error::repository_errors::initialization_error)
+        case cocaine::error::repository_errors::initialization_error:
             return "component has failed to intialize";
-        if(code == cocaine::error::repository_errors::invalid_interface)
+        case cocaine::error::repository_errors::invalid_interface:
             return "component has an invalid interface";
-        if(code == cocaine::error::repository_errors::dlopen_error)
+        case cocaine::error::repository_errors::dlopen_error:
             return "internal libltdl error";
-        if(code == cocaine::error::repository_errors::version_mismatch)
+        case cocaine::error::repository_errors::version_mismatch:
             return "component version requirements are not met";
-
-        return "cocaine.plugins error";
+        case cocaine::error::repository_errors::component_not_registered:
+            return "component has not been registered in repository";
+        default:
+            return "cocaine.repository error";
+        }
     }
 };
 
@@ -176,16 +184,16 @@ public std::error_category
     auto
     message(int code) const -> std::string {
         switch(code) {
-            case cocaine::error::locator_errors::service_not_available:
-                return "service is not available";
-            case cocaine::error::locator_errors::routing_storage_error:
-                return "routing storage is unavailable";
-            case cocaine::error::locator_errors::missing_version_error:
-                return "missing protocol version";
-            case cocaine::error::locator_errors::gateway_duplicate_service:
-                return "duplicate service provided to gateway";
-            case cocaine::error::locator_errors::gateway_missing_service:
-                return "service is missing in gateway";
+        case cocaine::error::locator_errors::service_not_available:
+            return "service is not available";
+        case cocaine::error::locator_errors::routing_storage_error:
+            return "routing storage is unavailable";
+        case cocaine::error::locator_errors::missing_version_error:
+            return "missing protocol version";
+        case cocaine::error::locator_errors::gateway_duplicate_service:
+            return "duplicate service provided to gateway";
+        case cocaine::error::locator_errors::gateway_missing_service:
+            return "service is missing in gateway";
         }
 
         return "cocaine.service.locator error";
@@ -205,22 +213,22 @@ class unicorn_category_t:
     auto
     message(int code) const -> std::string {
         switch (code) {
-            case child_not_allowed:
-                return "can not get value of a node with childs";
-            case invalid_type:
-                return "invalid type of value stored for requested operation";
-            case invalid_value:
-                return "could not unserialize value stored in zookeeper";
-            case unknown_error:
-                return "unknown zookeeper error";
-            case invalid_node_name:
-                return "invalid node name specified";
-            case invalid_path:
-                return "invalid path specified";
-            case version_not_allowed:
-                return "specified version is not allowed for command";
-            default:
-                return std::string("Unknown unicorn error - ") + std::to_string(code);
+        case child_not_allowed:
+            return "can not get value of a node with childs";
+        case invalid_type:
+            return "invalid type of value stored for requested operation";
+        case invalid_value:
+            return "could not unserialize value stored in zookeeper";
+        case unknown_error:
+            return "unknown zookeeper error";
+        case invalid_node_name:
+            return "invalid node name specified";
+        case invalid_path:
+            return "invalid path specified";
+        case version_not_allowed:
+            return "specified version is not allowed for command";
+        default:
+            return std::string("Unknown unicorn error - ") + std::to_string(code);
         }
     }
 };

@@ -25,7 +25,7 @@ storage(context_t& context, const std::string& service) -> std::shared_ptr<stora
         return context.repository().get<storage_t>(cfg->type(), context, name, service, cfg->args());
     }
 
-    throw std::system_error(std::make_error_code(std::errc::argument_out_of_domain), name);
+    throw error_t(error::component_not_found, "authorizations \"storage\" component not found in the config");
 }
 
 auto
@@ -35,7 +35,7 @@ unicorn(context_t& context, const std::string& service) -> std::shared_ptr<unico
         return context.repository().get<unicorn_t>(cfg->type(), context, name, service, cfg->args());
     }
 
-    throw std::system_error(std::make_error_code(std::errc::argument_out_of_domain), name);
+    throw error_t(error::component_not_found, "authorizations \"unicorn\" component not found in the config");
 }
 
 } // namespace authorization

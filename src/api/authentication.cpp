@@ -30,7 +30,7 @@ authentication(context_t& context, const std::string& name, const std::string& s
         return context.repository().get<authentication_t>(cfg->type(), context, name, service, cfg->args());
     }
 
-    throw std::system_error(std::make_error_code(std::errc::argument_out_of_domain), name);
+    throw error_t(error::component_not_found, "authentication component \"{}\" not found in the config", name);
 }
 
 } // namespace api

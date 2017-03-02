@@ -71,10 +71,10 @@ ADD_LIBRARY(cocaine-io-util SHARED
 ADD_LIBRARY(cocaine-core SHARED
     src/actor_unix.cpp
     src/actor.cpp
-    src/api.cpp
     src/api/authentication.cpp
     src/api/authorization.cpp
     src/api/storage.cpp
+    src/api/unicorn.cpp
     src/auth/uid.cpp
     src/authorization/event.cpp
     src/authorization/storage.cpp
