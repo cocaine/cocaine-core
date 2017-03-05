@@ -129,6 +129,11 @@ SET_TARGET_PROPERTIES(cocaine-io-util PROPERTIES
 SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
     VERSION 3)
 
+IF (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    SET_TARGET_PROPERTIES(cocaine-core PROPERTIES
+        LINK_FLAGS -Wl,--version-script=${PROJECT_SOURCE_DIR}/libcocaine-core3.version)
+ENDIF()
+
 ADD_EXECUTABLE(cocaine-runtime
     src/runtime/logging.cpp
     src/runtime/pid_file.cpp

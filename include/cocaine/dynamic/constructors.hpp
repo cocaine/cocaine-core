@@ -392,6 +392,18 @@ struct dynamic_constructor<std::unordered_map<std::string, T>> {
     }
 };
 
+template<class T>
+struct dynamic_constructor<std::reference_wrapper<T>> {
+        static const bool enable = true;
+
+        static inline
+        void
+        convert(std::reference_wrapper<T> from, dynamic_t::value_t& to) {
+            dynamic_constructor<typename std::remove_const<T>::type>::convert(from.get(), to);
+        }
+};
+
+
 } // namespace cocaine
 
 #endif // COCAINE_DYNAMIC_CONSTRUCTORS_HPP

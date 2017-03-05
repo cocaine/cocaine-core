@@ -3,7 +3,7 @@
 	url = git://github.com/bombela/backward-cpp.git
 [submodule "foreign/rapidjson"]
 	path = foreign/rapidjson
-	url = git://github.com/andrusha97/rapidjson.git
+	url = git://github.com/miloyip/rapidjson.git
 [submodule "tests/foreign/celero"]
 	path = tests/foreign/celero
 	url = git://github.com/DigitalInBlue/Celero.git

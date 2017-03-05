@@ -50,12 +50,7 @@ int wait_wrapper(sigset_t* set, siginfo_t* info) {
 
 bool pending() {
     sigset_t set = sigset_t();
-    int rc = sigpending(&set);
-    // sigpending according to docs only produces E_FAULT which should never happen.
-    BOOST_ASSERT(rc == 0);
-#if defined(BOOST_DISABLE_ASSERTS)
-    ((void)rc);
-#endif
+    sigpending(&set);
 #ifdef  __GLIBC__
     return !sigisemptyset(&set);
 #else

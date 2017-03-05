@@ -33,157 +33,56 @@
 #include <boost/optional/optional.hpp>
 #include <boost/thread/thread.hpp>
 
+#include "rapidjson/document.h"
+#include "rapidjson/istreamwrapper.h"
 #include "rapidjson/reader.h"
+#include "rapidjson/error/error.h"
+#include "rapidjson/error/en.h"
 
 namespace cocaine {
 
-namespace fs = boost::filesystem;
-
 namespace {
 
-struct dynamic_reader_t {
-    void
-    Null() {
-        m_stack.emplace(dynamic_t::null);
-    }
-
-    void
-    Bool(bool v) {
-        m_stack.emplace(v);
-    }
-
-    void
-    Int(int v) {
-        m_stack.emplace(v);
-    }
-
-    void
-    Uint(unsigned v) {
-        m_stack.emplace(dynamic_t::uint_t(v));
-    }
-
-    void
-    Int64(int64_t v) {
-        m_stack.emplace(v);
-    }
-
-    void
-    Uint64(uint64_t v) {
-        m_stack.emplace(dynamic_t::uint_t(v));
-    }
-
-    void
-    Double(double v) {
-        m_stack.emplace(v);
-    }
-
-    void
-    String(const char* data, size_t size, bool) {
-        m_stack.emplace(dynamic_t::string_t(data, size));
-    }
-
-    void
-    StartObject() {
-        // Empty.
-    }
-
-    void
-    EndObject(size_t size) {
-        dynamic_t::object_t object;
-
-        for(size_t i = 0; i < size; ++i) {
-            dynamic_t value = std::move(m_stack.top());
-            m_stack.pop();
-
-            std::string key = std::move(m_stack.top().as_string());
-            m_stack.pop();
-
-            object[key] = std::move(value);
+// This one is used instead of dynamic constructor for simplicity and to hide rapidjson symbols
+auto dynamic_from_rapid(rapidjson::Value& from, dynamic_t& to) -> void {
+    if(from.IsArray()) {
+        dynamic_t::array_t collection;
+        for(auto it = from.Begin(); it != from.End(); ++it) {
+            collection.push_back(dynamic_t());
+            dynamic_from_rapid(*it, collection.back());
         }
-
-        m_stack.emplace(std::move(object));
-    }
-
-    void
-    StartArray() {
-        // Empty.
-    }
-
-    void
-    EndArray(size_t size) {
-        dynamic_t::array_t array(size);
-
-        for(size_t i = size; i != 0; --i) {
-            array[i - 1] = std::move(m_stack.top());
-            m_stack.pop();
+        to = std::move(collection);
+    } else if(from.IsObject()) {
+        dynamic_t::object_t collection;
+        for(auto it = from.MemberBegin(); it != from.MemberEnd(); ++it) {
+            auto& element = collection[std::string(it->name.GetString(), it->name.GetStringLength())];
+            dynamic_from_rapid(it->value, element);
         }
-
-        m_stack.emplace(std::move(array));
+        to = std::move(collection);
+    } else if(from.IsBool()) {
+        to = from.GetBool();
+    } else if(from.IsDouble()) {
+        to = from.GetDouble();
+    } else if(from.IsUint()) { // uint check should go first to be consistent with dynamic_t parsing
+        to = dynamic_t::uint_t(from.GetUint());
+    } else if(from.IsUint64()) {
+        to = from.GetUint64();
+    } else if(from.IsInt()) {
+        to = dynamic_t::int_t(from.GetInt());
+    } else if(from.IsInt64()) {
+        to = from.GetInt64();
+    } else if(from.IsNull()) {
+        to = dynamic_t::null_t();
+    } else if(from.IsString()) {
+        to = std::string(from.GetString(), from.GetStringLength());
+    } else {
+        BOOST_ASSERT(false);
     }
+}
 
-    dynamic_t
-    Result() {
-        return m_stack.top();
-    }
+}
 
-private:
-    std::stack<dynamic_t> m_stack;
-};
-
-struct rapidjson_ifstream_t {
-    rapidjson_ifstream_t(fs::ifstream* backend) :
-        m_backend(backend)
-    { }
-
-    char
-    Peek() const {
-        int next = m_backend->peek();
-
-        if(next == std::char_traits<char>::eof()) {
-            return '\0';
-        } else {
-            return next;
-        }
-    }
-
-    char
-    Take() {
-        int next = m_backend->get();
-
-        if(next == std::char_traits<char>::eof()) {
-            return '\0';
-        } else {
-            return next;
-        }
-    }
-
-    size_t
-    Tell() const {
-        return m_backend->gcount();
-    }
-
-    char*
-    PutBegin() {
-        assert(false);
-        return 0;
-    }
-
-    void
-    Put(char) {
-        assert(false);
-    }
-
-    size_t
-    PutEnd(char*) {
-        assert(false);
-        return 0;
-    }
-
-private:
-    fs::ifstream* m_backend;
-};
-
-} // namespace
+namespace fs = boost::filesystem;
 
 template<size_t Version>
 struct config : public config_t {
@@ -492,20 +391,16 @@ public:
             throw cocaine::error_t("unable to read configuration file");
         }
 
-        rapidjson::MemoryPoolAllocator<> json_allocator;
-        rapidjson::Reader json_reader(&json_allocator);
-        rapidjson_ifstream_t json_stream(&stream);
+        rapidjson::IStreamWrapper rapid_stream(stream);
 
-        dynamic_reader_t configuration_constructor;
-
-        if(!json_reader.Parse<rapidjson::kParseDefaultFlags>(json_stream, configuration_constructor)) {
-            if(json_reader.HasParseError()) {
-                throw cocaine::error_t("configuration file is corrupted - {}", json_reader.GetParseError());
-            } else {
-                throw cocaine::error_t("configuration file is corrupted");
-            }
+        rapidjson::Document doc;
+        doc.ParseStream<rapidjson::kParseCommentsFlag | rapidjson::kParseTrailingCommasFlag>(rapid_stream);
+        if(doc.HasParseError()) {
+            throw cocaine::error_t("configuration file is corrupted - \"{}\" on offset {}",
+                                   rapidjson::GetParseError_En(doc.GetParseError()), doc.GetErrorOffset());
         }
-        auto root = configuration_constructor.Result();
+        dynamic_t root;
+        dynamic_from_rapid(doc, root);
 
         if(root.as_object().at("version", 0).to<unsigned int>() != Version) {
             throw cocaine::error_t("configuration file version is invalid");
