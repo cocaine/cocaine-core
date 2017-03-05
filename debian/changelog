@@ -1,3 +1,13 @@
+cocaine-core (0.12.12.2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Feature: allow comments and commas in config (#147).
+  * Feature: add `dynamic_t` construction from reference wrapper.
+  * Changed: upgrade rapidjson, simplify parsing, and allow comments.
+  * Changed: hide rapidjson symbols in version script.
+
+ -- Evgeny Safronov <division494@gmail.com>  Sun, 05 Mar 2017 19:24:17 +0300
+
 cocaine-core (0.12.12.1) unstable; urgency=low
 
   * Non-maintainer upload.
