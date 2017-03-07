@@ -98,10 +98,6 @@ enabled_t::verify(std::size_t event, const std::string& collection, const std::s
 
 auto
 enabled_t::verify(std::size_t event, const std::string& collection, const std::vector<auth::uid_t>& uids) -> void {
-    if (uids.empty()) {
-        throw std::system_error(make_error_code(error::unauthorized));
-    }
-
     metainfo_t metainfo;
     COCAINE_LOG_DEBUG(log, "reading ACL metainfo for collection '{}'", collection);
     try {
@@ -112,13 +108,19 @@ enabled_t::verify(std::size_t event, const std::string& collection, const std::v
                 collection, error::to_string(err));
             throw;
         }
+    } catch (const std::bad_cast& err) {
+        COCAINE_LOG_ERROR(log, "failed to read ACL metainfo for collection '{}': invalid ACL framing",
+            collection);
+        throw cocaine::error_t(error::invalid_acl_framing, err.what());
     }
+
+    COCAINE_LOG_DEBUG(log, "read metainfo with {} records", metainfo.size());
 
     const auto op = operation_t::from(event);
     // Owned collection must have at least one record. Otherwise it is treated as common, until
     // someone performs write operation over.
     if (metainfo.empty()) {
-        if (op.is_write()) {
+        if (op.is_write() && uids.size() > 0) {
             COCAINE_LOG_INFO(log, "initializing ACL for '{}' collection for uid(s) [{}]", collection,
                 [&](std::ostream& stream) -> std::ostream& {
                     return stream << boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(auth::uid_t)>(std::to_string)), ", ");
@@ -130,15 +132,18 @@ enabled_t::verify(std::size_t event, const std::string& collection, const std::v
             }
             backend->put<metainfo_t>(defaults::collection_acls, collection, metainfo, {}).get();
         }
-        return;
-    }
+    } else {
+        const auto allowed = std::all_of(std::begin(uids), std::end(uids), [&](auth::uid_t uid) {
+            return (metainfo[uid] & op.flag) == op.flag;
+        });
 
-    const auto allowed = std::all_of(std::begin(uids), std::end(uids), [&](uid_t uid) {
-        return (metainfo[uid] & op.flag) == op.flag;
-    });
+        if (uids.empty()) {
+            throw std::system_error(std::make_error_code(std::errc::permission_denied));
+        }
 
-    if (!allowed) {
-        throw std::system_error(std::make_error_code(std::errc::permission_denied));
+        if (!allowed) {
+            throw std::system_error(std::make_error_code(std::errc::permission_denied));
+        }
     }
 }
 
