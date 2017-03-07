@@ -1,5 +1,9 @@
 FROM ubuntu:trusty
 
+# Pass build branch from travis
+ARG BUILD_BRANCH
+ENV BUILD_BRANCH=$BUILD_BRANCH
+
 RUN apt-get -y -qq update
 RUN apt-get -y -qq install build-essential devscripts equivs git-core
 
