@@ -28,7 +28,7 @@ enum flags_t: std::size_t {
     both  = read | write
 };
 
-using metainfo_t = std::map<uid_t, flags_t>;
+using metainfo_t = std::map<auth::uid_t, flags_t>;
 
 struct operation_t {
     flags_t flag;
@@ -121,7 +121,7 @@ enabled_t::verify(std::size_t event, const std::string& collection, const std::v
         if (op.is_write()) {
             COCAINE_LOG_INFO(log, "initializing ACL for '{}' collection for uid(s) [{}]", collection,
                 [&](std::ostream& stream) -> std::ostream& {
-                    return stream << boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(uid_t)>(std::to_string)), ", ");
+                    return stream << boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(auth::uid_t)>(std::to_string)), ", ");
                 }
             );
 

@@ -40,11 +40,11 @@ class enabled_t::control_t : public std::enable_shared_from_this<enabled_t::cont
     //     }
     // }
     // ```
-    synchronized<std::map<uid_t, std::map<method_t, dynamic_t>>> acl;
+    synchronized<std::map<auth::uid_t, std::map<method_t, dynamic_t>>> acl;
 
     std::shared_ptr<api::unicorn_t> unicorn;
     std::shared_ptr<api::unicorn_scope_t> observer;
-    synchronized<std::unordered_map<uid_t, std::shared_ptr<api::unicorn_scope_t>>> observers;
+    synchronized<std::unordered_map<auth::uid_t, std::shared_ptr<api::unicorn_scope_t>>> observers;
 
 public:
     control_t(std::string path,
@@ -64,11 +64,11 @@ public:
             throw std::system_error(make_error_code(error::unauthorized));
         }
 
-        acl.apply([&](std::map<uid_t, std::map<method_t, dynamic_t>>& acl) {
+        acl.apply([&](std::map<auth::uid_t, std::map<method_t, dynamic_t>>& acl) {
             const auto allowed = std::all_of(
                 std::begin(uids),
                 std::end(uids),
-                [&](const uid_t& uid) {
+                [&](const auth::uid_t& uid) {
                     return acl.count(uid) > 0 && acl[uid].count(event) > 0;
                 }
             );
@@ -100,14 +100,14 @@ private:
             std::vector<std::string> nodes;
             std::tie(std::ignore, nodes) = result.get();
 
-            std::vector<uid_t> users;
+            std::vector<auth::uid_t> users;
 
             try {
                 std::transform(
                     std::begin(nodes),
                     std::end(nodes),
                     std::back_inserter(users),
-                    boost::lexical_cast<uid_t, std::string>
+                    boost::lexical_cast<auth::uid_t, std::string>
                 );
             } catch (const boost::bad_lexical_cast&) {
                 throw std::system_error(make_error_code(error::invalid_acl_framing));
@@ -115,12 +115,12 @@ private:
 
             COCAINE_LOG_INFO(log, "received {} ACL(s) updated", users.size());
 
-            acl.apply([&](std::map<uid_t, std::map<method_t, dynamic_t>>& acl) {
+            acl.apply([&](std::map<auth::uid_t, std::map<method_t, dynamic_t>>& acl) {
                 std::transform(
                     std::begin(users),
                     std::end(users),
                     std::inserter(acl, std::begin(acl)),
-                    [](uid_t user) {
+                    [](auth::uid_t user) {
                         return std::make_pair(user, std::map<method_t, dynamic_t>());
                     }
                 );
@@ -143,12 +143,12 @@ private:
     }
 
     auto
-    on_update(uid_t user, std::future<api::unicorn_t::response::get> result) -> void {
+    on_update(auth::uid_t user, std::future<api::unicorn_t::response::get> result) -> void {
         try {
             const auto events = result.get().value();
             COCAINE_LOG_INFO(log, "received ACL updates for user {}", user);
 
-            acl.apply([&](std::map<uid_t, std::map<method_t, dynamic_t>>& acl) {
+            acl.apply([&](std::map<auth::uid_t, std::map<method_t, dynamic_t>>& acl) {
                 if (events.convertible_to<std::map<method_t, dynamic_t>>()) {
                     acl[user] = events.to<std::map<method_t, dynamic_t>>();
                 } else {
