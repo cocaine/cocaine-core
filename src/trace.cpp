@@ -31,23 +31,26 @@
 using namespace cocaine;
 
 trace_t::trace_t():
+    m_verbose(false),
     trace_id(zero_value),
     state({zero_value, zero_value, {}}),
     previous_state(),
     was_pushed(false)
 {}
 
-trace_t::trace_t(uint64_t trace_id_,
-                 uint64_t span_id_,
-                 uint64_t parent_id_,
-                 const std::string& rpc_name_):
-    trace_id(trace_id_),
-    state({span_id_, parent_id_, rpc_name_}),
+trace_t::trace_t(uint64_t id, uint64_t span, uint64_t parent, const std::string& name):
+    trace_t(id, span, parent, false, name)
+{}
+
+trace_t::trace_t(uint64_t id, uint64_t span, uint64_t parent, bool verbose, const std::string& name):
+    m_verbose(verbose),
+    trace_id(id),
+    state({span, parent, name}),
     previous_state(),
     was_pushed(false)
 {
     if(trace_id == zero_value) {
-        // If we create empty trace all values should be zero
+        // If we create empty trace all values should be zero.
         if(state.parent_id != zero_value || state.span_id != zero_value) {
             throw cocaine::error_t("invalid trace parameters: {} {} {}", trace_id, state.span_id, state.parent_id);
         }
@@ -87,6 +90,11 @@ trace_t::get_trace_id() const {
 uint64_t
 trace_t::get_id() const {
     return state.span_id;
+}
+
+bool
+trace_t::verbose() const {
+    return m_verbose;
 }
 
 bool

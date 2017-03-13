@@ -247,14 +247,22 @@ session_t::handle(const decoder_t::message_type& message) {
                 throw std::system_error(error::revoked_channel, std::to_string(channel_id));
             }
 
-            auto trace_header = hpack::header::find_first<hpack::headers::trace_id<>>(message.headers());
-            auto span_header = hpack::header::find_first<hpack::headers::span_id<>>(message.headers());
-            auto parent_header = hpack::header::find_first<hpack::headers::parent_id<>>(message.headers());
+            auto& headers = message.headers();
+
+            auto trace_header = hpack::header::find_first<hpack::headers::trace_id<>>(headers);
+            auto span_header = hpack::header::find_first<hpack::headers::span_id<>>(headers);
+            auto parent_header = hpack::header::find_first<hpack::headers::parent_id<>>(headers);
             if(trace_header && span_header && parent_header) {
+                bool verbose = false;
+                if (auto header = hpack::header::find_first(headers, "trace_bit")) {
+                    verbose = hpack::header::unpack<bool>(header->value());
+                }
+
                 incoming_trace = trace_t(
                     hpack::header::unpack<uint64_t>(trace_header->value()),
                     hpack::header::unpack<uint64_t>(span_header->value()),
                     hpack::header::unpack<uint64_t>(parent_header->value()),
+                    verbose,
                     std::get<0>(prototype->root().at(message.type()))
                 );
             }

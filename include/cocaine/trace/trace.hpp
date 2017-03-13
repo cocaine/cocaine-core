@@ -56,6 +56,7 @@ public:
      * Construct trace with specified tuple of ids and service and rpc name.
      */
     trace_t(uint64_t id, uint64_t span, uint64_t parent, const std::string& name);
+    trace_t(uint64_t id, uint64_t span, uint64_t parent, bool verbose, const std::string& name);
 
     /**
      * Generate a new trace with specified service and rpc name.
@@ -80,6 +81,10 @@ public:
 
     uint64_t
     get_id() const;
+
+    /// Returns true if a tracebit was set, indicating that more verbose output is required.
+    bool
+    verbose() const;
 
     /**
      * Check if trace is empty (was not set via any of scope guards).
@@ -146,8 +151,10 @@ private:
     std::string
     to_hex_string(uint64_t val);
 
+    bool m_verbose;
     uint64_t trace_id;
-    state_t state, previous_state;
+    state_t state;
+    state_t previous_state;
     bool was_pushed;
 };
 

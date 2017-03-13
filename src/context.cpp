@@ -194,7 +194,7 @@ public:
     reset_logger_filter() {
         auto config_severity = m_config->logging().severity();
         auto filter = [=](filter_t::severity_t severity, filter_t::attribute_pack&) -> bool {
-            return severity >= config_severity || !trace_t::current().empty();
+            return severity >= config_severity || trace_t::current().verbose();
         };
         logger_filter(filter_t(std::move(filter)));
     }
