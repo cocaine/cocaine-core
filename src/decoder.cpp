@@ -32,9 +32,7 @@
 namespace cocaine {
 namespace io {
 
-
 namespace aux {
-
 
 auto
 decoded_message_t::span() const -> uint64_t {
@@ -52,7 +50,7 @@ decoded_message_t::args() const -> const msgpack::object& {
 }
 
 auto
-decoded_message_t::headers() const -> const hpack::header_storage_t& {
+decoded_message_t::headers() const -> const hpack::headers_t& {
     return metadata;
 }
 
@@ -62,7 +60,6 @@ decoded_message_t::clear() {
 }
 
 } // namespace aux
-
 
 size_t
 decoder_t::decode(const char* data, size_t size, message_type& message, std::error_code& ec) {
@@ -87,7 +84,7 @@ decoder_t::decode(const char* data, size_t size, message_type& message, std::err
             if(message.object.via.array.ptr[3].type != msgpack::type::ARRAY) {
                 ec = error::frame_format_error;
             } else if(!hpack::msgpack_traits::unpack_vector(
-            message.object.via.array.ptr[3], hpack_context, message.metadata))
+                      message.object.via.array.ptr[3], hpack_context, message.metadata))
             {
                 ec = error::hpack_error;
             }

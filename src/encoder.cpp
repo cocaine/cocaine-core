@@ -125,4 +125,3 @@ encoder_t::encode(const message_type& message) {
 }
 
 }} // namespace cocaine::io
-

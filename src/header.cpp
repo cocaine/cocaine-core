@@ -132,7 +132,6 @@ header_table_t::empty() const {
     return headers.empty();
 }
 
-
 void
 header_table_t::push(header_t header) {
     size_t header_size = header.http2_size();
@@ -168,7 +167,7 @@ header_table_t::find(const std::function<bool(const header_t&)> comp) {
 const header_t&
 header_table_t::operator[](size_t idx) {
     if(idx == 0 || idx > headers.size() + header_static_table_t::size) {
-        throw std::out_of_range("Invalid index for header table");
+        throw std::out_of_range("invalid index for header table");
     }
     if(idx < header_static_table_t::size) {
         return header_static_table_t::get_headers()[idx];

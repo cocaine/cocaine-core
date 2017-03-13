@@ -192,11 +192,9 @@ public:
     bool
     empty() const;
 
-
-
     static constexpr size_t max_data_capacity = 4096;
     static constexpr size_t http2_header_overhead = 32;
-    //32 bytes overhead per record and 2 bytes for nil-nil header
+    // 32 bytes overhead per record and 2 bytes for nil-nil header.
     static constexpr size_t max_header_capacity = max_data_capacity / (http2_header_overhead + 2);
 
 private:
@@ -206,7 +204,7 @@ private:
     size_t
     find(const std::function<bool(const header_t&)> comp);
 
-    // Header storage. Implemented as circular buffer
+    // Header storage. Implemented as a circular buffer.
     std::deque<header_t> headers;
     size_t capacity;
 };
