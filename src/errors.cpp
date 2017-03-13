@@ -74,6 +74,27 @@ class transport_category_t:
     }
 };
 
+class protocol_category_t:
+    public std::error_category
+{
+    virtual
+    auto
+    name() const throw() -> const char* {
+        return "cocaine.rpc.protocol";
+    }
+
+    virtual
+    auto
+    message(int code) const -> std::string {
+        switch(code) {
+            case cocaine::error::protocol_errors::closed_upstream:
+                return "protocol violation - upstream was already closed";
+            default:
+                return "cocaine.rpc.protocol error";
+        }
+    }
+};
+
 class dispatch_category_t:
     public std::error_category
 {
@@ -246,6 +267,12 @@ transport_category() -> const std::error_category& {
 }
 
 auto
+protocol_category() -> const std::error_category& {
+    static protocol_category_t instance;
+    return instance;
+}
+
+auto
 dispatch_category() -> const std::error_category& {
     static dispatch_category_t instance;
     return instance;
@@ -282,6 +309,11 @@ namespace cocaine { namespace error {
 auto
 make_error_code(transport_errors code) -> std::error_code {
     return std::error_code(static_cast<int>(code), transport_category());
+}
+
+auto
+make_error_code(protocol_errors code) -> std::error_code {
+    return std::error_code(static_cast<int>(code), protocol_category());
 }
 
 auto
@@ -347,6 +379,7 @@ public:
             {0x0A, &locator_category()                  },
             {0x0B, &unicorn_category()                  },
             {0x0C, &std::generic_category()             },
+            {0x0D, &protocol_category()                 },
             {0xFF, &unknown_category()                  }
         });
     }

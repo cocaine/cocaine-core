@@ -30,9 +30,14 @@ namespace cocaine { namespace error {
 
 enum transport_errors {
     frame_format_error = 1,
+    // TODO: maybe this should belong to protocol error, but it's here for backward compatibility
     hpack_error,
     insufficient_bytes,
     parse_error
+};
+
+enum protocol_errors {
+    closed_upstream = 1
 };
 
 enum dispatch_errors {
@@ -83,6 +88,9 @@ enum unicorn_errors {
 
 auto
 make_error_code(transport_errors code) -> std::error_code;
+
+auto
+make_error_code(protocol_errors code) -> std::error_code;
 
 auto
 make_error_code(dispatch_errors code) -> std::error_code;
@@ -159,6 +167,11 @@ namespace std {
 
 template<>
 struct is_error_code_enum<cocaine::error::transport_errors>:
+    public true_type
+{ };
+
+template<>
+struct is_error_code_enum<cocaine::error::protocol_errors>:
     public true_type
 { };
 

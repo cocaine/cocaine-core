@@ -543,7 +543,8 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
 
     if(!m_cluster) {
         // No cluster means there are no streams.
-        return stream.close();
+        stream.close();
+        return stream;
     }
 
     if(mapping->erase(uuid) == 0) {
@@ -555,7 +556,8 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
     mapping->insert({uuid, stream});
 
     // NOTE: Even if there's nothing to return, still send out an empty update.
-    return stream.write(m_cfg.uuid, m_snapshots);
+    stream.write(m_cfg.uuid, m_snapshots);
+    return stream;
 }
 
 void
@@ -652,7 +654,10 @@ locator_t::on_routing(const std::string& ruid, bool replace) -> streamed<results
     });
 
     // NOTE: Even if there's nothing to return, still send out an empty update.
-    return stream.write(results);
+    if(auto ec = stream.write(results)) {
+        throw std::system_error(ec, format("failed to write to outgoing stream '{}'", ruid));
+    }
+    return stream;
 }
 
 void
@@ -722,7 +727,7 @@ locator_t::on_context_shutdown() {
         }
 
         boost::for_each(mapping | boost::adaptors::map_values, [](streamed<results::connect>& s) {
-            try { s.close(); } catch(...) { /* None */ }
+            s.close();
         });
     });
 
@@ -734,7 +739,7 @@ locator_t::on_context_shutdown() {
         }
 
         boost::for_each(mapping | boost::adaptors::map_values, [](streamed<results::routing>& s) {
-            try { s.close(); } catch(...) { /* None */ }
+            s.close();
         });
     });
 

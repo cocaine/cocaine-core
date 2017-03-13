@@ -71,33 +71,45 @@ class message_queue {
 
 public:
     template<class Event, class... Args>
-    void
+    std::error_code
     append(hpack::header_storage_t headers, Args&&... args) {
         static_assert(std::is_same<typename Event::tag, Tag>::value,
                       "message protocol is not compatible with this message queue");
 
         if(!m_upstream) {
-            return m_operations.emplace_back(std::move(headers),
-                                             make_frozen<Event>(std::forward<Args>(args)...));
+            m_operations.emplace_back(std::move(headers), make_frozen<Event>(std::forward<Args>(args)...));
+            return {};
         }
 
-        m_upstream->template send<Event>(std::move(headers), std::forward<Args>(args)...);
+        try {
+            m_upstream->template send<Event>(std::move(headers), std::forward<Args>(args)...);
+            return {};
+        } catch (const std::system_error& e) {
+            return e.code();
+        }
     }
 
     template<class Event, class... Args>
-    void
+    std::error_code
     append(Args&&... args) {
         static_assert(std::is_same<typename Event::tag, Tag>::value,
                       "message protocol is not compatible with this message queue");
 
         if(!m_upstream) {
-            return m_operations.emplace_back(hpack::header_storage_t(),
-                                             make_frozen<Event>(std::forward<Args>(args)...));
+            m_operations.emplace_back(hpack::header_storage_t(), make_frozen<Event>(std::forward<Args>(args)...));
+            return {};
         }
 
-        m_upstream->template send<Event>(std::forward<Args>(args)...);
+        try {
+            m_upstream->template send<Event>(std::forward<Args>(args)...);
+            return {};
+        } catch (const std::system_error& e) {
+            return e.code();
+        }
     }
 
+    /// This one can throw to propagate exception to session,
+    /// as we mainly attach the queue in invocation slot.
     template<class OtherTag>
     void
     attach(upstream<OtherTag>&& upstream) {

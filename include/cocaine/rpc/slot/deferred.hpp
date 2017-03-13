@@ -56,7 +56,7 @@ struct deferred_slot:
                upstream_type&& upstream)
     {
         try {
-            this->call(headers, std::move(args)).attach(std::move(upstream));
+            this->call(headers, std::move(args)).attach(upstream);
         } catch(const std::system_error& e) {
             upstream.template send<typename protocol::error>(e.code(), std::string(e.what()));
         } catch(const std::exception& e) {
@@ -100,48 +100,36 @@ struct reconstruct<std::tuple<Args...>> {
 } // namespace aux
 
 template<class T>
-struct deferred {
+struct deferred_base {
     typedef typename aux::reconstruct<T>::type type;
 
     typedef io::message_queue<io::primitive_tag<type>> queue_type;
     typedef io::primitive<type> protocol;
 
-    template<template<class> class, class, class, class> friend struct io::deferred_slot;
-
-    deferred():
-        outbox(new synchronized<queue_type>())
+    deferred_base():
+            outbox(new synchronized<queue_type>())
     { }
 
-    template<class... Args>
-    typename std::enable_if<
-        std::is_constructible<T, Args...>::value,
-        deferred&
-    >::type
-    write(Args&&... args) {
-        outbox->synchronize()->template append<typename protocol::value>(std::forward<Args>(args)...);
-        return *this;
-    }
-
-    template<class... Args>
-    typename std::enable_if<
-        std::is_constructible<T, Args...>::value,
-        deferred&
-    >::type
-    write(hpack::header_storage_t headers, Args&&... args) {
-        outbox->synchronize()->template append<typename protocol::value>(std::move(headers), std::forward<Args>(args)...);
-        return *this;
-    }
-
-    deferred&
+    std::error_code
     abort(const std::error_code& ec, const std::string& reason) {
-        outbox->synchronize()->template append<typename protocol::error>(ec, reason);
-        return *this;
+        return outbox->synchronize()->template append<typename protocol::error>(ec, reason);
     }
 
-    deferred&
+    std::error_code
     abort(hpack::header_storage_t headers, const std::error_code& ec, const std::string& reason) {
-        outbox->synchronize()->template append<typename protocol::error>(std::move(headers), ec, reason);
-        return *this;
+        return outbox->synchronize()->template append<typename protocol::error>(std::move(headers), ec, reason);
+    }
+
+    template<class... Args>
+    std::error_code
+    write(Args&&... args) {
+        return write(hpack::headers_t(), std::forward<Args>(args)...);
+    }
+
+    template<class... Args>
+    std::error_code
+    write(hpack::header_storage_t headers, Args&&... args) {
+        return outbox->synchronize()->template append<typename protocol::value>(std::move(headers), std::forward<Args>(args)...);
     }
 
     template<class UpstreamType>
@@ -154,52 +142,20 @@ private:
     const std::shared_ptr<synchronized<queue_type>> outbox;
 };
 
+template<class T>
+struct deferred: public deferred_base<T> {};
+
 template<>
-struct deferred<void> {
-    typedef aux::reconstruct<void>::type type;
-
-    typedef io::message_queue<io::primitive_tag<type>> queue_type;
-    typedef io::primitive<type> protocol;
-
-    template<template<class> class, class, class, class> friend struct io::deferred_slot;
-
-    deferred():
-        outbox(new synchronized<queue_type>())
-    { }
-
-    deferred&
-    abort(const std::error_code& ec, const std::string& reason) {
-        outbox->synchronize()->append<protocol::error>(ec, reason);
-        return *this;
-    }
-
-    deferred&
-    abort(hpack::header_storage_t headers, const std::error_code& ec, const std::string& reason) {
-        outbox->synchronize()->append<protocol::error>(std::move(headers), ec, reason);
-        return *this;
-    }
-
-
-    deferred&
-    close(hpack::header_storage_t headers) {
-        outbox->synchronize()->append<protocol::value>(std::move(headers));
-        return *this;
-    }
-
-    deferred&
+struct deferred<void> : public deferred_base<void> {
+    std::error_code
     close() {
-        outbox->synchronize()->append<protocol::value>();
-        return *this;
+        return write();
     }
 
-    template<class UpstreamType>
-    void
-    attach(UpstreamType&& upstream) {
-        outbox->synchronize()->attach(std::move(upstream));
+    std::error_code
+    close(hpack::headers_t headers) {
+        return write(std::move(headers));
     }
-
-private:
-    const std::shared_ptr<synchronized<queue_type>> outbox;
 };
 
 } // namespace cocaine

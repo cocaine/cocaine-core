@@ -45,16 +45,6 @@ namespace ph = std::placeholders;
 
 namespace {
 
-template<class T>
-void
-abort_deferred(cocaine::deferred<T>& d, const std::error_code& ec, const std::string& reason) {
-    try {
-        d.abort(ec, reason);
-    } catch (const std::system_error&) {
-        // Pass, the only reason of exception is detached session.
-    }
-}
-
 struct audit_middleware_t {
     std::shared_ptr<logging::logger_t> logger;
 
@@ -152,7 +142,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
                         {"code", err.code().value()},
                         {"error", error::to_string(err)},
                     });
-                    abort_deferred(deferred, err.code(), err.what());
+                    deferred.abort(err.code(), err.what());
                 }
             });
 
@@ -189,7 +179,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
                     {"code", err.code().value()},
                     {"error", error::to_string(err)},
                 });
-                abort_deferred(deferred, err.code(), err.what());
+                deferred.abort(err.code(), err.what());
             }
         });
 
@@ -221,7 +211,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
                     {"code", err.code().value()},
                     {"error", error::to_string(err)},
                 });
-                abort_deferred(deferred, err.code(), err.what());
+                deferred.abort(err.code(), err.what());
             }
         });
 
@@ -255,7 +245,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
                     {"code", err.code().value()},
                     {"error", error::to_string(err)},
                 });
-                abort_deferred(deferred, err.code(), err.what());
+                deferred.abort(err.code(), err.what());
             }
         });
 
