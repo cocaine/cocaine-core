@@ -47,13 +47,12 @@ struct streamed {
         std::error_code
     >::type
     write(hpack::header_storage_t headers, Args&&... args) {
-        return data->apply([&](data_t& data){
-            if (data.state == state_t::closed) {
-                return make_error_code(error::protocol_errors::closed_upstream);
-            }
+        auto d = data->synchronize();
+        if (d->state == state_t::closed) {
+            return make_error_code(error::protocol_errors::closed_upstream);
+        }
 
-            return data.outbox.template append<chunk_type>(std::move(headers), std::forward<Args>(args)...);
-        });
+        return d->outbox.template append<chunk_type>(std::move(headers), std::forward<Args>(args)...);
     }
 
     template<class... Args>
