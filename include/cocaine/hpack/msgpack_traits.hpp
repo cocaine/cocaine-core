@@ -139,6 +139,7 @@ struct msgpack_traits {
                 try {
                     target.push_back(unpack(obj, table));
                 } catch (...) {
+                    // TODO: Return `std::error_code` instead of boolean.
                     // Just swallow it. We can not do anything here.
                     return false;
                 }
