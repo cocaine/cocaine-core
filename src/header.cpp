@@ -151,15 +151,19 @@ header_table_t::push(header_t header) {
     headers.push_front(std::move(header));
 }
 
-size_t
-header_table_t::find(const std::function<bool(const header_t&)> comp) {
-    auto it = std::find_if(header_static_table_t::get_headers().begin(), header_static_table_t::get_headers().end(), comp);
-    if(it != header_static_table_t::get_headers().end()) {
-        return it - header_static_table_t::get_headers().begin();
+std::size_t
+header_table_t::find(const std::function<bool(const header_t&)> fn) {
+    const auto& statics = header_static_table_t::get_headers();
+
+    auto it = std::find_if(std::begin(statics), std::end(statics), fn);
+
+    if(it != std::end(statics)) {
+        return std::distance(std::begin(statics), it);
     }
-    auto dyn_it = std::find_if(headers.begin(), headers.end(), comp);
-    if(dyn_it != headers.end()) {
-        return dyn_it - headers.begin() + header_static_table_t::size;
+
+    auto dynit = std::find_if(std::begin(headers), std::end(headers), fn);
+    if(dynit != std::end(headers)) {
+        return std::distance(headers.begin(), dynit) + header_static_table_t::size;
     }
     return 0;
 }

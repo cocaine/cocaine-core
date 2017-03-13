@@ -55,10 +55,7 @@ public:
     /**
      * Construct trace with specified tuple of ids and service and rpc name.
      */
-    trace_t(uint64_t trace_id,
-            uint64_t span_id,
-            uint64_t parent_id,
-            const std::string& rpc_name);
+    trace_t(uint64_t id, uint64_t span, uint64_t parent, const std::string& name);
 
     /**
      * Generate a new trace with specified service and rpc name.
