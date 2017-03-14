@@ -8,7 +8,7 @@ Build-Depends: cmake, cdbs, debhelper (>= 7.0.13), libltdl-dev, libmsgpack-dev,
  libboost-filesystem-dev,
  libboost-thread-dev,
  libboost-program-options-dev,
- metrics-dev (>= 2.0.0),
+ metrics-dev (>= 3.0.0),
  blackhole-dev (>= 1.5.0-1)
 Standards-Version: 3.9.3
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
@@ -24,14 +24,14 @@ Package: libcocaine-io-util3
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Cocaine - Util Libraries.
- Cocaine common utility libraries package(HPACK, cocaine errors, tracing support, cocaine protocol encoder)
+ Cocaine common utility libraries package(HPACK, protocol, errors, tracing).
 
 Package: libcocaine-dev
 Architecture: any
 Section: libdevel
 Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-core3 (= ${binary:Version}), libcocaine-io-util3 (= ${binary:Version}),
- libltdl-dev, libmsgpack-dev, libboost1.48-dev | libboost-dev,
- metrics-dev (>= 2.0.0),
+ libltdl-dev, libmsgpack-dev, libboost-dev,
+ metrics-dev (>= 3.0.0),
  blackhole-dev (>= 1.5.0-1)
 Description: Cocaine - Development Headers
  Cocaine development headers package.
