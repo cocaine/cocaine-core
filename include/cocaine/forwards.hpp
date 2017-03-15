@@ -114,7 +114,7 @@ typedef std::vector<header_t> header_storage_t;
 
 namespace cocaine { namespace io {
 
-// used for context signals
+// Used for context signals.
 struct context_tag;
 
 // I/O threads
