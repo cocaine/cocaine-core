@@ -137,11 +137,6 @@ public:
     auto
     bind(Args&& ...args) -> callable_wrapper<decltype(std::bind(std::forward<Args>(args)...))>;
 
-    template<class Method>
-    static
-    auto
-    mem_fn(Method m) -> callable_wrapper<decltype(std::mem_fn(std::forward<Method>(m)))>;
-
 private:
     static
     uint64_t
@@ -168,7 +163,6 @@ private:
     trace_t old_span;
     bool restored;
 };
-
 
 class trace_t::push_scope_t
 {
@@ -204,13 +198,6 @@ auto
 trace_t::bind(Args&& ...args) -> callable_wrapper<decltype(std::bind(std::forward<Args>(args)...))> {
     typedef callable_wrapper<decltype(std::bind(std::forward<Args>(args)...))> result_type;
     return result_type(std::bind(std::forward<Args>(args)...));
-}
-
-template<class Method>
-auto
-trace_t::mem_fn(Method m) -> callable_wrapper<decltype(std::mem_fn(std::forward<Method>(m)))> {
-    typedef callable_wrapper<decltype(std::mem_fn(std::forward<Method>(m)))> result_type;
-    return result_type(std::mem_fn(std::forward<Method>(m)));
 }
 
 } // namespace cocaine
