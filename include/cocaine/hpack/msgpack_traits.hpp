@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "cocaine/errors.hpp"
 #include "cocaine/hpack/header.hpp"
 #include "cocaine/hpack/static_table.hpp"
 
