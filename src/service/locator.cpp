@@ -364,7 +364,7 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
         COCAINE_LOG_INFO(m_log, "using '{}' as a cluster manager, enabling synchronization", type);
 
         api::cluster_t::mode_t mode = m_gateway ? api::cluster_t::mode_t::full : api::cluster_t::mode_t::announce_only;
-            m_cluster = m_context.repository().get<api::cluster_t>(type, m_context, *this, mode, name + ":cluster", args);
+        m_cluster = m_context.repository().get<api::cluster_t>(type, m_context, *this, mode, name + ":cluster", args);
     }
 
 
