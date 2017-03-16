@@ -89,7 +89,7 @@ struct sighup_handler_t {
             return;
         }
 
-        // We do not suspect any other error codes except oeration cancellation.
+        // We do not suspect any other error codes except operation cancellation.
         BOOST_ASSERT(!ec);
 
         COCAINE_LOG_INFO(wrapper, "resetting logger");
