@@ -254,7 +254,6 @@ main(int argc, char* argv[]) {
 
     auto registry = blackhole::registry::configured();
     registry->add<logging::console_t>();
-    registry->add<blackhole::formatter::json_t>();
 
     try {
         std::stringstream stream;
