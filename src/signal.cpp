@@ -18,21 +18,24 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/format.hpp"
 #include "cocaine/signal.hpp"
-#include "cocaine/logging.hpp"
 
-#include <blackhole/logger.hpp>
+#include <fcntl.h>
+
+#include <cstdlib>
+#include <cstring>
 
 #include <boost/assert.hpp>
 
-#include <cstdlib>
-#include <iostream>
-#include <fcntl.h>
-#include <string.h>
+#include <blackhole/logger.hpp>
+
+#include "cocaine/errors.hpp"
+#include "cocaine/logging.hpp"
 
 namespace {
-int wait_wrapper(sigset_t* set, siginfo_t* info) {
+
+int
+wait_wrapper(sigset_t* set, siginfo_t* info) {
 #ifdef __linux__
     return ::sigwaitinfo(set, info);
 #else
@@ -48,7 +51,8 @@ int wait_wrapper(sigset_t* set, siginfo_t* info) {
 #endif
 }
 
-bool pending() {
+bool
+pending() {
     sigset_t set = sigset_t();
     sigpending(&set);
 #ifdef  __GLIBC__
@@ -60,11 +64,11 @@ bool pending() {
     return set != empty_set;
 #endif
 }
+
 int interrupt_signal = SIGCONT;
 
 void
-stub_handler(int) {
-}
+stub_handler(int) {}
 
 sigset_t
 get_signal_set(const std::set<int>& signals) {
@@ -78,49 +82,49 @@ get_signal_set(const std::set<int>& signals) {
     return sigset;
 }
 
-}
+} // namespace
 
 namespace cocaine { namespace signal {
 
 namespace {
+
 std::atomic_flag initialized;
 
 std::atomic<uint64_t> current_index;
-}
+
+} // namespace
 
 bool
 cancellation_t::cancel() {
-    if(!cancelled.test_and_set()) {
-        return cancellation_callback();
+    if(!detached.test_and_set()) {
+        return callback();
     }
     return false;
 }
 
 bool
 cancellation_t::detach() {
-    return !cancelled.test_and_set();
+    return !detached.test_and_set();
 }
 
 cancellation_t::cancellation_t() {
-    cancelled.test_and_set();
+    detached.test_and_set();
 }
 
-cancellation_t::cancellation_t(std::function<bool()> _cancellation_callback) :
-    cancelled(),
-    cancellation_callback(std::move(_cancellation_callback))
-{
-}
-
+cancellation_t::cancellation_t(std::function<bool()> callback) :
+    detached(),
+    callback(std::move(callback))
+{}
 
 cancellation_t::cancellation_t(cancellation_t&& other):
-    cancelled(),
-    cancellation_callback()
+    detached(),
+    callback()
 {
     // Constructor from rvalue. Should be safe
-    if(other.cancelled.test_and_set()) {
-        cancelled.test_and_set();
+    if(other.detached.test_and_set()) {
+        detached.test_and_set();
     } else {
-        cancellation_callback = std::move(other.cancellation_callback);
+        callback = std::move(other.callback);
     }
 }
 
@@ -130,9 +134,9 @@ cancellation_t::operator=(cancellation_t&& other) {
         return *this;
     }
     cancel();
-    if(!other.cancelled.test_and_set()) {
-        cancellation_callback = std::move(other.cancellation_callback);
-        cancelled.clear();
+    if(!other.detached.test_and_set()) {
+        callback = std::move(other.callback);
+        detached.clear();
     }
     return *this;
 }
@@ -141,7 +145,7 @@ cancellation_t::~cancellation_t() {
     detach();
 }
 
-handler_t::handler_t(std::unique_ptr<cocaine::logging::logger_t> logger_, std::set<int> signals_) :
+handler_t::handler_t(std::shared_ptr<cocaine::logging::logger_t> logger_, std::set<int> signals_) :
     logger(std::move(logger_)),
     signals(std::move(signals_))
 {
@@ -269,6 +273,94 @@ handler_t::async_wait_simple(int signum, simple_callback_type handler) {
     return async_wait(signum, [=](const std::error_code& ec, int signum, const siginfo_t&) {
        handler(ec, signum);
     });
+}
+
+namespace {
+
+namespace ph = std::placeholders;
+
+struct ignore_t {
+    handler_base_t& handler;
+
+    void
+    operator()(std::error_code ec, int signum) {
+        if(ec != std::errc::operation_canceled) {
+            handler.async_wait(signum, *this);
+        }
+    }
+};
+
+} // namespace
+
+engine_t::engine_t(handler_t& inner, std::shared_ptr<cocaine::logging::logger_t> log) :
+    log(std::move(log)),
+    inner(inner),
+    detached(false)
+{}
+
+engine_t::~engine_t() {
+    for (auto& cancellation : cancellations) {
+        cancellation.cancel();
+    }
+
+    if (detached) {
+        return;
+    }
+
+    inner.stop();
+    std::move(*this).join();
+}
+
+auto
+engine_t::ignore(int signum) -> void {
+    inner.async_wait(signum, ignore_t{inner});
+}
+
+auto
+engine_t::start() -> void {
+    thread = std::thread(&engine_t::run, this);
+}
+
+auto
+engine_t::join() && -> void {
+    if (thread.joinable()) {
+        thread.join();
+    }
+}
+
+auto
+engine_t::wait_for(std::initializer_list<int> signums) -> void {
+    for (auto signum : signums) {
+        on(signum, [&](std::error_code ec, int) {
+            if(ec != std::errc::operation_canceled) {
+                terminate();
+            }
+        });
+    }
+
+    // Wait until signaling termination.
+    std::unique_lock<std::mutex> lock(mutex);
+    cv.wait(lock, [&] {
+        return finalize;
+    });
+}
+
+auto
+engine_t::run() -> void {
+    try {
+        inner.run();
+    } catch (const std::system_error& err) {
+        COCAINE_LOG_ERROR(log, "failed to complete signal handling: {}", error::to_string(err));
+    }
+}
+
+auto
+engine_t::terminate() -> void {
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        finalize = true;
+    }
+    cv.notify_one();
 }
 
 }} //namespace cocaine::signal

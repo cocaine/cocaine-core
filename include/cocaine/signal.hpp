@@ -22,78 +22,69 @@
 #ifndef COCAINE_SIGNAL_SET_HPP
 #define COCAINE_SIGNAL_SET_HPP
 
-#include "cocaine/locked_ptr.hpp"
-#include "cocaine/forwards.hpp"
-
 #include <atomic>
-#include <vector>
+#include <condition_variable>
+#include <csignal>
+#include <functional>
 #include <map>
 #include <set>
-#include <functional>
-#include <signal.h>
+#include <thread>
+#include <vector>
 
-namespace cocaine { namespace signal {
+#include "cocaine/forwards.hpp"
+#include "cocaine/locked_ptr.hpp"
+
+namespace cocaine {
+namespace signal {
 
 class cancellation_t {
+    std::atomic_flag detached;
+    std::function<bool()> callback;
+
 public:
-    // Call cancellation callback if present, was not called before and was not detached.
-    // Return true if callback was called
-    bool
-    cancel();
-
-    // Detach cancellation token so the destructor or cancel() would not call cancellation callback.
-    // Usually used right after async wait, f.e. signal_handler.async_wait(cb).detach();
-    // Return if callback was sucessfully detached(was not cancelled before, detached before and callback is present)
-    bool
-    detach();
-
     cancellation_t();
-    cancellation_t(std::function<bool()> cancellation_callback);
+    cancellation_t(std::function<bool()> callback);
     cancellation_t(const cancellation_t&) = delete;
     cancellation_t& operator=(const cancellation_t&) = delete;
     cancellation_t(cancellation_t&&);
     cancellation_t& operator=(cancellation_t&&);
-    ~cancellation_t();
 
-private:
-    std::atomic_flag cancelled;
-    std::function<bool()> cancellation_callback;
+   ~cancellation_t();
+
+    /// Calls the cancellation callback if it is present, was not called before and was not
+    /// detached.
+    ///
+    /// \returns `true` if the callback was called.
+    bool
+    cancel();
+
+    /// Detaches the cancellation token so the destructor or `cancel()` would not call the
+    /// associated cancellation callback.
+    ///
+    /// Usually used right after async wait, f.e. `signal_handler.async_wait(callback).detach();`.
+    ///
+    /// \returns `true` if the callback was sucessfully detached (was not cancelled before,
+    ///     detached before and callback is present).
+    bool
+    detach();
 };
 
 class handler_base_t {
-
 public:
     typedef std::function<void(const std::error_code&, int)> simple_callback_type;
     typedef std::function<void(const std::error_code&, int, const siginfo_t&)> detailed_callback_type;
 
     virtual
-    ~handler_base_t() {}
+    ~handler_base_t() = default;
 
-    // Workaround for stupid gcc 4.6 which cannot choose overload
-    // if we pass lambda.
-    template<class Callable>
-    typename std::enable_if<
-        std::is_void<
-            decltype(std::declval<Callable>()(
-                         std::declval<const std::error_code&>(),
-                         std::declval<int>(),
-                         std::declval<const siginfo_t&>()))
-        >::value, cancellation_t
-    >::type
-    async_wait(int signum, Callable handler) {
-        return async_wait_detailed(signum, detailed_callback_type(std::move(handler)));
+    cancellation_t
+    async_wait(int signum, detailed_callback_type handler) {
+        return async_wait_detailed(signum, std::move(handler));
     }
 
-    template<class Callable>
-    typename std::enable_if<
-        std::is_void<
-            decltype(std::declval<Callable>()(
-                 std::declval<const std::error_code&>(),
-                 std::declval<int>()))
-        >::value, cancellation_t
-    >::type
-    async_wait(int signum, Callable handler) {
-        return async_wait_simple(signum, simple_callback_type(std::move(handler)));
+    cancellation_t
+    async_wait(int signum, simple_callback_type handler) {
+        return async_wait_simple(signum, std::move(handler));
     }
 
 private:
@@ -116,7 +107,7 @@ public:
 
     typedef std::map<uint64_t, detailed_callback_type> detailed_callback_storage;
 
-    handler_t(std::unique_ptr<cocaine::logging::logger_t> logger, std::set<int> signal_set);
+    handler_t(std::shared_ptr<cocaine::logging::logger_t> logger, std::set<int> signal_set);
 
     handler_t(const handler_t&) = delete;
     handler_t(handler_t&&) = delete;
@@ -144,7 +135,7 @@ private:
     virtual cancellation_t
     async_wait_detailed(int signum, detailed_callback_type handler);
 
-    std::unique_ptr<cocaine::logging::logger_t> logger;
+    std::shared_ptr<cocaine::logging::logger_t> logger;
 
     std::set<int> signals;
 
@@ -155,6 +146,50 @@ private:
     bool should_run;
 };
 
-}}
-#endif // COCAINE_SIGNAL_SET_HPP
+class engine_t {
+    std::shared_ptr<cocaine::logging::logger_t> log;
 
+    handler_t& inner;
+    bool detached;
+    std::thread thread;
+    std::vector<signal::cancellation_t> cancellations;
+
+    bool finalize = false;
+    std::mutex mutex;
+    std::condition_variable cv;
+
+public:
+    engine_t(handler_t& inner, std::shared_ptr<cocaine::logging::logger_t> log);
+
+   ~engine_t();
+
+    auto
+    ignore(int signum) -> void;
+
+    template<typename C>
+    auto
+    on(int signum, C callback) -> void {
+        cancellations.push_back(inner.async_wait(signum, std::move(callback)));
+    }
+
+    auto
+    start() -> void;
+
+    auto
+    join() && -> void;
+
+    auto
+    wait_for(std::initializer_list<int> signums) -> void;
+
+private:
+    auto
+    run() -> void;
+
+    auto
+    terminate() -> void;
+};
+
+} // namespace signal
+} // namespace cocaine
+
+#endif // COCAINE_SIGNAL_SET_HPP

@@ -18,23 +18,7 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "cocaine/common.hpp"
-#include "cocaine/context.hpp"
-#include "cocaine/context/config.hpp"
-#include "cocaine/context/signal.hpp"
-#include "cocaine/dynamic.hpp"
-#include "cocaine/errors.hpp"
-#include "cocaine/idl/context.hpp"
-#include "cocaine/signal.hpp"
-
-#include "cocaine/detail/runtime/logging.hpp"
-
-#if !defined(__APPLE__)
-    #include "cocaine/detail/runtime/pid_file.hpp"
-#endif
-
-#include <asio/io_service.hpp>
-#include <asio/signal_set.hpp>
+#include <iostream>
 
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
@@ -44,122 +28,36 @@
 #include <blackhole/config/json.hpp>
 #include <blackhole/extensions/facade.hpp>
 #include <blackhole/extensions/writer.hpp>
-#include <blackhole/formatter/json.hpp>
 #include <blackhole/logger.hpp>
-#include <blackhole/record.hpp>
 #include <blackhole/registry.hpp>
 #include <blackhole/root.hpp>
 #include <blackhole/wrapper.hpp>
 
+#include "cocaine/common.hpp"
+#include "cocaine/context.hpp"
+#include "cocaine/context/config.hpp"
+#include "cocaine/context/signal.hpp"
+#include "cocaine/dynamic.hpp"
+#include "cocaine/errors.hpp"
 #include "cocaine/logging.hpp"
+#include "cocaine/signal.hpp"
+
+#include "cocaine/detail/runtime/logging.hpp"
+
+#if !defined(__APPLE__)
+    #include "cocaine/detail/runtime/pid_file.hpp"
+#endif
+
+#include "signal.hpp"
 
 #if defined(__linux__)
     #define BACKWARD_HAS_BFD 1
 #endif
-
 #include <backward.hpp>
-
-#include <condition_variable>
-#include <csignal>
-#include <iostream>
-#include <thread>
 
 using namespace cocaine;
 
-namespace fs = boost::filesystem;
-namespace ph = std::placeholders;
 namespace po = boost::program_options;
-
-namespace {
-
-std::mutex finalizer_mutex;
-std::condition_variable finalizer_cv;
-bool finalize = false;
-
-struct sighup_handler_t {
-    blackhole::root_logger_t& logger;
-    logging::logger_t& wrapper;
-    blackhole::registry_t& registry;
-    cocaine::signal::handler_base_t& sig_handler;
-    cocaine::context_t& context;
-
-    void
-    operator()(const std::error_code& ec, int signum, const siginfo_t& info) {
-        if(ec == std::errc::operation_canceled) {
-            return;
-        }
-
-        // We do not suspect any other error codes except operation cancellation.
-        BOOST_ASSERT(!ec);
-
-        COCAINE_LOG_INFO(wrapper, "resetting logger");
-        std::stringstream stream;
-        stream << boost::lexical_cast<std::string>(context.config().logging().loggers());
-
-        // Create a new logger before swap to be sure that no events are missed.
-        auto log = registry.builder<blackhole::config::json_t>(stream)
-            .build("core");
-
-        logger = std::move(log);
-
-        context.signal_hub().invoke<cocaine::io::context::os_signal>(signum, info);
-        sig_handler.async_wait(SIGHUP, *this);
-    }
-};
-
-struct sigchild_handler_t {
-    cocaine::context_t& context;
-    cocaine::signal::handler_base_t& handler;
-    void
-    operator()(const std::error_code& ec, int signum, const siginfo_t& info) {
-        if(ec == std::errc::operation_canceled) {
-            return;
-        }
-        assert(!ec);
-        context.signal_hub().invoke<cocaine::io::context::os_signal>(signum, info);
-        handler.async_wait(signum, *this);
-    }
-};
-
-void terminate() {
-    {
-        std::lock_guard<std::mutex> lock(finalizer_mutex);
-        finalize = true;
-    }
-    finalizer_cv.notify_one();
-}
-
-struct terminate_handler_t {
-    void
-    operator()(const std::error_code& ec, int) {
-        if(ec != std::errc::operation_canceled) {
-            assert(!ec);
-            terminate();
-        }
-    }
-};
-
-struct sigpipe_handler_t {
-    cocaine::signal::handler_base_t& handler;
-
-    void
-    operator()(const std::error_code& ec, int signum) {
-        if(ec != std::errc::operation_canceled) {
-            handler.async_wait(signum, *this);
-        }
-    }
-};
-
-void
-run_signal_handler(cocaine::signal::handler_t& signal_handler, logging::logger_t& logger){
-    try {
-        signal_handler.run();
-    } catch (const std::system_error& e) {
-        COCAINE_LOG_ERROR(logger, "exception in signal handler - {}", error::to_string(e));
-    }
-}
-
-} // namespace
 
 int
 main(int argc, char* argv[]) {
@@ -225,7 +123,7 @@ main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        fs::path pid_path;
+        boost::filesystem::path pid_path;
 
         if(!vm["pidfile"].empty()) {
             pid_path = vm["pidfile"].as<std::string>();
@@ -260,7 +158,7 @@ main(int argc, char* argv[]) {
         stream << boost::lexical_cast<std::string>(config->logging().loggers());
 
         auto log = registry->builder<blackhole::config::json_t>(stream)
-            .build("core");
+            .build(backend);
 
         root.reset(new blackhole::root_logger_t(std::move(log)));
         logger.reset(new blackhole::wrapper_t(*root, {}));
@@ -270,47 +168,39 @@ main(int argc, char* argv[]) {
     }
 
     COCAINE_LOG_INFO(logger, "initializing the server");
-    std::unique_ptr<cocaine::logging::logger_t> wrapper(new blackhole::wrapper_t(*root, {{"source", "signal_handler"}}));
-    auto wrapper_ref = std::ref(*wrapper);
-    std::set<int> signals = { SIGPIPE, SIGINT, SIGQUIT, SIGTERM, SIGCHLD, SIGHUP };
-    signal::handler_t signal_handler(std::move(wrapper), signals);
 
-    // Set handlers for signals
-    signal_handler.async_wait(SIGPIPE, sigpipe_handler_t{signal_handler});
-    signal_handler.async_wait(SIGINT, terminate_handler_t());
-    signal_handler.async_wait(SIGQUIT, terminate_handler_t());
-    signal_handler.async_wait(SIGTERM, terminate_handler_t());
+    auto slog = std::make_shared<blackhole::wrapper_t>(*root, blackhole::attributes_t{
+        {"source", "runtime/signals"}
+    });
 
-    // Start signal handling thread
-    std::thread sig_thread(&run_signal_handler, std::ref(signal_handler), wrapper_ref);
-
-    // Run context
+    // Run context.
     std::unique_ptr<context_t> context;
     try {
         context = make_context(std::move(config), std::move(logger));
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(root, "unable to initialize the context - {}.", error::to_string(e));
-        signal_handler.stop();
-        sig_thread.join();
-        return 1;
+        return EXIT_FAILURE;
     }
 
+    // Signal handling.
 
-    // Handlers for context os_signal slot
-    auto hup_handler_cancellation = signal_handler.async_wait(SIGHUP, sighup_handler_t{*root, wrapper_ref.get(), *registry, signal_handler, *context});
-    auto child_handler_cancellation = signal_handler.async_wait(SIGCHLD, sigchild_handler_t{*context, signal_handler});
+    signal::handler_t handler(slog, {SIGPIPE, SIGINT, SIGQUIT, SIGTERM, SIGCHLD, SIGHUP});
 
-    // Wait until signaling termination
-    std::unique_lock<std::mutex> lock(finalizer_mutex);
-    finalizer_cv.wait(lock, [&] { return finalize; });
+    signal::engine_t engine(handler, slog);
+    engine.on(SIGHUP, propagate_t{context->signal_hub(), handler, [&] {
+        COCAINE_LOG_DEBUG(slog, "resetting logger");
+        std::stringstream stream;
+        stream << boost::lexical_cast<std::string>(context->config().logging().loggers());
 
-    // unlock the mutex, as we don't need it anymore to prevent deadlock with several terminate calls
-    lock.unlock();
+        // Create a new logger before swap to be sure that no events are missed.
+        *root = registry->builder<blackhole::config::json_t>(stream)
+            .build(backend);
+        COCAINE_LOG_INFO(slog, "core logger has been successfully reset");
+    }});
+    engine.on(SIGCHLD, propagate_t{context->signal_hub(), handler, {}});
+    engine.ignore(SIGPIPE);
+    engine.start();
+    engine.wait_for({SIGINT, SIGTERM, SIGQUIT});
 
-    hup_handler_cancellation.cancel();
-    child_handler_cancellation.cancel();
-    context.reset(nullptr);
-    signal_handler.stop();
-    sig_thread.join();
-    return 0;
+    return EXIT_SUCCESS;
 }
