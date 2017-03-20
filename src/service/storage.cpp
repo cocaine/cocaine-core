@@ -125,25 +125,29 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
             const auth::identity_t& identity,
             const std::shared_ptr<logging::logger_t>& log)
         {
-            authorization->verify<io::storage::read>(collection, key, identity);
-
             cocaine::deferred<std::string> deferred;
-
-            backend->read(collection, key, [=](std::future<std::string> future) mutable {
-                try {
-                    auto result = future.get();
-                    COCAINE_LOG_INFO(log, "completed 'read' operation", {
-                        {"size", result.size()},
-                    });
-
-                    deferred.write(std::move(result));
-                } catch (const std::system_error& err) {
-                    COCAINE_LOG_WARNING(log, "failed to complete 'read' operation", {
-                        {"code", err.code().value()},
-                        {"error", error::to_string(err)},
-                    });
-                    deferred.abort(err.code(), err.what());
+            authorization->verify<io::storage::read>(collection, key, identity, [=](std::error_code ec) mutable {
+                if (ec) {
+                    deferred.abort(ec, "Permission denied");
+                    return;
                 }
+
+                backend->read(collection, key, [=](std::future<std::string> future) mutable {
+                    try {
+                        auto result = future.get();
+                        COCAINE_LOG_INFO(log, "completed 'read' operation", {
+                            {"size", result.size()},
+                        });
+
+                        deferred.write(std::move(result));
+                    } catch (const std::system_error& err) {
+                        COCAINE_LOG_WARNING(log, "failed to complete 'read' operation", {
+                            {"code", err.code().value()},
+                            {"error", error::to_string(err)},
+                        });
+                        deferred.abort(err.code(), err.what());
+                    }
+                });
             });
 
             return deferred;
@@ -161,26 +165,31 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
             const auth::identity_t& identity,
             const std::shared_ptr<logging::logger_t>& log)
     {
-        authorization->verify<io::storage::write>(collection, key, identity);
-
         cocaine::deferred<void> deferred;
 
-        const auto size = blob.size();
-        backend->write(collection, key, blob, tags, [=](std::future<void> future) mutable {
-            try {
-                future.get();
-                COCAINE_LOG_INFO(log, "completed 'write' operation", {
-                    {"size", size},
-                });
-
-                deferred.close();
-            } catch (const std::system_error& err) {
-                COCAINE_LOG_WARNING(log, "failed to complete 'write' operation", {
-                    {"code", err.code().value()},
-                    {"error", error::to_string(err)},
-                });
-                deferred.abort(err.code(), err.what());
+        authorization->verify<io::storage::write>(collection, key, identity, [=](std::error_code ec) mutable {
+            if (ec) {
+                deferred.abort(ec, "Permission denied");
+                return;
             }
+
+            const auto size = blob.size();
+            backend->write(collection, key, blob, tags, [=](std::future<void> future) mutable {
+                try {
+                    future.get();
+                    COCAINE_LOG_INFO(log, "completed 'write' operation", {
+                        {"size", size},
+                    });
+
+                    deferred.close();
+                } catch (const std::system_error& err) {
+                    COCAINE_LOG_WARNING(log, "failed to complete 'write' operation", {
+                        {"code", err.code().value()},
+                        {"error", error::to_string(err)},
+                    });
+                    deferred.abort(err.code(), err.what());
+                }
+            });
         });
 
         return deferred;
@@ -196,23 +205,28 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
             const auth::identity_t& identity,
             const std::shared_ptr<logging::logger_t>& log)
     {
-        authorization->verify<io::storage::remove>(collection, key, identity);
-
         cocaine::deferred<void> deferred;
 
-        backend->remove(collection, key, [=](std::future<void> future) mutable {
-            try {
-                future.get();
-                COCAINE_LOG_INFO(log, "completed 'remove' operation");
-
-                deferred.close();
-            } catch (const std::system_error& err) {
-                COCAINE_LOG_WARNING(log, "failed to complete 'remove' operation", {
-                    {"code", err.code().value()},
-                    {"error", error::to_string(err)},
-                });
-                deferred.abort(err.code(), err.what());
+        authorization->verify<io::storage::remove>(collection, key, identity, [=](std::error_code ec) mutable {
+            if (ec) {
+                deferred.abort(ec, "Permission denied");
+                return;
             }
+
+            backend->remove(collection, key, [=](std::future<void> future) mutable {
+                try {
+                    future.get();
+                    COCAINE_LOG_INFO(log, "completed 'remove' operation");
+
+                    deferred.close();
+                } catch (const std::system_error& err) {
+                    COCAINE_LOG_WARNING(log, "failed to complete 'remove' operation", {
+                        {"code", err.code().value()},
+                        {"error", error::to_string(err)},
+                    });
+                    deferred.abort(err.code(), err.what());
+                }
+            });
         });
 
         return deferred;
@@ -228,25 +242,30 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
             const auth::identity_t& identity,
             const std::shared_ptr<logging::logger_t>& log)
     {
-        authorization->verify<io::storage::find>(collection, "", identity);
-
         cocaine::deferred<std::vector<std::string>> deferred;
 
-        backend->find(collection, tags, [=](std::future<std::vector<std::string>> future) mutable {
-            try {
-                auto result = future.get();
-                COCAINE_LOG_INFO(log, "completed 'find' operation", {
-                    {"keys", result.size()},
-                });
-
-                deferred.write(std::move(result));
-            } catch (const std::system_error& err) {
-                COCAINE_LOG_WARNING(log, "failed to complete 'find' operation", {
-                    {"code", err.code().value()},
-                    {"error", error::to_string(err)},
-                });
-                deferred.abort(err.code(), err.what());
+        authorization->verify<io::storage::find>(collection, "", identity, [=](std::error_code ec) mutable {
+            if (ec) {
+                deferred.abort(ec, "Permission denied");
+                return;
             }
+
+            backend->find(collection, tags, [=](std::future<std::vector<std::string>> future) mutable {
+                try {
+                    auto result = future.get();
+                    COCAINE_LOG_INFO(log, "completed 'find' operation", {
+                        {"keys", result.size()},
+                    });
+
+                    deferred.write(std::move(result));
+                } catch (const std::system_error& err) {
+                    COCAINE_LOG_WARNING(log, "failed to complete 'find' operation", {
+                        {"code", err.code().value()},
+                        {"error", error::to_string(err)},
+                    });
+                    deferred.abort(err.code(), err.what());
+                }
+            });
         });
 
         return deferred;

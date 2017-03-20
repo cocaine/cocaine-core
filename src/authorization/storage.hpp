@@ -13,10 +13,6 @@ public:
     disabled_t(context_t& context, const std::string& service, const dynamic_t& args);
 
     auto
-    verify(std::size_t event, const std::string& collection, const std::string& key, const auth::identity_t& identity)
-        -> void override;
-
-    auto
     verify(std::size_t event, const std::string& collection, const std::string& key, const auth::identity_t& identity, callback_type callback)
         -> void override;
 };
@@ -29,16 +25,12 @@ public:
     enabled_t(context_t& context, const std::string& service, const dynamic_t& args);
 
     auto
-    verify(std::size_t event, const std::string& collection, const std::string& key, const auth::identity_t& identity)
-        -> void override;
-
-    auto
     verify(std::size_t event, const std::string& collection, const std::string& key, const auth::identity_t& identity, callback_type callback)
         -> void override;
 
 private:
     auto
-    verify(std::size_t event, const std::string& collection, const std::vector<auth::uid_t>& uids)
+    verify(std::size_t event, const std::string& collection, const std::vector<auth::uid_t>& uids, callback_type callback)
         -> void;
 };
 

@@ -24,8 +24,8 @@ public:
 
     template<typename Event>
     auto
-    verify(const std::string& collection, const std::string& key, const auth::identity_t& identity) -> void {
-        verify(io::event_traits<Event>::id, collection, key, identity);
+    verify(const std::string& collection, const std::string& key, const auth::identity_t& identity, callback_type callback) -> void {
+        verify(io::event_traits<Event>::id, collection, key, identity, std::move(callback));
     }
 
     /// Verifies access to a collection for the given identity.
@@ -38,11 +38,6 @@ public:
     /// \param collection Collection to operate with.
     /// \param key Key to operate with.
     /// \param identity Identity of a user or users ithat wish to operate with the resource.
-    virtual
-    auto
-    verify(std::size_t event, const std::string& collection, const std::string& key, const auth::identity_t& identity)
-        -> void = 0;
-
     virtual
     auto
     verify(std::size_t event, const std::string& collection, const std::string& key, const auth::identity_t& identity, callback_type callback)
