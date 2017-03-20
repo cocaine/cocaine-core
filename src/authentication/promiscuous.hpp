@@ -33,9 +33,9 @@ public:
             for (const auto& uid : splitted) {
                 uids.push_back(boost::lexical_cast<std::uint64_t>(uid));
             }
-            return auth::identity_t{std::move(uids)};
+            return auth::identity_t::builder_t().uids(std::move(uids)).build();
         } catch (const std::exception&) {
-            return auth::identity_t{{}};
+            return auth::identity_t::builder_t().build();
         }
     }
 };

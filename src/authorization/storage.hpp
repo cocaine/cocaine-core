@@ -30,7 +30,7 @@ public:
 
 private:
     auto
-    verify(std::size_t event, const std::string& collection, const std::vector<auth::uid_t>& uids, callback_type callback)
+    verify(std::size_t event, const std::string& collection, const auth::identity_t& identity, callback_type callback)
         -> void;
 };
 

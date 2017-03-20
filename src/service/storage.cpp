@@ -73,11 +73,13 @@ private:
         -> std::shared_ptr<logging::logger_t>
     {
         auto identity = extract_identity(args...);
+        auto cids = identity.cids();
         auto uids = identity.uids();
         return std::make_shared<blackhole::wrapper_t>(*logger, blackhole::attributes_t{
             {"event", std::string(Event::alias())},
             {"collection", collection},
             {"key", key},
+            {"cids", cocaine::format("[{}]", boost::join(cids | boost::adaptors::transformed(static_cast<std::string(*)(auth::cid_t)>(std::to_string)), ";"))},
             {"uids", cocaine::format("[{}]", boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(auth::uid_t)>(std::to_string)), ";"))},
         });
     }
@@ -88,10 +90,12 @@ private:
         -> std::shared_ptr<logging::logger_t>
     {
         auto identity = extract_identity(args...);
+        auto cids = identity.cids();
         auto uids = identity.uids();
         return std::make_shared<blackhole::wrapper_t>(*logger, blackhole::attributes_t{
             {"event", std::string(io::storage::find::alias())},
             {"collection", collection},
+            {"cids", cocaine::format("[{}]", boost::join(cids | boost::adaptors::transformed(static_cast<std::string(*)(auth::cid_t)>(std::to_string)), ";"))},
             {"uids", cocaine::format("[{}]", boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(auth::uid_t)>(std::to_string)), ";"))},
         });
     }
@@ -128,6 +132,10 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
             cocaine::deferred<std::string> deferred;
             authorization->verify<io::storage::read>(collection, key, identity, [=](std::error_code ec) mutable {
                 if (ec) {
+                    COCAINE_LOG_WARNING(log, "failed to complete 'read' operation", {
+                        {"code", ec.value()},
+                        {"error", ec.message()},
+                    });
                     deferred.abort(ec, "Permission denied");
                     return;
                 }
@@ -169,6 +177,10 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
 
         authorization->verify<io::storage::write>(collection, key, identity, [=](std::error_code ec) mutable {
             if (ec) {
+                COCAINE_LOG_WARNING(log, "failed to complete 'write' operation", {
+                    {"code", ec.value()},
+                    {"error", ec.message()},
+                });
                 deferred.abort(ec, "Permission denied");
                 return;
             }
@@ -209,6 +221,10 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
 
         authorization->verify<io::storage::remove>(collection, key, identity, [=](std::error_code ec) mutable {
             if (ec) {
+                COCAINE_LOG_WARNING(log, "failed to complete 'remove' operation", {
+                    {"code", ec.value()},
+                    {"error", ec.message()},
+                });
                 deferred.abort(ec, "Permission denied");
                 return;
             }
@@ -246,6 +262,10 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
 
         authorization->verify<io::storage::find>(collection, "", identity, [=](std::error_code ec) mutable {
             if (ec) {
+                COCAINE_LOG_WARNING(log, "failed to complete 'find' operation", {
+                    {"code", ec.value()},
+                    {"error", ec.message()},
+                });
                 deferred.abort(ec, "Permission denied");
                 return;
             }

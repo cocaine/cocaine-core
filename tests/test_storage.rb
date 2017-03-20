@@ -127,9 +127,12 @@ RSpec.describe Cocaine::Service do
     end
 
     it 'forbids to add permissions for user `random` with user `random` credentials' do
-      perm = {
-        UIDS[:random].to_i => 0x01 | 0x02,
-      }
+      perm = [
+        {},
+        {
+          UIDS[:random].to_i => 0x01 | 0x02,
+        }
+      ]
 
       tx, rx = s.write(COLLECTION_ACLS, 'secrets', MessagePack.pack(perm), [],
         :authorization => UIDS[:random]
@@ -141,10 +144,13 @@ RSpec.describe Cocaine::Service do
     end
 
     it 'adds read permissions for user `random` with user `esafronov` credentials' do
-      perm = {
-        UIDS[:random].to_i => 0x01,
-        UIDS[:esafronov].to_i => 0x01 | 0x02,
-      }
+      perm = [
+        {},
+        {
+          UIDS[:random].to_i => 0x01,
+          UIDS[:esafronov].to_i => 0x01 | 0x02,
+        }
+      ]
 
       tx, rx = s.write(COLLECTION_ACLS, 'secrets', MessagePack.pack(perm), [],
         :authorization => UIDS[:esafronov]

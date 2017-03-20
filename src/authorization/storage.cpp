@@ -5,6 +5,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/range/adaptor/transformed.hpp>
+#include <boost/range/numeric.hpp>
 
 #include "cocaine/api/storage.hpp"
 #include "cocaine/context.hpp"
@@ -15,6 +16,7 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/traits/enum.hpp"
 #include "cocaine/traits/map.hpp"
+#include "cocaine/traits/tuple.hpp"
 
 namespace cocaine {
 namespace authorization {
@@ -23,12 +25,57 @@ namespace storage {
 namespace {
 
 enum flags_t: std::size_t {
+    none  = 0x00,
     read  = 0x01,
     write = 0x02,
     both  = read | write
 };
 
-using metainfo_t = std::map<auth::uid_t, flags_t>;
+struct metainfo_t {
+    std::map<auth::cid_t, flags_t> c_perms;
+    std::map<auth::uid_t, flags_t> u_perms;
+
+    auto
+    empty() const -> bool {
+        return c_perms.empty() && u_perms.empty();
+    }
+};
+
+} // namespace
+} // namespace storage
+} // namespace authorization
+} // namespace cocaine
+
+namespace cocaine { namespace io {
+
+template<>
+struct type_traits<authorization::storage::metainfo_t> {
+    typedef boost::mpl::list<
+        std::map<auth::cid_t, authorization::storage::flags_t>,
+        std::map<auth::uid_t, authorization::storage::flags_t>
+    > underlying_type;
+
+    template<class Stream>
+    static inline
+    void
+    pack(msgpack::packer<Stream>& target, const authorization::storage::metainfo_t& source) {
+        type_traits<underlying_type>::pack(target, source.c_perms, source.u_perms);
+    }
+
+    static inline
+    void
+    unpack(const msgpack::object& source, authorization::storage::metainfo_t& target) {
+        type_traits<underlying_type>::unpack(source, target.c_perms, target.u_perms);
+    }
+};
+
+}} // namespace cocaine::io
+
+namespace cocaine {
+namespace authorization {
+namespace storage {
+
+namespace {
 
 struct operation_t {
     flags_t flag;
@@ -84,37 +131,66 @@ auto
 enabled_t::verify(std::size_t event, const std::string& collection, const std::string& key, const auth::identity_t& identity, callback_type callback)
     -> void
 {
-    auto& uids = identity.uids();
     if (collection == defaults::collection_acls) {
         // Permissions change.
         // TODO: Do we really want to allow users to change permissions this way? It may lead to
         // format corruption.
-        verify(event, key, uids, std::move(callback));
+        verify(event, key, identity, std::move(callback));
     } else {
-        verify(event, collection, uids, std::move(callback));
+        verify(event, collection, identity, std::move(callback));
     }
 }
 
+template<typename T, typename P>
+auto extract_permissions(const T& credentials, P& perms) -> std::size_t {
+    using value_type = typename T::value_type;
+
+    if (credentials.empty()) {
+        return flags_t::none;
+    }
+
+    return boost::accumulate(
+        credentials,
+        static_cast<std::size_t>(flags_t::both),
+        [&](std::size_t acc, value_type id) {
+            return acc & perms[id];
+        }
+    );
+}
+
 auto
-enabled_t::verify(std::size_t event, const std::string& collection, const std::vector<auth::uid_t>& uids, callback_type callback)
+enabled_t::verify(std::size_t event, const std::string& collection, const auth::identity_t& identity, callback_type callback)
     -> void
 {
+    using auth::cid_t;
+    using auth::uid_t;
+
+    auto& cids = identity.cids();
+    auto& uids = identity.uids();
+
     auto on_metainfo = [=](metainfo_t metainfo) mutable {
-        COCAINE_LOG_DEBUG(log, "read metainfo with {} records", metainfo.size());
+        COCAINE_LOG_DEBUG(log, "read metainfo with {} cid and {} uid records",
+            metainfo.c_perms.size(), metainfo.u_perms.size());
 
         const auto op = operation_t::from(event);
         // Owned collection must have at least one record. Otherwise it is treated as common, until
         // someone performs write operation over.
         if (metainfo.empty()) {
-            if (op.is_write() && uids.size() > 0) {
-                COCAINE_LOG_INFO(log, "initializing ACL for '{}' collection for uid(s) [{}]", collection,
+            if (op.is_write() && (cids.size() > 0 || uids.size() > 0)) {
+                COCAINE_LOG_INFO(log, "initializing ACL for '{}' collection for cid(s) [{}] and uid(s) [{}]", collection,
+                    [&](std::ostream& stream) -> std::ostream& {
+                        return stream << boost::join(cids | boost::adaptors::transformed(static_cast<std::string(*)(auth::cid_t)>(std::to_string)), ", ");
+                    },
                     [&](std::ostream& stream) -> std::ostream& {
                         return stream << boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(auth::uid_t)>(std::to_string)), ", ");
                     }
                 );
 
+                for (auto cid : cids) {
+                    metainfo.c_perms[cid] = flags_t::both;
+                }
                 for (auto uid : uids) {
-                    metainfo[uid] = flags_t::both;
+                    metainfo.u_perms[uid] = flags_t::both;
                 }
                 backend->put<metainfo_t>(defaults::collection_acls, collection, metainfo, {}, [=](std::future<void> future) mutable {
                     try {
@@ -127,14 +203,9 @@ enabled_t::verify(std::size_t event, const std::string& collection, const std::v
                 return;
             }
         } else {
-            const auto allowed = std::all_of(std::begin(uids), std::end(uids), [&](auth::uid_t uid) {
-                return (metainfo[uid] & op.flag) == op.flag;
-            });
-
-            if (uids.empty()) {
-                callback(make_error_code(std::errc::permission_denied));
-                return;
-            }
+            auto c_perm = extract_permissions(cids, metainfo.c_perms);
+            auto u_perm = extract_permissions(uids, metainfo.u_perms);
+            auto allowed = ((c_perm | u_perm) & op.flag) == op.flag;
 
             if (!allowed) {
                 callback(make_error_code(std::errc::permission_denied));
