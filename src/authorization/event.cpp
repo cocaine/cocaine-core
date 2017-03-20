@@ -25,7 +25,7 @@ class enabled_t::control_t : public std::enable_shared_from_this<enabled_t::cont
     const std::string path;
     const std::shared_ptr<logging::logger_t> log;
 
-    // ACL mapping. for example:
+    // ACL mapping, for example:
     //
     // ```
     // "unicorn": {
