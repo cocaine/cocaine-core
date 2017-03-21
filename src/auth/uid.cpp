@@ -15,6 +15,24 @@ identity_t::builder_t::builder_t() :
 identity_t::builder_t::~builder_t() = default;
 
 auto
+identity_t::builder_t::cids(std::vector<cid_t> cids) & -> builder_t& {
+    d->cids = std::move(cids);
+    return *this;
+}
+
+auto
+identity_t::builder_t::cids(std::vector<cid_t> cids) && -> builder_t&& {
+    d->cids = std::move(cids);
+    return std::move(*this);
+}
+
+auto
+identity_t::builder_t::uids(std::vector<uid_t> uids) & -> builder_t& {
+    d->uids = std::move(uids);
+    return *this;
+}
+
+auto
 identity_t::builder_t::uids(std::vector<uid_t> uids) && -> builder_t&& {
     d->uids = std::move(uids);
     return std::move(*this);

@@ -28,6 +28,15 @@ public:
         ~builder_t();
 
         auto
+        cids(std::vector<cid_t> cids) & -> builder_t&;
+
+        auto
+        cids(std::vector<cid_t> cids) && -> builder_t&&;
+
+        auto
+        uids(std::vector<uid_t> uids) & -> builder_t&;
+
+        auto
         uids(std::vector<uid_t> uids) && -> builder_t&&;
 
         auto
