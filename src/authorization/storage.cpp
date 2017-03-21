@@ -12,6 +12,7 @@
 #include "cocaine/dynamic.hpp"
 #include "cocaine/errors.hpp"
 #include "cocaine/format.hpp"
+#include "cocaine/format/vector.hpp"
 #include "cocaine/idl/storage.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/traits/enum.hpp"
@@ -177,12 +178,12 @@ enabled_t::verify(std::size_t event, const std::string& collection, const auth::
         // someone performs write operation over.
         if (metainfo.empty()) {
             if (op.is_write() && (cids.size() > 0 || uids.size() > 0)) {
-                COCAINE_LOG_INFO(log, "initializing ACL for '{}' collection for cid(s) [{}] and uid(s) [{}]", collection,
+                COCAINE_LOG_INFO(log, "initializing ACL for '{}' collection for cid(s) {} and uid(s) {}", collection,
                     [&](std::ostream& stream) -> std::ostream& {
-                        return stream << boost::join(cids | boost::adaptors::transformed(static_cast<std::string(*)(auth::cid_t)>(std::to_string)), ", ");
+                        return display<std::vector<auth::cid_t>>::apply(stream, cids);
                     },
                     [&](std::ostream& stream) -> std::ostream& {
-                        return stream << boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(auth::uid_t)>(std::to_string)), ", ");
+                        return display<std::vector<auth::uid_t>>::apply(stream, uids);
                     }
                 );
 

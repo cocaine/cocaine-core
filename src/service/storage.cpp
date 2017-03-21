@@ -28,14 +28,15 @@
 #include <blackhole/scope/holder.hpp>
 #include <blackhole/wrapper.hpp>
 
-#include "cocaine/api/storage.hpp"
 #include "cocaine/api/authorization/storage.hpp"
+#include "cocaine/api/storage.hpp"
 #include "cocaine/context.hpp"
 #include "cocaine/context/config.hpp"
 #include "cocaine/dynamic/dynamic.hpp"
+#include "cocaine/format/vector.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/middleware/auth.hpp"
 #include "cocaine/middleware/headers.hpp"
-#include "cocaine/logging.hpp"
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -79,8 +80,8 @@ private:
             {"event", std::string(Event::alias())},
             {"collection", collection},
             {"key", key},
-            {"cids", cocaine::format("[{}]", boost::join(cids | boost::adaptors::transformed(static_cast<std::string(*)(auth::cid_t)>(std::to_string)), ";"))},
-            {"uids", cocaine::format("[{}]", boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(auth::uid_t)>(std::to_string)), ";"))},
+            {"cids", display<std::vector<auth::cid_t>>::apply(cids)},
+            {"uids", display<std::vector<auth::uid_t>>::apply(uids)},
         });
     }
 
@@ -95,8 +96,8 @@ private:
         return std::make_shared<blackhole::wrapper_t>(*logger, blackhole::attributes_t{
             {"event", std::string(io::storage::find::alias())},
             {"collection", collection},
-            {"cids", cocaine::format("[{}]", boost::join(cids | boost::adaptors::transformed(static_cast<std::string(*)(auth::cid_t)>(std::to_string)), ";"))},
-            {"uids", cocaine::format("[{}]", boost::join(uids | boost::adaptors::transformed(static_cast<std::string(*)(auth::uid_t)>(std::to_string)), ";"))},
+            {"cids", display<std::vector<auth::cid_t>>::apply(cids)},
+            {"uids", display<std::vector<auth::uid_t>>::apply(uids)},
         });
     }
 
