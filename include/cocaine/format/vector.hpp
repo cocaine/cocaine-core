@@ -17,12 +17,12 @@ struct display<std::vector<T>> {
 
         stream << "[";
         for (auto& v : value) {
-            stream << v;
-            written += 1;
-
-            if (written > 1) {
+            if (written > 0) {
                 stream << delim;
             }
+
+            stream << v;
+            written += 1;
         }
         stream << "]";
 
@@ -35,6 +35,17 @@ struct display<std::vector<T>> {
         std::ostringstream stream;
         display<std::vector<T>>::apply(stream, value, delim);
         return stream.str();
+    }
+};
+
+template<typename T>
+struct display_traits<std::vector<T>> {
+    static
+    auto
+    apply(const std::vector<T>& value) -> std::function<std::ostream&(std::ostream&)> {
+        return [&](std::ostream& stream) -> std::ostream& {
+            return display<std::vector<T>>::apply(stream, value);
+        };
     }
 };
 

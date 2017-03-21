@@ -25,13 +25,25 @@
 
 namespace cocaine {
 
+/// Specialize this trait if you want custom behavior while formatting arguments.
+template<typename T>
+struct display_traits {
+    static
+    auto
+    apply(const T& value) -> const T& {
+        return value;
+    }
+};
+
 template<class... Args>
 inline
 std::string
 format(const std::string& format, const Args&... args) {
-    blackhole::fmt::MemoryWriter writer;
     try {
-        return blackhole::fmt::format(format, args...);
+        return blackhole::fmt::format(
+            format,
+            display_traits<Args>::apply(args)...
+        );
     } catch(const blackhole::fmt::FormatError& e) {
         return std::string("<unable to format message - ") + e.what() + ">";
     }

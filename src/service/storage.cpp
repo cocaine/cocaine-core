@@ -80,8 +80,8 @@ private:
             {"event", std::string(Event::alias())},
             {"collection", collection},
             {"key", key},
-            {"cids", display<std::vector<auth::cid_t>>::apply(cids)},
-            {"uids", display<std::vector<auth::uid_t>>::apply(uids)},
+            {"cids", cocaine::format("{}", cids)},
+            {"uids", cocaine::format("{}", uids)},
         });
     }
 
@@ -96,8 +96,8 @@ private:
         return std::make_shared<blackhole::wrapper_t>(*logger, blackhole::attributes_t{
             {"event", std::string(io::storage::find::alias())},
             {"collection", collection},
-            {"cids", display<std::vector<auth::cid_t>>::apply(cids)},
-            {"uids", display<std::vector<auth::uid_t>>::apply(uids)},
+            {"cids", cocaine::format("{}", cids)},
+            {"uids", cocaine::format("{}", uids)},
         });
     }
 
