@@ -21,7 +21,7 @@ struct display<std::vector<T>> {
                 stream << delim;
             }
 
-            stream << v;
+            display<T>::apply(stream, v);
             written += 1;
         }
         stream << "]";
@@ -39,14 +39,7 @@ struct display<std::vector<T>> {
 };
 
 template<typename T>
-struct display_traits<std::vector<T>> {
-    static
-    auto
-    apply(const std::vector<T>& value) -> std::function<std::ostream&(std::ostream&)> {
-        return [&](std::ostream& stream) -> std::ostream& {
-            return display<std::vector<T>>::apply(stream, value);
-        };
-    }
+struct display_traits<std::vector<T>> : public lazy_display<std::vector<T>> {
 };
 
 } // namespace cocaine

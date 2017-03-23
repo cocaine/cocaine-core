@@ -34,6 +34,7 @@
 #include "cocaine/rpc/actor.hpp"
 #include "cocaine/repository/service.hpp"
 #include "cocaine/trace/logger.hpp"
+#include "cocaine/format/vector.hpp"
 
 #include <boost/optional/optional.hpp>
 
@@ -44,7 +45,6 @@
 #include <metrics/registry.hpp>
 
 #include <deque>
-#include <boost/algorithm/string/join.hpp>
 
 namespace cocaine {
 
@@ -155,11 +155,7 @@ public:
             // Signal and stop all the services, shut down execution units.
             terminate();
 
-            const auto errored_str = boost::algorithm::join(errored, ", ");
-
-            throw cocaine::error_t("couldn't start core because of {} service(s): {}",
-                                   errored.size(), errored_str
-            );
+            throw cocaine::error_t("couldn't start core because of {} service(s): {}", errored.size(), errored);
         } else {
             m_signals.invoke<io::context::prepared>();
         }
