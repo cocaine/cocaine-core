@@ -107,7 +107,7 @@ struct deferred_base {
     typedef io::primitive<type> protocol;
 
     deferred_base():
-            outbox(new synchronized<queue_type>())
+        outbox(new synchronized<queue_type>())
     { }
 
     std::error_code
