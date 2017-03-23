@@ -40,6 +40,15 @@ public:
         m_channel_id(channel_id)
     { }
 
+    /// Detaches underlying session and closes connection.
+    ///
+    /// This will discard all active chanels and close connecton to client,
+    /// it can only be used as a last resort to signal unrecoverable error.
+    void
+    detach_session(const std::error_code& ec) {
+        m_session->detach(ec);
+    }
+
     void
     send(encoder_t::message_type message) {
         m_session->push(std::move(message));
