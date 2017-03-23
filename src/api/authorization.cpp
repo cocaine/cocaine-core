@@ -19,6 +19,16 @@ namespace api {
 namespace authorization {
 
 auto
+event(context_t& context, const std::string& service) -> std::shared_ptr<event_t> {
+    const auto name = "event";
+    if (auto cfg = context.config().component_group("authorizations").get(name)) {
+        return context.repository().get<event_t>(cfg->type(), context, name, service, cfg->args());
+    }
+
+    throw error_t(error::component_not_found, "authorizations \"event\" component not found in the config");
+}
+
+auto
 storage(context_t& context, const std::string& service) -> std::shared_ptr<storage_t> {
     const auto name = "storage";
     if (auto cfg = context.config().component_group("authorizations").get(name)) {

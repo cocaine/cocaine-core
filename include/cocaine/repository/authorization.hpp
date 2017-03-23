@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cocaine/api/authorization/event.hpp"
 #include "cocaine/api/authorization/storage.hpp"
 #include "cocaine/api/authorization/unicorn.hpp"
 #include "cocaine/common.hpp"
@@ -26,6 +27,9 @@ struct make_category {
         }
     };
 };
+
+template<>
+struct category_traits<authorization::event_t> : public make_category<authorization::event_t> {};
 
 template<>
 struct category_traits<authorization::storage_t> : public make_category<authorization::storage_t> {};

@@ -42,6 +42,8 @@
 void
 cocaine::essentials::initialize(api::repository_t& repository) {
     repository.insert<authentication::promiscuous_t>("promiscuous");
+    repository.insert<authorization::event::disabled_t>("disabled");
+    repository.insert<authorization::event::enabled_t>("event");
     repository.insert<authorization::storage::disabled_t>("disabled");
     repository.insert<authorization::storage::enabled_t>("storage");
     repository.insert<authorization::unicorn::disabled_t>("disabled");
