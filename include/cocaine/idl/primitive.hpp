@@ -34,10 +34,8 @@ namespace cocaine { namespace io {
 template<class T>
 struct primitive {
 
-static_assert(
-    boost::mpl::is_sequence<T>::value,
-    "primitive protocol template argument must be a type sequence"
-);
+static_assert(boost::mpl::is_sequence<T>::value,
+    "primitive protocol template argument must be a type sequence");
 
 struct value {
     typedef primitive_tag<T> tag;
@@ -84,6 +82,7 @@ struct protocol<primitive_tag<T>> {
     >::type messages;
 
     typedef primitive<T> scope;
+    typedef primitive_tag<T> transition_type;
 };
 
 }} // namespace cocaine::io

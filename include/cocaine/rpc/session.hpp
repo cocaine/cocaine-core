@@ -21,13 +21,12 @@
 #ifndef COCAINE_IO_SESSION_HPP
 #define COCAINE_IO_SESSION_HPP
 
-#include "cocaine/common.hpp"
-#include "cocaine/locked_ptr.hpp"
-
 #include <asio/generic/stream_protocol.hpp>
 
-#include "cocaine/rpc/asio/encoder.hpp"
+#include "cocaine/common.hpp"
+#include "cocaine/locked_ptr.hpp"
 #include "cocaine/rpc/asio/decoder.hpp"
+#include "cocaine/rpc/asio/encoder.hpp"
 
 namespace cocaine {
 
@@ -61,6 +60,7 @@ class session_t:
 
     // Initial dispatch. Internally synchronized.
     const io::dispatch_ptr_t prototype;
+    io::dispatch_ptr_t service_dispatch;
 
     // Virtual channels.
     synchronized<channel_map_t> channels;
@@ -122,7 +122,10 @@ private:
     // messages to remote peers.
 
     void
-    revoke(uint64_t channel_id);
+    revoke(uint64_t id);
+
+    void
+    revoke(uint64_t id, std::error_code ec);
 };
 
 template<class Protocol>

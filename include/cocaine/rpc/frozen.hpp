@@ -57,7 +57,7 @@ make_frozen(Args&&... args) {
 template<class Tag>
 struct make_frozen_over {
     typedef typename mpl::transform<
-        typename messages<Tag>::type,
+        typename messages<Tag>::full::type,
         typename mpl::lambda<frozen<mpl::_1>>
     >::type frozen_types;
 

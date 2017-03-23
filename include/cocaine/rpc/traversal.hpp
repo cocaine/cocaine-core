@@ -41,13 +41,14 @@ namespace aux {
 
 template<class It, class End>
 struct traverse_impl {
-    typedef typename mpl::deref<It>::type event_type;
+    typedef typename mpl::deref<It>::type::first event_type;
+    typedef typename mpl::deref<It>::type::second id;
     typedef event_traits<event_type> traits_type;
 
     static inline
     void
     apply(graph_root_t& vertex) {
-        vertex[traits_type::id] = std::forward_as_tuple(event_type::alias(),
+        vertex[id::value] = std::forward_as_tuple(event_type::alias(),
             std::is_same<typename traits_type::dispatch_type, typename event_type::tag>::value
               ? boost::none
               : traverse<typename traits_type::dispatch_type, graph_node_t>(),
@@ -60,7 +61,7 @@ struct traverse_impl {
     static inline
     void
     apply(graph_node_t& vertex) {
-        vertex[traits_type::id] = std::forward_as_tuple(event_type::alias(),
+        vertex[id::value] = std::forward_as_tuple(event_type::alias(),
             std::is_same<typename traits_type::dispatch_type, typename event_type::tag>::value
               ? boost::none
               : traverse<typename traits_type::dispatch_type, graph_node_t>()
@@ -94,8 +95,8 @@ traverse() -> boost::optional<Vertex> {
     Vertex vertex;
 
     aux::traverse_impl<
-        typename mpl::begin<typename messages<Tag>::type>::type,
-        typename mpl::end  <typename messages<Tag>::type>::type
+        typename mpl::begin<typename mapped_messages<Tag>::type>::type,
+        typename mpl::end  <typename mapped_messages<Tag>::type>::type
     >::apply(vertex);
 
     return vertex;

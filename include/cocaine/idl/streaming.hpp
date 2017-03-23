@@ -97,6 +97,7 @@ struct protocol<streaming_tag<T>> {
     >::type messages;
 
     typedef streaming<T> scope;
+    typedef streaming_tag<T> transition_type;
 };
 
 }} // namespace cocaine::io

@@ -20,14 +20,6 @@
 
 #include "cocaine/rpc/session.hpp"
 
-#include "cocaine/hpack/static_table.hpp"
-#include "cocaine/logging.hpp"
-
-#include "cocaine/rpc/asio/transport.hpp"
-
-#include "cocaine/rpc/basic_dispatch.hpp"
-#include "cocaine/rpc/upstream.hpp"
-
 #include <asio/ip/tcp.hpp>
 #include <asio/local/stream_protocol.hpp>
 
@@ -38,6 +30,13 @@
 #include <metrics/meter.hpp>
 #include <metrics/registry.hpp>
 #include <metrics/timer.hpp>
+
+#include "cocaine/hpack/static_table.hpp"
+#include "cocaine/logging.hpp"
+#include "cocaine/rpc/asio/transport.hpp"
+#include "cocaine/rpc/basic_dispatch.hpp"
+#include "cocaine/rpc/dispatch.hpp"
+#include "cocaine/rpc/upstream.hpp"
 
 using namespace cocaine;
 using namespace cocaine::io;
@@ -223,6 +222,17 @@ session_t::session_t(std::unique_ptr<logging::logger_t> log_,
             );
         }
     }
+
+    auto dispatch = std::make_shared<cocaine::dispatch<io::control_tag>>("session");
+
+    dispatch->on<io::control::ping>([&] {
+        return;
+    });
+    dispatch->on<io::control::revoke>([&](std::uint64_t id, std::error_code ec) {
+        revoke(id, ec);
+    });
+
+    service_dispatch = std::move(dispatch);
 }
 
 session_t::~session_t() = default;
@@ -267,8 +277,16 @@ session_t::handle(const decoder_t::message_type& message) {
                 );
             }
 
+            io::dispatch_ptr_t dispatch;
+
+            if(message.type() < prototype->root().size()) {
+                dispatch = prototype;
+            } else {
+                dispatch = service_dispatch;
+            }
+
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
-                prototype,
+                dispatch,
                 std::make_shared<basic_upstream_t>(shared_from_this(), channel_id),
                 std::make_unique<metrics::timer_t::context_t>(metrics->timers.at(message.type())->context()),
                 incoming_trace
@@ -313,26 +331,33 @@ session_t::handle(const decoder_t::message_type& message) {
         // NOTE: If the client has sent us the last message according to our dispatch graph, revoke
         // the channel. No-op if the channel is no longer in the mapping, e.g., was discarded during
         // session::detach(), which was called during the dispatch::process().
-        if(!channel.unique()) revoke(channel_id);
+        if(!channel.unique()) {
+            revoke(channel_id);
+        }
     }
 }
 
 void
-session_t::revoke(uint64_t channel_id) {
+session_t::revoke(uint64_t id) {
+    revoke(id, std::error_code());
+}
+
+void
+session_t::revoke(uint64_t id, std::error_code ec) {
     channels.apply([&](channel_map_t& mapping) {
-        auto it = mapping.find(channel_id);
+        auto it = mapping.find(id);
 
         if(it == mapping.end()) {
-            COCAINE_LOG_WARNING(log, "ignoring revoke request for channel {:d}", channel_id);
+            COCAINE_LOG_WARNING(log, "ignoring revoke request for channel {:d}", id);
             return;
         }
 
         if(it->second->dispatch) {
-            COCAINE_LOG_ERROR(log, "revoking channel {:d}, dispatch: '{}'", channel_id,
+            COCAINE_LOG_ERROR(log, "revoking channel {:d}, dispatch: '{}'", id,
                 it->second->dispatch->name());
-            it->second->dispatch->discard(std::error_code());
+            it->second->dispatch->discard(ec);
         } else {
-            COCAINE_LOG_DEBUG(log, "revoking channel {:d}", channel_id);
+            COCAINE_LOG_DEBUG(log, "revoking channel {:d}", id);
         }
 
         mapping.erase(it);
