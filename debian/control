@@ -10,7 +10,7 @@ Build-Depends: cmake, cdbs, debhelper (>= 7.0.13), libltdl-dev, libmsgpack-dev,
  libboost-program-options-dev,
  metrics-dev (>= 3.0.0),
  blackhole-dev (>= 1.5.0)
-Standards-Version: 3.9.3
+Standards-Version: 3.9.5
 Vcs-Git: git://github.com/cocaine/cocaine-core.git
 Vcs-Browser: https://github.com/cocaine/cocaine-core
 
