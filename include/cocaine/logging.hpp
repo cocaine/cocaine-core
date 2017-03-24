@@ -27,6 +27,7 @@
 
 // TODO: Hide all blackhole includes from the public API.
 #include <blackhole/attribute.hpp>
+#include <blackhole/attributes.hpp>
 #include <blackhole/extensions/facade.hpp>
 
 // TODO: Do not include this file from public API.
@@ -45,6 +46,21 @@
 
 #define COCAINE_LOG_ERROR(__log__, ...) \
     COCAINE_LOG(__log__, ::cocaine::logging::error, __VA_ARGS__)
+
+namespace cocaine {
+
+/// Explicitly specialize for attribute list to avoid improper attribute list handling
+template<>
+struct display_traits<blackhole::attribute_list> {
+    using value_t = blackhole::attribute_list;
+    static
+    auto
+    apply(const value_t& value) -> const value_t& {
+        return value;
+    }
+};
+
+}
 
 namespace cocaine { namespace detail { namespace logging {
 
