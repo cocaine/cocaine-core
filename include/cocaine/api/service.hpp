@@ -29,9 +29,7 @@ struct service_t {
     typedef service_t category_type;
 
     virtual
-   ~service_t() {
-        // Empty.
-    }
+   ~service_t() = default;
 
     virtual
     auto
