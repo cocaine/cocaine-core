@@ -32,6 +32,8 @@ cocaine-core (0.12.13.0-alpha1) UNRELEASED; urgency=low
     and return with error code instead (#151).
   * Changed: upstreams are now able to demolish session in emergency
     case (#156).
+  * Changed: no longer `const` hell in dispatches, because they are mutable in
+    common case.
   * Fixed: storage with authorization is async again (#154).
     Storage authorization check internally uses storage backend for
     fetching/saving ACLs and it was implemented using synchronous storage
