@@ -50,7 +50,7 @@ struct deferred_slot:
     { }
 
     virtual
-    boost::optional<std::shared_ptr<const dispatch_type>>
+    boost::optional<std::shared_ptr<dispatch_type>>
     operator()(const std::vector<hpack::header_t>& headers,
                tuple_type&& args,
                upstream_type&& upstream)
@@ -66,7 +66,7 @@ struct deferred_slot:
         if(is_recursed<Event>::value) {
             return boost::none;
         } else {
-            return boost::make_optional<std::shared_ptr<const dispatch_type>>(nullptr);
+            return boost::make_optional<std::shared_ptr<dispatch_type>>(nullptr);
         }
     }
 };

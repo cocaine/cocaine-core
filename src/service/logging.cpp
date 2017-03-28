@@ -100,7 +100,7 @@ logging_t::logging_t(context_t& context, asio::io_service& asio, const std::stri
 }
 
 auto
-logging_t::prototype() const -> const io::basic_dispatch_t& {
+logging_t::prototype() -> io::basic_dispatch_t& {
     return *this;
 }
 

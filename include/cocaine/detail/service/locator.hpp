@@ -129,7 +129,7 @@ public:
 
     virtual
     auto
-    prototype() const -> const io::basic_dispatch_t&;
+    prototype() -> io::basic_dispatch_t&;
 
     // Cluster API
 

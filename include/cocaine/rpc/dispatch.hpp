@@ -106,7 +106,7 @@ public:
 public:
     virtual
     boost::optional<io::dispatch_ptr_t>
-    process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const;
+    process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream);
 
     virtual
     auto
@@ -124,7 +124,7 @@ public:
 
     template<class Visitor>
     auto
-    process(int id, const Visitor& visitor) const -> typename Visitor::result_type;
+    process(int id, const Visitor& visitor) -> typename Visitor::result_type;
 };
 
 template<class Tag>
@@ -359,14 +359,14 @@ dispatch<Tag>::halt() {
 
 template<class Tag>
 boost::optional<io::dispatch_ptr_t>
-dispatch<Tag>::process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) const {
+dispatch<Tag>::process(const io::decoder_t::message_type& message, const io::upstream_ptr_t& upstream) {
     return process(message.type(), aux::calling_visitor_t(message.headers(), message.args(), upstream));
 }
 
 template<class Tag>
 template<class Visitor>
 typename Visitor::result_type
-dispatch<Tag>::process(int id, const Visitor& visitor) const {
+dispatch<Tag>::process(int id, const Visitor& visitor) {
     typedef typename slot_map_t::mapped_type slot_ptr_type;
 
     const auto slot = m_slots.apply([&](const slot_map_t& mapping) -> slot_ptr_type {

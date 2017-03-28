@@ -98,7 +98,7 @@ public:
 
     virtual
     void
-    discard(const std::error_code& ec) const;
+    discard(const std::error_code& ec);
 
 private:
     void
@@ -109,7 +109,7 @@ private:
 };
 
 void
-locator_t::connect_sink_t::discard(const std::error_code& ec) const {
+locator_t::connect_sink_t::discard(const std::error_code& ec) {
     if(ec.value() == 0) return;
 
     COCAINE_LOG_ERROR(parent->m_log, "remote client discarded: [{:d}] {}", ec.value(), ec.message(), attribute_list({
@@ -178,10 +178,10 @@ class locator_t::publish_slot_t: public basic_slot<locator::publish> {
 
         virtual
         void
-        discard(const std::error_code& ec) const { parent->discard(ec, handle); }
+        discard(const std::error_code& ec) { parent->discard(ec, handle); }
     };
 
-    typedef std::shared_ptr<const basic_slot::dispatch_type> result_type;
+    typedef std::shared_ptr<basic_slot::dispatch_type> result_type;
 
     locator_t *const parent;
 
@@ -256,10 +256,10 @@ class locator_t::routing_slot_t: public basic_slot<locator::routing> {
 
         virtual
         void
-        discard(const std::error_code& ec) const { parent->discard(ec, handle); }
+        discard(const std::error_code& ec) { parent->discard(ec, handle); }
     };
 
-    typedef std::shared_ptr<const basic_slot::dispatch_type> result_type;
+    typedef std::shared_ptr<basic_slot::dispatch_type> result_type;
 
     locator_t *const parent;
 
@@ -385,8 +385,8 @@ locator_t::~locator_t() {
     // Empty.
 }
 
-const basic_dispatch_t&
-locator_t::prototype() const {
+basic_dispatch_t&
+locator_t::prototype() {
     return *this;
 }
 

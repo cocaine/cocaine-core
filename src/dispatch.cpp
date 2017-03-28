@@ -33,7 +33,7 @@ basic_dispatch_t::~basic_dispatch_t() {
 }
 
 void
-basic_dispatch_t::discard(const std::error_code& COCAINE_UNUSED_(ec)) const {
+basic_dispatch_t::discard(const std::error_code& COCAINE_UNUSED_(ec)) {
     // Empty.
 }
 

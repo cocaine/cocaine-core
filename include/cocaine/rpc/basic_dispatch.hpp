@@ -53,7 +53,7 @@ public:
 
     virtual
     boost::optional<dispatch_ptr_t>
-    process(const decoder_t::message_type& message, const upstream_ptr_t& upstream) const = 0;
+    process(const decoder_t::message_type& message, const upstream_ptr_t& upstream) = 0;
 
     // Called on abnormal transport destruction. The idea's if the client disconnects unexpectedly,
     // i.e. not reaching the end of the dispatch graph, then some special handling might be needed.
@@ -61,7 +61,7 @@ public:
 
     virtual
     void
-    discard(const std::error_code& ec) const;
+    discard(const std::error_code& ec);
 
     // Observers
 

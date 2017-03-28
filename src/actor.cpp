@@ -146,7 +146,7 @@ actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
         context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.rejected", service->prototype().name()))
     })
 {
-    const basic_dispatch_t* prototype = &service->prototype();
+    basic_dispatch_t* prototype = &service->prototype();
 
     // Aliasing the pointer to the service to point to the dispatch (sub-)object.
     m_prototype = dispatch_ptr_t(

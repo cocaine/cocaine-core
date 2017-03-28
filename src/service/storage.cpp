@@ -294,6 +294,6 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
 }
 
 auto
-storage_t::prototype() const -> const basic_dispatch_t& {
+storage_t::prototype() -> basic_dispatch_t& {
     return *this;
 }

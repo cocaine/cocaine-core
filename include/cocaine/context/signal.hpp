@@ -40,7 +40,7 @@ struct async_visitor:
 {
     typedef typename io::basic_slot<Event>::tuple_type tuple_type;
 
-    async_visitor(const tuple_type& args_, asio::io_service& asio_, std::weak_ptr<const dispatch<typename Event::tag>> dispatch_):
+    async_visitor(const tuple_type& args_, asio::io_service& asio_, std::weak_ptr<dispatch<typename Event::tag>> dispatch_):
         args(args_),
         asio(asio_),
         slot_dispatch(std::move(dispatch_))
@@ -66,14 +66,14 @@ struct async_visitor:
 
     const tuple_type& args;
     asio::io_service& asio;
-    const std::weak_ptr<const dispatch<typename Event::tag>> slot_dispatch;
+    const std::weak_ptr<dispatch<typename Event::tag>> slot_dispatch;
 };
 
 template<class Tag>
 struct event_visitor:
     public boost::static_visitor<void>
 {
-    event_visitor(const std::shared_ptr<const dispatch<Tag>>& slot_, asio::io_service& asio_):
+    event_visitor(const std::shared_ptr<dispatch<Tag>>& slot_, asio::io_service& asio_):
         slot(slot_),
         asio(asio_)
     { }
@@ -89,14 +89,15 @@ struct event_visitor:
     }
 
 private:
-    const std::shared_ptr<const dispatch<Tag>>& slot;
+    const std::shared_ptr<dispatch<Tag>>& slot;
     asio::io_service& asio;
 };
 
 template<class Event>
 struct history_traits {
     template<class HistoryType, class VariantType>
-    static void
+    static
+    void
     apply(HistoryType& history, VariantType&& variant) {
         history.emplace_back(std::move(variant));
     }
@@ -109,7 +110,7 @@ class retroactive_signal {
     typedef typename io::make_frozen_over<Tag>::type variant_type;
 
     struct subscriber_t {
-        std::weak_ptr<const dispatch<Tag>> slot;
+        std::weak_ptr<dispatch<Tag>> slot;
         asio::io_service& asio;
     };
 
@@ -120,7 +121,7 @@ class retroactive_signal {
 
 public:
     void
-    listen(const std::shared_ptr<const dispatch<Tag>>& slot, asio::io_service& asio) {
+    listen(const std::shared_ptr<dispatch<Tag>>& slot, asio::io_service& asio) {
         std::lock_guard<std::mutex> guard(mutex);
 
         auto visitor = aux::event_visitor<Tag>(slot, asio);
@@ -152,7 +153,6 @@ public:
         }
         aux::history_traits<Event>::apply(history, std::move(variant));
     }
-private:
 };
 
 } // namespace cocaine
