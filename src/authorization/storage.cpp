@@ -110,6 +110,7 @@ struct operation_t {
 namespace defaults {
 
 const std::string collection_acls = ".collection-acls";
+const std::vector<std::string> collection_acls_tags = {"storage-acls"};
 
 } // namespace defaults
 } // namespace
@@ -187,7 +188,7 @@ enabled_t::verify(std::size_t event, const std::string& collection, const auth::
                 for (auto uid : uids) {
                     metainfo.u_perms[uid] = flags_t::both;
                 }
-                backend->put<metainfo_t>(defaults::collection_acls, collection, metainfo, {}, [=](std::future<void> future) mutable {
+                backend->put<metainfo_t>(defaults::collection_acls, collection, metainfo, defaults::collection_acls_tags, [=](std::future<void> future) mutable {
                     try {
                         future.get();
                         callback(std::error_code());
