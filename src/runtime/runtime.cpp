@@ -173,6 +173,10 @@ main(int argc, char* argv[]) {
         {"source", "runtime/signals"}
     });
 
+    // Signal handling.
+
+    signal::handler_t handler(slog, {SIGPIPE, SIGINT, SIGQUIT, SIGTERM, SIGCHLD, SIGHUP});
+
     // Run context.
     std::unique_ptr<context_t> context;
     try {
@@ -181,10 +185,6 @@ main(int argc, char* argv[]) {
         COCAINE_LOG_ERROR(root, "unable to initialize the context - {}.", error::to_string(e));
         return EXIT_FAILURE;
     }
-
-    // Signal handling.
-
-    signal::handler_t handler(slog, {SIGPIPE, SIGINT, SIGQUIT, SIGTERM, SIGCHLD, SIGHUP});
 
     signal::engine_t engine(handler, slog);
     engine.on(SIGHUP, propagate_t{context->signal_hub(), handler, [&] {
