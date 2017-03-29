@@ -75,6 +75,18 @@ public:
     void
     insert(const std::string& name, std::unique_ptr<actor_t> service) = 0;
 
+    /// Inserts a new service into the context.
+    ///
+    /// This method atomically inserts a new service, which is initialized with the given callback.
+    /// The callback is not called if a service with such name already exists. This allows to avoid
+    /// unnecessary actor initialization, since there is no more ways to atomically
+    /// check-and-insert.
+    ///
+    /// \throws std::system_error if a service with the specified name already exists.
+    virtual
+    void
+    insert_with(const std::string& name, std::function<std::unique_ptr<actor_t>()> fn) = 0;
+
     virtual
     auto
     remove(const std::string& name) -> std::unique_ptr<actor_t> = 0;

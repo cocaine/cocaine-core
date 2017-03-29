@@ -223,30 +223,40 @@ public:
 
     void
     insert(const std::string& name, std::unique_ptr<actor_t> service) {
+        insert_with(name, [&] {
+            return std::move(service);
+        });
+    }
+
+    void
+    insert_with(const std::string& name, std::function<std::unique_ptr<actor_t>()> fn) {
         const holder_t scoped(*m_log, {{"source", "core"}});
 
-        const actor_t& actor = *service;
-
-        m_services.apply([&](service_list_t& list) {
+        auto actor = m_services.apply([&](service_list_t& list) {
             auto it = std::find_if(list.begin(), list.end(), match{name});
             if(it != list.end()) {
                 throw cocaine::error_t("service '{}' already exists", name);
             }
 
+            auto service = fn();
+            auto actor = service.get();
+
             service->run();
 
             COCAINE_LOG_DEBUG(m_log, "service has been started", {
-                { "service", { name }}
+                {"service", name}
             });
 
             list.emplace_back(name, std::move(service));
+
+            return actor;
         });
 
         // Fire off the signal to alert concerned subscribers about the service removal event.
-        m_signals.invoke<io::context::service::exposed>(actor.prototype()->name(), std::forward_as_tuple(
-            actor.endpoints(),
-            actor.prototype()->version(),
-            actor.prototype()->root()
+        m_signals.invoke<io::context::service::exposed>(actor->prototype()->name(), std::forward_as_tuple(
+            actor->endpoints(),
+            actor->prototype()->version(),
+            actor->prototype()->root()
         ));
     }
 
