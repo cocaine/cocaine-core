@@ -26,6 +26,9 @@ cocaine-core (0.12.13.0-alpha1) UNRELEASED; urgency=low
   * Feature: extend format functionality with traits.
     Now `cocaine::format` can use newly introduced `display_traits`
     specializations of  for fine-grained formatting.
+  * Feature: allow the `context_t` to insert with initializers (#162).
+    This is useful to atomically check-and-insert new services, especially
+    for Node service.
   * Changed: storage authorization now uses identities instead of just UIDs.
   * Changed: event authorization now uses identities too (#157).
   * Changed: deferred and streamed wrappers no longer throw exceptions
@@ -39,6 +42,9 @@ cocaine-core (0.12.13.0-alpha1) UNRELEASED; urgency=low
     fetching/saving ACLs and it was implemented using synchronous storage
     methods, which may freeze current execution’s thread. This change
     returns back asynchronous behavior.
+  * Fixed: tag ACL collection for storages (#163).
+    This allows to perform migrations in the future in the case of changed
+    format.
 
  -- Evgeny Safronov <division494@gmail.com>  Fri, 24 Mar 2017 14:39:57 +0300
 
