@@ -224,7 +224,12 @@ enabled_t::verify(std::size_t event, const std::string& collection, const auth::
                 callback(err.code());
                 return;
             }
-        } catch (const std::bad_cast& err) {
+        } catch (const msgpack::unpack_error&) {
+            COCAINE_LOG_ERROR(log, "failed to read ACL metainfo for collection '{}': invalid ACL framing",
+                collection);
+            callback(make_error_code(error::invalid_acl_framing));
+            return;
+        } catch (const std::bad_cast&) {
             COCAINE_LOG_ERROR(log, "failed to read ACL metainfo for collection '{}': invalid ACL framing",
                 collection);
             callback(make_error_code(error::invalid_acl_framing));
