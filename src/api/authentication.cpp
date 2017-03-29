@@ -12,7 +12,7 @@ namespace cocaine {
 namespace api {
 
 auto
-authentication_t::identify(const hpack::headers_t& headers) const -> result_type {
+authentication_t::identify(const hpack::headers_t& headers) const -> auth::identity_t {
     // Even if there is no credentials provided some authorization components may allow access.
     std::string credentials;
     if (auto header = hpack::header::find_first<hpack::headers::authorization<>>(headers)) {

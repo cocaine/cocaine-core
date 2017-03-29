@@ -24,7 +24,7 @@ public:
     using api::authentication_t::identify;
 
     auto
-    identify(const std::string& credentials) const -> result_type override {
+    identify(const std::string& credentials) const -> auth::identity_t override {
         try {
             std::vector<std::string> splitted;
             boost::split(splitted, credentials, boost::is_any_of(","));

@@ -41,14 +41,6 @@ public:
         }
     };
 
-    /// Result of identification for a given message.
-    typedef boost::variant<
-        /// Successful identification.
-        auth::identity_t,
-        /// Failed to identify, go away.
-        std::error_code
-    > result_type;
-
     typedef std::function<void(token_t token, const std::error_code& ec)> callback_type;
 
 public:
@@ -74,7 +66,7 @@ public:
     /// \param headers HPACK headers.
     virtual
     auto
-    identify(const hpack::headers_t& headers) const -> result_type;
+    identify(const hpack::headers_t& headers) const -> auth::identity_t;
 
     /// Performs an identification check for a given entity represented with a token.
     ///
@@ -82,7 +74,7 @@ public:
     /// \param token Identification credentials.
     virtual
     auto
-    identify(const std::string& credentials) const -> result_type = 0;
+    identify(const std::string& credentials) const -> auth::identity_t = 0;
 };
 
 auto

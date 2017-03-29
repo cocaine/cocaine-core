@@ -29,11 +29,6 @@ public:
         decltype(fn(headers, std::forward<Args>(args)...))
     {
         const auto identity = auth->identify(headers);
-
-        if (auto ec = boost::get<std::error_code>(&identity)) {
-            throw std::system_error(*ec, "permission denied");
-        }
-
         return fn(headers, std::forward<Args>(args)..., boost::get<auth::identity_t>(identity));
     }
 };
