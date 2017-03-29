@@ -178,14 +178,8 @@ enabled_t::verify(std::size_t event, const std::string& collection, const auth::
         // someone performs write operation over.
         if (metainfo.empty()) {
             if (op.is_write() && (cids.size() > 0 || uids.size() > 0)) {
-                COCAINE_LOG_INFO(log, "initializing ACL for '{}' collection for cid(s) {} and uid(s) {}", collection,
-                    [&](std::ostream& stream) -> std::ostream& {
-                        return display<std::vector<auth::cid_t>>::apply(stream, cids);
-                    },
-                    [&](std::ostream& stream) -> std::ostream& {
-                        return display<std::vector<auth::uid_t>>::apply(stream, uids);
-                    }
-                );
+                COCAINE_LOG_INFO(log, "initializing ACL for '{}' collection for cid(s) {} and uid(s) {}",
+                    collection, cids, uids);
 
                 for (auto cid : cids) {
                     metainfo.c_perms[cid] = flags_t::both;
