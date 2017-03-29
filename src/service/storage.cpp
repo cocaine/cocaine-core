@@ -261,7 +261,7 @@ storage_t::storage_t(context_t& context, asio::io_service& asio, const std::stri
     {
         cocaine::deferred<std::vector<std::string>> deferred;
 
-        authorization->verify<io::storage::find>(collection, "", identity, [=](std::error_code ec) mutable {
+        authorization->verify<io::storage::find>(collection, collection, identity, [=](std::error_code ec) mutable {
             if (ec) {
                 COCAINE_LOG_WARNING(log, "failed to complete 'find' operation", {
                     {"code", ec.value()},
