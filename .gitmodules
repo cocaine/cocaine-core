@@ -16,3 +16,6 @@
 [submodule "foreign/metrics"]
 	path = foreign/metrics
 	url = git://github.com/3Hren/metrics.git
+[submodule "tests/foreign/.googletest"]
+	path = tests/foreign/.googletest
+	url = https://github.com/google/googletest.git

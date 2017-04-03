@@ -1,5 +1,3 @@
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../foreign/modules")
-
 SET(PROJECT cocaine-core-tests)
 
 PROJECT(${PROJECT})
@@ -30,30 +28,20 @@ ENDIF()
 # Unit tests
 IF(COCAINE_ALLOW_TESTS AND
     NOT (CMAKE_VERSION VERSION_LESS 2.8.5 OR (DEFINED GCC_COMPILER_VERSION AND GCC_COMPILER_VERSION VERSION_LESS 4.8)))
-    INCLUDE(DownloadGoogleTesting)
-    FIND_PACKAGE(Threads)
 
-    DOWNLOAD_GOOGLE_TESTING()
+    ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/foreign/.googletest EXCLUDE_FROM_ALL)
 
-    INCLUDE_DIRECTORIES(
-        SYSTEM ${GTEST_INCLUDE_DIR}
-        SYSTEM ${GMOCK_INCLUDE_DIR})
+    ENABLE_TESTING()
+    INCLUDE_DIRECTORIES(SYSTEM foreign/.googletest/googletest/include)
 
-    LINK_DIRECTORIES(
-        ${GMOCK_BINARY_DIR}
-        ${GTEST_BINARY_DIR})
+    INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
-    INCLUDE_DIRECTORIES(
-        ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+    ADD_EXECUTABLE(cocaine-core-tests
+        unit/protocol.cpp
+        unit/header.cpp
+        unit/header_table.cpp)
 
-    ADD_EXECUTABLE(cocaine-core-unit
-        ${CMAKE_CURRENT_SOURCE_DIR}/unit/protocol.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/unit/header.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/unit/header_table.cpp)
-
-    ADD_DEPENDENCIES(cocaine-core-unit googlemock)
-
-    TARGET_LINK_LIBRARIES(cocaine-core-unit
+    TARGET_LINK_LIBRARIES(cocaine-core-tests
         ${CMAKE_THREAD_LIBS_INIT}
         cocaine-core
         cocaine-io-util
@@ -61,6 +49,6 @@ IF(COCAINE_ALLOW_TESTS AND
         gtest
         gtest_main)
 
-    SET_TARGET_PROPERTIES(cocaine-core-unit PROPERTIES
+    SET_TARGET_PROPERTIES(cocaine-core-tests PROPERTIES
         COMPILE_FLAGS "-std=c++0x -W -Wall -Werror -pedantic")
 ENDIF()
