@@ -24,8 +24,6 @@
 
 #include <uuid/uuid.h>
 
-#include <string>
-
 using namespace cocaine;
 
 unique_id_t::unique_id_t() {
@@ -53,13 +51,12 @@ unique_id_t::string() const {
         unparsed
     );
 
-    return unparsed;
+    return std::string(unparsed);
 }
 
 bool
 unique_id_t::operator==(const unique_id_t& other) const {
-    return uuid[0] == other.uuid[0] &&
-           uuid[1] == other.uuid[1];
+    return uuid == other.uuid;
 }
 
 namespace cocaine {

@@ -39,7 +39,8 @@ IF(COCAINE_ALLOW_TESTS AND
     ADD_EXECUTABLE(cocaine-core-tests
         unit/protocol.cpp
         unit/header.cpp
-        unit/header_table.cpp)
+        unit/header_table.cpp
+        unit/uuid.cpp)
 
     TARGET_LINK_LIBRARIES(cocaine-core-tests
         ${CMAKE_THREAD_LIBS_INIT}
