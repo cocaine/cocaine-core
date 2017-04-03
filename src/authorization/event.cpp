@@ -25,6 +25,8 @@ namespace {
 
 const auto unicorn_no_node = -101;
 
+const std::string prefix_acls = "/.acls";
+
 using method_t = std::string;
 
 struct user_t {
@@ -255,7 +257,7 @@ enabled_t::enabled_t(context_t& context, const std::string& service, const dynam
     auto unicorn = api::unicorn(context, args.as_object().at("unicorn", "core").as_string());
 
     control = std::make_shared<control_t>(
-        cocaine::format("/acl/{}", service),
+        cocaine::format("{}/event/{}", prefix_acls, service),
         log,
         std::move(unicorn)
     );
