@@ -16,7 +16,7 @@ Vcs-Browser: https://github.com/cocaine/cocaine-core
 
 Package: libcocaine-core3
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libcocaine-io-util3 (= ${binary:Version})
 Description: Cocaine - Core Libraries
  Cocaine core libraries package.
 
