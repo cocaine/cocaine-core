@@ -1,3 +1,11 @@
+cocaine-core (0.12.13.0-alpha2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Changed: unify ACL prefixes. Now for events `/.acls` is used instead
+    of `/acl`.
+
+ -- Evgeny Safronov <division494@gmail.com>  Mon, 03 Apr 2017 10:30:26 +0300
+
 cocaine-core (0.12.13.0-alpha1) unstable; urgency=low
 
   * Non-maintainer upload.
