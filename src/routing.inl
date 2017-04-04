@@ -22,7 +22,7 @@
 
 namespace routing {
 
-#if defined(__clang__) || defined(HAVE_GCC46)
+#if defined(__clang__) || defined(HAVE_GCC46) || __GNUC__ >= 5
 typedef std::default_random_engine random_generator_t;
 typedef std::uniform_int_distribution<unsigned int> uniform_uint;
 #else

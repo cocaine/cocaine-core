@@ -23,7 +23,7 @@
 
 #include "cocaine/platform.hpp"
 
-#if defined(__clang__) || defined(HAVE_GCC46)
+#if defined(__clang__) || defined(HAVE_GCC46) || __GNUC__ >= 5
     #include <atomic>
 #else
     #include <cstdatomic>
