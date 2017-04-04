@@ -60,7 +60,7 @@ struct invoke_impl<index_sequence<Indices...>> {
     apply(const std::tuple<Args...>& args, F&& callable)
         -> decltype(callable(std::declval<Args>()...))
     {
-        return callable(std::move(std::get<Indices>(args))...);
+        return callable(std::get<Indices>(args)...);
     }
 
     template<class F, class... Args>

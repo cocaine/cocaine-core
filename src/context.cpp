@@ -35,6 +35,7 @@
 #include "cocaine/repository/service.hpp"
 #include "cocaine/trace/logger.hpp"
 #include "cocaine/format/vector.hpp"
+#include "cocaine/format/tuple.hpp"
 
 #include <boost/optional/optional.hpp>
 

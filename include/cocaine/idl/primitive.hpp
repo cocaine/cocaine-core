@@ -22,6 +22,7 @@
 #define COCAINE_PRIMITIVE_SERVICE_INTERFACE_HPP
 
 #include "cocaine/rpc/protocol.hpp"
+#include "cocaine/rpc/tags.hpp"
 
 #include <boost/mpl/is_sequence.hpp>
 

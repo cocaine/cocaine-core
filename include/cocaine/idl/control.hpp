@@ -2,6 +2,8 @@
 
 #include <system_error>
 
+// primitive protocol is always required for responses on control events
+#include "cocaine/idl/primitive.hpp"
 #include "cocaine/rpc/tags.hpp"
 
 namespace cocaine { namespace io {

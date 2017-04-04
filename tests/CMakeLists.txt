@@ -37,6 +37,7 @@ IF(COCAINE_ALLOW_TESTS AND
     INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
     ADD_EXECUTABLE(cocaine-core-tests
+        unit/format.cpp
         unit/protocol.cpp
         unit/header.cpp
         unit/header_table.cpp

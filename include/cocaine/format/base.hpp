@@ -1,5 +1,8 @@
 #pragma once
 
+#include <ostream>
+#include <sstream>
+
 namespace cocaine {
 
 template<typename T>
@@ -26,6 +29,17 @@ struct lazy_display {
     auto
     apply(const T& value) -> functor_t {
         return functor_t{value};
+    }
+};
+
+template<typename T>
+struct string_display {
+    static
+    auto
+    apply(const T& value) -> std::string {
+        std::ostringstream stream;
+        display<T>::apply(stream, value);
+        return stream.str();
     }
 };
 
