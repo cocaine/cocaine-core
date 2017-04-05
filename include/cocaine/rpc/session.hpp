@@ -116,6 +116,12 @@ private:
     void
     handle(const io::decoder_t::message_type& message);
 
+    auto
+    extract_trace(const io::decoder_t::message_type& message) const -> boost::optional<trace_t>;
+
+    auto
+    select_dispatch(const io::decoder_t::message_type& message) const -> io::dispatch_ptr_t;
+
     // NOTE: The revocation happens to channel id only, not the upstream itself. It means that while
     // some channel might be revoked during message handling, it only prohibit new incoming messages
     // from being processed, but shared upstreams still can be used by services to send new outgoing

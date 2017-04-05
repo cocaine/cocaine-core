@@ -183,16 +183,54 @@ public:
     boost::optional<trace_t> trace;
 };
 
+namespace {
+
+auto
+dispatch_name(const dispatch_ptr_t& dispatch) -> std::string {
+    if (dispatch) {
+        return dispatch->name();
+    } else {
+        return "<none>";
+    }
+}
+
+} // namespace
+
 // Session
 
 struct session_t::metrics_t {
-    metrics::shared_metric<metrics::meter_t> summary;
+    using meter_type = metrics::shared_metric<metrics::meter_t>;
+    using timer_type = metrics::shared_metric<metrics::timer<metrics::accumulator::sliding::window_t>>;
+
+    /// RPS counter.
+    meter_type summary;
 
     /// Timers per slot.
     std::map<
         int,
-        metrics::shared_metric<metrics::timer<metrics::accumulator::sliding::window_t>>
+        timer_type
     > timers;
+
+    metrics_t(metrics::registry_t& metrics_hub, session_t& session) :
+        summary(metrics_hub.meter(cocaine::format("{}.meter.summary", session.name())))
+    {
+        for (auto& item : session.prototype->root()) {
+            auto id = std::get<0>(item);
+            auto& name = std::get<0>(std::get<1>(item));
+
+            timers.emplace(id, metrics_hub.timer(cocaine::format("{}.timer[{}]", session.prototype->name(), name)));
+        }
+    }
+
+    auto
+    timer(int id) const -> boost::optional<timer_type> {
+        auto it = timers.find(id);
+        if (it == std::end(timers)) {
+            return boost::none;
+        }
+
+        return it->second;
+    }
 };
 
 session_t::session_t(std::unique_ptr<logging::logger_t> log_,
@@ -205,24 +243,7 @@ session_t::session_t(std::unique_ptr<logging::logger_t> log_,
       max_channel_id(0)
 {
     if (prototype) {
-        metrics.reset(
-            new metrics_t{
-                metrics_hub.meter(cocaine::format("{}.meter.summary", prototype->name())),
-                {}
-            }
-        );
-
-        for (const auto& item : prototype->root()) {
-            const auto id = std::get<0>(item);
-            const auto& name = std::get<0>(std::get<1>(item));
-
-            metrics->timers.insert(
-                std::make_pair(
-                    id,
-                    metrics_hub.timer(cocaine::format("{}.timer[{}]", prototype->name(), name))
-                )
-            );
-        }
+        metrics = std::make_unique<metrics_t>(metrics_hub, *this);
     }
 
     auto dispatch = std::make_shared<cocaine::dispatch<io::control_tag>>("session");
@@ -244,7 +265,7 @@ session_t::~session_t() = default;
 void
 session_t::handle(const decoder_t::message_type& message) {
     const channel_map_t::key_type channel_id = message.span();
-    boost::optional<trace_t> incoming_trace;
+    boost::optional<trace_t> trace;
 
     const auto channel = channels.apply([&](channel_map_t& mapping) -> std::shared_ptr<channel_t> {
         channel_map_t::const_iterator lb, ub;
@@ -259,45 +280,19 @@ session_t::handle(const decoder_t::message_type& message) {
                 throw std::system_error(error::revoked_channel, std::to_string(channel_id));
             }
 
-            auto& headers = message.headers();
-
-            auto trace_header = hpack::header::find_first<hpack::headers::trace_id<>>(headers);
-            auto span_header = hpack::header::find_first<hpack::headers::span_id<>>(headers);
-            auto parent_header = hpack::header::find_first<hpack::headers::parent_id<>>(headers);
-            if(trace_header && span_header && parent_header) {
-                bool verbose = false;
-                if (auto header = hpack::header::find_first(headers, "trace_bit")) {
-                    verbose = boost::lexical_cast<bool>(header->value());
-                }
-
-                incoming_trace = trace_t(
-                    hpack::header::unpack<uint64_t>(trace_header->value()),
-                    hpack::header::unpack<uint64_t>(span_header->value()),
-                    hpack::header::unpack<uint64_t>(parent_header->value()),
-                    verbose,
-                    std::get<0>(prototype->root().at(message.type()))
-                );
-            }
-
-            io::dispatch_ptr_t dispatch;
-
-            if(message.type() < prototype->root().size()) {
-                dispatch = prototype;
-            } else {
-                dispatch = service_dispatch;
-            }
+            trace = extract_trace(message);
 
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
-                dispatch,
+                select_dispatch(message),
                 std::make_shared<basic_upstream_t>(shared_from_this(), channel_id),
                 std::make_unique<metrics::timer_t::context_t>(metrics->timers.at(message.type())->context()),
-                incoming_trace
+                trace
             )});
             metrics->summary->mark();
 
             max_channel_id = channel_id;
         } else {
-            incoming_trace = lb->second->trace;
+            trace = lb->second->trace;
         }
 
         // NOTE: The virtual channel pointer is copied here to avoid data races.
@@ -308,7 +303,7 @@ session_t::handle(const decoder_t::message_type& message) {
         throw std::system_error(error::unbound_dispatch);
     }
 
-    trace_t::restore_scope_t trace_scope(incoming_trace);
+    trace_t::restore_scope_t trace_scope(trace);
 
     COCAINE_LOG_DEBUG(log, "invocation type {}: '{}' in channel {}, dispatch: '{}'",
         message.type(),
@@ -336,6 +331,41 @@ session_t::handle(const decoder_t::message_type& message) {
         if(!channel.unique()) {
             revoke(channel_id);
         }
+    }
+}
+
+auto
+session_t::extract_trace(const io::decoder_t::message_type& message) const -> boost::optional<trace_t> {
+    auto& headers = message.headers();
+
+    auto trace = hpack::header::find_first<hpack::headers::trace_id<>>(headers);
+    auto span = hpack::header::find_first<hpack::headers::span_id<>>(headers);
+    auto parent = hpack::header::find_first<hpack::headers::parent_id<>>(headers);
+    if (trace && span && parent) {
+        bool verbose = false;
+        if (auto header = hpack::header::find_first(headers, "trace_bit")) {
+            verbose = boost::lexical_cast<bool>(header->value());
+        }
+
+        return trace_t(
+            hpack::header::unpack<std::uint64_t>(trace->value()),
+            hpack::header::unpack<std::uint64_t>(span->value()),
+            hpack::header::unpack<std::uint64_t>(parent->value()),
+            verbose,
+            std::get<0>(prototype->root().at(message.type()))
+        );
+    }
+
+    return boost::none;
+}
+
+auto
+session_t::select_dispatch(const io::decoder_t::message_type& message) const -> io::dispatch_ptr_t {
+    // Hack to be able to properly dispatch control messages.
+    if(message.type() < prototype->root().size()) {
+        return prototype;
+    } else {
+        return service_dispatch;
     }
 }
 
@@ -371,11 +401,10 @@ session_t::fork(const dispatch_ptr_t& dispatch) {
     return channels.apply([&](channel_map_t& mapping) -> upstream_ptr_t {
         const auto channel_id = ++max_channel_id;
         auto trace = trace_t::current();
-        trace.push(dispatch->name());
+        trace.push(dispatch_name(dispatch));
         const auto downstream = std::make_shared<basic_upstream_t>(shared_from_this(), channel_id);
 
-        COCAINE_LOG_DEBUG(log, "forking new channel {:d}, dispatch: '{}'", channel_id,
-            dispatch ? dispatch->name() : "<none>");
+        COCAINE_LOG_DEBUG(log, "forking new channel {:d}, dispatch: '{}'", channel_id, dispatch_name(dispatch));
 
         if(dispatch) {
             // NOTE: For mute slots, creating a new channel will essentially leak memory, since no
@@ -465,7 +494,7 @@ session_t::active_channels() const {
         std::map<uint64_t, std::string> result;
 
         for(auto it = mapping.begin(); it != mapping.end(); ++it) {
-            result[it->first] = it->second->dispatch ? it->second->dispatch->name() : "<none>";
+            result[it->first] = dispatch_name(it->second->dispatch);
         }
 
         return result;
@@ -487,7 +516,7 @@ session_t::memory_pressure() const {
 
 std::string
 session_t::name() const {
-    return prototype ? prototype->name() : "<none>";
+    return dispatch_name(prototype);
 }
 
 session_t::endpoint_type
