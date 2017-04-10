@@ -8,6 +8,7 @@
 #include <cocaine/format/header.hpp>
 #include <cocaine/format/map.hpp>
 #include <cocaine/format/optional.hpp>
+#include <cocaine/format/ptr.hpp>
 #include <cocaine/format/tuple.hpp>
 #include <cocaine/format/vector.hpp>
 #include <cocaine/forwards.hpp>
@@ -72,6 +73,27 @@ TEST(display, tuple) {
 TEST(display, vector) {
     auto sample = std::vector<std::vector<int>>({{1, 2, 3}, {1, 2, 3}});
     ASSERT_EQ(to_string(sample), "[[1, 2, 3], [1, 2, 3]]");
+}
+
+TEST(display, shared_ptr) {
+    auto sample = std::make_shared<std::vector<int>> ();
+    sample->push_back(42);
+    ASSERT_EQ(to_string(sample), "[42]");
+}
+
+TEST(display, unique_ptr) {
+    auto sample = std::unique_ptr<int>(new int(42));
+    ASSERT_EQ(to_string(sample), "42");
+}
+
+TEST(display, null_unique_ptr) {
+    auto sample = std::unique_ptr<int>();
+    ASSERT_EQ(to_string(sample), "nullptr");
+}
+
+TEST(display, null_shared_ptr) {
+    auto sample = std::shared_ptr<std::vector<int>>();
+    ASSERT_EQ(to_string(sample), "nullptr");
 }
 
 } // namespace
