@@ -36,51 +36,70 @@ struct msgpack_traits {
     static
     void
     pack(msgpack::packer<Stream>& packer) {
-        static_assert(boost::mpl::contains<header_static_table_t::headers_storage, Header>::type::value, "Header is not present in static table");
-        packer.pack_fix_uint64(header_static_table_t::idx<Header>());
+        pack_uncompressed(packer, header_t::create<Header>());
+        /// Note: this code is commented for a migration process to 'vanilla' hpack
+        //static_assert(boost::mpl::contains<header_static_table_t::headers_storage, Header>::type::value, "Header is not present in static table");
+        //packer.pack_fix_uint64(header_static_table_t::idx<Header>());
     }
 
     // Pack a header from static table but with different value
     template<class Header, class Stream>
     static
     void
-    pack(msgpack::packer<Stream>& packer, header_table_t& table, std::string header_data) {
-        size_t pos = header_static_table_t::idx<Header>();
-        if(table[pos].value() == header_data) {
-            packer.pack_fix_uint64(pos);
-            return;
-        }
-        packer.pack_array(3);
-        header_t header(Header::name(), std::move(header_data));
-        // true flag means store header in dynamic_table on receiver side
-        packer.pack_true();
-        packer.pack_fix_uint64(pos);
-        packer.pack_raw(header.value().size());
-        packer.pack_raw_body(header.value().c_str(), header.value().size());
-        table.push(std::move(header));
+    pack(msgpack::packer<Stream>& packer, header_table_t& /*table*/, std::string header_data) {
+        pack_uncompressed(packer, header_t::create<Header>(header_data));
+        /// Note: this code is commented for a migration process to 'vanilla' hpack
+        //size_t pos = header_static_table_t::idx<Header>();
+        //if(table[pos].value() == header_data) {
+        //    packer.pack_fix_uint64(pos);
+        //    return;
+        //}
+        //packer.pack_array(3);
+        //header_t header(Header::name(), std::move(header_data));
+        //// true flag means store header in dynamic_table on receiver side
+        //packer.pack_true();
+        //packer.pack_fix_uint64(pos);
+        //packer.pack_raw(header.value().size());
+        //packer.pack_raw_body(header.value().c_str(), header.value().size());
+        //table.push(std::move(header));
     }
 
     // Pack any other header
     template<class Stream>
     static
     void
-    pack(msgpack::packer<Stream>& packer, header_table_t& table, const header_t& source) {
-        size_t pos = table.find_by_full_match(source);
-        if(pos) {
-            packer.pack_fix_uint64(pos);
-            return;
-        }
+    pack(msgpack::packer<Stream>& packer, header_table_t& /*table*/, const header_t& source) {
+        pack_uncompressed(packer, source);
+        /// Note: this code is commented for a migration process to 'vanilla' hpack
+        //size_t pos = table.find_by_full_match(source);
+        //if(pos) {
+        //    packer.pack_fix_uint64(pos);
+        //    return;
+        //}
+        //packer.pack_array(3);
+        //pos = table.find_by_name(source);
+        //// true flag means store header in dynamic_table on receiver side
+        //packer.pack_true();
+        //table.push(source);
+        //if(pos) {
+        //    packer.pack_fix_uint64(pos);
+        //} else {
+        //    packer.pack_raw(source.name().size());
+        //    packer.pack_raw_body(source.name().c_str(), source.name().size());
+        //}
+        //packer.pack_raw(source.value().size());
+        //packer.pack_raw_body(source.value().c_str(), source.value().size());
+    }
+
+    template<class Stream>
+    static
+    void
+    pack_uncompressed(msgpack::packer<Stream>& packer, const header_t& source) {
         packer.pack_array(3);
-        pos = table.find_by_name(source);
-        // true flag means store header in dynamic_table on receiver side
-        packer.pack_true();
-        table.push(source);
-        if(pos) {
-            packer.pack_fix_uint64(pos);
-        } else {
-            packer.pack_raw(source.name().size());
-            packer.pack_raw_body(source.name().c_str(), source.name().size());
-        }
+        // Do not store header in dynamic_table on receiver side
+        packer.pack_false();
+        packer.pack_raw(source.name().size());
+        packer.pack_raw_body(source.name().c_str(), source.name().size());
         packer.pack_raw(source.value().size());
         packer.pack_raw_body(source.value().c_str(), source.value().size());
     }
