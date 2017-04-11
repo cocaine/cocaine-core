@@ -1,3 +1,13 @@
+cocaine-core (0.12.13.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Feature: display traits for maps and smart-pointer types (#170).
+  * Changed: strict dependency on io-util (#169).
+  * Changed: migrate to canonical HPACK, part 1 (#173).
+    Temporally disable headers compression.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 11 Apr 2017 16:38:33 +0300
+
 cocaine-core (0.12.13.0-alpha2) unstable; urgency=low
 
   * Non-maintainer upload.
