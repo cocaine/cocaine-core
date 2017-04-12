@@ -1,3 +1,13 @@
+cocaine-core (0.12.13.2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fixed: do not use bad-designed API.
+    This commit fixes an UB when a header value contains
+    non-boolean type and we're trying to convert it to bool
+    triggering an UB when the value is neither 0 nor 1.
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 12 Apr 2017 15:47:24 +0300
+
 cocaine-core (0.12.13.1) unstable; urgency=low
 
   * Non-maintainer upload.
