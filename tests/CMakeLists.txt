@@ -41,6 +41,7 @@ IF(COCAINE_ALLOW_TESTS AND
         unit/protocol.cpp
         unit/header.cpp
         unit/header_table.cpp
+        unit/lexical_cast.cpp
         unit/uuid.cpp)
 
     TARGET_LINK_LIBRARIES(cocaine-core-tests
