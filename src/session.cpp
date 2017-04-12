@@ -23,6 +23,8 @@
 #include <asio/ip/tcp.hpp>
 #include <asio/local/stream_protocol.hpp>
 
+#include <boost/lexical_cast.hpp>
+
 #include <blackhole/logger.hpp>
 
 #include <metrics/accumulator/sliding/window.hpp>
@@ -265,7 +267,7 @@ session_t::handle(const decoder_t::message_type& message) {
             if(trace_header && span_header && parent_header) {
                 bool verbose = false;
                 if (auto header = hpack::header::find_first(headers, "trace_bit")) {
-                    verbose = hpack::header::unpack<bool>(header->value());
+                    verbose = boost::lexical_cast<bool>(header->value());
                 }
 
                 incoming_trace = trace_t(
