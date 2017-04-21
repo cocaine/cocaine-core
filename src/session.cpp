@@ -168,18 +168,17 @@ session_t::push_action_t::finalize(const std::error_code& ec) {
     return session->detach(ec);
 }
 
-class session_t::channel_t
-{
+class session_t::channel_t {
 public:
     channel_t(const dispatch_ptr_t& dispatch_,
-              const upstream_ptr_t& upstream_,
-              std::unique_ptr<metrics::timer_t::context_t> context_,
+              upstream_ptr_t upstream_,
+              std::shared_ptr<metrics::timer_t::context_t> context_,
               boost::optional<trace_t> trace_)
-        : dispatch(dispatch_), upstream(upstream_), context(std::move(context_)), trace(std::move(trace_)) {}
+        : dispatch(dispatch_), upstream(std::move(upstream_)), context(std::move(context_)), trace(std::move(trace_)) {}
 
     dispatch_ptr_t dispatch;
     upstream_ptr_t upstream;
-    std::unique_ptr<metrics::timer_t::context_t> context;
+    std::shared_ptr<metrics::timer_t::context_t> context;
     boost::optional<trace_t> trace;
 };
 
@@ -233,6 +232,15 @@ struct session_t::metrics_t {
     }
 };
 
+struct metered_upstream_t : public basic_upstream_t {
+    std::shared_ptr<metrics::timer_t::context_t> timer;
+
+    metered_upstream_t(const std::shared_ptr<session_t>& session, uint64_t channel_id, std::shared_ptr<metrics::timer_t::context_t> timer) :
+        basic_upstream_t(session, channel_id),
+        timer(std::move(timer))
+    {}
+};
+
 session_t::session_t(std::unique_ptr<logging::logger_t> log_,
                      metrics::registry_t& metrics_hub,
                      std::unique_ptr<transport_type> transport_,
@@ -282,10 +290,12 @@ session_t::handle(const decoder_t::message_type& message) {
 
             trace = extract_trace(message);
 
+            auto timer = std::make_shared<metrics::timer_t::context_t>(metrics->timers.at(message.type())->context());
+
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
                 select_dispatch(message),
-                std::make_shared<basic_upstream_t>(shared_from_this(), channel_id),
-                std::make_unique<metrics::timer_t::context_t>(metrics->timers.at(message.type())->context()),
+                std::make_shared<metered_upstream_t>(shared_from_this(), channel_id, timer),
+                timer,
                 trace
             )});
             metrics->summary->mark();
