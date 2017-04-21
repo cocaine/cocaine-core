@@ -44,6 +44,11 @@ public:
     ///
     /// This will discard all active chanels and close connecton to client,
     /// it can only be used as a last resort to signal unrecoverable error.
+    uint64_t
+    channel_id() const {
+        return m_channel_id;
+    }
+
     void
     detach_session(const std::error_code& ec) {
         m_session->detach(ec);
@@ -54,31 +59,18 @@ public:
         m_session->push(std::move(message));
     };
 
-    uint64_t
-    channel_id() const {
-        return m_channel_id;
+    template<class Event, class... Args>
+    void
+    send(Args&&... args) {
+        send<Event>({}, std::forward<Args>(args)...);
     }
 
     template<class Event, class... Args>
     void
-    send(Args&&... args);
-
-    template<class Event, class... Args>
-    void
-    send(hpack::header_storage_t headers, Args&&... args);
+    send(hpack::header_storage_t headers, Args&&... args) {
+        send(encoded<Event>(m_channel_id, std::move(headers), std::forward<Args>(args)...));
+    }
 };
-
-template<class Event, class... Args>
-void
-basic_upstream_t::send(hpack::header_storage_t headers, Args&&... args) {
-    m_session->push(encoded<Event>(m_channel_id, std::move(headers), std::forward<Args>(args)...));
-}
-
-template<class Event, class... Args>
-void
-basic_upstream_t::send(Args&&... args) {
-    m_session->push(encoded<Event>(m_channel_id, std::forward<Args>(args)...));
-}
 
 // Forwards for the upstream<T> class
 
