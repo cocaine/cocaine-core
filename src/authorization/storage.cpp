@@ -4,6 +4,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/optional/optional.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/numeric.hpp>
 
@@ -15,62 +16,6 @@
 #include "cocaine/format/vector.hpp"
 #include "cocaine/idl/storage.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/traits/enum.hpp"
-#include "cocaine/traits/map.hpp"
-#include "cocaine/traits/tuple.hpp"
-
-namespace cocaine {
-namespace authorization {
-namespace storage {
-
-namespace {
-
-enum flags_t: std::size_t {
-    none  = 0x00,
-    read  = 0x01,
-    write = 0x02,
-    both  = read | write
-};
-
-struct metainfo_t {
-    std::map<auth::cid_t, flags_t> c_perms;
-    std::map<auth::uid_t, flags_t> u_perms;
-
-    auto
-    empty() const -> bool {
-        return c_perms.empty() && u_perms.empty();
-    }
-};
-
-} // namespace
-} // namespace storage
-} // namespace authorization
-} // namespace cocaine
-
-namespace cocaine { namespace io {
-
-template<>
-struct type_traits<authorization::storage::metainfo_t> {
-    typedef boost::mpl::list<
-        std::map<auth::cid_t, authorization::storage::flags_t>,
-        std::map<auth::uid_t, authorization::storage::flags_t>
-    > underlying_type;
-
-    template<class Stream>
-    static inline
-    void
-    pack(msgpack::packer<Stream>& target, const authorization::storage::metainfo_t& source) {
-        type_traits<underlying_type>::pack(target, source.c_perms, source.u_perms);
-    }
-
-    static inline
-    void
-    unpack(const msgpack::object& source, authorization::storage::metainfo_t& target) {
-        type_traits<underlying_type>::unpack(source, target.c_perms, target.u_perms);
-    }
-};
-
-}} // namespace cocaine::io
 
 namespace cocaine {
 namespace authorization {
@@ -126,7 +71,9 @@ disabled_t::verify(std::size_t, const std::string&, const std::string&, const au
 
 enabled_t::enabled_t(context_t& context, const std::string& service, const dynamic_t& args) :
     log(context.log(cocaine::format("authorization/{}/collection", service))),
-    backend(api::storage(context, args.as_object().at("backend", "core").as_string()))
+    backend(api::storage(context, args.as_object().at("backend", "core").as_string())),
+    cache_duration(args.as_object().at("cache_duration", 60u).as_uint()),
+    cache()
 {}
 
 auto
@@ -212,32 +159,65 @@ enabled_t::verify(std::size_t event, const std::string& collection, const auth::
         callback(std::error_code());
     };
 
-    COCAINE_LOG_DEBUG(log, "reading ACL metainfo for collection '{}'", collection);
-    backend->get<metainfo_t>(defaults::collection_acls, collection, [=](std::future<metainfo_t> future) mutable {
-        metainfo_t metainfo;
-        try {
-            metainfo = future.get();
-        } catch (const std::system_error& err) {
-            if (err.code() != std::errc::no_such_file_or_directory) {
-                COCAINE_LOG_ERROR(log, "failed to read ACL metainfo for collection '{}': {}",
-                    collection, error::to_string(err));
-                callback(err.code());
-                return;
-            }
-        } catch (const msgpack::unpack_error&) {
-            COCAINE_LOG_ERROR(log, "failed to read ACL metainfo for collection '{}': invalid ACL framing",
-                collection);
-            callback(make_error_code(error::invalid_acl_framing));
-            return;
-        } catch (const std::bad_cast&) {
-            COCAINE_LOG_ERROR(log, "failed to read ACL metainfo for collection '{}': invalid ACL framing",
-                collection);
-            callback(make_error_code(error::invalid_acl_framing));
-            return;
+    auto metainfo = cache.apply([&](const std::map<std::string, cached<metainfo_t>>& cache)
+        -> boost::optional<metainfo_t>
+    {
+        auto it = cache.find(collection);
+        if (it == std::end(cache)) {
+            return boost::none;
         }
 
-        on_metainfo(std::move(metainfo));
+        cached<metainfo_t>::tag_t tag;
+        metainfo_t metainfo;
+        std::tie(tag, metainfo) = it->second.get();
+        if (tag == cached<metainfo_t>::tag_t::expired) {
+            return boost::none;
+        } else {
+            return metainfo;
+        }
     });
+
+    if (metainfo) {
+        COCAINE_LOG_DEBUG(log, "reading ACL metainfo for collection '{}' from cache", collection);
+        on_metainfo(std::move(*metainfo));
+    } else {
+        COCAINE_LOG_DEBUG(log, "reading ACL metainfo for collection '{}'", collection);
+        backend->get<metainfo_t>(defaults::collection_acls, collection, [=](std::future<metainfo_t> future) mutable {
+            metainfo_t metainfo;
+            try {
+                metainfo = future.get();
+            } catch (const std::system_error& err) {
+                if (err.code() != std::errc::no_such_file_or_directory) {
+                    COCAINE_LOG_ERROR(log, "failed to read ACL metainfo for collection '{}': {}",
+                        collection, error::to_string(err));
+                    callback(err.code());
+                    return;
+                }
+            } catch (const msgpack::unpack_error&) {
+                COCAINE_LOG_ERROR(log, "failed to read ACL metainfo for collection '{}': invalid ACL framing",
+                    collection);
+                callback(make_error_code(error::invalid_acl_framing));
+                return;
+            } catch (const std::bad_cast&) {
+                COCAINE_LOG_ERROR(log, "failed to read ACL metainfo for collection '{}': invalid ACL framing",
+                    collection);
+                callback(make_error_code(error::invalid_acl_framing));
+                return;
+            }
+
+            cache.apply([&](std::map<std::string, cached<metainfo_t>>& cache) {
+                auto acl = cached<metainfo_t>(metainfo, cache_duration);
+                auto it = cache.find(collection);
+                if (it == std::end(cache)) {
+                    cache.insert({collection, acl});
+                } else {
+                    it->second = acl;
+                }
+            });
+
+            on_metainfo(std::move(metainfo));
+        });
+    }
 }
 
 } // namespace storage
