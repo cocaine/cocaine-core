@@ -4,6 +4,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/optional/optional.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/numeric.hpp>
 
