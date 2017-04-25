@@ -16,34 +16,6 @@
 #include "cocaine/format/vector.hpp"
 #include "cocaine/idl/storage.hpp"
 #include "cocaine/logging.hpp"
-#include "cocaine/traits/enum.hpp"
-#include "cocaine/traits/map.hpp"
-#include "cocaine/traits/tuple.hpp"
-
-namespace cocaine { namespace io {
-
-template<>
-struct type_traits<authorization::storage::metainfo_t> {
-    typedef boost::mpl::list<
-        std::map<auth::cid_t, authorization::storage::flags_t>,
-        std::map<auth::uid_t, authorization::storage::flags_t>
-    > underlying_type;
-
-    template<class Stream>
-    static inline
-    void
-    pack(msgpack::packer<Stream>& target, const authorization::storage::metainfo_t& source) {
-        type_traits<underlying_type>::pack(target, source.c_perms, source.u_perms);
-    }
-
-    static inline
-    void
-    unpack(const msgpack::object& source, authorization::storage::metainfo_t& target) {
-        type_traits<underlying_type>::unpack(source, target.c_perms, target.u_perms);
-    }
-};
-
-}} // namespace cocaine::io
 
 namespace cocaine {
 namespace authorization {
