@@ -1,7 +1,6 @@
 #include "cocaine/rpc/actor_unix.hpp"
 
 #include "cocaine/context.hpp"
-#include "cocaine/detail/chamber.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/errors.hpp"
 #include "cocaine/logging.hpp"
@@ -13,6 +12,8 @@
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
+
+#include "chamber.hpp"
 
 using namespace cocaine;
 

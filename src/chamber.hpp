@@ -62,6 +62,11 @@ public:
    ~chamber_t();
 
     auto
+    io_service() const -> const io::io_service& {
+        return *asio;
+    }
+
+    auto
     load_avg1() const -> double {
         return boost::accumulators::rolling_mean(*load_acc1.synchronize());
     }

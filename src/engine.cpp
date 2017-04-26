@@ -23,8 +23,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/logging.hpp"
 
-#include "cocaine/detail/chamber.hpp"
-
 #include "cocaine/rpc/asio/transport.hpp"
 #include "cocaine/rpc/basic_dispatch.hpp"
 #include "cocaine/rpc/session.hpp"
@@ -37,6 +35,8 @@
 #include <asio/io_service.hpp>
 #include <asio/ip/tcp.hpp>
 #include <asio/local/stream_protocol.hpp>
+
+#include "chamber.hpp"
 
 using namespace cocaine;
 using namespace cocaine::io;

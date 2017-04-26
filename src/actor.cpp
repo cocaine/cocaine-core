@@ -29,7 +29,6 @@
 #include "cocaine/logging.hpp"
 #include "cocaine/memory.hpp"
 
-#include "cocaine/detail/chamber.hpp"
 #include "cocaine/engine.hpp"
 
 #include "cocaine/rpc/basic_dispatch.hpp"
@@ -37,6 +36,8 @@
 #include <blackhole/logger.hpp>
 
 #include <metrics/registry.hpp>
+
+#include "chamber.hpp"
 
 using namespace cocaine;
 using namespace cocaine::io;
