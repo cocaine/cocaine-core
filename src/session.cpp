@@ -168,14 +168,7 @@ session_t::push_action_t::finalize(const std::error_code& ec) {
     return session->detach(ec);
 }
 
-class session_t::channel_t {
-public:
-    channel_t(const dispatch_ptr_t& dispatch_,
-              upstream_ptr_t upstream_,
-              std::shared_ptr<metrics::timer_t::context_t> context_,
-              boost::optional<trace_t> trace_)
-        : dispatch(dispatch_), upstream(std::move(upstream_)), context(std::move(context_)), trace(std::move(trace_)) {}
-
+struct session_t::channel_t {
     dispatch_ptr_t dispatch;
     upstream_ptr_t upstream;
     std::shared_ptr<metrics::timer_t::context_t> context;
@@ -293,10 +286,12 @@ session_t::handle(const decoder_t::message_type& message) {
             auto timer = std::make_shared<metrics::timer_t::context_t>(metrics->timers.at(message.type())->context());
 
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
-                select_dispatch(message),
-                std::make_shared<metered_upstream_t>(shared_from_this(), channel_id, timer),
-                timer,
-                trace
+                channel_t{
+                    select_dispatch(message),
+                    std::make_shared<metered_upstream_t>(shared_from_this(), channel_id, timer),
+                    timer,
+                    trace
+                }
             )});
             metrics->summary->mark();
 
@@ -420,10 +415,12 @@ session_t::fork(const dispatch_ptr_t& dispatch) {
             // NOTE: For mute slots, creating a new channel will essentially leak memory, since no
             // response will ever be sent back, therefore the channel will never be revoked at all.
             mapping.insert({channel_id, std::make_shared<channel_t>(
-                dispatch,
-                downstream,
-                nullptr,
-                trace
+                channel_t{
+                    dispatch,
+                    downstream,
+                    nullptr,
+                    trace
+                }
             )});
         }
 

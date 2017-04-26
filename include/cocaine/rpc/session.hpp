@@ -41,7 +41,7 @@ class session_t:
     class pull_action_t;
     class push_action_t;
 
-    class channel_t;
+    struct channel_t;
 
     typedef std::map<uint64_t, std::shared_ptr<channel_t>> channel_map_t;
 
