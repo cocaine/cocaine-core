@@ -74,7 +74,7 @@ struct match {
 using blackhole::scope::holder_t;
 
 class context_impl_t : public context_t {
-    typedef std::deque<std::pair<std::string, std::unique_ptr<actor_t>>> service_list_t;
+    typedef std::deque<std::pair<std::string, std::unique_ptr<tcp_actor_t>>> service_list_t;
 
     // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
     // for the Blackhole, when all the common stuff is extracted to a separate library.
@@ -145,7 +145,7 @@ public:
             COCAINE_LOG_DEBUG(m_log, "starting service");
 
             try {
-                insert(name, std::make_unique<actor_t>(*this, repository().get<api::service_t>(
+                insert(name, std::make_unique<tcp_actor_t>(*this, repository().get<api::service_t>(
                     service.type(),
                     *this,
                     m_acceptor_thread->get_io_service(),
@@ -234,14 +234,14 @@ public:
     }
 
     void
-    insert(const std::string& name, std::unique_ptr<actor_t> service) {
+    insert(const std::string& name, std::unique_ptr<tcp_actor_t> service) {
         insert_with(name, [&] {
             return std::move(service);
         });
     }
 
     void
-    insert_with(const std::string& name, std::function<std::unique_ptr<actor_t>()> fn) {
+    insert_with(const std::string& name, std::function<std::unique_ptr<tcp_actor_t>()> fn) {
         const holder_t scoped(*m_log, {{"source", "core"}});
 
         auto actor = m_services.apply([&](service_list_t& list) {
@@ -251,6 +251,7 @@ public:
             }
 
             auto service = fn();
+            // TODO: Race condition here.
             auto actor = service.get();
 
             service->run();
@@ -264,7 +265,7 @@ public:
             return actor;
         });
 
-        // Fire off the signal to alert concerned subscribers about the service removal event.
+        // Fire off the signal to alert concerned subscribers about the service starting event.
         m_signals.invoke<io::context::service::exposed>(actor->prototype()->name(), std::forward_as_tuple(
             actor->endpoints(),
             actor->prototype()->version(),
@@ -272,11 +273,11 @@ public:
         ));
     }
 
-    std::unique_ptr<actor_t>
+    std::unique_ptr<tcp_actor_t>
     remove(const std::string& name) {
         const holder_t scoped(*m_log, {{"source", "core"}});
 
-        std::unique_ptr<actor_t> service;
+        std::unique_ptr<tcp_actor_t> service;
 
         m_services.apply([&](service_list_t& list) {
             auto it = std::find_if(list.begin(), list.end(), match{name});
@@ -378,12 +379,16 @@ public:
         // are being handled.
         m_acceptor_thread->get_io_service().stop();
 
-        // There should be no outstanding services left. All the extra services spawned by others, like
-        // app invocation services from the node service, should be dead by now.
-        BOOST_ASSERT(m_services->empty());
-
         // Does not block, unlike the one in execution_unit_t's destructors.
         m_acceptor_thread.reset();
+
+        // There should be no outstanding services left. All the extra services spawned by others, like
+        // app invocation services from the node service, should be dead by now.
+        // TODO: Here's race by design. For example Node service listens `on_shutdown` signal, but
+        // its invocation occurs in the `m_acceptor_thread` thread and can be missed due to force
+        // I/O loop termination.
+
+        // BOOST_ASSERT(m_services->empty());
 
         COCAINE_LOG_INFO(m_log, "stopping {:d} execution unit(s)", m_pool.size());
         m_pool.clear();

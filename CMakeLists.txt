@@ -69,7 +69,6 @@ ADD_LIBRARY(cocaine-io-util SHARED
     src/trace.cpp)
 
 ADD_LIBRARY(cocaine-core SHARED
-    src/actor_unix.cpp
     src/actor.cpp
     src/api/authentication.cpp
     src/api/authorization.cpp

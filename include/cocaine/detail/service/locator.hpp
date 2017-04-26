@@ -34,12 +34,6 @@
 
 #include "cocaine/locked_ptr.hpp"
 
-namespace cocaine {
-
-class actor_t;
-
-} // namespace cocaine
-
 namespace cocaine { namespace service {
 
 class locator_t;

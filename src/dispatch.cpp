@@ -32,6 +32,9 @@ basic_dispatch_t::~basic_dispatch_t() {
     // Empty.
 }
 
+auto
+basic_dispatch_t::attached(std::shared_ptr<session_t>) -> void {}
+
 void
 basic_dispatch_t::discard(const std::error_code& COCAINE_UNUSED_(ec)) {
     // Empty.

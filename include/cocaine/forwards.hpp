@@ -30,6 +30,18 @@ namespace asio {
 
 class io_service;
 
+namespace ip {
+
+class tcp;
+
+} // namespace ip
+
+namespace local {
+
+class stream_protocol;
+
+} // namespace local
+
 } // namespace asio
 
 namespace blackhole {
@@ -50,6 +62,12 @@ class registry_t;
 namespace cocaine {
 
 class actor_t;
+
+template<typename Protocol>
+class actor;
+
+class tcp_actor_t;
+
 struct config_t;
 class context_t;
 class dynamic_t;

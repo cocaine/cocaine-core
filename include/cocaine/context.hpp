@@ -74,7 +74,7 @@ public:
     // Service API
     virtual
     void
-    insert(const std::string& name, std::unique_ptr<actor_t> service) = 0;
+    insert(const std::string& name, std::unique_ptr<tcp_actor_t> service) = 0;
 
     /// Inserts a new service into the context.
     ///
@@ -86,11 +86,11 @@ public:
     /// \throws std::system_error if a service with the specified name already exists.
     virtual
     void
-    insert_with(const std::string& name, std::function<std::unique_ptr<actor_t>()> fn) = 0;
+    insert_with(const std::string& name, std::function<std::unique_ptr<tcp_actor_t>()> fn) = 0;
 
     virtual
     auto
-    remove(const std::string& name) -> std::unique_ptr<actor_t> = 0;
+    remove(const std::string& name) -> std::unique_ptr<tcp_actor_t> = 0;
 
     virtual
     auto

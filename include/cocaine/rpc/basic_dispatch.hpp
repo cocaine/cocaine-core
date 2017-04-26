@@ -47,6 +47,10 @@ public:
     virtual
     ~basic_dispatch_t();
 
+    virtual
+    auto
+    attached(std::shared_ptr<session_t> session) -> void;
+
     // Concrete protocol transition as opposed to transition description in protocol graphs. It can
     // either be some new dispatch pointer, an uninitialized pointer - terminal transition, or just
     // an empty optional - recurrent transition (i.e. no transition at all).

@@ -18,19 +18,39 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_ACTOR_HPP
-#define COCAINE_ACTOR_HPP
+#pragma once
 
 #include "cocaine/common.hpp"
 #include "cocaine/locked_ptr.hpp"
 
 #include <asio/ip/tcp.hpp>
+#include <asio/local/stream_protocol.hpp>
 
 namespace cocaine {
 
 class actor_t {
-    COCAINE_DECLARE_NONCOPYABLE(actor_t)
+public:
+    virtual
+    auto
+    is_active() const -> bool = 0;
 
+    virtual
+    auto
+    run() -> void = 0;
+
+    virtual
+    auto
+    terminate() -> void = 0;
+};
+
+template<typename Protocol>
+class actor_base : public actor_t {
+public:
+    using protocol_type = Protocol;
+    using acceptor_type = typename protocol_type::acceptor;
+    using endpoint_type = typename protocol_type::endpoint;
+
+private:
     class accept_action_t;
 
     context_t& m_context;
@@ -48,38 +68,84 @@ class actor_t {
     // I/O acceptor. Actors have a separate thread to accept new connections. After a connection is
     // is accepted, it is assigned to a least busy thread from the main thread pool. Synchronized to
     // allow concurrent observing and operations.
-    synchronized<std::unique_ptr<asio::ip::tcp::acceptor>> m_acceptor;
+    synchronized<std::unique_ptr<acceptor_type>> m_acceptor;
 
     // Main service thread.
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:
-    actor_t(context_t& context, std::unique_ptr<io::basic_dispatch_t> prototype);
+    actor_base(context_t& context, std::unique_ptr<io::basic_dispatch_t> prototype);
 
-    actor_t(context_t& context, std::unique_ptr<api::service_t> service);
-
-   ~actor_t();
+    ~actor_base();
 
     // Observers
 
+    virtual
     auto
-    endpoints() const -> std::vector<asio::ip::tcp::endpoint>;
+    endpoints() const -> std::vector<endpoint_type> = 0;
 
-    bool
-    is_active() const;
-
+    virtual
     auto
     prototype() const -> io::dispatch_ptr_t;
 
+    auto
+    is_active() const -> bool override;
+
     // Modifiers
 
-    void
-    run();
+    auto
+    run() -> void override;
 
-    void
-    terminate();
+    auto
+    terminate() -> void override;
+
+protected:
+    actor_base(context_t& context, io::dispatch_ptr_t prototype);
+
+    auto
+    acceptor() const -> const synchronized<std::unique_ptr<acceptor_type>>&;
+
+    /// Constructs an endpoint that is used to bind this actor.
+    ///
+    /// Called once per `run()` to be able to expose a service.
+    virtual
+    auto
+    make_endpoint() const -> endpoint_type = 0;
+
+    /// Called after been run.
+    ///
+    /// Default implementation does nothing.
+    virtual
+    auto
+    on_run() -> void {}
+
+    /// Called after been terminated.
+    ///
+    /// Default implementation does nothing.
+    virtual
+    auto
+    on_terminate() -> void {}
+};
+
+extern template class actor_base<asio::ip::tcp>;
+extern template class actor_base<asio::local::stream_protocol>;
+
+class tcp_actor_t : public actor_base<asio::ip::tcp> {
+    context_t& context;
+
+public:
+    tcp_actor_t(context_t& context, std::unique_ptr<io::basic_dispatch_t> prototype);
+    tcp_actor_t(context_t& context, std::unique_ptr<api::service_t> service);
+
+    auto
+    endpoints() const -> std::vector<endpoint_type> override;
+
+protected:
+    auto
+    make_endpoint() const -> endpoint_type override;
+
+    auto
+    on_terminate() -> void override;
 };
 
 } // namespace cocaine
-
-#endif
