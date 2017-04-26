@@ -18,25 +18,24 @@
     along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef COCAINE_CONTEXT_HPP
-#define COCAINE_CONTEXT_HPP
-
-#include "cocaine/common.hpp"
-
-#include <blackhole/attributes.hpp>
-
-#include <boost/optional/optional_fwd.hpp>
+#pragma once
 
 #include <map>
 
-namespace cocaine {
+#include <boost/optional/optional_fwd.hpp>
 
-// Context
+
+#include <blackhole/attributes.hpp>
+
+#include "cocaine/common.hpp"
+#include "cocaine/forwards.hpp"
+
+namespace cocaine {
 
 class context_t {
 public:
     virtual
-    ~context_t() {}
+    ~context_t() = default;
 
     virtual
     std::unique_ptr<logging::logger_t>
@@ -114,5 +113,3 @@ make_context(std::unique_ptr<config_t> config,
              std::unique_ptr<api::repository_t> repository);
 
 } // namespace cocaine
-
-#endif
