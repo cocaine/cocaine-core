@@ -36,7 +36,6 @@ class actor_t {
     context_t& m_context;
 
     const std::unique_ptr<logging::logger_t> m_log;
-    const std::shared_ptr<asio::io_service> m_asio;
 
     struct metrics_t;
     std::unique_ptr<metrics_t> metrics;
@@ -55,11 +54,9 @@ class actor_t {
     std::unique_ptr<io::chamber_t> m_chamber;
 
 public:
-    actor_t(context_t& context, const std::shared_ptr<asio::io_service>& asio,
-            std::unique_ptr<io::basic_dispatch_t> prototype);
+    actor_t(context_t& context, std::unique_ptr<io::basic_dispatch_t> prototype);
 
-    actor_t(context_t& context, const std::shared_ptr<asio::io_service>& asio,
-            std::unique_ptr<api::service_t> service);
+    actor_t(context_t& context, std::unique_ptr<api::service_t> service);
 
    ~actor_t();
 

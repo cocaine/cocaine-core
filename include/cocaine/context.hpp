@@ -24,6 +24,8 @@
 
 #include <boost/optional/optional_fwd.hpp>
 
+#include <asio/ip/tcp.hpp>
+#include <asio/local/stream_protocol.hpp>
 
 #include <blackhole/attributes.hpp>
 
@@ -102,6 +104,16 @@ public:
     virtual
     auto
     engine() -> execution_unit_t& = 0;
+
+    /// Binds a new TCP socket on the specified endpoint and starts listening for new connections.
+    virtual
+    auto
+    expose(asio::ip::tcp::endpoint endpoint) -> std::unique_ptr<asio::ip::tcp::acceptor> = 0;
+
+    virtual
+    auto
+    expose(asio::local::stream_protocol::endpoint endpoint) -> std::unique_ptr<asio::local::stream_protocol::acceptor> = 0;
+
 };
 
 std::unique_ptr<context_t>

@@ -26,9 +26,9 @@ class unix_actor_t::accept_action_t:
     protocol_type::socket socket;
 
 public:
-    accept_action_t(unix_actor_t& parent):
+    accept_action_t(unix_actor_t& parent, asio::io_service& loop):
         parent(parent),
-        socket(*parent.m_asio)
+        socket(loop)
     {}
 
     void
@@ -87,24 +87,22 @@ unix_actor_t::unix_actor_t(cocaine::context_t& context,
                            asio::local::stream_protocol::endpoint endpoint,
                            fact_type fact,
                            bind_type bind,
-                           const std::shared_ptr<asio::io_service>& asio,
                            std::unique_ptr<cocaine::io::basic_dispatch_t> prototype) :
     m_context(context),
     endpoint(std::move(endpoint)),
     m_log(context.log("core/asio", {{ "service", prototype->name() }})),
-    m_asio(asio),
     m_prototype(std::move(prototype)),
     fact(std::move(fact)),
     bind(bind)
 {}
 
-unix_actor_t::~unix_actor_t() {}
+unix_actor_t::~unix_actor_t() = default;
 
 void
 unix_actor_t::run() {
     m_acceptor.apply([this](std::unique_ptr<protocol_type::acceptor>& ptr) {
         try {
-            ptr = std::make_unique<protocol_type::acceptor>(*m_asio, this->endpoint);
+            ptr = m_context.expose(this->endpoint);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint for service: {}",
                 error::to_string(e));
@@ -115,25 +113,16 @@ unix_actor_t::run() {
         const auto endpoint = ptr->local_endpoint(ec);
 
         COCAINE_LOG_INFO(m_log, "exposing service on local endpoint {}", endpoint);
+
+        auto action = std::make_shared<accept_action_t>(*this, ptr->get_io_service());
+        ptr->get_io_service().post([=] {
+            action->operator()();
+        });
     });
-
-    m_asio->post(std::bind(&accept_action_t::operator(),
-        std::make_shared<accept_action_t>(*this)
-    ));
-
-    // The post() above won't be executed until this thread is started.
-    m_chamber = std::make_unique<io::chamber_t>(m_prototype->name(), m_asio);
 }
 
 void
 unix_actor_t::terminate() {
-    // Do not wait for the service to finish all its stuff (like timers, etc). Graceful termination
-    // happens only in engine chambers, because that's where client connections are being handled.
-    m_asio->stop();
-
-    // Does not block, unlike the one in execution_unit_t's destructors.
-    m_chamber = nullptr;
-
     m_acceptor.apply([this](std::unique_ptr<protocol_type::acceptor>& ptr) {
         std::error_code ec;
         const auto endpoint = ptr->local_endpoint(ec);
@@ -143,9 +132,7 @@ unix_actor_t::terminate() {
         ptr = nullptr;
     });
 
-    // Be ready to restart the actor.
-    m_asio->reset();
-
+    // TODO: Make an abstraction like `m_context.mapper().retain(endpoint);`.
     const auto endpoint = boost::lexical_cast<std::string>(this->endpoint);
 
     try {

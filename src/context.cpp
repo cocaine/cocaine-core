@@ -47,7 +47,15 @@
 
 #include <deque>
 
+#include "chamber.hpp"
+
 namespace cocaine {
+
+namespace io {
+
+using asio::io_service;
+
+} // namespace io
 
 namespace {
 
@@ -61,7 +69,7 @@ struct match {
     const std::string& name;
 };
 
-}
+} // namespace
 
 using blackhole::scope::holder_t;
 
@@ -75,6 +83,9 @@ class context_impl_t : public context_t {
     // NOTE: This is the first object in the component tree, all the other dynamic components, be it
     // storages or isolates, have to be declared after this one.
     std::unique_ptr<api::repository_t> m_repository;
+
+    // An acceptor thread.
+    std::unique_ptr<io::chamber_t> m_acceptor_thread;
 
     // A pool of execution units - threads responsible for doing all the service invocations.
     std::vector<std::unique_ptr<execution_unit_t>> m_pool;
@@ -115,6 +126,8 @@ public:
         // Load the rest of plugins.
         m_repository->load(m_config->path().plugins());
 
+        m_acceptor_thread = std::make_unique<io::chamber_t>("acceptor", std::make_shared<io::io_service>());
+
         // Spin up all the configured services, launch execution units.
         COCAINE_LOG_INFO(m_log, "starting {:d} execution unit(s)", m_config->network().pool());
 
@@ -129,15 +142,13 @@ public:
         m_config->services().each([&](const std::string& name, const config_t::component_t& service) mutable {
             const holder_t scoped(*m_log, {{"service", name}});
 
-            const auto asio = std::make_shared<asio::io_service>();
-
             COCAINE_LOG_DEBUG(m_log, "starting service");
 
             try {
-                insert(name, std::make_unique<actor_t>(*this, asio, repository().get<api::service_t>(
+                insert(name, std::make_unique<actor_t>(*this, repository().get<api::service_t>(
                     service.type(),
                     *this,
-                    *asio,
+                    m_acceptor_thread->get_io_service(),
                     name,
                     service.args()
                 )));
@@ -330,6 +341,16 @@ public:
         return **std::min_element(m_pool.begin(), m_pool.end(), comp);
     }
 
+    auto
+    expose(asio::ip::tcp::endpoint endpoint) -> std::unique_ptr<asio::ip::tcp::acceptor> {
+        return do_expose<asio::ip::tcp>(endpoint);
+    }
+
+    auto
+    expose(asio::local::stream_protocol::endpoint endpoint) -> std::unique_ptr<asio::local::stream_protocol::acceptor> {
+        return do_expose<asio::local::stream_protocol>(endpoint);
+    }
+
     void
     terminate() {
         COCAINE_LOG_INFO(m_log, "stopping {:d} service(s)", m_services->size());
@@ -352,12 +373,19 @@ public:
             }
         });
 
+        // Do not wait for the service to finish all its stuff (like timers, etc). Graceful
+        // termination happens only in engine chambers, because that's where client connections
+        // are being handled.
+        m_acceptor_thread->get_io_service().stop();
+
         // There should be no outstanding services left. All the extra services spawned by others, like
         // app invocation services from the node service, should be dead by now.
         BOOST_ASSERT(m_services->empty());
 
-        COCAINE_LOG_INFO(m_log, "stopping {:d} execution unit(s)", m_pool.size());
+        // Does not block, unlike the one in execution_unit_t's destructors.
+        m_acceptor_thread.reset();
 
+        COCAINE_LOG_INFO(m_log, "stopping {:d} execution unit(s)", m_pool.size());
         m_pool.clear();
 
         // Destroy the service objects.
@@ -366,6 +394,16 @@ public:
         reset_logger_filter();
 
         COCAINE_LOG_INFO(m_log, "core has been terminated");
+    }
+
+private:
+    template<typename Protocol>
+    auto
+    do_expose(typename Protocol::endpoint endpoint) -> std::unique_ptr<typename Protocol::acceptor> {
+        return std::make_unique<typename Protocol::acceptor>(
+            m_acceptor_thread->get_io_service(),
+            endpoint
+        );
     }
 };
 

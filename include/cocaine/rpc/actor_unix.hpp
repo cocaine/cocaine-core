@@ -18,7 +18,6 @@ class unix_actor_t {
     protocol_type::endpoint endpoint;
 
     const std::unique_ptr<logging::logger_t> m_log;
-    const std::shared_ptr<asio::io_service> m_asio;
 
     // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
     // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
@@ -42,7 +41,6 @@ public:
     unix_actor_t(context_t& context, protocol_type::endpoint endpoint,
                  fact_type fact,
                  bind_type bind,
-                 const std::shared_ptr<asio::io_service>& asio,
                  std::unique_ptr<io::basic_dispatch_t> prototype);
 
    ~unix_actor_t();

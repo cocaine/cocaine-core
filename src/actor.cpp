@@ -59,9 +59,9 @@ class actor_t::accept_action_t:
     tcp::socket socket;
 
 public:
-    accept_action_t(actor_t& parent):
+    accept_action_t(actor_t& parent, asio::io_service& loop):
         parent(parent),
-        socket(*parent.m_asio)
+        socket(loop)
     {}
 
     void
@@ -123,12 +123,9 @@ actor_t::accept_action_t::finalize(const std::error_code& ec) {
 
 // Actor
 
-actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
-                 std::unique_ptr<basic_dispatch_t> prototype)
-:
+actor_t::actor_t(context_t& context, std::unique_ptr<basic_dispatch_t> prototype) :
     m_context(context),
     m_log(context.log("core/asio", {{"service", prototype->name()}})),
-    m_asio(asio),
     metrics(new metrics_t{
         context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.accepted", prototype->name())),
         context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.rejected", prototype->name()))
@@ -136,12 +133,9 @@ actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
     m_prototype(std::move(prototype))
 {}
 
-actor_t::actor_t(context_t& context, const std::shared_ptr<io_service>& asio,
-                 std::unique_ptr<api::service_t> service)
-:
+actor_t::actor_t(context_t& context, std::unique_ptr<api::service_t> service) :
     m_context(context),
     m_log(context.log("core/asio", {{"service", service->prototype().name()}})),
-    m_asio(asio),
     metrics(new metrics_t{
         context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.accepted", service->prototype().name())),
         context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.rejected", service->prototype().name()))
@@ -162,36 +156,37 @@ std::vector<tcp::endpoint>
 actor_t::endpoints() const {
     tcp::resolver::iterator begin;
 
+    // For unspecified bind addresses, actual address set has to be resolved first. In other words,
+    // unspecified means every available and reachable address for the host.
+    std::vector<tcp::endpoint> endpoints;
+
     try {
-        const auto local = m_acceptor.apply(
-            [](const std::unique_ptr<tcp::acceptor>& ptr) -> tcp::endpoint
-        {
+        m_acceptor.apply([&](const std::unique_ptr<tcp::acceptor>& ptr) {
+            tcp::endpoint local;
             if(ptr) {
-                return ptr->local_endpoint();
+                local = ptr->local_endpoint();
             } else {
                 throw std::system_error(std::make_error_code(std::errc::not_connected));
             }
+
+            if(!local.address().is_unspecified()) {
+                endpoints.push_back(local);
+                return;
+            }
+
+            const tcp::resolver::query::flags flags =
+                tcp::resolver::query::address_configured |
+                tcp::resolver::query::numeric_service;
+
+            begin = tcp::resolver(ptr->get_io_service()).resolve(tcp::resolver::query(
+                m_context.config().network().hostname(), std::to_string(local.port()),
+                flags
+            ));
         });
-
-        if(!local.address().is_unspecified()) {
-            return std::vector<tcp::endpoint>({local});
-        }
-
-        const tcp::resolver::query::flags flags = tcp::resolver::query::address_configured
-                                                | tcp::resolver::query::numeric_service;
-
-        begin = tcp::resolver(*m_asio).resolve(tcp::resolver::query(
-            m_context.config().network().hostname(), std::to_string(local.port()),
-            flags
-        ));
     } catch(const std::system_error& e) {
         COCAINE_LOG_ERROR(m_log, "unable to resolve local endpoints: {}", error::to_string(e));
         return std::vector<tcp::endpoint>();
     }
-
-    // For unspecified bind addresses, actual address set has to be resolved first. In other words,
-    // unspecified means every available and reachable address for the host.
-    std::vector<tcp::endpoint> endpoints;
 
     std::transform(begin, tcp::resolver::iterator(), std::back_inserter(endpoints), std::bind(
        &tcp::resolver::iterator::value_type::endpoint,
@@ -220,7 +215,7 @@ actor_t::run() {
         const auto port = m_context.mapper().assign(m_prototype->name());
 
         try {
-            auto addr = asio::ip::address::from_string(m_context.config().network().endpoint());
+            auto addr = ip::address::from_string(m_context.config().network().endpoint());
             endpoint = tcp::endpoint{addr, port};
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to assign a local endpoint to service: {}", error::to_string(e));
@@ -229,7 +224,7 @@ actor_t::run() {
         }
 
         try {
-            ptr = std::make_unique<tcp::acceptor>(*m_asio, endpoint);
+            ptr = m_context.expose(endpoint);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint {} for service: {}", endpoint, error::to_string(e));
             m_context.mapper().retain(m_prototype->name());
@@ -237,25 +232,16 @@ actor_t::run() {
         }
 
         COCAINE_LOG_INFO(m_log, "exposing service on local endpoint {}", ptr->local_endpoint(ec));
+
+        auto action = std::make_shared<accept_action_t>(*this, ptr->get_io_service());
+        ptr->get_io_service().post([=] {
+            action->operator()();
+        });
     });
-
-    m_asio->post(std::bind(&accept_action_t::operator(),
-        std::make_shared<accept_action_t>(*this)
-    ));
-
-    // The post() above won't be executed until this thread is started.
-    m_chamber = std::make_unique<chamber_t>(m_prototype->name(), m_asio);
 }
 
 void
 actor_t::terminate() {
-    // Do not wait for the service to finish all its stuff (like timers, etc). Graceful termination
-    // happens only in engine chambers, because that's where client connections are being handled.
-    m_asio->stop();
-
-    // Does not block, unlike the one in execution_unit_t's destructors.
-    m_chamber = nullptr;
-
     m_acceptor.apply([this](std::unique_ptr<tcp::acceptor>& ptr) {
         std::error_code ec;
         const auto endpoint = ptr->local_endpoint(ec);
@@ -264,9 +250,6 @@ actor_t::terminate() {
 
         ptr = nullptr;
     });
-
-    // Be ready to restart the actor.
-    m_asio->reset();
 
     // Mark this service's port as free.
     m_context.mapper().retain(m_prototype->name());
