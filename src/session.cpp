@@ -27,8 +27,8 @@
 
 #include <blackhole/logger.hpp>
 
-#include <metrics/accumulator/sliding/window.hpp>
-#include <metrics/accumulator/snapshot/uniform.hpp>
+#include <metrics/accumulator/decaying/exponentially.hpp>
+#include <metrics/accumulator/snapshot/weighted.hpp>
 #include <metrics/meter.hpp>
 #include <metrics/registry.hpp>
 #include <metrics/timer.hpp>
@@ -192,7 +192,7 @@ dispatch_name(const dispatch_ptr_t& dispatch) -> std::string {
 
 struct session_t::metrics_t {
     using meter_type = metrics::shared_metric<metrics::meter_t>;
-    using timer_type = metrics::shared_metric<metrics::timer<metrics::accumulator::sliding::window_t>>;
+    using timer_type = metrics::shared_metric<metrics::timer<metrics::accumulator::decaying::exponentially_t>>;
 
     /// RPS counter.
     meter_type summary;
@@ -210,7 +210,12 @@ struct session_t::metrics_t {
             auto id = std::get<0>(item);
             auto& name = std::get<0>(std::get<1>(item));
 
-            timers.emplace(id, metrics_hub.timer(cocaine::format("{}.timer[{}]", session.prototype->name(), name)));
+
+            auto metric_name = cocaine::format("{}.timer[{}]", session.prototype->name(), name);
+            timers.emplace(
+                id,
+                metrics_hub.timer<metrics::accumulator::decaying::exponentially_t>(metric_name)
+            );
         }
     }
 
