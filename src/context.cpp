@@ -181,12 +181,12 @@ public:
     }
 
     std::unique_ptr<logging::logger_t>
-    log(const std::string& source) {
+    log(const std::string& source) override {
         return log(source, {});
     }
 
     std::unique_ptr<logging::logger_t>
-    log(const std::string& source, blackhole::attributes_t attributes) {
+    log(const std::string& source, blackhole::attributes_t attributes) override {
         attributes.push_back({"source", {source}});
 
         // TODO: Make it possible to use in-place operator+= to fill in more attributes?
@@ -194,44 +194,44 @@ public:
     }
 
     void
-    logger_filter(filter_t new_filter) {
+    logger_filter(filter_t new_filter) override {
         m_log->filter(std::move(new_filter));
     }
 
     api::repository_t&
-    repository() const {
+    repository() const override {
         return *m_repository;
     }
 
     retroactive_signal<io::context_tag>&
-    signal_hub() {
+    signal_hub() override {
         return m_signals;
     }
 
     metrics::registry_t&
-    metrics_hub() {
+    metrics_hub() override {
         return m_metrics_registry;
     }
 
     const config_t&
-    config() const {
+    config() const override {
         return *m_config;
     }
 
     port_mapping_t&
-    mapper(){
+    mapper() override {
         return m_mapper;
     }
 
     void
-    insert(const std::string& name, std::unique_ptr<tcp_actor_t> service) {
+    insert(const std::string& name, std::unique_ptr<tcp_actor_t> service) override {
         insert_with(name, [&] {
             return std::move(service);
         });
     }
 
     void
-    insert_with(const std::string& name, std::function<std::unique_ptr<tcp_actor_t>()> fn) {
+    insert_with(const std::string& name, std::function<std::unique_ptr<tcp_actor_t>()> fn) override {
         const holder_t scoped(*m_log, {{"source", "core"}});
 
         auto actor = m_services.apply([&](service_list_t& list) {
@@ -264,7 +264,7 @@ public:
     }
 
     std::unique_ptr<tcp_actor_t>
-    remove(const std::string& name) {
+    remove(const std::string& name) override {
         const holder_t scoped(*m_log, {{"source", "core"}});
 
         std::unique_ptr<tcp_actor_t> service;
@@ -299,7 +299,7 @@ public:
     }
 
     boost::optional<context::quote_t>
-    locate(const std::string& name) const {
+    locate(const std::string& name) const override {
         return m_services.apply([&](const service_list_t& list) -> boost::optional<context::quote_t> {
             auto it = std::find_if(list.begin(), list.end(), match{name});
             if (it == list.end() || !it->second->is_active()) {
@@ -311,7 +311,7 @@ public:
     }
 
     std::map<std::string, context::quote_t>
-    snapshot() const {
+    snapshot() const override {
         return m_services.apply([&](const service_list_t& list) {
             std::map<std::string, context::quote_t> result;
             for(auto& service_pair: list) {
@@ -324,7 +324,7 @@ public:
     }
 
     execution_unit_t&
-    engine() {
+    engine() override {
         typedef std::unique_ptr<execution_unit_t> unit_t;
         auto comp = [](const unit_t& lhs, const unit_t& rhs) {
             return lhs->utilization() < rhs->utilization();
@@ -383,7 +383,7 @@ public:
 
 private:
     auto
-    acceptor_loop() -> asio::io_service& {
+    acceptor_loop() -> asio::io_service& override {
         return m_acceptor_thread->get_io_service();
     }
 
