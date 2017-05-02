@@ -106,7 +106,7 @@ public:
     auto
     engine() -> execution_unit_t& = 0;
 
-    /// Binds a new TCP socket on the specified endpoint and starts listening for new connections.
+    /// Binds a new socket on the specified endpoint and starts listening for new connections.
     template<typename Protocol>
     auto
     expose(typename Protocol::endpoint endpoint) -> std::unique_ptr<typename Protocol::acceptor> {
