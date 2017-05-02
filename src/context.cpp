@@ -332,16 +332,6 @@ public:
         return **std::min_element(m_pool.begin(), m_pool.end(), comp);
     }
 
-    auto
-    expose(asio::ip::tcp::endpoint endpoint) -> std::unique_ptr<asio::ip::tcp::acceptor> {
-        return do_expose<asio::ip::tcp>(endpoint);
-    }
-
-    auto
-    expose(asio::local::stream_protocol::endpoint endpoint) -> std::unique_ptr<asio::local::stream_protocol::acceptor> {
-        return do_expose<asio::local::stream_protocol>(endpoint);
-    }
-
     void
     terminate() {
         COCAINE_LOG_INFO(m_log, "stopping {:d} service(s)", m_services->size());
@@ -392,13 +382,11 @@ public:
     }
 
 private:
-    template<typename Protocol>
     auto
-    do_expose(typename Protocol::endpoint endpoint) -> std::unique_ptr<typename Protocol::acceptor> {
-        return std::make_unique<typename Protocol::acceptor>(
-            m_acceptor_thread->get_io_service(),
-            endpoint
-        );
+    acceptor_loop() -> asio::io_service& {
+        return m_acceptor_thread->get_io_service();
+    }
+
     auto
     reset_logger_filter() -> void {
         auto config_severity = m_config->logging().severity();

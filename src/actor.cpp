@@ -173,7 +173,7 @@ actor_base<Protocol>::run() {
         auto endpoint = make_endpoint();
 
         try {
-            ptr = m_context.expose(endpoint);
+            ptr = m_context.expose<Protocol>(endpoint);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint {} for service: {}", endpoint, error::to_string(e));
             m_context.mapper().retain(m_prototype->name());

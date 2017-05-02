@@ -31,6 +31,7 @@
 
 #include "cocaine/common.hpp"
 #include "cocaine/forwards.hpp"
+#include "cocaine/memory.hpp"
 
 namespace cocaine {
 
@@ -106,14 +107,19 @@ public:
     engine() -> execution_unit_t& = 0;
 
     /// Binds a new TCP socket on the specified endpoint and starts listening for new connections.
+    template<typename Protocol>
+    auto
+    expose(typename Protocol::endpoint endpoint) -> std::unique_ptr<typename Protocol::acceptor> {
+        return std::make_unique<typename Protocol::acceptor>(
+            acceptor_loop(),
+            std::move(endpoint)
+        );
+    }
+
+private:
     virtual
     auto
-    expose(asio::ip::tcp::endpoint endpoint) -> std::unique_ptr<asio::ip::tcp::acceptor> = 0;
-
-    virtual
-    auto
-    expose(asio::local::stream_protocol::endpoint endpoint) -> std::unique_ptr<asio::local::stream_protocol::acceptor> = 0;
-
+    acceptor_loop() -> asio::io_service& = 0;
 };
 
 std::unique_ptr<context_t>
