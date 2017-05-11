@@ -67,7 +67,6 @@ using namespace cocaine;
 using namespace cocaine::io;
 using namespace cocaine::service;
 
-
 using namespace asio;
 using namespace asio::ip;
 
