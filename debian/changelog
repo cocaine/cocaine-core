@@ -8,8 +8,8 @@ cocaine-core (0.12.14.0) UNRELEASED; urgency=low
     connection acceptors which work asynchronously.
     Doing so allows for us for reduce the number of threads by
     approximately 2/3.
-  * Changed (BREAKING): no more a separate actor class for servers that listen Unix
-    sockets.
+  * Changed (BREAKING): no more a separate actor class for servers that
+    listen Unix sockets.
   * Changed: using exponentially decaying accumulator for session timer
     metrics.
 
