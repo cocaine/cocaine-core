@@ -12,6 +12,8 @@ cocaine-core (0.12.14.0) UNRELEASED; urgency=low
     listen Unix sockets.
   * Changed: using exponentially decaying accumulator for session timer
     metrics.
+  * Changed: Locator will now delay relinking nodes using exponential-backoff
+    timeout.
 
  -- Evgeny Safronov <division494@gmail.com>  Thu, 27 Apr 2017 17:14:15 +0300
 
