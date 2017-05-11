@@ -113,6 +113,9 @@ class locator_t:
     // Outgoing router streams indexed by some arbitrary router-provided uuid.
     synchronized<router_map_t> m_routers;
 
+    std::uint32_t link_attempts;
+    synchronized<std::unique_ptr<asio::deadline_timer>> link_timer;
+
 public:
     locator_t(context_t& context, asio::io_service& asio, const std::string& name, const dynamic_t& args);
 
@@ -144,6 +147,9 @@ public:
     uuid() const;
 
 private:
+    auto
+    retry_link_node(const std::string& uuid, const std::vector<asio::ip::tcp::endpoint>& endpoints) -> void;
+
     auto
     on_resolve(const std::string& name, const std::string& seed) const -> results::resolve;
 

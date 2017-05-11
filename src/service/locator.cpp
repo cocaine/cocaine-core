@@ -21,6 +21,9 @@
 
 #include "cocaine/detail/service/locator.hpp"
 
+#include <algorithm>
+#include <cmath>
+
 #include "cocaine/api/gateway.hpp"
 #include "cocaine/api/storage.hpp"
 
@@ -316,7 +319,9 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
     m_context(context),
     m_log(context.log(name)),
     m_cfg(name, root),
-    m_asio(asio)
+    m_asio(asio),
+    link_attempts(0),
+    link_timer()
 {
     on<locator::resolve>(std::bind(&locator_t::on_resolve, this, ph::_1, ph::_2));
     on<locator::connect>(std::bind(&locator_t::on_connect, this, ph::_1));
@@ -423,11 +428,14 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
                 COCAINE_LOG_ERROR(m_log, "unable to connect to remote: [{:d}] {}", ec.value(), ec.message());
                 mapping.erase(uuid);
 
-                // TODO: Wrap link_node() in some sort of exponential back-off.
-                m_asio.post([=] { link_node(uuid, endpoints); });
+                retry_link_node(uuid, endpoints);
                 return nullptr;
             }
 
+            link_timer.apply([&](std::unique_ptr<asio::deadline_timer>& timer) {
+                timer.reset();
+                link_attempts = 0;
+            });
             COCAINE_LOG_DEBUG(m_log, "connected to remote via {}", *endpoint);
 
             // Uniquify the socket object.
@@ -441,7 +449,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
                 COCAINE_LOG_ERROR(m_log, "unable to set up remote client: {}", error::to_string(err));
                 mapping.erase(uuid);
 
-                m_asio.post([=] { link_node(uuid, endpoints); });
+                retry_link_node(uuid, endpoints);
             }
 
             return session;
@@ -492,6 +500,31 @@ locator_t::drop_node(const std::string& uuid) {
 std::string
 locator_t::uuid() const {
     return m_cfg.uuid;
+}
+
+auto
+locator_t::retry_link_node(const std::string& uuid, const std::vector<asio::ip::tcp::endpoint>& endpoints) -> void {
+    link_timer.apply([&](std::unique_ptr<asio::deadline_timer>& timer) {
+        if (timer) {
+            // Do nothing if the timer is already locked and loaded.
+            return;
+        }
+
+        timer.reset(new asio::deadline_timer(m_asio));
+        timer->expires_from_now(boost::posix_time::seconds(std::min(static_cast<int>(std::pow(2, link_attempts)), 32)));
+        timer->async_wait([=](const std::error_code& ec) {
+            switch (ec.value()) {
+            case asio::error::operation_aborted:
+                return;
+            default:
+                ;
+            }
+
+            link_node(uuid, endpoints);
+        });
+
+        link_attempts += 1;
+    });
 }
 
 results::resolve
