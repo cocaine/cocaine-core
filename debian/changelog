@@ -1,6 +1,7 @@
 cocaine-core (0.12.14.0) UNRELEASED; urgency=low
 
   * Non-maintainer upload.
+  * Feature: added load counter metric for services.
   * Changed: optimized connection acceptance mechanism.
     Previously a separate thread for each Cocaine actor was spawned for
     accepting connections. Except this it mostly did nothing. Now there
