@@ -168,9 +168,25 @@ session_t::push_action_t::finalize(const std::error_code& ec) {
     return session->detach(ec);
 }
 
+class load_watcher_t {
+    metrics::shared_metric<std::atomic<std::int64_t>> load;
+
+public:
+    load_watcher_t(metrics::shared_metric<std::atomic<std::int64_t>> load) :
+        load(std::move(load))
+    {
+        this->load->fetch_add(1);
+    }
+
+    ~load_watcher_t() {
+        this->load->fetch_add(-1);
+    }
+};
+
 struct session_t::channel_t {
     dispatch_ptr_t dispatch;
     upstream_ptr_t upstream;
+    std::shared_ptr<load_watcher_t> load;
     std::shared_ptr<metrics::timer_t::context_t> context;
     boost::optional<trace_t> trace;
 };
@@ -197,6 +213,9 @@ struct session_t::metrics_t {
     /// RPS counter.
     meter_type summary;
 
+    /// Load gauge.
+    metrics::shared_metric<std::atomic<std::int64_t>> load;
+
     /// Timers per slot.
     std::map<
         int,
@@ -204,12 +223,14 @@ struct session_t::metrics_t {
     > timers;
 
     metrics_t(metrics::registry_t& metrics_hub, session_t& session) :
-        summary(metrics_hub.meter(cocaine::format("{}.meter.summary", session.name())))
+        summary(metrics_hub.meter(cocaine::format("{}.meter.summary", session.name()))),
+        load{
+            metrics_hub.counter<std::int64_t>(cocaine::format("{}.load", session.name())),
+        }
     {
         for (auto& item : session.prototype->root()) {
             auto id = std::get<0>(item);
             auto& name = std::get<0>(std::get<1>(item));
-
 
             auto metric_name = cocaine::format("{}.timer[{}]", session.prototype->name(), name);
             timers.emplace(
@@ -231,12 +252,14 @@ struct session_t::metrics_t {
 };
 
 struct metered_upstream_t : public basic_upstream_t {
+    std::shared_ptr<load_watcher_t> load;
     std::shared_ptr<metrics::timer_t::context_t> timer;
 
-    metered_upstream_t(const std::shared_ptr<session_t>& session, uint64_t channel_id, std::shared_ptr<metrics::timer_t::context_t> timer) :
-        basic_upstream_t(session, channel_id),
-        timer(std::move(timer))
-    {}
+    metered_upstream_t(const std::shared_ptr<session_t>& session,
+                       uint64_t channel_id,
+                       std::shared_ptr<load_watcher_t> load,
+                       std::shared_ptr<metrics::timer_t::context_t> timer)
+        : basic_upstream_t(session, channel_id), load(std::move(load)), timer(std::move(timer)) {}
 };
 
 session_t::session_t(std::unique_ptr<logging::logger_t> log_,
@@ -289,11 +312,18 @@ session_t::handle(const decoder_t::message_type& message) {
             trace = extract_trace(message);
 
             auto timer = std::make_shared<metrics::timer_t::context_t>(metrics->timers.at(message.type())->context());
+            auto watcher = std::make_shared<load_watcher_t>(metrics->load);
 
             std::tie(lb, std::ignore) = mapping.insert({channel_id, std::make_shared<channel_t>(
                 channel_t{
                     select_dispatch(message),
-                    std::make_shared<metered_upstream_t>(shared_from_this(), channel_id, timer),
+                    std::make_shared<metered_upstream_t>(
+                        shared_from_this(),
+                        channel_id,
+                        watcher,
+                        timer
+                    ),
+                    watcher,
                     timer,
                     trace
                 }
@@ -423,6 +453,7 @@ session_t::fork(const dispatch_ptr_t& dispatch) {
                 channel_t{
                     dispatch,
                     downstream,
+                    nullptr,
                     nullptr,
                     trace
                 }
