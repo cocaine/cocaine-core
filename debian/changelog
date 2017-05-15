@@ -1,4 +1,4 @@
-cocaine-core (0.12.14.0) UNRELEASED; urgency=low
+cocaine-core (0.12.14.0) unstable; urgency=low
 
   * Non-maintainer upload.
   * Feature: added load counter metric for services.
