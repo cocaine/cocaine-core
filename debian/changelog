@@ -1,3 +1,11 @@
+cocaine-core (0.12.14.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fixed: fixed SIGSEGV when accepting connections for client sessions
+    with nullptr dispatches.
+
+ -- Evgeny Safronov <division494@gmail.com>  Tue, 16 May 2017 17:08:20 +0300
+
 cocaine-core (0.12.14.0) unstable; urgency=low
 
   * Non-maintainer upload.
