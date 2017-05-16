@@ -93,6 +93,8 @@ class context_impl_t : public context_t {
     // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
     // because services are allowed to start and stop other services during their lifetime.
     synchronized<service_list_t> m_services;
+    service_list_t m_unpublished;
+    bool m_bootstrapped;
 
     // Context signalling hub.
     retroactive_signal<io::context_tag> m_signals;
@@ -111,6 +113,7 @@ public:
                    std::unique_ptr<api::repository_t> _repository) :
         m_log(new logging::trace_wrapper_t(std::move(_log))),
         m_repository(std::move(_repository)),
+        m_bootstrapped(false),
         m_config(std::move(_config)),
         m_mapper(*m_config)
     {
@@ -161,15 +164,20 @@ public:
             }
         });
 
-        if (!errored.empty()) {
+        if (errored.empty()) {
+            m_services.apply([&](service_list_t& list) {
+                publish_all(list);
+                m_bootstrapped = true;
+            });
+
+            m_signals.invoke<io::context::prepared>();
+        } else {
             COCAINE_LOG_ERROR(m_log, "emergency core shutdown");
 
             // Signal and stop all the services, shut down execution units.
             terminate();
 
             throw cocaine::error_t("couldn't start core because of {} service(s): {}", errored.size(), errored);
-        } else {
-            m_signals.invoke<io::context::prepared>();
         }
     }
 
@@ -234,33 +242,48 @@ public:
     insert_with(const std::string& name, std::function<std::unique_ptr<tcp_actor_t>()> fn) override {
         const holder_t scoped(*m_log, {{"source", "core"}});
 
-        auto actor = m_services.apply([&](service_list_t& list) {
+        m_services.apply([&](service_list_t& list) {
             auto it = std::find_if(list.begin(), list.end(), match{name});
             if(it != list.end()) {
                 throw cocaine::error_t("service '{}' already exists", name);
             }
 
             auto service = fn();
-            // TODO: Race condition here.
-            auto actor = service.get();
 
-            service->run();
+            if (m_bootstrapped) {
+                publish(name, std::move(service), list);
+            } else {
+                m_unpublished.emplace_back(name, std::move(service));
+            }
+        });
+    }
 
-            COCAINE_LOG_DEBUG(m_log, "service has been started", {
-                {"service", name}
-            });
+    auto
+    publish(std::string name, std::unique_ptr<tcp_actor_t> service, service_list_t& services) -> void {
+        service->run();
 
-            list.emplace_back(name, std::move(service));
-
-            return actor;
+        COCAINE_LOG_DEBUG(m_log, "service has been started", {
+            {"service", name}
         });
 
         // Fire off the signal to alert concerned subscribers about the service starting event.
-        m_signals.invoke<io::context::service::exposed>(actor->prototype()->name(), std::forward_as_tuple(
-            actor->endpoints(),
-            actor->prototype()->version(),
-            actor->prototype()->root()
+        m_signals.invoke<io::context::service::exposed>(service->prototype()->name(), std::forward_as_tuple(
+            service->endpoints(),
+            service->prototype()->version(),
+            service->prototype()->root()
         ));
+
+        services.emplace_back(std::move(name), std::move(service));
+    }
+
+    auto
+    publish_all(service_list_t& services) -> void {
+        for (auto it = std::begin(m_unpublished); it != std::end(m_unpublished);) {
+            auto name = it->first;
+            auto& service = it->second;
+            publish(name, std::move(service), services);
+            it = m_unpublished.erase(it);
+        }
     }
 
     std::unique_ptr<tcp_actor_t>
