@@ -132,10 +132,16 @@ public:
         };
     }
 
-    template<class... Args>
+    template<typename F>
     static
     auto
-    bind(Args&& ...args) -> callable_wrapper<decltype(std::bind(std::forward<Args>(args)...))>;
+    bind(F fn) -> callable_wrapper<F>;
+
+    template<typename F, typename... Args>
+    static
+    auto
+    bind(F fn, Args&& ...args)
+        -> callable_wrapper<decltype(std::bind(std::move(fn), std::forward<Args>(args)...))>;
 
 private:
     static
@@ -171,33 +177,42 @@ public:
    ~push_scope_t();
 };
 
-template <class F>
-class trace_t::callable_wrapper
-{
+template<typename F>
+class trace_t::callable_wrapper {
+    F f;
+    trace_t trace;
+
 public:
-    inline
-    callable_wrapper(F&& f_):
-        f(std::move(f_)),
-        stored_trace(trace_t::current())
+    callable_wrapper(F f):
+        f(std::move(f)),
+        trace(trace_t::current())
     {}
 
-    template<class... Args>
+    template<typename... Args>
     auto
-    operator()(Args&&... args) -> decltype(std::declval<F>()(std::forward<Args>(args)...)) {
-        restore_scope_t scope(stored_trace);
+    operator()(Args&&... args) -> decltype(f(std::forward<Args>(args)...)) {
+        restore_scope_t scope(trace);
         return f(std::forward<Args>(args)...);
     }
 
-private:
-    F f;
-    trace_t stored_trace;
+    template<typename... Args>
+    auto
+    operator()(Args&&... args) const -> decltype(f(std::forward<Args>(args)...)) {
+        restore_scope_t scope(trace);
+        return f(std::forward<Args>(args)...);
+    }
 };
 
-template<class... Args>
+template<typename F>
 auto
-trace_t::bind(Args&& ...args) -> callable_wrapper<decltype(std::bind(std::forward<Args>(args)...))> {
-    typedef callable_wrapper<decltype(std::bind(std::forward<Args>(args)...))> result_type;
-    return result_type(std::bind(std::forward<Args>(args)...));
+trace_t::bind(F fn) -> callable_wrapper<F> {
+    return {std::move(fn)};
+}
+
+template<typename F, typename... Args>
+auto
+trace_t::bind(F fn, Args&& ...args) -> callable_wrapper<decltype(std::bind(std::move(fn), std::forward<Args>(args)...))> {
+    return {std::bind(std::move(fn), std::forward<Args>(args)...)};
 }
 
 } // namespace cocaine
