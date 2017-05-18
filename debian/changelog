@@ -1,3 +1,25 @@
+cocaine-core (0.12.14.2) UNRELEASED; urgency=low
+
+  * Non-maintainer upload.
+  * Feature: atomic service publish on startup.
+    This commit changes the core bootstrap mechanism by making its service
+    publishing atomic. That means that there will be no service
+    announce/exposing before all of them are ready, i.e. completed their
+    constructors without exceptions. Doing so protects us from the case,
+    when an application, which requires some service (which is not exposed
+    yet) has been started and tries to resolve that service, which results
+    in errors.
+    Now there will be no user load to the node before it is completely
+    bootstrapped.
+  * Fixed: fixed race condition when an "expose" event on the same service
+    can be delivered after the "remove" one.
+  * Changed: add direct bind method (#181).
+    This commit adds additional bind method to the trace implementation
+    that wraps the given function directly without intermediate `std::bind`.
+   * Changed: terminate immediately during bootstrap (#180).
+
+ -- Evgeny Safronov <division494@gmail.com>  Wed, 17 May 2017 18:47:36 +0300
+
 cocaine-core (0.12.14.1) unstable; urgency=low
 
   * Non-maintainer upload.
