@@ -141,16 +141,21 @@ struct error_t:
     static const std::error_code kInvalidArgumentErrorCode;
 
     template<class... Args>
-    error_t(const std::string& e, const Args&... args):
-        std::system_error(kInvalidArgumentErrorCode, cocaine::format(e, args...))
-    { }
+    error_t(const std::string& fmt, const Args&... args):
+        std::system_error(kInvalidArgumentErrorCode, cocaine::format(fmt, args...))
+    {}
 
-    template<class E, class... Args,
-             class = typename std::enable_if<std::is_error_code_enum<E>::value ||
-                                             std::is_error_condition_enum<E>::value>::type>
-    error_t(const E err, const std::string& e, const Args&... args):
-        std::system_error(make_error_code(err), cocaine::format(e, args...))
-    { }
+    template<class... Args>
+    error_t(std::error_code ec, const std::string& fmt, const Args&... args):
+        std::system_error(std::move(ec), cocaine::format(fmt, args...))
+    {}
+
+    template<class E, class... Args, class = typename std::enable_if<
+        std::is_error_code_enum<E>::value || std::is_error_condition_enum<E>::value
+    >::type>
+    error_t(const E err, const std::string& fmt, const Args&... args):
+        std::system_error(make_error_code(err), cocaine::format(fmt, args...))
+    {}
 };
 
 std::string

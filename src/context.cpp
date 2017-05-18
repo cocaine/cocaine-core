@@ -46,6 +46,7 @@
 #include <metrics/registry.hpp>
 
 #include <deque>
+#include <exception>
 
 #include "chamber.hpp"
 
@@ -140,44 +141,38 @@ public:
 
         COCAINE_LOG_INFO(m_log, "starting {:d} service(s)", m_config->services().size());
 
-        std::vector<std::string> errored;
+        try {
+            m_config->services().each([&](const std::string& name, const config_t::component_t& service) mutable {
+                const holder_t scoped(*m_log, {{"service", name}});
 
-        m_config->services().each([&](const std::string& name, const config_t::component_t& service) mutable {
-            const holder_t scoped(*m_log, {{"service", name}});
+                COCAINE_LOG_DEBUG(m_log, "starting service");
 
-            COCAINE_LOG_DEBUG(m_log, "starting service");
+                try {
+                    insert(name, std::make_unique<tcp_actor_t>(*this, repository().get<api::service_t>(
+                        service.type(),
+                        *this,
+                        m_acceptor_thread->get_io_service(),
+                        name,
+                        service.args()
+                    )));
+                } catch (const std::system_error& err) {
+                    COCAINE_LOG_ERROR(m_log, "unable to initialize service: {}", error::to_string(err));
+                    throw;
+                } catch (const std::exception& err) {
+                    COCAINE_LOG_ERROR(m_log, "unable to initialize service: {}", err.what());
+                    throw;
+                }
+            });
 
-            try {
-                insert(name, std::make_unique<tcp_actor_t>(*this, repository().get<api::service_t>(
-                    service.type(),
-                    *this,
-                    m_acceptor_thread->get_io_service(),
-                    name,
-                    service.args()
-                )));
-            } catch (const std::system_error& e) {
-                COCAINE_LOG_ERROR(m_log, "unable to initialize service: {}", error::to_string(e));
-                errored.push_back(name);
-            } catch (const std::exception& e) {
-                COCAINE_LOG_ERROR(m_log, "unable to initialize service: {}", e.what());
-                errored.push_back(name);
-            }
-        });
-
-        if (errored.empty()) {
             m_services.apply([&](service_list_t& list) {
                 publish_all(list);
                 m_bootstrapped = true;
             });
-
             m_signals.invoke<io::context::prepared>();
-        } else {
+        } catch (const std::exception&) {
             COCAINE_LOG_ERROR(m_log, "emergency core shutdown");
-
-            // Signal and stop all the services, shut down execution units.
             terminate();
-
-            throw cocaine::error_t("couldn't start core because of {} service(s): {}", errored.size(), errored);
+            std::throw_with_nested(cocaine::error_t("failed to start core"));
         }
     }
 
