@@ -1,4 +1,4 @@
-cocaine-core (0.12.14.2) UNRELEASED; urgency=low
+cocaine-core (0.12.14.2) unstable; urgency=low
 
   * Non-maintainer upload.
   * Feature: atomic service publish on startup.
@@ -13,10 +13,12 @@ cocaine-core (0.12.14.2) UNRELEASED; urgency=low
     bootstrapped.
   * Fixed: fixed race condition when an "expose" event on the same service
     can be delivered after the "remove" one.
+  * Fixed: fixed race condition when an actor action tries to access parent
+    members while the parent has already died.
   * Changed: add direct bind method (#181).
     This commit adds additional bind method to the trace implementation
     that wraps the given function directly without intermediate `std::bind`.
-   * Changed: terminate immediately during bootstrap (#180).
+  * Changed: terminate immediately during bootstrap (#180).
 
  -- Evgeny Safronov <division494@gmail.com>  Wed, 17 May 2017 18:47:36 +0300
 
