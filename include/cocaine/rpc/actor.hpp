@@ -57,21 +57,15 @@ private:
 
     const std::unique_ptr<logging::logger_t> m_log;
 
-    struct metrics_t;
-    std::unique_ptr<metrics_t> metrics;
-
     // Initial dispatch. It's the protocol dispatch that will be initially assigned to all the new
     // sessions. In case of secure actors, this might as well be the protocol dispatch to switch to
     // after the authentication process completes successfully. Constant.
     io::dispatch_ptr_t m_prototype;
 
-    // I/O acceptor. Actors have a separate thread to accept new connections. After a connection is
+    // I/O acceptor action. There is a separate thread to accept new connections. After a connection
     // is accepted, it is assigned to a least busy thread from the main thread pool. Synchronized to
     // allow concurrent observing and operations.
-    synchronized<std::unique_ptr<acceptor_type>> m_acceptor;
-
-    // Main service thread.
-    std::unique_ptr<io::chamber_t> m_chamber;
+    synchronized<std::shared_ptr<accept_action_t>> m_acceptor;
 
 public:
     actor_base(context_t& context, std::unique_ptr<io::basic_dispatch_t> prototype);
@@ -103,7 +97,7 @@ protected:
     actor_base(context_t& context, io::dispatch_ptr_t prototype);
 
     auto
-    acceptor() const -> const synchronized<std::unique_ptr<acceptor_type>>&;
+    local_endpoint() const -> endpoint_type;
 
     /// Constructs an endpoint that is used to bind this actor.
     ///

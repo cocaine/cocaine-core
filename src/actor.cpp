@@ -52,10 +52,14 @@ namespace ph = std::placeholders;
 
 // Actor internals
 
-template<typename Protocol>
-struct actor_base<Protocol>::metrics_t {
+struct metrics_t {
     metrics::shared_metric<std::atomic<std::int64_t>> connections_accepted;
     metrics::shared_metric<std::atomic<std::int64_t>> connections_rejected;
+
+    metrics_t(context_t& context, const std::string& name) :
+        connections_accepted(context.metrics_hub().counter<std::int64_t>(format("{}.connections.accepted", name))),
+        connections_rejected(context.metrics_hub().counter<std::int64_t>(format("{}.connections.rejected", name)))
+    {}
 };
 
 template<typename Protocol>
@@ -65,32 +69,51 @@ class actor_base<Protocol>::accept_action_t:
 public:
     using protocol_type = Protocol;
     using acceptor_type = typename protocol_type::acceptor;
+    using endpoint_type = typename protocol_type::endpoint;
     using parent_type = actor_base<protocol_type>;
     using socket_type = typename protocol_type::socket;
 
 private:
-    parent_type& parent;
+    context_t& context;
+    // Reference to an event loop tasks are running on.
+    asio::io_service& loop;
     socket_type socket;
+    std::unique_ptr<acceptor_type> acceptor;
+    endpoint_type m_local_endpoint;
+    io::dispatch_ptr_t prototype;
+    metrics_t metrics;
+    std::unique_ptr<logging::logger_t> log;
 
 public:
-    accept_action_t(parent_type& parent, asio::io_service& loop):
-        parent(parent),
-        socket(loop)
+    accept_action_t(parent_type& parent, std::unique_ptr<acceptor_type> acceptor):
+        context(parent.m_context),
+        loop(acceptor->get_io_service()),
+        socket(loop),
+        acceptor(std::move(acceptor)),
+        m_local_endpoint(this->acceptor->local_endpoint()),
+        prototype(parent.m_prototype),
+        metrics(context, prototype->name()),
+        log(context.log("core/asio", {{"service", parent.m_prototype->name()}}))
     {}
 
     void
-    operator()() {
-        parent.m_acceptor.apply([this](std::unique_ptr<acceptor_type>& ptr) {
-            if(!ptr) {
-                COCAINE_LOG_ERROR(parent.m_log, "abnormal termination of actor connection pump");
-                return;
-            }
-
-            ptr->async_accept(
-                socket,
-                std::bind(&accept_action_t::finalize, this->shared_from_this(), ph::_1)
-            );
+    cancel() {
+        loop.post([&] {
+            acceptor->cancel();
         });
+    }
+
+    auto
+    local_endpoint() const -> endpoint_type {
+        return m_local_endpoint;
+    }
+
+    void
+    run() {
+        acceptor->async_accept(
+            socket,
+            std::bind(&accept_action_t::finalize, this->shared_from_this(), ph::_1)
+        );
     }
 
 private:
@@ -102,26 +125,23 @@ private:
 
         switch(ec.value()) {
         case 0:
-            COCAINE_LOG_DEBUG(parent.m_log, "accepted connection on fd {:d}", ptr->native_handle());
-            parent.metrics->connections_accepted->fetch_add(1);
+            COCAINE_LOG_DEBUG(log, "accepted connection on fd {}", acceptor->native_handle());
+            metrics.connections_accepted->fetch_add(1);
 
             try {
-                parent.m_context.engine().attach(std::move(ptr), parent.m_prototype);
+                context.engine().attach(std::move(ptr), prototype);
             } catch(const std::system_error& e) {
-                COCAINE_LOG_ERROR(parent.m_log, "unable to attach connection to engine: {}",
+                COCAINE_LOG_ERROR(log, "unable to attach connection to engine: {}",
                     error::to_string(e));
                 ptr = nullptr;
             }
-
             break;
-
         case asio::error::operation_aborted:
             return;
-
         default:
-            COCAINE_LOG_ERROR(parent.m_log, "unable to accept connection: [{:d}] {}", ec.value(),
+            COCAINE_LOG_ERROR(log, "unable to accept connection: [{}] {}", ec.value(),
                 ec.message());
-            parent.metrics->connections_rejected->fetch_add(1);
+            metrics.connections_rejected->fetch_add(1);
             break;
         }
 
@@ -129,7 +149,7 @@ private:
         // what.
         // For example, destroying a socket from outside this thread will trigger weird stuff on
         // Linux.
-        operator()();
+        run();
     }
 };
 
@@ -144,10 +164,6 @@ template<typename Protocol>
 actor_base<Protocol>::actor_base(context_t& context, io::dispatch_ptr_t prototype) :
     m_context(context),
     m_log(context.log("core/asio", {{"service", prototype->name()}})),
-    metrics(new metrics_t{
-        context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.accepted", prototype->name())),
-        context.metrics_hub().counter<std::int64_t>(cocaine::format("{}.connections.rejected", prototype->name()))
-    }),
     m_prototype(std::move(prototype))
 {}
 
@@ -169,11 +185,12 @@ actor_base<Protocol>::prototype() const {
 template<typename Protocol>
 void
 actor_base<Protocol>::run() {
-    m_acceptor.apply([this](std::unique_ptr<acceptor_type>& ptr) {
+    m_acceptor.apply([this](std::shared_ptr<accept_action_t>& action) {
         auto endpoint = make_endpoint();
 
+        std::unique_ptr<acceptor_type> acceptor;
         try {
-            ptr = m_context.expose<Protocol>(endpoint);
+            acceptor = m_context.expose<Protocol>(endpoint);
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to bind local endpoint {} for service: {}", endpoint, error::to_string(e));
             m_context.mapper().retain(m_prototype->name());
@@ -181,11 +198,12 @@ actor_base<Protocol>::run() {
         }
 
         std::error_code ec;
-        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint {}", ptr->local_endpoint(ec));
+        COCAINE_LOG_INFO(m_log, "exposing service on local endpoint {}", acceptor->local_endpoint(ec));
 
-        auto action = std::make_shared<accept_action_t>(*this, ptr->get_io_service());
-        ptr->get_io_service().post([=] {
-            action->operator()();
+        auto& loop = acceptor->get_io_service();
+        action = std::make_shared<accept_action_t>(*this, std::move(acceptor));
+        loop.post([=] {
+            action->run();
         });
     });
 
@@ -195,13 +213,13 @@ actor_base<Protocol>::run() {
 template<typename Protocol>
 void
 actor_base<Protocol>::terminate() {
-    m_acceptor.apply([this](std::unique_ptr<acceptor_type>& ptr) {
-        std::error_code ec;
-        const auto endpoint = ptr->local_endpoint(ec);
+    m_acceptor.apply([this](std::shared_ptr<accept_action_t>& action) {
+        const auto endpoint = action->local_endpoint();
 
         COCAINE_LOG_INFO(m_log, "removing service from local endpoint {}", endpoint);
 
-        ptr = nullptr;
+        action->cancel();
+        action = nullptr;
     });
 
     on_terminate();
@@ -209,8 +227,14 @@ actor_base<Protocol>::terminate() {
 
 template<typename Protocol>
 auto
-actor_base<Protocol>::acceptor() const -> const synchronized<std::unique_ptr<acceptor_type>>& {
-    return m_acceptor;
+actor_base<Protocol>::local_endpoint() const -> endpoint_type {
+    return m_acceptor.apply([&](const std::shared_ptr<accept_action_t>& action) {
+        if (action) {
+            return action->local_endpoint();
+        } else {
+            throw std::system_error(std::make_error_code(std::errc::not_connected));
+        }
+    });
 }
 
 template class cocaine::actor_base<asio::ip::tcp>;
@@ -238,13 +262,7 @@ tcp_actor_t::tcp_actor_t(context_t& context, std::unique_ptr<api::service_t> ser
 auto
 tcp_actor_t::endpoints() const -> std::vector<endpoint_type> {
     try {
-        auto local = acceptor().apply([&](const std::unique_ptr<acceptor_type>& ptr) {
-            if (ptr) {
-                return ptr->local_endpoint();
-            } else {
-                throw std::system_error(std::make_error_code(std::errc::not_connected));
-            }
-        });
+        auto local = local_endpoint();
 
         if(!local.address().is_unspecified()) {
             return std::vector<tcp::endpoint>{{local}};
