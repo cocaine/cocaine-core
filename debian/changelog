@@ -1,3 +1,11 @@
+cocaine-core (0.12.14.3) unstable; urgency=low
+
+  * Fixed: resolve race condition on session attaching.
+    This commit fixes a race condition when a `dispatch.attached()` method
+    is called after pulling for incoming messages.
+
+ -- Evgeny Safronov <division494@gmail.com>  Thu, 25 May 2017 15:19:01 +0300
+
 cocaine-core (0.12.14.2) unstable; urgency=low
 
   * Non-maintainer upload.
