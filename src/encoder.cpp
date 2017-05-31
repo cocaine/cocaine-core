@@ -48,9 +48,11 @@ offset(0) {
 
 void
 encoded_buffers_t::write(const char* data, size_t size) {
-    while (size > vector.size() - offset) {
-        vector.resize(vector.size() * 2);
+    size_t new_size = vector.size();
+    while (size > new_size - offset) {
+        new_size *= 2;
     }
+    vector.resize(new_size);
 
     std::memcpy(vector.data() + offset, data, size);
 
