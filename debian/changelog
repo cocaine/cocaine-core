@@ -1,11 +1,13 @@
 cocaine-core (0.12.14.4) unstable; urgency=low
 
+  * Non-maintainer upload.
   * Fixed: Quadratic complexity in encoder is linear now (#183).
 
  -- Anton Matveenko <antmat@me.com>  Wed, 31 May 2017 07:52:01 +0300
 
 cocaine-core (0.12.14.3) unstable; urgency=low
 
+  * Non-maintainer upload.
   * Fixed: resolve race condition on session attaching.
     This commit fixes a race condition when a `dispatch.attached()` method
     is called after pulling for incoming messages.
