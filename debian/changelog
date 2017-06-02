@@ -1,3 +1,13 @@
+cocaine-core (0.12.14.5) UNRELEASED; urgency=low
+
+  * Non-maintainer upload.
+  * Feature: allow to obtain a session from the upstream.
+  * Changed: deprecate `attached` method for dispatches.
+    Due to racy nature of this method it is now deprecated in favor of direct
+    session obtaining from the upstream.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 02 Jun 2017 13:49:46 +0300
+
 cocaine-core (0.12.14.4) unstable; urgency=low
 
   * Non-maintainer upload.
