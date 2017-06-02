@@ -47,6 +47,7 @@ public:
     virtual
     ~basic_dispatch_t();
 
+    __attribute__((deprecated("computers are too hard, using this method produces race conditions")))
     virtual
     auto
     attached(std::shared_ptr<session_t> session) -> void;

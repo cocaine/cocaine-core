@@ -45,10 +45,16 @@ public:
         return m_channel_id;
     }
 
+    auto
+    session() const -> std::shared_ptr<session_t> {
+        return m_session;
+    }
+
     /// Detaches underlying session and closes connection.
     ///
     /// This will discard all active chanels and close connecton to client,
     /// it can only be used as a last resort to signal unrecoverable error.
+    __attribute__((deprecated("use `session()` instead")))
     void
     detach_session(const std::error_code& ec) {
         m_session->detach(ec);
@@ -95,6 +101,11 @@ public:
     upstream(Stream&& ptr,
              typename allowing<Tag, Stream>::type* = nullptr): ptr(std::forward<Stream>(ptr))
     { }
+
+    auto
+    session() const -> std::shared_ptr<session_t> {
+        return ptr->session();
+    }
 
     template<class Event, class... Args>
     upstream<typename io::event_traits<Event>::dispatch_type>

@@ -188,9 +188,6 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
 
         // Create a new inactive session.
         session_ = std::make_shared<session_type>(std::move(log), m_metrics, std::move(transport), dispatch);
-        if (dispatch) {
-            dispatch->attached(session_);
-        }
 
         // Start pulling right now to prevent race when session is detached before pull
         session_->pull();
