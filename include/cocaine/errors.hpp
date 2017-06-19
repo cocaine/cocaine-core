@@ -83,7 +83,11 @@ enum unicorn_errors {
     unknown_error,
     invalid_node_name,
     invalid_path,
-    version_not_allowed
+    version_not_allowed,
+    no_node,
+    node_exists,
+    connection_loss,
+    backend_internal_error
 };
 
 auto
