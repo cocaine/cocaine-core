@@ -27,6 +27,16 @@
 
 namespace cocaine { namespace api {
 
+auto_scope_t::auto_scope_t(unicorn_scope_ptr wrapped) :
+    wrapped(std::move(wrapped))
+{}
+
+auto_scope_t::~auto_scope_t() {
+    if(wrapped){
+        wrapped->close();
+    }
+}
+
 // Unicorn
 
 unicorn_t::unicorn_t(context_t& /*context*/, const std::string& /*name*/, const dynamic_t& /*args*/) {
