@@ -1,3 +1,11 @@
+cocaine-core (0.12.14.6) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Feature: Extend unicorn errors.
+  * Feature: Provide RAII wrapper for unicorn scope.
+
+ -- Anton Matveenko <antmat@me.com>  Thu, 22 Jun 2017 13:52:46 +0300
+
 cocaine-core (0.12.14.5) unstable; urgency=low
 
   * Non-maintainer upload.
