@@ -21,6 +21,8 @@
 #ifndef COCAINE_DYNAMIC_TYPE_HPP
 #define COCAINE_DYNAMIC_TYPE_HPP
 
+#include "cocaine/errors.hpp"
+#include "cocaine/logging.hpp"
 #include "cocaine/utility.hpp"
 
 #include <string>
@@ -206,13 +208,17 @@ private:
     template<class T>
     T&
     get() {
-        return boost::get<T>(m_value);
+        try {
+            return boost::get<T>(m_value);
+        } catch (const boost::bad_get& e) {
+            throw error_t("failed to get node value as {} - got {}", logging::demangle<T>(), boost::lexical_cast<std::string>(*this));
+        }
     }
 
     template<class T>
     const T&
     get() const {
-        return boost::get<T>(m_value);
+        return const_cast<dynamic_t*>(this)->get<T>();
     }
 
     template<class T>

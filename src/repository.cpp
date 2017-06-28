@@ -22,7 +22,7 @@
 
 #include "cocaine/logging.hpp"
 
-#include "cocaine/detail/logging.hpp"
+#include "cocaine/logging.hpp"
 
 #include <blackhole/logger.hpp>
 #include <blackhole/scope/holder.hpp>
@@ -161,7 +161,7 @@ repository_t::insert(const std::string& id, const std::string& name,
 
     COCAINE_LOG_DEBUG(m_log, "registering component '{}' in category '{}'",
         name,
-        detail::logging::demangle(id)
+        logging::demangle(id)
     );
 
     m_categories[id][name] = std::move(factory);
