@@ -23,6 +23,11 @@ owning_asio_t::spawn(work_t work) -> void {
     io_loop.post(std::move(work));
 }
 
+auto
+owning_asio_t::asio() -> asio::io_service& {
+    return io_loop;
+}
+
 borrowing_asio_t::borrowing_asio_t(asio::io_service& _io_loop) :
     io_loop(_io_loop)
 {}

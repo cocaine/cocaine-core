@@ -26,6 +26,9 @@ public:
     auto
     spawn(work_t work) -> void override;
 
+    auto
+    asio() -> asio::io_service&;
+
 private:
     asio::io_service io_loop;
     boost::optional<asio::io_service::work> work;
