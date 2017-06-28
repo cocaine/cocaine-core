@@ -31,7 +31,22 @@ auto_scope_t::auto_scope_t(unicorn_scope_ptr wrapped) :
     wrapped(std::move(wrapped))
 {}
 
+auto_scope_t::auto_scope_t(auto_scope_t&& other) :
+    wrapped(std::move(other.wrapped))
+{}
+
+auto_scope_t& auto_scope_t::operator=(auto_scope_t&& other)
+{
+    close();
+    wrapped = std::move(other.wrapped);
+    return *this;
+}
+
 auto_scope_t::~auto_scope_t() {
+    close();
+}
+
+auto auto_scope_t::close() -> void {
     if(wrapped){
         wrapped->close();
     }

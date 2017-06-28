@@ -53,7 +53,13 @@ class auto_scope_t {
     unicorn_scope_ptr wrapped;
 public:
     auto_scope_t(unicorn_scope_ptr wrapped);
+    auto_scope_t(const auto_scope_t&) = delete;
+    auto_scope_t& operator=(const auto_scope_t&) = delete;
+    auto_scope_t(auto_scope_t&&);
+    auto_scope_t& operator=(auto_scope_t&&);
     ~auto_scope_t();
+private:
+    auto close() -> void;
 };
 
 /**
