@@ -52,6 +52,7 @@ typedef std::shared_ptr<unicorn_scope_t> unicorn_scope_ptr;
 class auto_scope_t {
     unicorn_scope_ptr wrapped;
 public:
+    auto_scope_t() = default;
     auto_scope_t(unicorn_scope_ptr wrapped);
     auto_scope_t(const auto_scope_t&) = delete;
     auto_scope_t& operator=(const auto_scope_t&) = delete;
