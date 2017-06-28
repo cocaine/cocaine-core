@@ -1,3 +1,12 @@
+cocaine-core (0.12.14.7) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Refactor: expose asio from owning executor.
+  * Refactor: better dynamic_t::get.
+  * Fix: do not allow auto_scope_t copy.
+
+ -- Anton Matveenko <antmat@me.com>  Wed, 28 Jun 2017 16:46:46 +0300
+
 cocaine-core (0.12.14.6) unstable; urgency=low
 
   * Non-maintainer upload.
