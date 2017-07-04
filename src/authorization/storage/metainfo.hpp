@@ -2,7 +2,10 @@
 
 #include <chrono>
 #include <map>
+#include <string>
 #include <tuple>
+
+#include <boost/lexical_cast.hpp>
 
 #include "cocaine/traits/enum.hpp"
 #include "cocaine/traits/map.hpp"
@@ -22,6 +25,50 @@ struct metainfo_t {
     empty() const -> bool {
         return c_perms.empty() && u_perms.empty();
     }
+};
+
+// Used as dirty workaround to unify metainfo pack/unpack as unicorn uses
+// dynamic_t as a value, which can't handle (yet) strings as a dictionary keys.
+struct metainfo_persistent_stub_t {
+    std::map<std::string, flags_t> c_perms;
+    std::map<std::string, flags_t> u_perms;
+};
+
+namespace detail {
+    template<typename T, typename DstMap>
+    auto stringify_keys(const std::map<T, flags_t>& src, DstMap& dst) -> void {
+        for(const auto& el : src) {
+            dst[boost::lexical_cast<std::string>(el.first)] = el.second;
+        }
+    }
+
+    template<typename T, typename SrcMap>
+    auto digitize_keys(const SrcMap& src, std::map<T, flags_t>& dst) -> void {
+        for(const auto& el : src) {
+            dst[boost::lexical_cast<T>(el.first)] = el.second;
+        }
+    }
+}
+
+// Placed here as static interface to avoid creation of 'metainfo.cpp'
+struct stub_transform {
+    static
+    auto stub_from_meta(const metainfo_t& meta) -> metainfo_persistent_stub_t {
+       metainfo_persistent_stub_t stub;
+       detail::stringify_keys<auth::cid_t>(meta.c_perms, stub.c_perms);
+       detail::stringify_keys<auth::uid_t>(meta.u_perms, stub.u_perms);
+       return stub;
+    }
+
+    static
+    auto meta_from_stub(const metainfo_persistent_stub_t& stub) -> metainfo_t {
+        metainfo_t meta;
+        detail::digitize_keys<auth::cid_t>(stub.c_perms, meta.c_perms);
+        detail::digitize_keys<auth::uid_t>(stub.u_perms, meta.u_perms);
+        return meta;
+    }
+
+    stub_transform() = delete;
 };
 
 template<typename T>
@@ -68,21 +115,26 @@ namespace io {
 template<>
 struct type_traits<authorization::storage::metainfo_t> {
     typedef boost::mpl::list<
-        std::map<auth::cid_t, authorization::storage::flags_t>,
-        std::map<auth::uid_t, authorization::storage::flags_t>
+        std::map<std::string, authorization::storage::flags_t>,
+        std::map<std::string, authorization::storage::flags_t>
     > underlying_type;
 
     template<class Stream>
     static
     void
     pack(msgpack::packer<Stream>& target, const authorization::storage::metainfo_t& source) {
-        type_traits<underlying_type>::pack(target, source.c_perms, source.u_perms);
+        namespace as = authorization::storage;
+        const auto stub = as::stub_transform::stub_from_meta(source);
+        type_traits<underlying_type>::pack(target, stub.c_perms, stub.u_perms);
     }
 
     static
     void
     unpack(const msgpack::object& source, authorization::storage::metainfo_t& target) {
-        type_traits<underlying_type>::unpack(source, target.c_perms, target.u_perms);
+        namespace as = authorization::storage;
+        auto stub = as::metainfo_persistent_stub_t{ {}, {} };
+        type_traits<underlying_type>::unpack(source, stub.c_perms, stub.u_perms);
+        target = as::stub_transform::meta_from_stub(stub);
     }
 };
 
