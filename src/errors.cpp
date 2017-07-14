@@ -248,8 +248,16 @@ class unicorn_category_t:
             return "invalid path specified";
         case version_not_allowed:
             return "specified version is not allowed for command";
+        case no_node:
+            return "node not exists";
+        case node_exists:
+            return "node already exists";
+        case connection_loss:
+            return "connection has been lost";
+        case backend_internal_error:
+            return "internal backend error";
         default:
-            return std::string("Unknown unicorn error - ") + std::to_string(code);
+            return format("{} - {}", name(), code);
         }
     }
 };
