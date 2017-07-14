@@ -373,7 +373,7 @@ public:
         if(it != component_groups.end()) {
             return it->second;
         }
-        throw error_t(error::component_not_found, "component group {} is missing in config", name);
+        throw error_t(error::component_not_found, "component group `{}` is missing in config", name);
     }
 
     static
