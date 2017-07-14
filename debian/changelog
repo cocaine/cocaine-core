@@ -1,3 +1,12 @@
+cocaine-core (0.12.14.9) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fixed: add missing unicorn error descriptions.
+  * Changed: persistent stub with string keys (#190) and its revert :).
+  * Changed: more convenient error message when some component not found.
+
+ -- Evgeny Safronov <division494@gmail.com>  Fri, 14 Jul 2017 12:21:07 +0300
+
 cocaine-core (0.12.14.8) unstable; urgency=low
 
   * Non-maintainer upload.
@@ -8,9 +17,9 @@ cocaine-core (0.12.14.8) unstable; urgency=low
 cocaine-core (0.12.14.7) unstable; urgency=low
 
   * Non-maintainer upload.
-  * Refactor: expose asio from owning executor.
-  * Refactor: better dynamic_t::get.
-  * Fix: do not allow auto_scope_t copy.
+  * Changed: expose asio from owning executor.
+  * Changed: better dynamic_t::get.
+  * Fixed: do not allow auto_scope_t copy.
 
  -- Anton Matveenko <antmat@me.com>  Wed, 28 Jun 2017 16:46:46 +0300
 
