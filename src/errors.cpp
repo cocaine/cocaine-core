@@ -262,6 +262,10 @@ class unicorn_category_t:
     }
 };
 
+} // namespace
+
+namespace cocaine { namespace error {
+
 auto
 unknown_category() -> const std::error_category& {
     static unknown_category_t instance;
@@ -310,9 +314,6 @@ locator_category() -> const std::error_category& {
     return instance;
 }
 
-} // namespace
-
-namespace cocaine { namespace error {
 
 auto
 make_error_code(transport_errors code) -> std::error_code {

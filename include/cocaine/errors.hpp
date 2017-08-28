@@ -91,6 +91,31 @@ enum unicorn_errors {
 };
 
 auto
+unknown_category() -> const std::error_category&;
+
+auto
+transport_category() -> const std::error_category&;
+
+auto
+protocol_category() -> const std::error_category&;
+
+auto
+dispatch_category() -> const std::error_category&;
+
+auto
+repository_category() -> const std::error_category&;
+
+auto
+security_category() -> const std::error_category&;
+
+auto
+unicorn_category() -> const std::error_category&;
+
+auto
+locator_category() -> const std::error_category&;
+
+
+auto
 make_error_code(transport_errors code) -> std::error_code;
 
 auto
