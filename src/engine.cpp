@@ -108,7 +108,8 @@ execution_unit_t::execution_unit_t(context_t& context):
     m_chamber(new chamber_t("core/asio", m_asio)),
     m_log(context.log("core/asio", {{"engine", m_chamber->thread_id()}})),
     m_metrics(context.metrics_hub()),
-    m_cron(new asio::deadline_timer(*m_asio))
+    m_cron(new asio::deadline_timer(*m_asio)),
+    context(context)
 {
     m_asio->post(std::bind(&gc_action_t::operator(),
         std::make_shared<gc_action_t>(this, boost::posix_time::seconds(kCollectionInterval))
@@ -179,10 +180,11 @@ execution_unit_t::attach(std::unique_ptr<Socket> ptr, const dispatch_ptr_t& disp
             remote_endpoint = "<unknown>";
         }
 
-        std::unique_ptr<logging::logger_t> log(new blackhole::wrapper_t(*m_log, {
+        auto log = context.log("core/asio/session", {
             {"endpoint", remote_endpoint                       },
-            {"service",  dispatch ? dispatch->name() : "<none>"}
-        }));
+            {"service",  dispatch ? dispatch->name() : "<none>"},
+            {"engine", m_chamber->thread_id()}
+        });
 
         COCAINE_LOG_DEBUG(log, "attached connection to engine, load: {:.2f}%", utilization() * 100);
 

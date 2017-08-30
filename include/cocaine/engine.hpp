@@ -56,6 +56,8 @@ class execution_unit_t {
     // reused because of system fd rotation, but for low loads this will help a bit.
     std::unique_ptr<asio::deadline_timer> m_cron;
 
+    context_t& context;
+
 public:
     explicit
     execution_unit_t(context_t& context);
