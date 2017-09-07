@@ -1,3 +1,10 @@
+cocaine-core (0.12.14.12) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Feat: a bunch of new formatters
+
+ -- Anton Matveenko <antmat@me.com>  Thu, 07 Sep 2017 13:12:07 +0300
+
 cocaine-core (0.12.14.11) unstable; urgency=low
 
   * Non-maintainer upload.
