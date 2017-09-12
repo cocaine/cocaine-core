@@ -30,7 +30,6 @@
 #include "cocaine/context.hpp"
 #include "cocaine/context/signal.hpp"
 #include "cocaine/context/quote.hpp"
-#include "cocaine/dynamic.hpp"
 #include "cocaine/engine.hpp"
 
 #include "cocaine/idl/primitive.hpp"
@@ -43,7 +42,9 @@
 #include "cocaine/repository/storage.hpp"
 
 #include "cocaine/rpc/actor.hpp"
+#include "cocaine/rpc/asio/encoder.hpp"
 
+#include "cocaine/traits/dynamic.hpp"
 #include "cocaine/traits/endpoint.hpp"
 #include "cocaine/traits/graph.hpp"
 #include "cocaine/traits/map.hpp"
@@ -89,7 +90,7 @@ public:
     {
         typedef io::protocol<event_traits<locator::connect>::upstream_type>::scope protocol;
 
-        on<protocol::chunk>(std::bind(&connect_sink_t::on_announce, this, ph::_1, ph::_2));
+        on<protocol::chunk>().execute(std::bind(&connect_sink_t::on_announce, this, ph::_1, ph::_2, ph::_3));
         on<protocol::choke>(std::bind(&connect_sink_t::on_shutdown, this));
     }
 
@@ -104,7 +105,7 @@ public:
 
 private:
     void
-    on_announce(const std::string& node, std::map<std::string, results::resolve>&& update);
+    on_announce(hpack::headers_t headers, const std::string& node, std::map<std::string, results::resolve>&& update);
 
     void
     on_shutdown();
@@ -122,7 +123,7 @@ locator_t::connect_sink_t::discard(const std::error_code& ec) {
 }
 
 void
-locator_t::connect_sink_t::on_announce(const std::string& node,
+locator_t::connect_sink_t::on_announce(hpack::headers_t headers, const std::string& node,
                                        std::map<std::string, results::resolve>&& update)
 {
     if(node != uuid) {
@@ -145,7 +146,15 @@ locator_t::connect_sink_t::on_announce(const std::string& node,
         if(location.empty()) {
             parent->m_gateway->cleanup(uuid, name);
         } else {
-            parent->m_gateway->consume(uuid, name, versions, location, protocol);
+            dynamic_t::object_t extra;
+            auto extra_data = hpack::header::find_first(headers, "x-cocaine-locator-extra");
+            if(extra_data) {
+                msgpack::unpacked unpacked;
+                size_t offset = 0;
+                msgpack::unpack(&unpacked, extra_data->value().data(), extra_data->value().size(), &offset);
+                io::type_traits<std::map<std::string, dynamic_t>>::unpack(unpacked.get(), extra);
+            }
+            parent->m_gateway->consume(uuid, name, versions, location, protocol, extra);
         }
     });
 
@@ -306,7 +315,8 @@ private:
 
 locator_cfg_t::locator_cfg_t(const std::string& name_, const dynamic_t& root):
     name(name_),
-    uuid(root.as_object().at("uuid", unique_id_t().string()).as_string())
+    uuid(root.as_object().at("uuid", unique_id_t().string()).as_string()),
+    extra_param(root.as_object().at("extra_param", dynamic_t::empty_object).as_object())
 {
     restricted = root.as_object().at("restrict", dynamic_t::array_t()).to<std::set<std::string>>();
     restricted.insert(name);
@@ -357,7 +367,8 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
         COCAINE_LOG_INFO(m_log, "using '{}' as a gateway manager, enabling service routing", type);
 
-        m_gateway = m_context.repository().get<api::gateway_t>(type, m_context, uuid(), name + ":gateway", args);
+        m_gateway = m_context.repository().get<api::gateway_t>(type, m_context, uuid(), name + ":gateway", args,
+                                                               m_cfg.extra_param);
     }
 
     if(root.as_object().count("cluster")) {
@@ -587,8 +598,7 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
     // sent out on context service signals, and propagate to all nodes in the cluster.
     mapping->insert({uuid, stream});
 
-    // NOTE: Even if there's nothing to return, still send out an empty update.
-    stream.write(m_cfg.uuid, m_snapshots);
+    stream.write(prepare_extra(), m_cfg.uuid, m_snapshots);
     return stream;
 }
 
@@ -696,7 +706,7 @@ void
 locator_t::on_service(const std::string& name, const results::resolve& meta, modes mode) {
     if(m_gateway) {
         if(mode == modes::exposed) {
-            m_gateway->consume(uuid(), name, std::get<1>(meta), std::get<0>(meta), std::get<2>(meta));
+            m_gateway->consume(uuid(), name, std::get<1>(meta), std::get<0>(meta), std::get<2>(meta), m_cfg.extra_param);
         } else {
             m_gateway->cleanup(uuid(), name);
         }
@@ -723,7 +733,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
     const auto response = results::connect{m_cfg.uuid, {{name, meta}}};
 
     for(auto it = mapping->begin(); it != mapping->end(); /***/) try {
-        it->second.write(response);
+        it->second.write(prepare_extra(), response);
         it++;
     } catch(const std::system_error& e) {
         COCAINE_LOG_WARNING(m_log, "unable to enqueue service updates for locator '{}': {}",
@@ -776,4 +786,14 @@ locator_t::on_context_shutdown() {
     });
 
     m_signals = nullptr;
+}
+
+auto
+locator_t::prepare_extra() -> hpack::headers_t {
+    io::aux::encoded_buffers_t buffer;
+    msgpack::packer<io::aux::encoded_buffers_t> packer(buffer);
+    io::type_traits<std::map<std::string, dynamic_t>>::pack(packer, m_cfg.extra_param);
+    hpack::headers_t extra;
+    extra.push_back(hpack::header_t("x-cocaine-locator-extra", std::string(buffer.data(), buffer.size())));
+    return extra;
 }

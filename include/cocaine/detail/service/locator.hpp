@@ -25,6 +25,7 @@
 #include "cocaine/api/cluster.hpp"
 #include "cocaine/api/service.hpp"
 
+#include "cocaine/dynamic.hpp"
 #include "cocaine/detail/service/locator/routing.hpp"
 
 #include "cocaine/idl/context.hpp"
@@ -54,6 +55,7 @@ public:
 
     std::string name;
     std::string uuid;
+    dynamic_t::object_t extra_param;
 
     // Restricted services.
     std::set<std::string> restricted;
@@ -174,6 +176,9 @@ private:
 
     void
     on_context_shutdown();
+
+    auto
+    prepare_extra() -> hpack::headers_t;
 };
 
 }} // namespace cocaine::service

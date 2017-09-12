@@ -48,8 +48,11 @@ class adhoc_t:
     // TODO: Make sure that remote service metadata is consistent across the whole cluster.
     synchronized<remote_map_t> m_remotes;
 
+    std::string x_cocaine_cluster;
+
 public:
-    adhoc_t(context_t& context, const std::string& _local_uuid, const std::string& name, const dynamic_t& args);
+    adhoc_t(context_t& context, const std::string& _local_uuid, const std::string& name, const dynamic_t& args,
+            const dynamic_t::object_t& locator_extra);
 
     auto
     resolve_policy() const ->resolve_policy_t override {
@@ -64,7 +67,8 @@ public:
             const std::string& name,
             unsigned int version,
             const std::vector<asio::ip::tcp::endpoint>& endpoints,
-            const io::graph_root_t& protocol) -> void override;
+            const io::graph_root_t& protocol,
+            const dynamic_t::object_t& extra_param) -> void override;
 
     auto
     cleanup(const std::string& uuid, const std::string& name) -> void override;

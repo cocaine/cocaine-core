@@ -21,7 +21,11 @@
 #include "cocaine/detail/gateway/adhoc.hpp"
 
 #include "cocaine/context.hpp"
+#include "cocaine/dynamic.hpp"
 #include "cocaine/errors.hpp"
+#include "cocaine/format/optional.hpp"
+#include "cocaine/format/header.hpp"
+#include "cocaine/hpack/header.hpp"
 #include "cocaine/logging.hpp"
 
 #include <blackhole/logger.hpp>
@@ -32,9 +36,11 @@
 namespace cocaine {
 namespace gateway {
 
-adhoc_t::adhoc_t(context_t& context, const std::string& _local_uuid, const std::string& name, const dynamic_t& args):
-    category_type(context, _local_uuid, name, args),
-    m_log(context.log(name))
+adhoc_t::adhoc_t(context_t& context, const std::string& _local_uuid, const std::string& name, const dynamic_t& args,
+                 const dynamic_t::object_t& locator_extra):
+    category_type(context, _local_uuid, name, args, locator_extra),
+    m_log(context.log(name)),
+    x_cocaine_cluster(locator_extra.at("x-cocaine-cluster").as_string())
 {
     std::random_device rd;
     m_random_generator.seed(rd());
@@ -67,8 +73,15 @@ adhoc_t::consume(const std::string& uuid,
                  const std::string& name,
                  unsigned int version,
                  const std::vector<asio::ip::tcp::endpoint>& endpoints,
-                 const io::graph_root_t& protocol) -> void
+                 const io::graph_root_t& protocol,
+                 const dynamic_t::object_t& extra) -> void
 {
+    auto cluster = extra.at("x-cocaine-cluster", "").as_string();
+    if(cluster != x_cocaine_cluster) {
+        COCAINE_LOG_INFO(m_log, "skipping service due to different x-cocaine-cluster extra param - {}, requred {}",
+                         cluster, x_cocaine_cluster);
+        return;
+    }
     m_remotes.apply([&](remote_map_t& remotes){
         bool inserted;
         std::tie(std::ignore, inserted) = remotes[name].insert({uuid, remote_t{uuid, version, endpoints, protocol}});

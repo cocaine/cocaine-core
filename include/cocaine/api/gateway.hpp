@@ -22,6 +22,7 @@
 #define COCAINE_GATEWAY_API_HPP
 
 #include "cocaine/common.hpp"
+#include "cocaine/dynamic.hpp"
 #include "cocaine/rpc/graph.hpp"
 
 #include <asio/ip/tcp.hpp>
@@ -70,7 +71,8 @@ struct gateway_t {
             const std::string& name,
             unsigned int version,
             const std::vector<asio::ip::tcp::endpoint>& endpoints,
-            const io::graph_root_t& protocol) -> void = 0;
+            const io::graph_root_t& protocol,
+            const dynamic_t::object_t& extra) -> void = 0;
 
 
     /**
@@ -95,7 +97,9 @@ struct gateway_t {
     total_count(const std::string& name) const -> size_t = 0;
 
 protected:
-    gateway_t(context_t&, const std::string& /* local_uuid */, const std::string& /* name */, const dynamic_t& /* args */) {
+    gateway_t(context_t&, const std::string& /* local_uuid */, const std::string& /* name */, const dynamic_t& /* args */,
+              const dynamic_t::object_t& /* locator_extra */)
+    {
         // Empty.
     }
 };

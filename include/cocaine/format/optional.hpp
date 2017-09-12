@@ -1,8 +1,9 @@
 #pragma once
 
-#include <boost/optional/optional.hpp>
-
 #include "cocaine/format/base.hpp"
+#include "cocaine/utility.hpp"
+
+#include <boost/optional/optional.hpp>
 
 namespace cocaine {
 

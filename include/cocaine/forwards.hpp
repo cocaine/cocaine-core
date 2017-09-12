@@ -126,7 +126,9 @@ class header_t;
 struct headers;
 struct header_static_table;
 
-typedef std::vector<header_t> header_storage_t;
+// deprecated - use headers_t
+using header_storage_t = std::vector<header_t>;
+using headers_t = std::vector<header_t>;
 
 }} // namespace cocaine::hpack
 
