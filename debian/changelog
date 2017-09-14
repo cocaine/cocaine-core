@@ -1,3 +1,10 @@
+cocaine-core (0.12.14.13) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Feat: Locator now provides extra info on connect.
+
+ -- Anton Matveenko <antmat@me.com>  Thu, 14 Sep 2017 12:43:07 +0300
+
 cocaine-core (0.12.14.12) unstable; urgency=low
 
   * Non-maintainer upload.
