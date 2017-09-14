@@ -495,7 +495,7 @@ cocaine-core (0.12.8.10+nmu1) unstable; urgency=low
 cocaine-core (0.12.8.9+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
-  * Hpack fix - proper ctor for header_storage_t
+  * Hpack fix - proper ctor for headers_t
 
  -- Anton Matveenko <antmat@me.com>  Thu, 28 Apr 2016 20:11:29 +0300
 

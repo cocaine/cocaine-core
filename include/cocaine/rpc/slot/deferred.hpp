@@ -116,7 +116,7 @@ struct deferred_base {
     }
 
     std::error_code
-    abort(hpack::header_storage_t headers, const std::error_code& ec, const std::string& reason) {
+    abort(hpack::headers_t headers, const std::error_code& ec, const std::string& reason) {
         return outbox->synchronize()->template append<typename protocol::error>(std::move(headers), ec, reason);
     }
 
@@ -128,7 +128,7 @@ struct deferred_base {
 
     template<class... Args>
     std::error_code
-    write(hpack::header_storage_t headers, Args&&... args) {
+    write(hpack::headers_t headers, Args&&... args) {
         return outbox->synchronize()->template append<typename protocol::value>(std::move(headers), std::forward<Args>(args)...);
     }
 

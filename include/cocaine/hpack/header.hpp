@@ -153,7 +153,7 @@ private:
     } data;
 };
 
-typedef std::vector<header_t> header_storage_t;
+typedef std::vector<header_t> headers_t;
 using headers_t = std::vector<header_t>;
 
 // Header static and dynamic table as described in http2

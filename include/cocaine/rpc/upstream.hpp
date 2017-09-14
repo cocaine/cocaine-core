@@ -73,7 +73,7 @@ public:
 
     template<class Event, class... Args>
     void
-    send(hpack::header_storage_t headers, Args&&... args) {
+    send(hpack::headers_t headers, Args&&... args) {
         send(encoded<Event>(m_channel_id, std::move(headers), std::forward<Args>(args)...));
     }
 };
@@ -109,7 +109,7 @@ public:
 
     template<class Event, class... Args>
     upstream<typename io::event_traits<Event>::dispatch_type>
-    send(hpack::header_storage_t headers, Args&&... args) {
+    send(hpack::headers_t headers, Args&&... args) {
         static_assert(
             std::is_same<typename Event::tag, Tag>::value,
             "message protocol is not compatible with this upstream"

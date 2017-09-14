@@ -89,7 +89,7 @@ unbound_message_t::unbound_message_t(function_type&& bind_): bind(std::move(bind
 } //  namespace aux
 
 void
-encoder_t::pack_headers(packer_type& packer, const hpack::header_storage_t& headers) {
+encoder_t::pack_headers(packer_type& packer, const hpack::headers_t& headers) {
 
     size_t skip = 0;
     for (const auto& header: headers) {

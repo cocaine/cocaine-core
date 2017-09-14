@@ -41,7 +41,7 @@ struct frozen_visitor:
 {
     explicit
     frozen_visitor(const std::shared_ptr<basic_upstream_t>& upstream_,
-                   hpack::header_storage_t& headers_) :
+                   hpack::headers_t& headers_) :
         upstream(upstream_),
         headers(headers_)
     { }
@@ -55,7 +55,7 @@ struct frozen_visitor:
 
 private:
     const std::shared_ptr<basic_upstream_t>& upstream;
-    hpack::header_storage_t& headers;
+    hpack::headers_t& headers;
 };
 
 } // namespace aux
@@ -63,7 +63,7 @@ private:
 template<class Tag>
 class message_queue {
     // Operation log.
-    std::vector<std::tuple<hpack::header_storage_t, typename make_frozen_over<Tag>::type>> m_operations;
+    std::vector<std::tuple<hpack::headers_t, typename make_frozen_over<Tag>::type>> m_operations;
 
     // The upstream might be attached during message invocation, so it has to be synchronized for
     // thread safety - the atomicity guarantee of the shared_ptr<T> is not enough.
@@ -72,7 +72,7 @@ class message_queue {
 public:
     template<class Event, class... Args>
     std::error_code
-    append(hpack::header_storage_t headers, Args&&... args) {
+    append(hpack::headers_t headers, Args&&... args) {
         static_assert(std::is_same<typename Event::tag, Tag>::value,
                       "message protocol is not compatible with this message queue");
 
@@ -96,7 +96,7 @@ public:
                       "message protocol is not compatible with this message queue");
 
         if(!m_upstream) {
-            m_operations.emplace_back(hpack::header_storage_t(), make_frozen<Event>(std::forward<Args>(args)...));
+            m_operations.emplace_back(hpack::headers_t(), make_frozen<Event>(std::forward<Args>(args)...));
             return {};
         }
 

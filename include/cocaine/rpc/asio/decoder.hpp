@@ -47,7 +47,7 @@ struct decoded_message_t {
     args() const -> const msgpack::object&;
 
     auto
-    headers() const -> const hpack::header_storage_t&;
+    headers() const -> const hpack::headers_t&;
 
     void
     clear();
@@ -56,7 +56,7 @@ private:
 
     // These objects keep references to message buffer in the Decoder.
     msgpack::object object;
-    hpack::header_storage_t metadata;
+    hpack::headers_t metadata;
 };
 
 } // namespace aux

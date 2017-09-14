@@ -46,7 +46,7 @@ struct streamed {
         std::is_constructible<T, Args...>::value,
         std::error_code
     >::type
-    write(hpack::header_storage_t headers, Args&&... args) {
+    write(hpack::headers_t headers, Args&&... args) {
         auto d = data->synchronize();
         if (d->state == state_t::closed) {
             return make_error_code(error::protocol_errors::closed_upstream);
@@ -65,7 +65,7 @@ struct streamed {
     }
 
     std::error_code
-    abort(hpack::header_storage_t headers, const std::error_code& ec, const std::string& reason) {
+    abort(hpack::headers_t headers, const std::error_code& ec, const std::string& reason) {
         return data->apply([&](data_t& data) {
             if(utility::exchange(data.state, state_t::closed) == state_t::closed) {
                 return make_error_code(error::protocol_errors::closed_upstream);
@@ -81,7 +81,7 @@ struct streamed {
     }
 
     std::error_code
-    close(hpack::header_storage_t headers) {
+    close(hpack::headers_t headers) {
         return data->apply([&](data_t& data) {
             if (utility::exchange(data.state, state_t::closed) == state_t::closed) {
                 return make_error_code(error::protocol_errors::closed_upstream);
