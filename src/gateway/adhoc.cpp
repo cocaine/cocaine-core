@@ -40,7 +40,7 @@ adhoc_t::adhoc_t(context_t& context, const std::string& _local_uuid, const std::
                  const dynamic_t::object_t& locator_extra):
     category_type(context, _local_uuid, name, args, locator_extra),
     m_log(context.log(name)),
-    x_cocaine_cluster(locator_extra.at("x-cocaine-cluster").as_string())
+    x_cocaine_cluster(locator_extra.at("x-cocaine-cluster", "").as_string())
 {
     std::random_device rd;
     m_random_generator.seed(rd());
