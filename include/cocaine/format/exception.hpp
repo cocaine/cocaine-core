@@ -25,4 +25,7 @@ struct display<std::exception> {
 template<>
 struct display_traits<std::exception> : public lazy_display<std::exception> {};
 
+template<>
+struct display_traits<std::system_error> : public lazy_display<std::exception> {};
+
 } // namespace cocaine
