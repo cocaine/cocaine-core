@@ -315,7 +315,6 @@ private:
 
 locator_cfg_t::locator_cfg_t(const std::string& name_, const dynamic_t& root):
     name(name_),
-    uuid(root.as_object().at("uuid", unique_id_t().string()).as_string()),
     extra_param(root.as_object().at("extra_param", dynamic_t::empty_object).as_object())
 {
     restricted = root.as_object().at("restrict", dynamic_t::array_t()).to<std::set<std::string>>();
@@ -339,6 +338,10 @@ locator_t::locator_t(context_t& context, io_service& asio, const std::string& na
 
     on<locator::publish>(std::make_shared<publish_slot_t>(this));
     on<locator::routing>(std::make_shared<routing_slot_t>(this));
+
+    on<locator::uuid>([&](){
+        return uuid();
+    });
 
     // Service restrictions
 
@@ -446,7 +449,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
                 timer.reset();
                 link_attempts = 0;
             });
-            COCAINE_LOG_DEBUG(m_log, "connected to remote via {}", *endpoint);
+            COCAINE_LOG_INFO(m_log, "connected to remote via {}", *endpoint);
 
             // Uniquify the socket object.
             auto ptr = std::make_unique<tcp::socket>(std::move(*socket));
@@ -471,7 +474,7 @@ locator_t::link_node(const std::string& uuid, const std::vector<tcp::endpoint>& 
         auto upstream = session->fork(std::make_shared<connect_sink_t>(this, uuid));
 
         try {
-            upstream->send<locator::connect>(m_cfg.uuid);
+            upstream->send<locator::connect>(this->uuid());
         } catch(const std::system_error& e) {
             COCAINE_LOG_ERROR(m_log, "unable to set up remote stream: {}", error::to_string(e));
             m_clients->erase(uuid);
@@ -509,7 +512,7 @@ locator_t::drop_node(const std::string& uuid) {
 
 std::string
 locator_t::uuid() const {
-    return m_cfg.uuid;
+    return m_context.uuid();
 }
 
 auto
@@ -598,7 +601,7 @@ locator_t::on_connect(const std::string& uuid) -> streamed<results::connect> {
     // sent out on context service signals, and propagate to all nodes in the cluster.
     mapping->insert({uuid, stream});
 
-    stream.write(prepare_extra(), m_cfg.uuid, m_snapshots);
+    stream.write(prepare_extra(), this->uuid(), m_snapshots);
     return stream;
 }
 
@@ -730,7 +733,7 @@ locator_t::on_service(const std::string& name, const results::resolve& meta, mod
         m_snapshots.erase(name);
     }
 
-    const auto response = results::connect{m_cfg.uuid, {{name, meta}}};
+    const auto response = results::connect{uuid(), {{name, meta}}};
 
     for(auto it = mapping->begin(); it != mapping->end(); /***/) try {
         it->second.write(prepare_extra(), response);

@@ -172,6 +172,19 @@ struct routing {
     >::tag upstream_type;
 };
 
+struct uuid {
+    typedef locator_tag tag;
+
+    static const char* alias() {
+        return "uuid";
+    }
+
+    typedef boost::mpl::list<>::type argument_type;
+
+    /* UUID of the locator */
+    typedef option_of<std::string>::tag upstream_type;
+};
+
 }; // struct locator
 
 template<>
@@ -186,7 +199,8 @@ struct protocol<locator_tag> {
         locator::refresh,
         locator::cluster,
         locator::publish,
-        locator::routing
+        locator::routing,
+        locator::uuid
     >::type messages;
 
     typedef locator scope;

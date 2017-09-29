@@ -22,6 +22,7 @@
 #include "cocaine/defaults.hpp"
 #include "cocaine/dynamic.hpp"
 #include "cocaine/errors.hpp"
+#include "cocaine/unique_id.hpp"
 
 #include <asio/io_service.hpp>
 #include <asio/ip/host_name.hpp>
@@ -376,6 +377,12 @@ public:
         throw error_t(error::component_not_found, "component group `{}` is missing in config", name);
     }
 
+    virtual
+    const std::string&
+    uuid() const {
+        return m_uuid;
+    }
+
     static
     dynamic_t
     read_source_file(const std::string& source_file) {
@@ -453,7 +460,8 @@ public:
         m_path(m_source.as_object().at("paths", dynamic_t::empty_object).as_object()),
         m_network(m_source.as_object().at("network", dynamic_t::empty_object).as_object()),
         m_logging(m_source.as_object().at("logging", dynamic_t::empty_object).as_object()),
-        component_groups(init_components_groups(m_source))
+        component_groups(init_components_groups(m_source)),
+        m_uuid(m_source.as_object().at("uuid", unique_id_t().string()).as_string())
     {
     }
 
@@ -462,6 +470,7 @@ public:
     network_t m_network;
     logging_t m_logging;
     std::map<std::string, component_group_t> component_groups;
+    std::string m_uuid;
 };
 
 int

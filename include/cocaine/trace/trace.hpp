@@ -117,7 +117,8 @@ public:
             {"trace_id", {to_hex_string(trace_id)}},
             {"span_id", {to_hex_string(state.span_id)}},
             {"parent_id", {to_hex_string(state.parent_id)}},
-            {"rpc_name", {state.rpc_name}}
+            {"rpc_name", {state.rpc_name}},
+            {"trace_bit", {verbose()}}
         };
     }
 
@@ -128,7 +129,8 @@ public:
             {"trace_id", {trace_id}},
             {"span_id", {state.span_id}},
             {"parent_id", {state.parent_id}},
-            {"rpc_name", {state.rpc_name}}
+            {"rpc_name", {state.rpc_name}},
+            {"trace_bit", {verbose()}}
         };
     }
 

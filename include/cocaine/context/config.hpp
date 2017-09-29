@@ -169,6 +169,10 @@ public:
     const component_group_t&
     component_group(const std::string& name) const = 0;
 
+    virtual
+    const std::string&
+    uuid() const = 0;
+
     static
     int
     versions();

@@ -20,6 +20,7 @@
 
 #include "cocaine/context.hpp"
 
+#include "cocaine/api/cluster.hpp"
 #include "cocaine/api/service.hpp"
 #include "cocaine/context/config.hpp"
 #include "cocaine/context/filter.hpp"
@@ -29,6 +30,7 @@
 #include "cocaine/detail/essentials.hpp"
 #include "cocaine/engine.hpp"
 #include "cocaine/format.hpp"
+#include "cocaine/format/exception.hpp"
 #include "cocaine/idl/context.hpp"
 #include "cocaine/logging.hpp"
 #include "cocaine/rpc/actor.hpp"
@@ -168,9 +170,11 @@ public:
                 publish_all(list);
                 m_bootstrapped = true;
             });
+            COCAINE_LOG_DEBUG(m_log, "context is bootstrapped");
             m_signals.invoke<io::context::prepared>();
-        } catch (const std::exception&) {
-            COCAINE_LOG_ERROR(m_log, "emergency core shutdown");
+            COCAINE_LOG_DEBUG(m_log, "context is prepared");
+        } catch (const std::exception& e) {
+            COCAINE_LOG_ERROR(m_log, "emergency core shutdown: {}", e);
             terminate();
             std::throw_with_nested(cocaine::error_t("failed to start core"));
         }
@@ -282,7 +286,7 @@ public:
     }
 
     std::unique_ptr<tcp_actor_t>
-    remove(const std::string& name) override {
+    remove (const std::string& name) override {
         const holder_t scoped(*m_log, {{"source", "core"}});
 
         std::unique_ptr<tcp_actor_t> service;
@@ -425,6 +429,11 @@ make_context(std::unique_ptr<config_t> config, std::unique_ptr<logging::logger_t
 std::unique_ptr<context_t>
 make_context(std::unique_ptr<config_t> config, std::unique_ptr<logging::logger_t> log, std::unique_ptr<api::repository_t> repository) {
     return std::unique_ptr<context_t>(new context_impl_t(std::move(config), std::move(log), std::move(repository)));
+}
+
+auto
+context_t::uuid() const -> const std::string& {
+    return config().uuid();
 }
 
 } //  namespace cocaine

@@ -116,6 +116,10 @@ public:
         );
     }
 
+    // TODO: make virtual in next release
+    auto
+    uuid() const -> const std::string&;
+
 private:
     virtual
     auto

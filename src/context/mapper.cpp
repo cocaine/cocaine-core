@@ -58,7 +58,7 @@ port_mapping_t::assign(const std::string& name) {
     std::lock_guard<std::mutex> guard(m_mutex);
 
     if(m_in_use.count(name)) {
-        throw cocaine::error_t("named port is already in use");
+        throw cocaine::error_t("named port for {} is already in use", name);
     }
 
     if(m_pinned.count(name)) {

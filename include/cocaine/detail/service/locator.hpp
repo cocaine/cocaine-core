@@ -54,7 +54,6 @@ public:
     locator_cfg_t(const std::string& name, const dynamic_t& args);
 
     std::string name;
-    std::string uuid;
     dynamic_t::object_t extra_param;
 
     // Restricted services.
