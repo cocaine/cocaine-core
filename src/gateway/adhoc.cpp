@@ -78,8 +78,8 @@ adhoc_t::consume(const std::string& uuid,
 {
     auto cluster = extra.at("x-cocaine-cluster", "").as_string();
     if(cluster != x_cocaine_cluster) {
-        COCAINE_LOG_INFO(m_log, "skipping service due to different x-cocaine-cluster extra param - {}, requred {}",
-                         cluster, x_cocaine_cluster);
+        COCAINE_LOG_INFO(m_log, "skipping service {} from {} due to different x-cocaine-cluster extra param - {}, required {}",
+                         name, uuid, cluster, x_cocaine_cluster);
         return;
     }
     m_remotes.apply([&](remote_map_t& remotes){
@@ -91,7 +91,7 @@ adhoc_t::consume(const std::string& uuid,
                           "failed to add remote service {} located on {} to gateway: service already registered",
                           name, uuid);
         } else {
-            COCAINE_LOG_DEBUG(m_log, "registered {}/{} destination with {:d} endpoints from {}",
+            COCAINE_LOG_INFO(m_log, "registered {}/{} destination with {:d} endpoints from {}",
                               name, version, endpoints.size(), uuid);
         }
 
@@ -102,7 +102,7 @@ auto
 adhoc_t::cleanup(const std::string& uuid, const std::string& name) -> void {
     m_remotes.apply([&](remote_map_t& remotes){
         if(remotes[name].erase(uuid)) {
-            COCAINE_LOG_DEBUG(m_log, "removed service {} provided by {} from gateway", name, uuid);
+            COCAINE_LOG_INFO(m_log, "removed service {} provided by {} from gateway", name, uuid);
         } else {
             throw error_t(error::gateway_missing_service,
                           "failed to remove service {} provided by {} from gateway: not found", name, uuid);
