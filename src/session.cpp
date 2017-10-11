@@ -490,8 +490,9 @@ session_t::push(encoder_t::message_type&& message) {
 #else
     if(const auto ptr = *transport.synchronize()) {
 #endif
-        // Use dispatch() instead of a direct call for thread safety.
-        ptr->socket->get_io_service().dispatch(trace_t::bind(&push_action_t::operator(),
+        // Use post() instead of a direct call for thread safety.
+        // We can not use dispatch here to prevent channel reordering.
+        ptr->socket->get_io_service().post(trace_t::bind(&push_action_t::operator(),
             std::make_shared<push_action_t>(std::move(message), shared_from_this()),
             ptr
         ));
