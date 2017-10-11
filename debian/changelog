@@ -1,3 +1,10 @@
+cocaine-core (0.12.14.18) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fixed: channel reordering in session.
+
+ -- Anton Matveenko <antmat@me.com>  Wed, 11 Oct 2017 13:48:07 +0300
+
 cocaine-core (0.12.14.17) unstable; urgency=low
 
   * Non-maintainer upload.
