@@ -1,3 +1,10 @@
+cocaine-core (0.12.14.19) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Perf: Reduce complexity in locator (on_cluster and on_routing).
+
+ -- Anton Matveenko <antmat@me.com>  Fri, 13 Oct 2017 14:13:07 +0300
+
 cocaine-core (0.12.14.18) unstable; urgency=low
 
   * Non-maintainer upload.
