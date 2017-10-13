@@ -647,10 +647,13 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
         }).get());
     });
 
-    const auto ruids = boost::accumulate(*m_routers.synchronize(), ruid_vector_t{},
-        [](ruid_vector_t result, const router_map_t::value_type& value) -> ruid_vector_t
-    {
-        result.push_back(value.first); return result;
+    auto ruids = m_routers.apply([](const router_map_t& routers) {
+        ruid_vector_t ruids;
+        ruids.reserve(routers.size());
+        for(const auto& router: routers) {
+            ruids.push_back(router.first);
+        }
+        return ruids;
     });
 
     for(auto it = ruids.begin(); it != ruids.end(); ++it) try {
@@ -667,14 +670,14 @@ locator_t::on_refresh(const std::vector<std::string>& groups) {
 
 results::cluster
 locator_t::on_cluster() const {
-    return boost::accumulate(*m_clients.synchronize(), results::cluster{},
-        [](results::cluster result, const client_map_t::value_type& value) -> results::cluster
-    {
-        const auto& session = value.second.ptr;
+    return m_clients.apply([&](const client_map_t& clients) mutable {
+        results::cluster result;
+        for(const auto& client: clients) {
+            const auto& session = client.second.ptr;
 
-        // NOTE: Some sessions might be nullptr because there is a connection attempt in progress.
-        result[value.first] = session ? session->remote_endpoint() : ip::tcp::endpoint();
-
+            // NOTE: Some sessions might be nullptr because there is a connection attempt in progress.
+            result[client.first] = session ? session->remote_endpoint() : ip::tcp::endpoint();
+        }
         return result;
     });
 }
