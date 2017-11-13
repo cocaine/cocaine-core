@@ -19,6 +19,7 @@
 */
 
 #include "cocaine/context.hpp"
+#include "context/distributor.hpp"
 
 #include "cocaine/api/cluster.hpp"
 #include "cocaine/api/service.hpp"
@@ -77,8 +78,8 @@ struct match {
 using blackhole::scope::holder_t;
 
 class context_impl_t : public context_t {
-    typedef std::deque<std::pair<std::string, std::unique_ptr<tcp_actor_t>>> service_list_t;
-
+    using service_list_t = std::deque<std::pair<std::string, std::unique_ptr<tcp_actor_t>>>;
+    using engine_pool_t = std::vector<std::unique_ptr<execution_unit_t>>;
     // TODO: There was an idea to use the Repository to enable pluggable sinks and whatever else for
     // for the Blackhole, when all the common stuff is extracted to a separate library.
     std::unique_ptr<logging::trace_wrapper_t> m_log;
@@ -91,7 +92,7 @@ class context_impl_t : public context_t {
     std::unique_ptr<io::chamber_t> m_acceptor_thread;
 
     // A pool of execution units - threads responsible for doing all the service invocations.
-    std::vector<std::unique_ptr<execution_unit_t>> m_pool;
+    engine_pool_t m_pool;
 
     // Services are stored as a vector of pairs to preserve the initialization order. Synchronized,
     // because services are allowed to start and stop other services during their lifetime.
@@ -110,6 +111,7 @@ class context_impl_t : public context_t {
     // Service port mapping and pinning.
     port_mapping_t m_mapper;
 
+    std::unique_ptr<distributor<engine_pool_t>> m_engine_distributor;
 public:
     context_impl_t(std::unique_ptr<config_t> _config,
                    std::unique_ptr<logging::logger_t> _log,
@@ -121,6 +123,7 @@ public:
         m_mapper(*m_config)
     {
         const holder_t scoped(*m_log, {{"source", "core"}});
+        initialize_distributor();
 
         reset_logger_filter();
 
@@ -185,6 +188,20 @@ public:
 
         // Signal and stop all the services, shut down execution units.
         terminate();
+    }
+
+    auto
+    initialize_distributor() -> void {
+        try {
+            auto distributor_component = m_config->component_group("context").get("distributor");
+            if(!distributor_component) {
+                throw error_t("missing distributor component in context section");
+            }
+            m_engine_distributor = make_distributor<engine_pool_t>(distributor_component->type(), distributor_component->args());
+        } catch (const std::exception& e) {
+            COCAINE_LOG_WARNING(m_log, "could not load distributor config - {}; processing with default values", e);
+            m_engine_distributor = make_distributor<engine_pool_t>("bucket_random", dynamic_t::object_t());
+        }
     }
 
     std::unique_ptr<logging::logger_t>
@@ -347,11 +364,7 @@ public:
 
     execution_unit_t&
     engine() override {
-        typedef std::unique_ptr<execution_unit_t> unit_t;
-        auto comp = [](const unit_t& lhs, const unit_t& rhs) {
-            return lhs->utilization() < rhs->utilization();
-        };
-        return **std::min_element(m_pool.begin(), m_pool.end(), comp);
+        return *m_engine_distributor->next(m_pool);
     }
 
     void

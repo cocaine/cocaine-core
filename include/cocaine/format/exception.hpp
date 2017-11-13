@@ -17,7 +17,7 @@ struct display<std::exception> {
         if(ptr) {
             return stream << cocaine::format("[{}] {}", ptr->code().value(), ptr->what());
         } else {
-            return stream << ptr->what();
+            return stream << value.what();
         }
     }
 };

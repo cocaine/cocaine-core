@@ -29,14 +29,19 @@ ENDIF()
 IF(COCAINE_ALLOW_TESTS AND
     NOT (CMAKE_VERSION VERSION_LESS 2.8.5 OR (DEFINED GCC_COMPILER_VERSION AND GCC_COMPILER_VERSION VERSION_LESS 4.8)))
 
+    INCLUDE(DownloadGoogleTesting)
+
     ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/foreign/.googletest EXCLUDE_FROM_ALL)
 
     ENABLE_TESTING()
+    download_google_testing()
+
     INCLUDE_DIRECTORIES(SYSTEM foreign/.googletest/googletest/include)
 
     INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
     ADD_EXECUTABLE(cocaine-core-tests
+        unit/context.cpp
         unit/format.cpp
         unit/protocol.cpp
         unit/header.cpp

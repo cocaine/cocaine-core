@@ -18,6 +18,6 @@ struct display<std::error_code> {
 };
 
 template<>
-struct display_traits<std::exception> : public lazy_display<std::exception> {};
+struct display_traits<std::error_code> : public lazy_display<std::error_code> {};
 
 } // namespace cocaine

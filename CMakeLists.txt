@@ -12,12 +12,14 @@ IF(APPLE)
     SET(CMAKE_MACOSX_RPATH ON)
 ENDIF()
 
-OPTION(COCAINE_ALLOW_TESTS "Build Tests" ON)
+OPTION(COCAINE_ALLOW_TESTS "Build Tests" OFF)
 OPTION(COCAINE_ALLOW_BENCHMARKS "Build Benchmarking Tools" OFF)
 
 # Import our CMake modules.
-INCLUDE(cmake/locate_library.cmake)
-INCLUDE(foreign/modules/AddCXXCompilerFlag.cmake)
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/foreign/modules )
+INCLUDE(locate_library)
+INCLUDE(AddCXXCompilerFlag)
 
 IF(NOT APPLE)
     LOCATE_LIBRARY(LIBBFD "bfd.h" "bfd")
