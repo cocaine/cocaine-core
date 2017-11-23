@@ -104,8 +104,7 @@ adhoc_t::cleanup(const std::string& uuid, const std::string& name) -> void {
         if(remotes[name].erase(uuid)) {
             COCAINE_LOG_INFO(m_log, "removed service {} provided by {} from gateway", name, uuid);
         } else {
-            throw error_t(error::gateway_missing_service,
-                          "failed to remove service {} provided by {} from gateway: not found", name, uuid);
+            COCAINE_LOG_INFO(m_log, "could not remove service {} provided by {} from gateway - not found", name, uuid);
         }
     });
 }
