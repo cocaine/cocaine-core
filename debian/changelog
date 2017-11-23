@@ -1,3 +1,11 @@
+cocaine-core (0.12.14.21) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fixed: Move dynamic constructors and converters from plugins
+    to prevent ODR violation.
+
+ -- Anton Matveenko <antmat@me.com>  Thu, 23 Nov 2017 19:57:07 +0300
+
 cocaine-core (0.12.14.20) unstable; urgency=low
 
   * Non-maintainer upload.
