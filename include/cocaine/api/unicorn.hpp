@@ -49,6 +49,7 @@ public:
 
 typedef std::shared_ptr<unicorn_scope_t> unicorn_scope_ptr;
 
+//TODO: in v12.15 change
 class auto_scope_t {
     unicorn_scope_ptr wrapped;
 public:
@@ -162,6 +163,8 @@ public:
               const unicorn::path_t& path,
               const unicorn::value_t& value) = 0;
 
+    // TODO: deprecate or remove in 12.15 in favour of named_lock
+    // See cocaine-plugins/unicorn/include/api/unicorn.hpp
     virtual
     unicorn_scope_ptr
     lock(callback::lock callback,
